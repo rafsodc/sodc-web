@@ -10,6 +10,8 @@ import { ROUTES } from "../constants";
 import { sectionDetailLocationState } from "../shared/navigation/sectionNavigationState";
 import { createMockUser } from "../test-utils/mocks/firebase";
 
+vi.mock("../features/guests/GuestTicketPage", () => ({ default: () => <div>Public guest ticket</div> }));
+
 const mockRefetchUserData = vi.hoisted(() => vi.fn());
 const mockRetrySession = vi.hoisted(() => vi.fn());
 
@@ -467,6 +469,13 @@ describe("App routing", () => {
     expect(screen.getByTestId("location")).toHaveTextContent(
       ROUTES.PASSWORD_RESET_REQUEST,
     );
+  });
+
+  it.each(["signed out", "unverified", "disabled", "session failed"])("keeps guest links accessible when %s", async state => {
+    if (state !== "signed out") currentUser = createMockUser({ emailVerified: state !== "unverified" });
+    if (state === "session failed") sessionRecoveryStatus = "failed";
+    renderApp(["/guest-ticket#private-token"]);
+    expect(await screen.findByText("Public guest ticket")).toBeInTheDocument();
   });
 
   it("keeps the public auth action reachable for an unverified user", async () => {

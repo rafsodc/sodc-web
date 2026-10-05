@@ -1,6 +1,12 @@
+import { ORGANISER_GUEST, type ManagedTicketAudience } from "../../../shared/utils/ticketAudienceLabels";
+import { organiserTicketTypeRow } from "../../guests/ticketTypes";
+import { useQuery } from "@tanstack/react-query";
+import { guestCall, type GuestList } from "../../guests/api";
+import { organiserGuestTicketRows } from "../../guests/reporting";
+import OrganiserGuestsManager from "../../guests/OrganiserGuestsManager";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Box } from "@mui/material";
-import { dataConnect } from "../../../config/firebase";
+import { auth, dataConnect } from "../../../config/firebase";
 import {
   executeDataConnectMutation,
   executeDataConnectQuery,
@@ -110,7 +116,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const [ttPrice, setTtPrice] = useState<string>("0");
   const [ttSortOrder, setTtSortOrder] = useState<string>("0");
   const [ttAccessGroup, setTtAccessGroup] = useState<{ id: string; name: string } | null>(null);
-  const [ttAudience, setTtAudience] = useState<TicketAudience>(TicketAudience.MEMBER);
+  const [ttAudience, setTtAudience] = useState<ManagedTicketAudience>(TicketAudience.MEMBER);
   const [ttIncludesDinner, setTtIncludesDinner] = useState(false);
   const [ttIncludesSymposium, setTtIncludesSymposium] = useState(false);
   const [allUserGroups, setAllUserGroups] = useState<Array<{ id: string; name: string }>>([]);
@@ -343,7 +349,12 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     }
   };
 
+  const [ttActive, setTtActive] = useState(true);
+  const [newOrganiserTypeId, setNewOrganiserTypeId] = useState("");
+
   const openTicketTypeDialog = (ticketType?: TicketTypeRow) => {
+    setTtActive(ticketType?.active ?? true);
+    if (!ticketType) setNewOrganiserTypeId(crypto.randomUUID());
     if (ticketType) {
       setEditingTicketType(ticketType);
       setTtTitle(ticketType.title);
@@ -370,7 +381,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   };
 
   const handleTicketTypeSubmit = async () => {
-    if (!ticketTypesEventId || !ttTitle.trim() || !ttAccessGroup) {
+    if (!ticketTypesEventId || !ttTitle.trim() || (ttAudience !== ORGANISER_GUEST && !ttAccessGroup)) {
       setError("Title and user group are required");
       return;
     }
@@ -383,11 +394,14 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setSubmittingTicketType(true);
     setError(null);
     try {
-      if (editingTicketType) {
+      if (ttAudience === ORGANISER_GUEST) {
+        await guestCall("saveOrganiserGuestTicketType", { eventId: ticketTypesEventId, id: editingTicketType?.id ?? newOrganiserTypeId, version: editingTicketType?.version, title: ttTitle.trim(), description: ttDescription.trim(), priceMinor: Math.round(priceNum * 100), sortOrder: sortOrderNum, includesDinner: ttIncludesDinner, includesSymposium: ttIncludesSymposium, active: ttActive });
+        await guestReport.refetch();
+      } else if (editingTicketType) {
         await executeDataConnectMutation(
           updateTicketTypeRef(dataConnect, {
             id: editingTicketType.id,
-            userGroupId: ttAccessGroup.id as UUIDString,
+            userGroupId: ttAccessGroup!.id as UUIDString,
             audience: ttAudience,
             title: ttTitle.trim(),
             description: ttDescription.trim() || null,
@@ -401,7 +415,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         await executeDataConnectMutation(
           createTicketTypeRef(dataConnect, {
             eventId: ticketTypesEventId as UUIDString,
-            userGroupId: ttAccessGroup.id as UUIDString,
+            userGroupId: ttAccessGroup!.id as UUIDString,
             audience: ttAudience,
             title: ttTitle.trim(),
             description: ttDescription.trim() || null,
@@ -425,14 +439,18 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   };
 
   const handleDeleteTicketType = async (id: string) => {
-    if (!confirm("Delete this ticket type?")) return;
+    const organiserType = guestReport.data?.ticketTypes.find(type => type.id === id);
+    if (!confirm(organiserType ? "Archive this ticket type? Existing reservations will be retained." : "Delete this ticket type?")) return;
     setDeletingTicketTypeId(id);
     setError(null);
     try {
-      await executeDataConnectMutation(deleteTicketTypeRef(dataConnect, { id }));
+      if (organiserType) {
+        await guestCall("saveOrganiserGuestTicketType", { ...organiserType, eventId: ticketTypesEventId, active: false });
+        await guestReport.refetch();
+      } else await executeDataConnectMutation(deleteTicketTypeRef(dataConnect, { id }));
       refetchEventDetail();
       refetchEvents();
-      showSuccess("Ticket type deleted");
+      showSuccess(organiserType ? "Ticket type archived" : "Ticket type deleted");
     } catch (err: unknown) {
       reportError("admin.tickets.delete", err, { ticketTypeId: id });
       setError(toAdminUserFacingError(err, "tickets").message);
@@ -470,9 +488,10 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     ])),
     [seatingPreferenceUsersData]
   );
+  const guestReport = useQuery({ queryKey: ["organiser-guests", ticketTypesEventId, auth.currentUser?.uid], queryFn: () => guestCall<GuestList>("getOrganiserGuestList", { eventId: ticketTypesEventId }), enabled: Boolean(ticketTypesEventId), gcTime: 0 });
   const attendeeTickets = useMemo(
-    () => activeEventTicketRows(eventBookings, ticketOrdersById, seatingPreferenceUserNamesById),
-    [eventBookings, seatingPreferenceUserNamesById, ticketOrdersById]
+    () => [...activeEventTicketRows(eventBookings, ticketOrdersById, seatingPreferenceUserNamesById), ...organiserGuestTicketRows(guestReport.data?.guests ?? [])],
+    [eventBookings, seatingPreferenceUserNamesById, ticketOrdersById, guestReport.data]
   );
   const bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[] = paymentAdjustmentsData?.event?.bookings ?? [];
 
@@ -532,7 +551,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           maxGuestsWithoutModeratorApproval: eventDetailData.event.maxGuestsWithoutModeratorApproval,
         }
       : event ?? null;
-    const ticketTypes = eventDetailData?.event?.ticketTypes ?? [];
+    const ticketTypes = [...(eventDetailData?.event?.ticketTypes ?? []), ...(guestReport.data?.ticketTypes ?? []).map(organiserTicketTypeRow)].sort((a, b) => a.sortOrder - b.sortOrder);
     return (
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <TicketAdminSurface
@@ -554,6 +573,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           allEventBookings={eventBookings}
           ticketOrdersById={ticketOrdersById}
           attendeeTickets={attendeeTickets}
+          attendeeGuestsUnavailable={guestReport.isPending || guestReport.isError}
           moderatorNoteDraft={moderatorNoteDraft}
           onModeratorNoteChange={(bookingId, value) =>
             setModeratorNoteDraft((prev) => ({ ...prev, [bookingId]: value }))
@@ -568,6 +588,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           bookingPaymentAdjustments={bookingPaymentAdjustments}
         />
 
+        <OrganiserGuestsManager key={ticketTypesEventId} eventId={ticketTypesEventId} />
+
         <TicketTypeDialogSurface
           open={ticketTypeDialogOpen}
           editingTicketType={editingTicketType}
@@ -576,6 +598,9 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           price={ttPrice}
           sortOrder={ttSortOrder}
           audience={ttAudience}
+          active={ttActive}
+          onActiveChange={setTtActive}
+          error={error}
           includesDinner={ttIncludesDinner}
           includesSymposium={ttIncludesSymposium}
           accessGroup={ttAccessGroup}

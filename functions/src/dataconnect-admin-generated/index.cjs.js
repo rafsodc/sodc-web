@@ -1110,6 +1110,139 @@ function confirmPotentialLost(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.confirmPotentialLost = confirmPotentialLost;
 
+function getOrganiserGuestEvent(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetOrganiserGuestEvent', inputVars, inputOpts);
+}
+exports.getOrganiserGuestEvent = getOrganiserGuestEvent;
+
+function listOrganiserGuestTypes(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListOrganiserGuestTypes', inputVars, inputOpts);
+}
+exports.listOrganiserGuestTypes = listOrganiserGuestTypes;
+
+function getOrganiserGuestType(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetOrganiserGuestType', inputVars, inputOpts);
+}
+exports.getOrganiserGuestType = getOrganiserGuestType;
+
+function listOrganiserGuests(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListOrganiserGuests', inputVars, inputOpts);
+}
+exports.listOrganiserGuests = listOrganiserGuests;
+
+function getOrganiserGuest(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetOrganiserGuest', inputVars, inputOpts);
+}
+exports.getOrganiserGuest = getOrganiserGuest;
+
+function getOrganiserGuestByToken(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetOrganiserGuestByToken', inputVars, inputOpts);
+}
+exports.getOrganiserGuestByToken = getOrganiserGuestByToken;
+
+function getPublicOrganiserGuestAttendance(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetPublicOrganiserGuestAttendance', inputVars, inputOpts);
+}
+exports.getPublicOrganiserGuestAttendance = getPublicOrganiserGuestAttendance;
+
+function createOrganiserGuestType(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateOrganiserGuestType', inputVars, inputOpts);
+}
+exports.createOrganiserGuestType = createOrganiserGuestType;
+
+function updateOrganiserGuestType(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateOrganiserGuestType', inputVars, inputOpts);
+}
+exports.updateOrganiserGuestType = updateOrganiserGuestType;
+
+function createOrganiserGuest(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateOrganiserGuest', inputVars, inputOpts);
+}
+exports.createOrganiserGuest = createOrganiserGuest;
+
+function updateOrganiserGuestDetails(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateOrganiserGuestDetails', inputVars, inputOpts);
+}
+exports.updateOrganiserGuestDetails = updateOrganiserGuestDetails;
+
+function updateOrganiserGuestDietary(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateOrganiserGuestDietary', inputVars, inputOpts);
+}
+exports.updateOrganiserGuestDietary = updateOrganiserGuestDietary;
+
+function rotateOrganiserGuestLink(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RotateOrganiserGuestLink', inputVars, inputOpts);
+}
+exports.rotateOrganiserGuestLink = rotateOrganiserGuestLink;
+
+function cancelOrganiserGuest(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CancelOrganiserGuest', inputVars, inputOpts);
+}
+exports.cancelOrganiserGuest = cancelOrganiserGuest;
+
+function attachOrganiserGuestCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AttachOrganiserGuestCheckout', inputVars, inputOpts);
+}
+exports.attachOrganiserGuestCheckout = attachOrganiserGuestCheckout;
+
+function resetOrganiserGuestCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ResetOrganiserGuestCheckout', inputVars, inputOpts);
+}
+exports.resetOrganiserGuestCheckout = resetOrganiserGuestCheckout;
+
+function markOrganiserGuestPaid(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkOrganiserGuestPaid', inputVars, inputOpts);
+}
+exports.markOrganiserGuestPaid = markOrganiserGuestPaid;
+
+function markOrganiserGuestRefunded(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkOrganiserGuestRefunded', inputVars, inputOpts);
+}
+exports.markOrganiserGuestRefunded = markOrganiserGuestRefunded;
+
+function reassignOrganiserGuestTicket(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ReassignOrganiserGuestTicket', inputVars, inputOpts);
+}
+exports.reassignOrganiserGuestTicket = reassignOrganiserGuestTicket;
+
 function getCurrentUser(dcOrOptions, options) {
   const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
   dcInstance.useGen(true);

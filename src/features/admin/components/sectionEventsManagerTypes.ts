@@ -1,3 +1,4 @@
+import type { ManagedTicketAudience } from "../../../shared/utils/ticketAudienceLabels";
 import type {
   GetEventByIdData,
   ListBookingPaymentAdjustmentsForAdminData,
@@ -19,7 +20,13 @@ export interface EventRow {
   maxGuestsWithoutModeratorApproval: number;
 }
 
-export type TicketTypeRow = NonNullable<GetEventByIdData["event"]>["ticketTypes"][number];
+type StoredTicketType = NonNullable<GetEventByIdData["event"]>["ticketTypes"][number];
+export type TicketTypeRow = Omit<StoredTicketType, "audience" | "userGroup"> & {
+  audience: ManagedTicketAudience;
+  userGroup: StoredTicketType["userGroup"] | null;
+  active?: boolean;
+  version?: number;
+};
 export type EventBookingAdminRow = NonNullable<NonNullable<ListEventBookingsForAdminData["event"]>["bookings"][number]>;
 export type TicketOrderAdminRow = NonNullable<NonNullable<ListTicketOrdersForAdminData["event"]>["ticketOrders"][number]>;
 export type BookingPaymentAdjustmentAdminRow = NonNullable<

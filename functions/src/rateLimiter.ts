@@ -18,6 +18,12 @@ export interface RateLimitPolicy {
  * drift into inline magic numbers.
  */
 export const CALLABLE_RATE_LIMITS = {
+  getOrganiserGuestList: { limit: 60, windowMs: 5 * MINUTE_MS },
+  saveOrganiserGuestTicketType: { limit: 60, windowMs: HOUR_MS },
+  manageOrganiserGuest: { limit: 120, windowMs: HOUR_MS },
+  getOrganiserGuestTicket: { limit: 120, windowMs: 5 * MINUTE_MS },
+  updateOrganiserGuestDietary: { limit: 30, windowMs: HOUR_MS },
+  createOrganiserGuestCheckout: { limit: 20, windowMs: HOUR_MS },
   grantAdmin: { limit: 20, windowMs: HOUR_MS },
   revokeAdmin: { limit: 20, windowMs: HOUR_MS },
   listPotentialLostMembers: { limit: 30, windowMs: 5 * MINUTE_MS },

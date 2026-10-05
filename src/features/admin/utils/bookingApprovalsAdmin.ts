@@ -1,3 +1,4 @@
+import type { ManagedTicketAudience } from "../../../shared/utils/ticketAudienceLabels";
 import {
   BookingApprovalStatus,
   BookingStatus,
@@ -15,14 +16,16 @@ export type AttendeePaymentState =
   | "PAYMENT_PENDING"
   | "PAID"
   | "REFUNDED"
-  | "UNKNOWN";
+  | "UNKNOWN"
+  | "PARTIALLY_REFUNDED"
+  | "REFUND_PENDING";
 
 export interface EventAttendeeTicketRow {
   key: string;
   bookingId: string;
   attendeeName: string;
   rank: string | null;
-  audience: TicketAudience;
+  audience: ManagedTicketAudience;
   ticketType: string;
   includesDinner: boolean;
   includesSymposium: boolean;

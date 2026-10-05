@@ -2117,6 +2117,279 @@ exports.confirmPotentialLost = function confirmPotentialLost(dcOrVars, vars) {
 }
 ;
 
+const getOrganiserGuestEventRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetOrganiserGuestEvent', inputVars);
+}
+getOrganiserGuestEventRef.operationName = 'GetOrganiserGuestEvent';
+exports.getOrganiserGuestEventRef = getOrganiserGuestEventRef;
+
+exports.getOrganiserGuestEvent = function getOrganiserGuestEvent(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getOrganiserGuestEventRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listOrganiserGuestTypesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListOrganiserGuestTypes', inputVars);
+}
+listOrganiserGuestTypesRef.operationName = 'ListOrganiserGuestTypes';
+exports.listOrganiserGuestTypesRef = listOrganiserGuestTypesRef;
+
+exports.listOrganiserGuestTypes = function listOrganiserGuestTypes(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listOrganiserGuestTypesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getOrganiserGuestTypeRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetOrganiserGuestType', inputVars);
+}
+getOrganiserGuestTypeRef.operationName = 'GetOrganiserGuestType';
+exports.getOrganiserGuestTypeRef = getOrganiserGuestTypeRef;
+
+exports.getOrganiserGuestType = function getOrganiserGuestType(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getOrganiserGuestTypeRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listOrganiserGuestsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListOrganiserGuests', inputVars);
+}
+listOrganiserGuestsRef.operationName = 'ListOrganiserGuests';
+exports.listOrganiserGuestsRef = listOrganiserGuestsRef;
+
+exports.listOrganiserGuests = function listOrganiserGuests(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listOrganiserGuestsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getOrganiserGuestRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetOrganiserGuest', inputVars);
+}
+getOrganiserGuestRef.operationName = 'GetOrganiserGuest';
+exports.getOrganiserGuestRef = getOrganiserGuestRef;
+
+exports.getOrganiserGuest = function getOrganiserGuest(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getOrganiserGuestRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getOrganiserGuestByTokenRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetOrganiserGuestByToken', inputVars);
+}
+getOrganiserGuestByTokenRef.operationName = 'GetOrganiserGuestByToken';
+exports.getOrganiserGuestByTokenRef = getOrganiserGuestByTokenRef;
+
+exports.getOrganiserGuestByToken = function getOrganiserGuestByToken(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getOrganiserGuestByTokenRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getPublicOrganiserGuestAttendanceRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetPublicOrganiserGuestAttendance', inputVars);
+}
+getPublicOrganiserGuestAttendanceRef.operationName = 'GetPublicOrganiserGuestAttendance';
+exports.getPublicOrganiserGuestAttendanceRef = getPublicOrganiserGuestAttendanceRef;
+
+exports.getPublicOrganiserGuestAttendance = function getPublicOrganiserGuestAttendance(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getPublicOrganiserGuestAttendanceRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const createOrganiserGuestTypeRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateOrganiserGuestType', inputVars);
+}
+createOrganiserGuestTypeRef.operationName = 'CreateOrganiserGuestType';
+exports.createOrganiserGuestTypeRef = createOrganiserGuestTypeRef;
+
+exports.createOrganiserGuestType = function createOrganiserGuestType(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createOrganiserGuestTypeRef(dcInstance, inputVars));
+}
+;
+
+const updateOrganiserGuestTypeRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateOrganiserGuestType', inputVars);
+}
+updateOrganiserGuestTypeRef.operationName = 'UpdateOrganiserGuestType';
+exports.updateOrganiserGuestTypeRef = updateOrganiserGuestTypeRef;
+
+exports.updateOrganiserGuestType = function updateOrganiserGuestType(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateOrganiserGuestTypeRef(dcInstance, inputVars));
+}
+;
+
+const createOrganiserGuestRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateOrganiserGuest', inputVars);
+}
+createOrganiserGuestRef.operationName = 'CreateOrganiserGuest';
+exports.createOrganiserGuestRef = createOrganiserGuestRef;
+
+exports.createOrganiserGuest = function createOrganiserGuest(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createOrganiserGuestRef(dcInstance, inputVars));
+}
+;
+
+const updateOrganiserGuestDetailsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateOrganiserGuestDetails', inputVars);
+}
+updateOrganiserGuestDetailsRef.operationName = 'UpdateOrganiserGuestDetails';
+exports.updateOrganiserGuestDetailsRef = updateOrganiserGuestDetailsRef;
+
+exports.updateOrganiserGuestDetails = function updateOrganiserGuestDetails(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateOrganiserGuestDetailsRef(dcInstance, inputVars));
+}
+;
+
+const updateOrganiserGuestDietaryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateOrganiserGuestDietary', inputVars);
+}
+updateOrganiserGuestDietaryRef.operationName = 'UpdateOrganiserGuestDietary';
+exports.updateOrganiserGuestDietaryRef = updateOrganiserGuestDietaryRef;
+
+exports.updateOrganiserGuestDietary = function updateOrganiserGuestDietary(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateOrganiserGuestDietaryRef(dcInstance, inputVars));
+}
+;
+
+const rotateOrganiserGuestLinkRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'RotateOrganiserGuestLink', inputVars);
+}
+rotateOrganiserGuestLinkRef.operationName = 'RotateOrganiserGuestLink';
+exports.rotateOrganiserGuestLinkRef = rotateOrganiserGuestLinkRef;
+
+exports.rotateOrganiserGuestLink = function rotateOrganiserGuestLink(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(rotateOrganiserGuestLinkRef(dcInstance, inputVars));
+}
+;
+
+const cancelOrganiserGuestRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CancelOrganiserGuest', inputVars);
+}
+cancelOrganiserGuestRef.operationName = 'CancelOrganiserGuest';
+exports.cancelOrganiserGuestRef = cancelOrganiserGuestRef;
+
+exports.cancelOrganiserGuest = function cancelOrganiserGuest(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(cancelOrganiserGuestRef(dcInstance, inputVars));
+}
+;
+
+const attachOrganiserGuestCheckoutRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AttachOrganiserGuestCheckout', inputVars);
+}
+attachOrganiserGuestCheckoutRef.operationName = 'AttachOrganiserGuestCheckout';
+exports.attachOrganiserGuestCheckoutRef = attachOrganiserGuestCheckoutRef;
+
+exports.attachOrganiserGuestCheckout = function attachOrganiserGuestCheckout(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(attachOrganiserGuestCheckoutRef(dcInstance, inputVars));
+}
+;
+
+const resetOrganiserGuestCheckoutRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ResetOrganiserGuestCheckout', inputVars);
+}
+resetOrganiserGuestCheckoutRef.operationName = 'ResetOrganiserGuestCheckout';
+exports.resetOrganiserGuestCheckoutRef = resetOrganiserGuestCheckoutRef;
+
+exports.resetOrganiserGuestCheckout = function resetOrganiserGuestCheckout(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(resetOrganiserGuestCheckoutRef(dcInstance, inputVars));
+}
+;
+
+const markOrganiserGuestPaidRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkOrganiserGuestPaid', inputVars);
+}
+markOrganiserGuestPaidRef.operationName = 'MarkOrganiserGuestPaid';
+exports.markOrganiserGuestPaidRef = markOrganiserGuestPaidRef;
+
+exports.markOrganiserGuestPaid = function markOrganiserGuestPaid(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(markOrganiserGuestPaidRef(dcInstance, inputVars));
+}
+;
+
+const markOrganiserGuestRefundedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkOrganiserGuestRefunded', inputVars);
+}
+markOrganiserGuestRefundedRef.operationName = 'MarkOrganiserGuestRefunded';
+exports.markOrganiserGuestRefundedRef = markOrganiserGuestRefundedRef;
+
+exports.markOrganiserGuestRefunded = function markOrganiserGuestRefunded(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(markOrganiserGuestRefundedRef(dcInstance, inputVars));
+}
+;
+
+const reassignOrganiserGuestTicketRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ReassignOrganiserGuestTicket', inputVars);
+}
+reassignOrganiserGuestTicketRef.operationName = 'ReassignOrganiserGuestTicket';
+exports.reassignOrganiserGuestTicketRef = reassignOrganiserGuestTicketRef;
+
+exports.reassignOrganiserGuestTicket = function reassignOrganiserGuestTicket(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(reassignOrganiserGuestTicketRef(dcInstance, inputVars));
+}
+;
+
 const getCurrentUserRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();

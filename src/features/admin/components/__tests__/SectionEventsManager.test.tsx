@@ -1,3 +1,4 @@
+import { guestCall } from "../../../guests/api";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "../../../../test-utils";
 import SectionEventsManager from "../SectionEventsManager";
@@ -31,11 +32,15 @@ vi.mock("firebase/data-connect", () => ({
 
 vi.mock("../../../../config/firebase", () => ({
   dataConnect: {},
+  auth: { currentUser: { uid: "admin" } },
+  functions: {},
 }));
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   reviewBookingRevision: vi.fn().mockResolvedValue({ success: true }),
 }));
+
+vi.mock("../../../guests/api", () => ({ guestCall: vi.fn().mockResolvedValue({ event: {}, guests: [], ticketTypes: [] }), money: (value: number) => String(value), paymentLabel: (value: string) => value }));
 
 function mockGetEventsForSection(overrides: DataConnectQueryResultOverrides) {
   vi.mocked(reactGenerated.useGetEventsForSection).mockReturnValue(
@@ -91,6 +96,7 @@ describe("SectionEventsManager", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(guestCall).mockResolvedValue({ event: {}, guests: [], ticketTypes: [] });
     vi.mocked(firebaseFunctions.reviewBookingRevision).mockResolvedValue({
       success: true,
       bookingId: "b-1",
@@ -124,6 +130,38 @@ describe("SectionEventsManager", () => {
       isLoading: false,
       isError: false,
     });
+  });
+
+  it("creates an organiser/club guest type through the existing three-category editor", async () => {
+    const user = userEvent.setup();
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} initialEventId="ev-1" onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /^ticket types$/i }));
+    await user.click(screen.getByRole("button", { name: /add ticket type/i }));
+    await user.click(screen.getByRole("combobox", { name: "Ticket category" }));
+    expect(screen.getByRole("option", { name: "Member ticket" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Member’s guest ticket" })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "Organiser/club guest ticket" }));
+    expect(screen.queryByRole("combobox", { name: /access group/i })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Club dinner" } });
+    fireEvent.change(screen.getByLabelText(/^description/i), { target: { value: "Invited guests" } });
+    fireEvent.change(screen.getByLabelText(/^price/i), { target: { value: "12.50" } });
+    await user.click(screen.getByRole("checkbox", { name: "Dinner" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(guestCall).toHaveBeenCalledWith("saveOrganiserGuestTicketType", expect.objectContaining({ eventId: "ev-1", title: "Club dinner", description: "Invited guests", priceMinor: 1250, includesDinner: true, active: true })));
+    expect(generated.createTicketTypeRef).not.toHaveBeenCalled();
+  });
+
+  it("shows organiser types in the existing ticket table and archives them without deleting history", async () => {
+    const type = { id: "org-type", title: "Club dinner", description: "Invitation", priceMinor: 2500, sortOrder: 1, version: 3, active: true, includesDinner: true, includesSymposium: false };
+    vi.mocked(guestCall).mockResolvedValue({ event: {}, guests: [], ticketTypes: [type] });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} initialEventId="ev-1" onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /^ticket types$/i }));
+    expect(await screen.findByText("Organiser/club guest ticket")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Archive Club dinner" }));
+    await waitFor(() => expect(guestCall).toHaveBeenCalledWith("saveOrganiserGuestTicketType", expect.objectContaining({ id: "org-type", eventId: "ev-1", version: 3, active: false })));
+    confirm.mockRestore();
   });
 
   it("renders events list with section name", async () => {

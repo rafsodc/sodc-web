@@ -1,3 +1,4 @@
+import SectionGuestManager from "../../guests/SectionGuestManager";
 import { useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -54,7 +55,7 @@ export default function SectionAdminPage() {
   const sectionType = state?.sectionType ?? "MEMBERS";
   const isEvents = sectionType === "EVENTS";
 
-  const [view, setView] = useState<"hub" | "announcement" | "files">("hub");
+  const [view, setView] = useState<"hub" | "announcement" | "files" | "guests">("hub");
 
   const handleBack = () => {
     if (view !== "hub") {
@@ -98,6 +99,8 @@ export default function SectionAdminPage() {
     );
   }
 
+  if (view === "guests") return <Box className="page-container"><PageHeader title={`Organiser guests — ${sectionName}`} onBack={handleBack} /><SectionGuestManager sectionId={sectionId} /></Box>;
+
   if (view === "files") {
     return (
       <ManageSectionFiles
@@ -134,6 +137,8 @@ export default function SectionAdminPage() {
             onClick={() => setView("announcement")}
           />
         </Box>
+
+        {isEvents && <Box sx={{ flex: "1 1 280px" }}><ActionCard icon={<Event fontSize="large" />} title="Organiser guests" description="Reserve guest tickets and copy personal payment links." onClick={() => setView("guests")} /></Box>}
 
         {isEvents && (
           <Box sx={{ flex: "1 1 280px" }}>
