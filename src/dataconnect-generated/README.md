@@ -24202,7 +24202,7 @@ Recall that executing the `DeleteEvent` mutation returns a `MutationPromise` tha
 The `data` property is an object of type `DeleteEventData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface DeleteEventData {
-  event_delete?: Event_Key | null;
+  event_deleteMany: number;
 }
 ```
 ### Using `DeleteEvent`'s action shortcut function
@@ -24226,12 +24226,12 @@ const { data } = await deleteEvent({ id: ..., });
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await deleteEvent(dataConnect, deleteEventVars);
 
-console.log(data.event_delete);
+console.log(data.event_deleteMany);
 
 // Or, you can use the `Promise` API.
 deleteEvent(deleteEventVars).then((response) => {
   const data = response.data;
-  console.log(data.event_delete);
+  console.log(data.event_deleteMany);
 });
 ```
 
@@ -24259,12 +24259,12 @@ const ref = deleteEventRef(dataConnect, deleteEventVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.event_delete);
+console.log(data.event_deleteMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.event_delete);
+  console.log(data.event_deleteMany);
 });
 ```
 

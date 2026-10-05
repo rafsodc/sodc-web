@@ -84,6 +84,7 @@ vi.mock("@dataconnect/generated", async () => {
     ...actual,
     createEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     updateEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
+    deleteEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     createTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     updateTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     deleteTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
@@ -230,6 +231,47 @@ describe("SectionEventsManager", () => {
     });
     expect(screen.getByRole("button", { name: /add event/i })).toBeInTheDocument();
     expect(screen.getByText(/no events yet/i)).toBeInTheDocument();
+  });
+
+  it("deletes an event without first deleting its bookings", async () => {
+    const event = { id: "ev-1", title: "Annual Dinner", startDateTime: "2025-03-01T18:00:00Z", endDateTime: "2025-03-01T22:00:00Z", bookingStartDateTime: "2025-02-01T00:00:00Z", bookingEndDateTime: "2025-02-28T23:59:59Z", location: "Main Hall", guestOfHonour: null, sponsors: null, details: null, maxGuestsWithoutModeratorApproval: 0 };
+    mockGetEventsForSection({
+      data: { section: { id: sectionId, events: [event] } },
+      isLoading: false,
+      isError: false,
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: "Delete Annual Dinner" }));
+    await waitFor(() => expect(generated.deleteEventRef).toHaveBeenCalledWith(
+      expect.anything(),
+      { id: "ev-1" },
+    ));
+    expect(firebaseDataConnect.executeQuery).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it("explains when an event cannot be deleted because tickets exist", async () => {
+    const event = { id: "ev-1", title: "Annual Dinner", startDateTime: "2025-03-01T18:00:00Z", endDateTime: "2025-03-01T22:00:00Z", bookingStartDateTime: "2025-02-01T00:00:00Z", bookingEndDateTime: "2025-02-28T23:59:59Z", location: "Main Hall", guestOfHonour: null, sponsors: null, details: null, maxGuestsWithoutModeratorApproval: 0 };
+    mockGetEventsForSection({
+      data: { section: { id: sectionId, events: [event] } },
+      isLoading: false,
+      isError: false,
+    });
+    vi.mocked(firebaseDataConnect.executeMutation).mockRejectedValueOnce(
+      new Error("EVENT_HAS_TICKETS"),
+    );
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: "Delete Annual Dinner" }));
+    expect(
+      await screen.findByText(
+        "This event cannot be deleted because tickets already exist.",
+      ),
+    ).toBeInTheDocument();
+    confirm.mockRestore();
   });
 
   it("shows events table when section has events", async () => {

@@ -26,10 +26,6 @@ import {
   updateTicketTypeRef,
   deleteTicketTypeRef,
   listUserGroupsRef,
-  getEventByIdRef,
-  listEventBookingsForAdminRef,
-  adminDeleteBookingLineRef,
-  adminDeleteBookingRef,
   TicketAudience,
   BookingApprovalStatus,
 } from "@dataconnect/generated";
@@ -318,30 +314,21 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   };
 
   const handleDeleteEvent = async (event: EventRow) => {
-    if (!confirm(`Delete event "${event.title}"? This will also remove all ticket types for this event.`)) return;
+    if (!confirm(`Delete event "${event.title}"? This will also remove its unused ticket types. Events with tickets cannot be deleted.`)) return;
     setDeletingEventId(event.id);
     setError(null);
     try {
-      const bookingsResult = await executeDataConnectQuery(listEventBookingsForAdminRef(dataConnect, { eventId: event.id as UUIDString }));
-      const bookingsList = bookingsResult.data?.event?.bookings ?? [];
-      for (const b of bookingsList) {
-        for (const line of b.lines) {
-          await executeDataConnectMutation(adminDeleteBookingLineRef(dataConnect, { id: line.id }));
-        }
-        await executeDataConnectMutation(adminDeleteBookingRef(dataConnect, { id: b.id }));
-      }
-      const detailResult = await executeDataConnectQuery(getEventByIdRef(dataConnect, { id: event.id as UUIDString }));
-      const ticketTypes = detailResult.data?.event?.ticketTypes ?? [];
-      for (const tt of ticketTypes) {
-        await executeDataConnectMutation(deleteTicketTypeRef(dataConnect, { id: tt.id }));
-      }
       await executeDataConnectMutation(deleteEventRef(dataConnect, { id: event.id }));
       refetchEvents();
       if (ticketTypesEventId === event.id) setTicketTypesEventId(null);
       showSuccess(`Event "${event.title}" deleted`);
     } catch (err: unknown) {
       reportError("admin.events.delete", err, { sectionId, eventId: event.id });
-      setError(toAdminUserFacingError(err, "events").message);
+      setError(
+        String(err).includes("EVENT_HAS_TICKETS")
+          ? "This event cannot be deleted because tickets already exist."
+          : toAdminUserFacingError(err, "events").message,
+      );
     } finally {
       setDeletingEventId(null);
     }

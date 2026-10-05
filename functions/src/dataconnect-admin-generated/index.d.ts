@@ -772,7 +772,7 @@ export interface CreateUserVariables {
 }
 
 export interface DeleteEventData {
-  event_delete?: Event_Key | null;
+  event_deleteMany: number;
 }
 
 export interface DeleteEventVariables {

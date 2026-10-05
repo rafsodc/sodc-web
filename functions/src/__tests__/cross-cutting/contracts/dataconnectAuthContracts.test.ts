@@ -273,6 +273,19 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation UpdateEvent", mustInclude: ADMIN_EXPR },
       { op: "mutation DeleteEvent", mustInclude: ADMIN_EXPR },
     ]);
+    expect(groupMutations).toContain("event_deleteMany(");
+    expect(groupMutations).toContain(
+      "bookingPlaces_on_event: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "ticketOrders_on_event: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "organiserGuests_on_event: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "@check(expr: \"this == 1\", message: \"EVENT_HAS_TICKETS\")",
+    );
 
     // Ticket type CRUD
     assertAuth(groupMutations, [
