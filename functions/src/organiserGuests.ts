@@ -35,13 +35,13 @@ function version(value: unknown): number {
   return Number(value);
 }
 function details(data: Record<string, unknown>) {
-  const email = text(data.email, "email", 254).toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+  const email = text(data.email ?? "", "email", 254, false).toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new HttpsError("invalid-argument", "Invalid email");
   return {
     firstName: text(data.firstName, "first name", 100),
     lastName: text(data.lastName, "last name", 100),
-    email,
+    email: email || null,
     dietaryRequirements: text(
       data.dietaryRequirements ?? "",
       "dietary requirements",
@@ -106,7 +106,7 @@ function project(guest: Omit<Guest, "tokenHash">) {
     id: guest.id,
     firstName: guest.firstName,
     lastName: guest.lastName,
-    email: guest.email,
+    email: guest.email ?? null,
     dietaryRequirements: guest.dietaryRequirements,
     ticketTypeId: guest.ticketType.id,
     ticketTitle: guest.ticketType.title,

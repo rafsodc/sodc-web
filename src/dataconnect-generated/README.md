@@ -8360,7 +8360,7 @@ export interface ListOrganiserGuestsData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -8502,7 +8502,7 @@ export interface GetOrganiserGuestData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -8643,7 +8643,7 @@ export interface GetOrganiserGuestByTokenData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -21759,7 +21759,7 @@ export interface CreateOrganiserGuestVariables {
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
   includesSymposium: boolean;
@@ -21792,7 +21792,7 @@ const createOrganiserGuestVars: CreateOrganiserGuestVariables = {
   ticketTypeId: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   priceMinor: ..., 
   includesSymposium: ..., 
@@ -21836,7 +21836,7 @@ const createOrganiserGuestVars: CreateOrganiserGuestVariables = {
   ticketTypeId: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   priceMinor: ..., 
   includesSymposium: ..., 
@@ -21908,7 +21908,7 @@ export interface UpdateOrganiserGuestDetailsVariables {
   version: number;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   actor: string;
 }
@@ -21935,7 +21935,7 @@ const updateOrganiserGuestDetailsVars: UpdateOrganiserGuestDetailsVariables = {
   version: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   actor: ..., 
 };
@@ -21973,7 +21973,7 @@ const updateOrganiserGuestDetailsVars: UpdateOrganiserGuestDetailsVariables = {
   version: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   actor: ..., 
 };
@@ -22889,7 +22889,7 @@ export interface ReassignOrganiserGuestTicketVariables {
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
   includesSymposium: boolean;
@@ -22921,7 +22921,7 @@ const reassignOrganiserGuestTicketVars: ReassignOrganiserGuestTicketVariables = 
   ticketTypeId: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   priceMinor: ..., 
   includesSymposium: ..., 
@@ -22964,7 +22964,7 @@ const reassignOrganiserGuestTicketVars: ReassignOrganiserGuestTicketVariables = 
   ticketTypeId: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   priceMinor: ..., 
   includesSymposium: ..., 

@@ -102,6 +102,45 @@ describe("account-free guest ticket", () => {
   });
 });
 describe("organiser management and reports", () => {
+  it("allows a guest to be saved without an email address", async () => {
+    call.mockResolvedValue({
+      event: { id: "event" },
+      ticketTypes: [
+        {
+          id: "type",
+          title: "Guest dinner",
+          priceMinor: 2000,
+          includesDinner: true,
+          includesSymposium: false,
+          active: true,
+          version: 1,
+        },
+      ],
+      guests: [],
+    });
+    render(<OrganiserGuestsManager eventId="event" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add guest" }));
+    fireEvent.change(screen.getByLabelText("First name"), {
+      target: { value: "Alex" },
+    });
+    fireEvent.change(screen.getByLabelText("Last name"), {
+      target: { value: "Guest" },
+    });
+    expect(screen.getByLabelText("Email (optional)")).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Save guest" }));
+    await waitFor(() =>
+      expect(call).toHaveBeenCalledWith(
+        "manageOrganiserGuest",
+        expect.objectContaining({
+          eventId: "event",
+          action: "create",
+          firstName: "Alex",
+          lastName: "Guest",
+          email: "",
+        }),
+      ),
+    );
+  });
   it("keeps the guest list focused on people and reuses the shared ticket editor for moderators", async () => {
     call.mockResolvedValue({ event: {}, ticketTypes: [], guests: [] });
     const view = render(<OrganiserGuestsManager eventId="event" />);

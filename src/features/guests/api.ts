@@ -15,7 +15,7 @@ export interface Guest {
   id: string;
   firstName: string;
   lastName: string;
-  email: string;
+  email: string | null;
   dietaryRequirements: string;
   ticketTypeId: string;
   ticketTitle: string;

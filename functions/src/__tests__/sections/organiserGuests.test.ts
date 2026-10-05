@@ -244,6 +244,44 @@ describe("organiser guest capability and permissions", () => {
       }),
     );
   });
+  it("allows an organiser guest to be created without an email address", async () => {
+    getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
+    await manageOrganiserGuest.run(
+      request(
+        {
+          id,
+          eventId: id,
+          ticketTypeId: id,
+          action: "create",
+          firstName: "No",
+          lastName: "Email",
+          dietaryRequirements: "",
+        },
+        true,
+      ),
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ email: null }),
+    );
+  });
+  it("still rejects malformed non-empty guest email addresses", async () => {
+    getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
+    await expect(
+      manageOrganiserGuest.run(
+        request(
+          {
+            ...base,
+            email: "not-an-email",
+            eventId: id,
+            ticketTypeId: id,
+            action: "create",
+          },
+          true,
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+    expect(create).not.toHaveBeenCalled();
+  });
   it("rejects another event's guest ticket", async () => {
     getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
     typeQuery.mockResolvedValue({

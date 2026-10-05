@@ -227,7 +227,7 @@ mutation CreateOrganiserGuest(
   $ticketTypeId: UUID!
   $firstName: String!
   $lastName: String!
-  $email: String!
+  $email: String
   $dietaryRequirements: String!
   $priceMinor: Int!
   $includesSymposium: Boolean!
@@ -263,7 +263,7 @@ mutation UpdateOrganiserGuestDetails(
   $version: Int!
   $firstName: String!
   $lastName: String!
-  $email: String!
+  $email: String
   $dietaryRequirements: String!
   $actor: String!
 ) @auth(level: NO_ACCESS) @transaction {
@@ -432,7 +432,7 @@ mutation MarkOrganiserGuestRefunded(
   )
 }
 
-mutation ReassignOrganiserGuestTicket($id: UUID!, $version: Int!, $ticketTypeId: UUID!, $firstName: String!, $lastName: String!, $email: String!, $dietaryRequirements: String!, $priceMinor: Int!, $includesSymposium: Boolean!, $includesDinner: Boolean!, $checkoutKey: String!, $actor: String!) @auth(level: NO_ACCESS) @transaction {
+mutation ReassignOrganiserGuestTicket($id: UUID!, $version: Int!, $ticketTypeId: UUID!, $firstName: String!, $lastName: String!, $email: String, $dietaryRequirements: String!, $priceMinor: Int!, $includesSymposium: Boolean!, $includesDinner: Boolean!, $checkoutKey: String!, $actor: String!) @auth(level: NO_ACCESS) @transaction {
   organiserGuest_updateMany(where: { id: { eq: $id }, version: { eq: $version }, cancelledAt: { isNull: true }, paidAt: { isNull: true } }, data: { ticketTypeId: $ticketTypeId, firstName: $firstName, lastName: $lastName, email: $email, dietaryRequirements: $dietaryRequirements, priceMinor: $priceMinor, includesSymposium: $includesSymposium, includesDinner: $includesDinner, checkoutKey: $checkoutKey, stripeSessionId: null, version_update: { inc: 1 }, updatedBy: $actor, updatedAt_expr: "request.time" }) @check(expr: "this == 1", message: "GUEST_CONFLICT")
   organiserGuestAudit_insert(data: { guestId: $id, action: "TICKET_REASSIGNED", actor: $actor })
 }

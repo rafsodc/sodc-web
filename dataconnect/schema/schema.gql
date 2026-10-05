@@ -833,7 +833,7 @@ type OrganiserGuest @table {
   ticketType: OrganiserGuestTicketType!
   firstName: String!
   lastName: String!
-  email: String!
+  email: String
   dietaryRequirements: String!
   # Allocation price and inclusions are captured so type edits cannot alter sold tickets.
   priceMinor: Int!
