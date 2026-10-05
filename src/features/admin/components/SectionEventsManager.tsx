@@ -439,7 +439,11 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       showSuccess("Ticket type deleted");
     } catch (err: unknown) {
       reportError("admin.tickets.delete", err, { ticketTypeId: id });
-      setError(toAdminUserFacingError(err, "tickets").message);
+      setError(
+        String(err).includes("TICKET_TYPE_IN_USE")
+          ? "This ticket type cannot be deleted because tickets already exist."
+          : toAdminUserFacingError(err, "tickets").message,
+      );
     } finally {
       setDeletingTicketTypeId(null);
     }

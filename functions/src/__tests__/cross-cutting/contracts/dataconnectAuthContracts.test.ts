@@ -279,6 +279,19 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation UpdateTicketType", mustInclude: ADMIN_EXPR },
       { op: "mutation DeleteTicketType", mustInclude: ADMIN_EXPR },
     ]);
+    expect(groupMutations).toContain("ticketType_deleteMany(");
+    expect(groupMutations).toContain(
+      "bookingLines_on_ticketType: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "ticketOrders_on_ticketType: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "organiserGuests_on_standardTicketType: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "@check(expr: \"this == 1\", message: \"TICKET_TYPE_IN_USE\")",
+    );
   });
 
   it("Phase F: all booking-mutations.gql operations have correct auth level", () => {

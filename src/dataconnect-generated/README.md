@@ -24577,7 +24577,7 @@ Recall that executing the `DeleteTicketType` mutation returns a `MutationPromise
 The `data` property is an object of type `DeleteTicketTypeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface DeleteTicketTypeData {
-  ticketType_delete?: TicketType_Key | null;
+  ticketType_deleteMany: number;
 }
 ```
 ### Using `DeleteTicketType`'s action shortcut function
@@ -24601,12 +24601,12 @@ const { data } = await deleteTicketType({ id: ..., });
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await deleteTicketType(dataConnect, deleteTicketTypeVars);
 
-console.log(data.ticketType_delete);
+console.log(data.ticketType_deleteMany);
 
 // Or, you can use the `Promise` API.
 deleteTicketType(deleteTicketTypeVars).then((response) => {
   const data = response.data;
-  console.log(data.ticketType_delete);
+  console.log(data.ticketType_deleteMany);
 });
 ```
 
@@ -24634,12 +24634,12 @@ const ref = deleteTicketTypeRef(dataConnect, deleteTicketTypeVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.ticketType_delete);
+console.log(data.ticketType_deleteMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.ticketType_delete);
+  console.log(data.ticketType_deleteMany);
 });
 ```
 

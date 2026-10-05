@@ -810,7 +810,7 @@ export interface DeleteSectionVariables {
 }
 
 export interface DeleteTicketTypeData {
-  ticketType_delete?: TicketType_Key | null;
+  ticketType_deleteMany: number;
 }
 
 export interface DeleteTicketTypeVariables {

@@ -189,6 +189,39 @@ describe("SectionEventsManager", () => {
     confirm.mockRestore();
   });
 
+  it("explains when a ticket type cannot be deleted because tickets exist", async () => {
+    const type = {
+      id: "member-type",
+      title: "Dinner",
+      description: "",
+      price: 25,
+      sortOrder: 1,
+      audience: generated.TicketAudience.MEMBER,
+      userGroup: { id: "group-1", name: "Members", membershipStatuses: [] },
+      includesDinner: true,
+      includesSymposium: false,
+    };
+    mockGetEventById({
+      data: { event: { id: "ev-1", title: "Event", maxGuestsWithoutModeratorApproval: 0, ticketTypes: [type] } },
+      isLoading: false,
+      isError: false,
+    });
+    vi.mocked(firebaseDataConnect.executeMutation).mockRejectedValueOnce(
+      new Error("TICKET_TYPE_IN_USE"),
+    );
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} initialEventId="ev-1" onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /^ticket types$/i }));
+    await user.click(screen.getByRole("button", { name: "Delete Dinner" }));
+    expect(
+      await screen.findByText(
+        "This ticket type cannot be deleted because tickets already exist.",
+      ),
+    ).toBeInTheDocument();
+    confirm.mockRestore();
+  });
+
   it("renders events list with section name", async () => {
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
 

@@ -274,6 +274,13 @@ mutation UpdateTicketType(
 
 mutation DeleteTicketType(
   $id: UUID!
-) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  ticketType_delete(id: $id)
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") @transaction {
+  ticketType_deleteMany(
+    where: {
+      id: { eq: $id }
+      bookingLines_on_ticketType: { count: { eq: 0 } }
+      ticketOrders_on_ticketType: { count: { eq: 0 } }
+      organiserGuests_on_standardTicketType: { count: { eq: 0 } }
+    }
+  ) @check(expr: "this == 1", message: "TICKET_TYPE_IN_USE")
 }
