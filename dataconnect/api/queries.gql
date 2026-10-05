@@ -618,6 +618,7 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
       createdBy
       updatedBy
       booker {
+        rank
         id
         firstName
         lastName
@@ -642,6 +643,7 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
           }
         }
         guestUser {
+          rank
           id
           firstName
           lastName

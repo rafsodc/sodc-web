@@ -21,6 +21,7 @@ export interface EventAttendeeTicketRow {
   key: string;
   bookingId: string;
   attendeeName: string;
+  rank: string | null;
   audience: TicketAudience;
   ticketType: string;
   includesDinner: boolean;
@@ -134,6 +135,7 @@ export function activeEventTicketRows(
           key: `${booking.id}:${line.id}`,
           bookingId: booking.id,
           attendeeName,
+          rank: (line.ticketType.audience === TicketAudience.MEMBER ? booking.booker.rank : line.guestUser?.rank)?.trim() || null,
           audience: line.ticketType.audience,
           ticketType: line.ticketType.title,
           includesDinner: line.ticketType.includesDinner,
@@ -157,6 +159,7 @@ function csvCell(value: string | number): string {
 export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): string {
   const header = [
     "Attendee",
+    "Rank",
     "Audience",
     "Ticket",
     "Dinner",
@@ -169,6 +172,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
   ];
   const body = rows.map((row) => [
     row.attendeeName,
+    row.rank ?? "",
     row.audience,
     row.ticketType,
     row.includesDinner ? "Yes" : "No",

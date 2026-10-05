@@ -507,6 +507,7 @@ function EventAttendeeTicketsSection({
         <TableHead>
           <TableRow>
             <TableCell>Attendee</TableCell>
+            <TableCell>Rank</TableCell>
             <TableCell>Audience</TableCell>
             <TableCell>Ticket</TableCell>
             <TableCell>Dinner</TableCell>
@@ -522,6 +523,7 @@ function EventAttendeeTicketsSection({
           {rows.map((row) => (
             <TableRow key={row.key}>
               <TableCell>{row.attendeeName}</TableCell>
+              <TableCell>{row.rank || "—"}</TableCell>
               <TableCell>{getTicketCategoryLabel(row.audience)}</TableCell>
               <TableCell>{row.ticketType}</TableCell>
               <TableCell>{row.includesDinner ? "Yes" : "No"}</TableCell>
