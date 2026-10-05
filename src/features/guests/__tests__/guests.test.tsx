@@ -11,6 +11,7 @@ vi.mock("../api", async (original) => ({
 }));
 const call = vi.mocked(guestCall);
 const writeText = vi.fn();
+const write = vi.fn();
 const ticket: GuestTicket = {
   firstName: "Alex",
   lastName: "Guest",
@@ -36,9 +37,19 @@ const guest: Guest = {
 beforeEach(() => {
   call.mockReset();
   writeText.mockReset();
+  write.mockReset();
+  Object.defineProperty(globalThis, "ClipboardItem", {
+    configurable: true,
+    value: class ClipboardItem {
+      items: Record<string, Blob | Promise<Blob>>;
+      constructor(items: Record<string, Blob | Promise<Blob>>) {
+        this.items = items;
+      }
+    },
+  });
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
-    value: { writeText },
+    value: { write, writeText },
   });
 });
 describe("account-free guest ticket", () => {
@@ -117,7 +128,7 @@ describe("organiser management and reports", () => {
       .mockResolvedValueOnce(list)
       .mockResolvedValueOnce({ link: "https://example.test/guest-ticket#new" })
       .mockResolvedValueOnce(list);
-    writeText.mockResolvedValue(undefined);
+    write.mockResolvedValue(undefined);
     render(<OrganiserGuestsManager eventId="event" />);
     fireEvent.click(await screen.findByRole("button", { name: "Copy link" }));
     await waitFor(() =>
@@ -128,13 +139,51 @@ describe("organiser management and reports", () => {
         version: 3,
       }),
     );
-    expect(writeText).toHaveBeenCalledWith(
-      "https://example.test/guest-ticket#new",
+    expect(write).toHaveBeenCalledTimes(1);
+    const item = write.mock.calls[0][0][0] as {
+      items: Record<string, Promise<Blob>>;
+    };
+    await expect(item.items["text/plain"]).resolves.toEqual(
+      new Blob(["https://example.test/guest-ticket#new"], {
+        type: "text/plain",
+      }),
     );
     expect(screen.queryByRole("dialog", { name: "Copy guest link" })).not.toBeInTheDocument();
     expect(
       await screen.findByText(/New guest link copied/),
     ).toBeInTheDocument();
+  });
+  it("shows the generated link without replacing it again when automatic copying fails", async () => {
+    const list = {
+      event: { id: "event" },
+      ticketTypes: [],
+      guests: [guest],
+    };
+    call
+      .mockResolvedValueOnce(list)
+      .mockResolvedValueOnce({ link: "https://example.test/guest-ticket#new" })
+      .mockResolvedValueOnce(list);
+    write.mockRejectedValue(new DOMException("Not allowed", "NotAllowedError"));
+    writeText.mockResolvedValue(undefined);
+    render(<OrganiserGuestsManager eventId="event" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Copy link" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Copy guest link",
+    });
+    expect(screen.getByLabelText("Guest link")).toHaveValue(
+      "https://example.test/guest-ticket#new",
+    );
+    expect(call).toHaveBeenCalledTimes(3);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Copy link", hidden: false }),
+    );
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        "https://example.test/guest-ticket#new",
+      ),
+    );
+    expect(call).toHaveBeenCalledTimes(3);
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
   });
   it("allows a guest to be saved without an email address", async () => {
     call.mockResolvedValue({

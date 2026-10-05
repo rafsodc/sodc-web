@@ -30,6 +30,32 @@ import {
   type GuestList,
 } from "./api";
 
+type LinkResult = { link?: string };
+
+function startClipboardWrite(
+  result: Promise<LinkResult>,
+): Promise<boolean> | null {
+  if (
+    typeof ClipboardItem === "undefined" ||
+    typeof navigator.clipboard?.write !== "function"
+  ) {
+    return null;
+  }
+  try {
+    const link = result.then(
+      (value) => new Blob([value.link ?? ""], { type: "text/plain" }),
+    );
+    return navigator.clipboard
+      .write([new ClipboardItem({ "text/plain": link })])
+      .then(
+        () => true,
+        () => false,
+      );
+  } catch {
+    return null;
+  }
+}
+
 export default function OrganiserGuestsManager({
   eventId,
 }: {
@@ -43,6 +69,7 @@ export default function OrganiserGuestsManager({
   });
   const [guest, setGuest] = useState<Partial<Guest> | null>(null);
   const [cancel, setCancel] = useState<Guest | null>(null);
+  const [link, setLink] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
@@ -50,22 +77,36 @@ export default function OrganiserGuestsManager({
     setBusy(true);
     setError("");
     setSuccess("");
+    setLink("");
     try {
-      const result = await guestCall<{ link?: string }>(name, {
+      const resultPromise = guestCall<LinkResult>(name, {
         ...input,
         eventId,
       });
+      const shouldCopyLink = ["create", "replace-link"].includes(
+        String(input.action),
+      );
+      const clipboardWrite = shouldCopyLink
+        ? startClipboardWrite(resultPromise)
+        : null;
+      const result = await resultPromise;
       if (result.link) {
-        try {
-          await navigator.clipboard.writeText(result.link);
+        const copied = clipboardWrite
+          ? await clipboardWrite
+          : await navigator.clipboard.writeText(result.link).then(
+              () => true,
+              () => false,
+            );
+        if (copied) {
           setSuccess(
             input.action === "create"
               ? "Guest saved and link copied."
               : "New guest link copied. The previous link no longer works.",
           );
-        } catch {
+        } else {
+          setLink(result.link);
           setError(
-            "The guest was saved, but the link could not be copied. Use Copy link to try again.",
+            "The guest was saved, but the link could not be copied automatically. Copy it from the dialog.",
           );
         }
       } else {
@@ -245,6 +286,39 @@ export default function OrganiserGuestsManager({
           </Typography>
         </>
       )}
+      <Dialog open={Boolean(link)} onClose={() => setLink("")} fullWidth>
+        <DialogTitle>Copy guest link</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            Send this link to the guest yourself. This is the link already
+            created; copying it here will not replace it again.
+          </Typography>
+          <TextField
+            fullWidth
+            label="Guest link"
+            value={link}
+            slotProps={{ input: { readOnly: true } }}
+            onFocus={(event) => event.target.select()}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              void navigator.clipboard.writeText(link).then(
+                () => {
+                  setSuccess("Guest link copied.");
+                  setError("");
+                  setLink("");
+                },
+                () => setError("Please select and copy the link manually."),
+              );
+            }}
+          >
+            Copy link
+          </Button>
+          <Button onClick={() => setLink("")}>Done</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog
         open={Boolean(guest)}
         onClose={() => !busy && setGuest(null)}
