@@ -9222,6 +9222,7 @@ export interface ListEventBookingsForAdminData {
       createdBy?: string | null;
       updatedBy?: string | null;
       booker: {
+        rank?: string | null;
         id: string;
         firstName: string;
         lastName: string;
@@ -9242,6 +9243,7 @@ export interface ListEventBookingsForAdminData {
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
         guestUser?: {
+          rank?: string | null;
           id: string;
           firstName: string;
           lastName: string;

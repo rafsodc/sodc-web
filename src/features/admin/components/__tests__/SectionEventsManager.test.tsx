@@ -360,7 +360,7 @@ describe("SectionEventsManager", () => {
             updatedAt: "2026-02-01T01:00:00Z",
             createdBy: "u-1",
             updatedBy: "u-1",
-            booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com" },
+            booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com", rank: "Wing Commander" },
             lines: [{
               id: "line-member",
               sortOrder: 0,
@@ -424,6 +424,8 @@ describe("SectionEventsManager", () => {
       { ids: expect.arrayContaining(["u-rejected-preference"]) },
       expect.anything()
     );
+    expect(screen.getByRole("columnheader", { name: "Rank" })).toBeInTheDocument();
+    expect(screen.getByText("Wing Commander")).toBeInTheDocument();
   });
 
   it("updates Dinner and Symposium flags on a ticket type", async () => {

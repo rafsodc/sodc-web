@@ -11,6 +11,7 @@ export function organiserGuestTicketRows(
       key: `organiser:${g.id}`,
       bookingId: g.id,
       attendeeName: `${g.firstName} ${g.lastName}`,
+      rank: null,
       audience: ORGANISER_GUEST,
       ticketType: `${g.ticketTitle} (organiser guest)`,
       includesDinner: g.includesDinner,
