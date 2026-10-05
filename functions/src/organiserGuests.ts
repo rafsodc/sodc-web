@@ -222,7 +222,10 @@ export const manageOrganiserGuest = onCall(
         const existing = (await db.getOrganiserGuest({ id })).data
           .organiserGuests[0];
         if (existing) {
-          if (existing.event.id !== eventId || existing.createdBy !== actor)
+          if (
+            validateUUID(existing.event.id) !== eventId ||
+            existing.createdBy !== actor
+          )
             throw new HttpsError(
               "already-exists",
               "Guest reference already used",
@@ -249,7 +252,7 @@ export const manageOrganiserGuest = onCall(
         return { guest: project(await guestById(id)), link: link(token) };
       }
       const guest = await guestById(id);
-      if (guest.event.id !== eventId)
+      if (validateUUID(guest.event.id) !== eventId)
         throw new HttpsError("not-found", "Guest not found");
       const expectedVersion = version(request.data.version);
       if (request.data.action === "cancel" && guest.cancelledAt) {
@@ -259,9 +262,18 @@ export const manageOrganiserGuest = onCall(
       if (request.data.action === "edit") {
         const input = { id, version: expectedVersion, ...details(request.data), actor };
         const currentTicketType = guest.standardTicketType ?? guest.ticketType;
-        if (request.data.ticketTypeId && request.data.ticketTypeId !== currentTicketType?.id) {
+        const requestedTicketTypeId = request.data.ticketTypeId
+          ? validateUUID(
+              requireString(request.data.ticketTypeId, "ticketTypeId"),
+            )
+          : null;
+        if (
+          requestedTicketTypeId &&
+          requestedTicketTypeId !==
+            (currentTicketType ? validateUUID(currentTicketType.id) : null)
+        ) {
           if (guest.paidAt) throw new HttpsError("failed-precondition", "Paid tickets cannot be reassigned. Cancel and create a new reservation so payment history is retained.");
-          const ticketTypeId = validateUUID(requireString(request.data.ticketTypeId, "ticketTypeId"));
+          const ticketTypeId = requestedTicketTypeId;
           const ticket = await organiserTicketType(ticketTypeId, eventId);
           await expireOpenCheckout(guest);
           await db.reassignOrganiserGuestTicket({ ...input, ticketTypeId, priceMinor: ticket.priceMinor, includesSymposium: ticket.includesSymposium, includesDinner: ticket.includesDinner, checkoutKey: randomUUID() });

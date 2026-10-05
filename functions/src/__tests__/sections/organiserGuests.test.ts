@@ -295,6 +295,7 @@ describe("organiser guest capability and permissions", () => {
     expect(create).not.toHaveBeenCalled();
   });
   it("replaces the link and checkout attempt while preserving reservation identity", async () => {
+    guest.event.id = id.replaceAll("-", "");
     await manageOrganiserGuest.run(
       request({ id, eventId: id, version: 1, action: "replace-link" }, true),
     );
@@ -308,6 +309,28 @@ describe("organiser guest capability and permissions", () => {
     );
     expect(create).not.toHaveBeenCalled();
     expect(cancel).not.toHaveBeenCalled();
+  });
+  it("edits a guest when Data Connect returns compact UUIDs", async () => {
+    guest.event.id = id.replaceAll("-", "");
+    guest.ticketType.id = id.replaceAll("-", "");
+    const update = vi
+      .spyOn(db, "updateOrganiserGuestDetails")
+      .mockResolvedValue({} as never);
+    const reassign = vi.spyOn(db, "reassignOrganiserGuestTicket");
+    await manageOrganiserGuest.run(
+      request(
+        {
+          ...base,
+          eventId: id,
+          ticketTypeId: id,
+          version: 1,
+          action: "edit",
+        },
+        true,
+      ),
+    );
+    expect(update).toHaveBeenCalled();
+    expect(reassign).not.toHaveBeenCalled();
   });
   it("rejects a standard member ticket for organiser allocation", async () => {
     getById.mockResolvedValueOnce({ data: { organiserGuests: [] } });
