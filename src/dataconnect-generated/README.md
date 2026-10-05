@@ -8225,6 +8225,7 @@ The `GetOrganiserGuestType` query requires an argument of type `GetOrganiserGues
 ```typescript
 export interface GetOrganiserGuestTypeVariables {
   id: UUIDString;
+  eventId: UUIDString;
 }
 ```
 ### Return Type
@@ -8233,7 +8234,7 @@ Recall that executing the `GetOrganiserGuestType` query returns a `QueryPromise`
 The `data` property is an object of type `GetOrganiserGuestTypeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface GetOrganiserGuestTypeData {
-  ticketType?: {
+  ticketTypes: ({
     id: UUIDString;
     title: string;
     description?: string | null;
@@ -8241,15 +8242,11 @@ export interface GetOrganiserGuestTypeData {
     price: number;
     includesSymposium: boolean;
     includesDinner: boolean;
-    audience: TicketAudience;
     userGroup: {
       id: UUIDString;
       name: string;
     } & UserGroup_Key;
-    event: {
-      id: UUIDString;
-    } & Event_Key;
-  } & TicketType_Key;
+  } & TicketType_Key)[];
 }
 ```
 ### Using `GetOrganiserGuestType`'s action shortcut function
@@ -8261,24 +8258,25 @@ import { connectorConfig, getOrganiserGuestType, GetOrganiserGuestTypeVariables 
 // The `GetOrganiserGuestType` query requires an argument of type `GetOrganiserGuestTypeVariables`:
 const getOrganiserGuestTypeVars: GetOrganiserGuestTypeVariables = {
   id: ..., 
+  eventId: ..., 
 };
 
 // Call the `getOrganiserGuestType()` function to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await getOrganiserGuestType(getOrganiserGuestTypeVars);
 // Variables can be defined inline as well.
-const { data } = await getOrganiserGuestType({ id: ..., });
+const { data } = await getOrganiserGuestType({ id: ..., eventId: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await getOrganiserGuestType(dataConnect, getOrganiserGuestTypeVars);
 
-console.log(data.ticketType);
+console.log(data.ticketTypes);
 
 // Or, you can use the `Promise` API.
 getOrganiserGuestType(getOrganiserGuestTypeVars).then((response) => {
   const data = response.data;
-  console.log(data.ticketType);
+  console.log(data.ticketTypes);
 });
 ```
 
@@ -8291,12 +8289,13 @@ import { connectorConfig, getOrganiserGuestTypeRef, GetOrganiserGuestTypeVariabl
 // The `GetOrganiserGuestType` query requires an argument of type `GetOrganiserGuestTypeVariables`:
 const getOrganiserGuestTypeVars: GetOrganiserGuestTypeVariables = {
   id: ..., 
+  eventId: ..., 
 };
 
 // Call the `getOrganiserGuestTypeRef()` function to get a reference to the query.
 const ref = getOrganiserGuestTypeRef(getOrganiserGuestTypeVars);
 // Variables can be defined inline as well.
-const ref = getOrganiserGuestTypeRef({ id: ..., });
+const ref = getOrganiserGuestTypeRef({ id: ..., eventId: ..., });
 
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -8306,12 +8305,12 @@ const ref = getOrganiserGuestTypeRef(dataConnect, getOrganiserGuestTypeVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeQuery(ref);
 
-console.log(data.ticketType);
+console.log(data.ticketTypes);
 
 // Or, you can use the `Promise` API.
 executeQuery(ref).then((response) => {
   const data = response.data;
-  console.log(data.ticketType);
+  console.log(data.ticketTypes);
 });
 ```
 
@@ -8363,7 +8362,7 @@ export interface ListOrganiserGuestsData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -8509,7 +8508,7 @@ export interface GetOrganiserGuestData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -8654,7 +8653,7 @@ export interface GetOrganiserGuestByTokenData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -21505,7 +21504,7 @@ export interface CreateOrganiserGuestVariables {
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
   includesSymposium: boolean;
@@ -21538,7 +21537,7 @@ const createOrganiserGuestVars: CreateOrganiserGuestVariables = {
   ticketTypeId: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   priceMinor: ..., 
   includesSymposium: ..., 
@@ -21582,7 +21581,7 @@ const createOrganiserGuestVars: CreateOrganiserGuestVariables = {
   ticketTypeId: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   priceMinor: ..., 
   includesSymposium: ..., 
@@ -21654,7 +21653,7 @@ export interface UpdateOrganiserGuestDetailsVariables {
   version: number;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   actor: string;
 }
@@ -21681,7 +21680,7 @@ const updateOrganiserGuestDetailsVars: UpdateOrganiserGuestDetailsVariables = {
   version: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   actor: ..., 
 };
@@ -21719,7 +21718,7 @@ const updateOrganiserGuestDetailsVars: UpdateOrganiserGuestDetailsVariables = {
   version: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   actor: ..., 
 };
@@ -22635,7 +22634,7 @@ export interface ReassignOrganiserGuestTicketVariables {
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
   includesSymposium: boolean;
@@ -22667,7 +22666,7 @@ const reassignOrganiserGuestTicketVars: ReassignOrganiserGuestTicketVariables = 
   ticketTypeId: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   priceMinor: ..., 
   includesSymposium: ..., 
@@ -22710,7 +22709,7 @@ const reassignOrganiserGuestTicketVars: ReassignOrganiserGuestTicketVariables = 
   ticketTypeId: ..., 
   firstName: ..., 
   lastName: ..., 
-  email: ..., 
+  email: ..., // optional
   dietaryRequirements: ..., 
   priceMinor: ..., 
   includesSymposium: ..., 

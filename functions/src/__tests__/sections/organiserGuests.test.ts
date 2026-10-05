@@ -107,14 +107,12 @@ beforeEach(() => {
   });
   typeQuery.mockResolvedValue({
     data: {
-      ticketType: {
+      ticketTypes: [{
         ...base.ticketType,
-        event: { id },
-        audience: db.TicketAudience.ORGANISER_GUEST,
         price: 10,
         includesDinner: true,
         includesSymposium: false,
-      },
+      }],
     },
   });
   dietary.mockResolvedValue({} as never);
@@ -242,15 +240,48 @@ describe("organiser guest capability and permissions", () => {
       }),
     );
   });
+  it("allows an organiser guest to be created without an email address", async () => {
+    getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
+    await manageOrganiserGuest.run(
+      request(
+        {
+          id,
+          eventId: id,
+          ticketTypeId: id,
+          action: "create",
+          firstName: "No",
+          lastName: "Email",
+          dietaryRequirements: "",
+        },
+        true,
+      ),
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ email: null }),
+    );
+  });
+  it("still rejects malformed non-empty guest email addresses", async () => {
+    getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
+    await expect(
+      manageOrganiserGuest.run(
+        request(
+          {
+            ...base,
+            email: "not-an-email",
+            eventId: id,
+            ticketTypeId: id,
+            action: "create",
+          },
+          true,
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+    expect(create).not.toHaveBeenCalled();
+  });
   it("rejects another event's guest ticket", async () => {
     getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
     typeQuery.mockResolvedValue({
-      data: {
-        ticketType: {
-          event: { id: other },
-          audience: db.TicketAudience.ORGANISER_GUEST,
-        },
-      },
+      data: { ticketTypes: [] },
     } as never);
     await expect(
       manageOrganiserGuest.run(
@@ -260,6 +291,7 @@ describe("organiser guest capability and permissions", () => {
         ),
       ),
     ).rejects.toMatchObject({ code: "failed-precondition" });
+    expect(typeQuery).toHaveBeenCalledWith({ id, eventId: id });
     expect(create).not.toHaveBeenCalled();
   });
   it("replaces the link and checkout attempt while preserving reservation identity", async () => {
@@ -280,13 +312,7 @@ describe("organiser guest capability and permissions", () => {
   it("rejects a standard member ticket for organiser allocation", async () => {
     getById.mockResolvedValueOnce({ data: { organiserGuest: null } });
     typeQuery.mockResolvedValue({
-      data: {
-        ticketType: {
-          event: { id },
-          audience: db.TicketAudience.MEMBER,
-          price: 10,
-        },
-      },
+      data: { ticketTypes: [] },
     } as never);
     await expect(
       manageOrganiserGuest.run(

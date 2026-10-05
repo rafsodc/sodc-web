@@ -6,7 +6,6 @@ import {
   type CallableRequest,
 } from "firebase-functions/v2/https";
 import * as db from "@dataconnect/admin-generated";
-import { TicketAudience } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireEnabled, requireString, validateUUID } from "./helpers";
 import { requireSectionModerator } from "./sectionAccess";
@@ -36,13 +35,13 @@ function version(value: unknown): number {
   return Number(value);
 }
 function details(data: Record<string, unknown>) {
-  const email = text(data.email, "email", 254).toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+  const email = text(data.email ?? "", "email", 254, false).toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new HttpsError("invalid-argument", "Invalid email");
   return {
     firstName: text(data.firstName, "first name", 100),
     lastName: text(data.lastName, "last name", 100),
-    email,
+    email: email || null,
     dietaryRequirements: text(
       data.dietaryRequirements ?? "",
       "dietary requirements",
@@ -104,7 +103,7 @@ function project(guest: Omit<Guest, "tokenHash">) {
     id: guest.id,
     firstName: guest.firstName,
     lastName: guest.lastName,
-    email: guest.email,
+    email: guest.email ?? null,
     dietaryRequirements: guest.dietaryRequirements,
     ticketTypeId: ticketType.id,
     ticketTitle: ticketType.title,
@@ -118,12 +117,9 @@ function project(guest: Omit<Guest, "tokenHash">) {
   };
 }
 async function organiserTicketType(id: string, eventId: string) {
-  const ticket = (await db.getOrganiserGuestType({ id })).data.ticketType;
-  if (
-    !ticket ||
-    ticket.event.id !== eventId ||
-    ticket.audience !== TicketAudience.ORGANISER_GUEST
-  )
+  const ticket = (await db.getOrganiserGuestType({ id, eventId })).data
+    .ticketTypes[0];
+  if (!ticket)
     throw new HttpsError(
       "failed-precondition",
       "Choose an organiser/club guest ticket for this event",

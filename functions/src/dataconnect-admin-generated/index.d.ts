@@ -630,7 +630,7 @@ export interface CreateOrganiserGuestVariables {
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
   includesSymposium: boolean;
@@ -1908,7 +1908,7 @@ export interface GetOrganiserGuestByTokenData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -1952,7 +1952,7 @@ export interface GetOrganiserGuestData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -2003,7 +2003,7 @@ export interface GetOrganiserGuestEventVariables {
 }
 
 export interface GetOrganiserGuestTypeData {
-  ticketType?: {
+  ticketTypes: ({
     id: UUIDString;
     title: string;
     description?: string | null;
@@ -2011,19 +2011,16 @@ export interface GetOrganiserGuestTypeData {
     price: number;
     includesSymposium: boolean;
     includesDinner: boolean;
-    audience: TicketAudience;
     userGroup: {
       id: UUIDString;
       name: string;
     } & UserGroup_Key;
-    event: {
-      id: UUIDString;
-    } & Event_Key;
-  } & TicketType_Key;
+  } & TicketType_Key)[];
 }
 
 export interface GetOrganiserGuestTypeVariables {
   id: UUIDString;
+  eventId: UUIDString;
 }
 
 export interface GetOrganiserGuestVariables {
@@ -2948,7 +2945,7 @@ export interface ListOrganiserGuestsData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -3432,7 +3429,7 @@ export interface ReassignOrganiserGuestTicketVariables {
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
   includesSymposium: boolean;
@@ -3856,7 +3853,7 @@ export interface UpdateOrganiserGuestDetailsVariables {
   version: number;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   actor: string;
 }

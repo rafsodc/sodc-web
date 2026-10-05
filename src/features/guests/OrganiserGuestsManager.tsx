@@ -176,7 +176,9 @@ export default function OrganiserGuestsManager({
                   <TableRow key={g.id}>
                     <TableCell>
                       {g.firstName} {g.lastName}
-                      <Typography variant="body2">{g.email}</Typography>
+                      {g.email && (
+                        <Typography variant="body2">{g.email}</Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       {g.ticketTitle} · {money(g.priceMinor)}
@@ -271,7 +273,7 @@ export default function OrganiserGuestsManager({
               [
                 ["firstName", "First name"],
                 ["lastName", "Last name"],
-                ["email", "Email"],
+                ["email", "Email (optional)"],
                 ["dietaryRequirements", "Dietary requirements"],
               ] as const
             ).map(([key, label]) => (
@@ -319,8 +321,7 @@ export default function OrganiserGuestsManager({
             disabled={
               busy ||
               !guest?.firstName?.trim() ||
-              !guest?.lastName?.trim() ||
-              !guest?.email?.trim()
+              !guest?.lastName?.trim()
             }
             onClick={() =>
               void run("manageOrganiserGuest", {

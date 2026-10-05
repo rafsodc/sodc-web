@@ -6476,6 +6476,7 @@ The `GetOrganiserGuestType` Query requires an argument of type `GetOrganiserGues
 ```javascript
 export interface GetOrganiserGuestTypeVariables {
   id: UUIDString;
+  eventId: UUIDString;
 }
 ```
 ### Return Type
@@ -6486,7 +6487,7 @@ To check the status of a Query, use the `UseQueryResult.status` field. You can a
 To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetOrganiserGuestType` Query is of type `GetOrganiserGuestTypeData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface GetOrganiserGuestTypeData {
-  ticketType?: {
+  ticketTypes: ({
     id: UUIDString;
     title: string;
     description?: string | null;
@@ -6494,15 +6495,11 @@ export interface GetOrganiserGuestTypeData {
     price: number;
     includesSymposium: boolean;
     includesDinner: boolean;
-    audience: TicketAudience;
     userGroup: {
       id: UUIDString;
       name: string;
     } & UserGroup_Key;
-    event: {
-      id: UUIDString;
-    } & Event_Key;
-  } & TicketType_Key;
+  } & TicketType_Key)[];
 }
 ```
 
@@ -6519,13 +6516,14 @@ export default function GetOrganiserGuestTypeComponent() {
   // The `useGetOrganiserGuestType` Query hook requires an argument of type `GetOrganiserGuestTypeVariables`:
   const getOrganiserGuestTypeVars: GetOrganiserGuestTypeVariables = {
     id: ..., 
+    eventId: ..., 
   };
 
   // You don't have to do anything to "execute" the Query.
   // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
   const query = useGetOrganiserGuestType(getOrganiserGuestTypeVars);
   // Variables can be defined inline as well.
-  const query = useGetOrganiserGuestType({ id: ..., });
+  const query = useGetOrganiserGuestType({ id: ..., eventId: ..., });
 
   // You can also pass in a `DataConnect` instance to the Query hook function.
   const dataConnect = getDataConnect(connectorConfig);
@@ -6551,7 +6549,7 @@ export default function GetOrganiserGuestTypeComponent() {
 
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
-    console.log(query.data.ticketType);
+    console.log(query.data.ticketTypes);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -6589,7 +6587,7 @@ export interface ListOrganiserGuestsData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -6707,7 +6705,7 @@ export interface GetOrganiserGuestData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -6825,7 +6823,7 @@ export interface GetOrganiserGuestByTokenData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -17435,7 +17433,7 @@ export interface CreateOrganiserGuestVariables {
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
   includesSymposium: boolean;
@@ -17498,7 +17496,7 @@ export default function CreateOrganiserGuestComponent() {
     ticketTypeId: ..., 
     firstName: ..., 
     lastName: ..., 
-    email: ..., 
+    email: ..., // optional
     dietaryRequirements: ..., 
     priceMinor: ..., 
     includesSymposium: ..., 
@@ -17554,7 +17552,7 @@ export interface UpdateOrganiserGuestDetailsVariables {
   version: number;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   actor: string;
 }
@@ -17611,7 +17609,7 @@ export default function UpdateOrganiserGuestDetailsComponent() {
     version: ..., 
     firstName: ..., 
     lastName: ..., 
-    email: ..., 
+    email: ..., // optional
     dietaryRequirements: ..., 
     actor: ..., 
   };
@@ -18371,7 +18369,7 @@ export interface ReassignOrganiserGuestTicketVariables {
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
   includesSymposium: boolean;
@@ -18433,7 +18431,7 @@ export default function ReassignOrganiserGuestTicketComponent() {
     ticketTypeId: ..., 
     firstName: ..., 
     lastName: ..., 
-    email: ..., 
+    email: ..., // optional
     dietaryRequirements: ..., 
     priceMinor: ..., 
     includesSymposium: ..., 

@@ -39,6 +39,12 @@ describe("Data Connect auth contracts", () => {
     expect(operations.length).toBeGreaterThan(10);
     for (const operation of operations) expect(operation).toContain(NO_ACCESS);
     expect(source).not.toMatch(/organiserGuest(?:TicketType)?_delete/);
+    const ticketLookup = extractOperationBlock(
+      source,
+      "query GetOrganiserGuestType",
+    );
+    expect(ticketLookup).toContain("eventId: { eq: $eventId }");
+    expect(ticketLookup).toContain("audience: { eq: ORGANISER_GUEST }");
     const dietary = source.slice(source.indexOf("mutation UpdateOrganiserGuestDietary"), source.indexOf("mutation RotateOrganiserGuestLink"));
     expect(dietary).toContain("gt_expr: \"request.time\"");
     expect(dietary).toContain("tokenHash: { eq: $tokenHash }");
