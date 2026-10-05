@@ -42,8 +42,9 @@ export const getEventAttendees = onCall({ region: FUNCTIONS_REGION }, async (req
     for (const booking of bookings) {
       const group: AttendeeName[] = [];
       for (const line of booking.lines) {
+        if (line.ticketType.audience === "ORGANISER_GUEST") continue;
         const user = line.ticketType.audience === "MEMBER" ? booking.booker : line.guestUser;
-        const attendance = { audience: line.ticketType.audience, includesSymposium: line.ticketType.includesSymposium, includesDinner: line.ticketType.includesDinner };
+        const attendance = { audience: line.ticketType.audience as "MEMBER" | "GUEST", includesSymposium: line.ticketType.includesSymposium, includesDinner: line.ticketType.includesDinner };
         if (user) group.push({ firstName: user.firstName, lastName: user.lastName, ...attendance });
         else if (line.guestDisplayName?.trim()) group.push({ displayName: line.guestDisplayName.trim(), ...attendance });
       }

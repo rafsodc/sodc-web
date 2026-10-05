@@ -395,6 +395,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
     const ticketTypesById = new Map<string, TicketTypeForRules>();
     const ticketPriceById = new Map<string, number>();
     for (const tt of ticketTypes) {
+      if (tt.audience === TicketAudience.ORGANISER_GUEST) continue;
       const id = validateUUID(tt.id, "ticketTypeId");
       ticketPriceById.set(id, tt.price);
       ticketTypesById.set(id, {

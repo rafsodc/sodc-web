@@ -148,7 +148,6 @@ Per-user limits remain necessary after Firebase App Check is enabled under #345.
 | Callable | Risk | Protection |
 | --- | --- | --- |
 | `getOrganiserGuestList` | Private guest details | Enabled section moderator/admin; 60/5 minutes; no tokens returned |
-| `saveOrganiserGuestTicketType` | Ticket pricing | Enabled section moderator/admin; 60/hour; version check |
 | `manageOrganiserGuest` | Reservation and link changes | Enabled section moderator/admin; 120/hour; version checks and audit |
 | `getOrganiserGuestTicket` | Capability read | Random 256-bit token, stored as SHA-256; 120/5 minutes per guest; no email/internal IDs |
 | `updateOrganiserGuestDietary` | Capability write | Token plus version; database-enforced booking deadline; 30/hour per guest |

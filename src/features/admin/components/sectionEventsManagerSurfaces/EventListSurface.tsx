@@ -99,6 +99,7 @@ export function EventListSurface({
                       Event admin
                     </Button>
                     <IconButton
+                      aria-label={`Delete ${event.title}`}
                       size="small"
                       color="error"
                       disabled={deletingEventId === event.id}

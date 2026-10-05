@@ -137,6 +137,7 @@ export enum SectionUserGroupPurpose {
 export enum TicketAudience {
   MEMBER = "MEMBER",
   GUEST = "GUEST",
+  ORGANISER_GUEST = "ORGANISER_GUEST",
 };
 
 export enum TicketOrderStatus {
@@ -645,29 +646,13 @@ export interface CreateOrganiserGuestData {
   organiserGuestAudit_insert: OrganiserGuestAudit_Key;
 }
 
-export interface CreateOrganiserGuestTypeData {
-  organiserGuestTicketType_insert: OrganiserGuestTicketType_Key;
-}
-
-export interface CreateOrganiserGuestTypeVariables {
-  id: UUIDString;
-  eventId: UUIDString;
-  title: string;
-  description?: string | null;
-  sortOrder: number;
-  priceMinor: number;
-  includesSymposium: boolean;
-  includesDinner: boolean;
-  actor: string;
-}
-
 export interface CreateOrganiserGuestVariables {
   id: UUIDString;
   eventId: UUIDString;
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
   includesSymposium: boolean;
@@ -809,7 +794,7 @@ export interface CreateUserVariables {
 }
 
 export interface DeleteEventData {
-  event_delete?: Event_Key | null;
+  event_deleteMany: number;
 }
 
 export interface DeleteEventVariables {
@@ -825,7 +810,7 @@ export interface DeleteSectionVariables {
 }
 
 export interface DeleteTicketTypeData {
-  ticketType_delete?: TicketType_Key | null;
+  ticketType_deleteMany: number;
 }
 
 export interface DeleteTicketTypeVariables {
@@ -1945,7 +1930,7 @@ export interface GetOrganiserGuestByTokenData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -1960,10 +1945,14 @@ export interface GetOrganiserGuestByTokenData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
-    ticketType: {
+    ticketType?: {
       id: UUIDString;
       title: string;
     } & OrganiserGuestTicketType_Key;
+    standardTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
     event: {
       id: UUIDString;
       title: string;
@@ -1981,11 +1970,11 @@ export interface GetOrganiserGuestByTokenVariables {
 }
 
 export interface GetOrganiserGuestData {
-  organiserGuest?: {
+  organiserGuests: ({
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -2000,10 +1989,14 @@ export interface GetOrganiserGuestData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
-    ticketType: {
+    ticketType?: {
       id: UUIDString;
       title: string;
     } & OrganiserGuestTicketType_Key;
+    standardTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
     event: {
       id: UUIDString;
       title: string;
@@ -2013,7 +2006,7 @@ export interface GetOrganiserGuestData {
       } & Section_Key;
     } & Event_Key;
     tokenHash: string;
-  } & OrganiserGuest_Key;
+  } & OrganiserGuest_Key)[];
 }
 
 export interface GetOrganiserGuestEventData {
@@ -2032,24 +2025,24 @@ export interface GetOrganiserGuestEventVariables {
 }
 
 export interface GetOrganiserGuestTypeData {
-  organiserGuestTicketType?: {
+  ticketTypes: ({
     id: UUIDString;
     title: string;
     description?: string | null;
     sortOrder: number;
-    priceMinor: number;
+    price: number;
     includesSymposium: boolean;
     includesDinner: boolean;
-    active: boolean;
-    version: number;
-    event: {
+    userGroup: {
       id: UUIDString;
-    } & Event_Key;
-  } & OrganiserGuestTicketType_Key;
+      name: string;
+    } & UserGroup_Key;
+  } & TicketType_Key)[];
 }
 
 export interface GetOrganiserGuestTypeVariables {
   id: UUIDString;
+  eventId: UUIDString;
 }
 
 export interface GetOrganiserGuestVariables {
@@ -2949,17 +2942,19 @@ export interface ListOpenPaymentReconciliationExceptionsData {
 }
 
 export interface ListOrganiserGuestTypesData {
-  organiserGuestTicketTypes: ({
+  ticketTypes: ({
     id: UUIDString;
     title: string;
     description?: string | null;
     sortOrder: number;
-    priceMinor: number;
+    price: number;
     includesSymposium: boolean;
     includesDinner: boolean;
-    active: boolean;
-    version: number;
-  } & OrganiserGuestTicketType_Key)[];
+    userGroup: {
+      id: UUIDString;
+      name: string;
+    } & UserGroup_Key;
+  } & TicketType_Key)[];
 }
 
 export interface ListOrganiserGuestTypesVariables {
@@ -2972,7 +2967,7 @@ export interface ListOrganiserGuestsData {
     id: UUIDString;
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
     dietaryRequirements: string;
     priceMinor: number;
     includesSymposium: boolean;
@@ -2987,10 +2982,14 @@ export interface ListOrganiserGuestsData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
-    ticketType: {
+    ticketType?: {
       id: UUIDString;
       title: string;
     } & OrganiserGuestTicketType_Key;
+    standardTicketType?: {
+      id: UUIDString;
+      title: string;
+    } & TicketType_Key;
     event: {
       id: UUIDString;
       title: string;
@@ -3452,7 +3451,7 @@ export interface ReassignOrganiserGuestTicketVariables {
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
   includesSymposium: boolean;
@@ -3876,7 +3875,7 @@ export interface UpdateOrganiserGuestDetailsVariables {
   version: number;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string | null;
   dietaryRequirements: string;
   actor: string;
 }
@@ -3891,23 +3890,6 @@ export interface UpdateOrganiserGuestDietaryVariables {
   version: number;
   tokenHash: string;
   dietaryRequirements: string;
-}
-
-export interface UpdateOrganiserGuestTypeData {
-  organiserGuestTicketType_updateMany: number;
-}
-
-export interface UpdateOrganiserGuestTypeVariables {
-  id: UUIDString;
-  version: number;
-  title: string;
-  description?: string | null;
-  sortOrder: number;
-  priceMinor: number;
-  includesSymposium: boolean;
-  includesDinner: boolean;
-  active: boolean;
-  actor: string;
 }
 
 export interface UpdateSectionData {
@@ -5789,30 +5771,6 @@ export const getPublicOrganiserGuestAttendanceRef: GetPublicOrganiserGuestAttend
 
 export function getPublicOrganiserGuestAttendance(vars: GetPublicOrganiserGuestAttendanceVariables, options?: ExecuteQueryOptions): QueryPromise<GetPublicOrganiserGuestAttendanceData, GetPublicOrganiserGuestAttendanceVariables>;
 export function getPublicOrganiserGuestAttendance(dc: DataConnect, vars: GetPublicOrganiserGuestAttendanceVariables, options?: ExecuteQueryOptions): QueryPromise<GetPublicOrganiserGuestAttendanceData, GetPublicOrganiserGuestAttendanceVariables>;
-
-interface CreateOrganiserGuestTypeRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: CreateOrganiserGuestTypeVariables): MutationRef<CreateOrganiserGuestTypeData, CreateOrganiserGuestTypeVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: CreateOrganiserGuestTypeVariables): MutationRef<CreateOrganiserGuestTypeData, CreateOrganiserGuestTypeVariables>;
-  operationName: string;
-}
-export const createOrganiserGuestTypeRef: CreateOrganiserGuestTypeRef;
-
-export function createOrganiserGuestType(vars: CreateOrganiserGuestTypeVariables): MutationPromise<CreateOrganiserGuestTypeData, CreateOrganiserGuestTypeVariables>;
-export function createOrganiserGuestType(dc: DataConnect, vars: CreateOrganiserGuestTypeVariables): MutationPromise<CreateOrganiserGuestTypeData, CreateOrganiserGuestTypeVariables>;
-
-interface UpdateOrganiserGuestTypeRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: UpdateOrganiserGuestTypeVariables): MutationRef<UpdateOrganiserGuestTypeData, UpdateOrganiserGuestTypeVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: UpdateOrganiserGuestTypeVariables): MutationRef<UpdateOrganiserGuestTypeData, UpdateOrganiserGuestTypeVariables>;
-  operationName: string;
-}
-export const updateOrganiserGuestTypeRef: UpdateOrganiserGuestTypeRef;
-
-export function updateOrganiserGuestType(vars: UpdateOrganiserGuestTypeVariables): MutationPromise<UpdateOrganiserGuestTypeData, UpdateOrganiserGuestTypeVariables>;
-export function updateOrganiserGuestType(dc: DataConnect, vars: UpdateOrganiserGuestTypeVariables): MutationPromise<UpdateOrganiserGuestTypeData, UpdateOrganiserGuestTypeVariables>;
 
 interface CreateOrganiserGuestRef {
   /* Allow users to create refs without passing in DataConnect */

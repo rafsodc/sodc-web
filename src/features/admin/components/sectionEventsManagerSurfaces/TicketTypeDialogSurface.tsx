@@ -26,9 +26,6 @@ import type { TicketTypeRow } from "../sectionEventsManagerTypes";
 
 interface TicketTypeDialogSurfaceProps {
   open: boolean;
-  organiserOnly?: boolean;
-  active?: boolean;
-  onActiveChange?: (value: boolean) => void;
   error?: string | null;
   editingTicketType: TicketTypeRow | null;
   title: string;
@@ -55,9 +52,6 @@ interface TicketTypeDialogSurfaceProps {
 }
 export function TicketTypeDialogSurface({
   open,
-  organiserOnly = false,
-  active = true,
-  onActiveChange,
   error,
   editingTicketType,
   title,
@@ -129,26 +123,17 @@ export function TicketTypeDialogSurface({
             labelId="ticket-audience-label"
             label={TICKET_CATEGORY_LABEL}
             value={audience}
-            disabled={
-              organiserOnly || editingTicketType?.audience === ORGANISER_GUEST
-            }
             onChange={(event) =>
               onAudienceChange(event.target.value as ManagedTicketAudience)
             }
           >
-            <MenuItem disabled={organiserOnly} value={TicketAudience.MEMBER}>
+            <MenuItem value={TicketAudience.MEMBER}>
               {getTicketCategoryLabel(TicketAudience.MEMBER)}
             </MenuItem>
-            <MenuItem disabled={organiserOnly} value={TicketAudience.GUEST}>
+            <MenuItem value={TicketAudience.GUEST}>
               {getTicketCategoryLabel(TicketAudience.GUEST)}
             </MenuItem>
-            <MenuItem
-              disabled={Boolean(
-                editingTicketType &&
-                editingTicketType.audience !== ORGANISER_GUEST,
-              )}
-              value={ORGANISER_GUEST}
-            >
+            <MenuItem value={ORGANISER_GUEST}>
               {getTicketCategoryLabel(ORGANISER_GUEST)}
             </MenuItem>
           </Select>
@@ -173,43 +158,29 @@ export function TicketTypeDialogSurface({
           }
           label="Symposium"
         />
-        {audience === ORGANISER_GUEST ? (
-          <>
-            <Alert severity="info" sx={{ mt: 2 }}>
-              Allocated by event organisers only. Unavailable in member booking;
-              no access group is required. Existing reservations retain their
-              price and attendance options.
-            </Alert>
-            {editingTicketType && onActiveChange && (
-              <FormControlLabel
-                label="Available for new allocations"
-                control={
-                  <Checkbox
-                    checked={active}
-                    onChange={(_, value) => onActiveChange(value)}
-                  />
-                }
-              />
-            )}
-          </>
-        ) : (
-          <Autocomplete
-            options={userGroups}
-            getOptionLabel={(option) => option.name}
-            value={accessGroup}
-            onChange={(_, value) => onAccessGroupChange(value)}
-            loading={loadingUserGroups}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Access group"
-                required
-                margin="dense"
-              />
-            )}
-            sx={{ mt: 1 }}
-          />
+        {audience === ORGANISER_GUEST && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Allocated by event organisers only and not shown on the standard
+            booking page. Existing reservations retain their price and
+            attendance options.
+          </Alert>
         )}
+        <Autocomplete
+          options={userGroups}
+          getOptionLabel={(option) => option.name}
+          value={accessGroup}
+          onChange={(_, value) => onAccessGroupChange(value)}
+          loading={loadingUserGroups}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Access group"
+              required
+              margin="dense"
+            />
+          )}
+          sx={{ mt: 1 }}
+        />
         {error && (
           <Alert severity="error" sx={{ mt: 2 }}>
             {error}
@@ -224,7 +195,7 @@ export function TicketTypeDialogSurface({
           disabled={
             submitting ||
             !title.trim() ||
-            (audience !== ORGANISER_GUEST && !accessGroup)
+            !accessGroup
           }
         >
           {submitting ? <CircularProgress size={20} /> : "Save"}

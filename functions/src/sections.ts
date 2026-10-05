@@ -14,6 +14,7 @@ import {
   listUsers,
   searchSectionMemberCandidates,
   SectionType,
+  TicketAudience,
   type GetSectionByIdData,
   type MembershipStatus,
 } from "@dataconnect/admin-generated";
@@ -433,7 +434,14 @@ export const getEventForUser = onCall(
       if (!callerIsAdmin && !hasAccess) {
         throw new HttpsError("permission-denied", "You do not have permission to view this event");
       }
-      return { event };
+      return {
+        event: {
+          ...event,
+          ticketTypes: (event.ticketTypes ?? []).filter(
+            (ticketType) => ticketType.audience !== TicketAudience.ORGANISER_GUEST,
+          ),
+        },
+      };
     } catch (e: unknown) {
       if (e instanceof HttpsError) throw e;
       handleFunctionError(e as Error, "getEventForUser");

@@ -1,4 +1,3 @@
-import OrganiserTicketTypesManager from "../OrganiserTicketTypesManager";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { render, screen, fireEvent, waitFor } from "../../../test-utils";
@@ -11,6 +10,8 @@ vi.mock("../api", async (original) => ({
   guestCall: vi.fn(),
 }));
 const call = vi.mocked(guestCall);
+const writeText = vi.fn();
+const write = vi.fn();
 const ticket: GuestTicket = {
   firstName: "Alex",
   lastName: "Guest",
@@ -35,6 +36,21 @@ const guest: Guest = {
 };
 beforeEach(() => {
   call.mockReset();
+  writeText.mockReset();
+  write.mockReset();
+  Object.defineProperty(globalThis, "ClipboardItem", {
+    configurable: true,
+    value: class ClipboardItem {
+      items: Record<string, Blob | Promise<Blob>>;
+      constructor(items: Record<string, Blob | Promise<Blob>>) {
+        this.items = items;
+      }
+    },
+  });
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { write, writeText },
+  });
 });
 describe("account-free guest ticket", () => {
   function show() {
@@ -102,21 +118,116 @@ describe("account-free guest ticket", () => {
   });
 });
 describe("organiser management and reports", () => {
+  it("copies a fresh guest link directly without opening a link dialog", async () => {
+    const list = {
+      event: { id: "event" },
+      ticketTypes: [],
+      guests: [guest],
+    };
+    call
+      .mockResolvedValueOnce(list)
+      .mockResolvedValueOnce({ link: "https://example.test/guest-ticket#new" })
+      .mockResolvedValueOnce(list);
+    write.mockResolvedValue(undefined);
+    render(<OrganiserGuestsManager eventId="event" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Copy link" }));
+    await waitFor(() =>
+      expect(call).toHaveBeenCalledWith("manageOrganiserGuest", {
+        eventId: "event",
+        action: "replace-link",
+        id: "guest",
+        version: 3,
+      }),
+    );
+    expect(write).toHaveBeenCalledTimes(1);
+    const item = write.mock.calls[0][0][0] as {
+      items: Record<string, Promise<Blob>>;
+    };
+    await expect(item.items["text/plain"]).resolves.toEqual(
+      new Blob(["https://example.test/guest-ticket#new"], {
+        type: "text/plain",
+      }),
+    );
+    expect(screen.queryByRole("dialog", { name: "Copy guest link" })).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(/New guest link copied/),
+    ).toBeInTheDocument();
+  });
+  it("shows the generated link without replacing it again when automatic copying fails", async () => {
+    const list = {
+      event: { id: "event" },
+      ticketTypes: [],
+      guests: [guest],
+    };
+    call
+      .mockResolvedValueOnce(list)
+      .mockResolvedValueOnce({ link: "https://example.test/guest-ticket#new" })
+      .mockResolvedValueOnce(list);
+    write.mockRejectedValue(new DOMException("Not allowed", "NotAllowedError"));
+    writeText.mockResolvedValue(undefined);
+    render(<OrganiserGuestsManager eventId="event" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Copy link" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Copy guest link",
+    });
+    expect(screen.getByLabelText("Guest link")).toHaveValue(
+      "https://example.test/guest-ticket#new",
+    );
+    expect(call).toHaveBeenCalledTimes(3);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Copy link", hidden: false }),
+    );
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        "https://example.test/guest-ticket#new",
+      ),
+    );
+    expect(call).toHaveBeenCalledTimes(3);
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+  });
+  it("allows a guest to be saved without an email address", async () => {
+    call.mockResolvedValue({
+      event: { id: "event" },
+      ticketTypes: [
+        {
+          id: "type",
+          title: "Guest dinner",
+          priceMinor: 2000,
+          includesDinner: true,
+          includesSymposium: false,
+        },
+      ],
+      guests: [],
+    });
+    render(<OrganiserGuestsManager eventId="event" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add guest" }));
+    fireEvent.change(screen.getByLabelText("First name"), {
+      target: { value: "Alex" },
+    });
+    fireEvent.change(screen.getByLabelText("Last name"), {
+      target: { value: "Guest" },
+    });
+    expect(screen.getByLabelText("Email (optional)")).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Save guest" }));
+    await waitFor(() =>
+      expect(call).toHaveBeenCalledWith(
+        "manageOrganiserGuest",
+        expect.objectContaining({
+          eventId: "event",
+          action: "create",
+          firstName: "Alex",
+          lastName: "Guest",
+          email: "",
+        }),
+      ),
+    );
+  });
   it("keeps the guest list focused on people and reuses the shared ticket editor for moderators", async () => {
     call.mockResolvedValue({ event: {}, ticketTypes: [], guests: [] });
     const view = render(<OrganiserGuestsManager eventId="event" />);
     await screen.findByText(/Create an organiser\/club guest ticket in Ticket types/);
     expect(screen.queryByRole("button", { name: /add guest ticket type/i })).not.toBeInTheDocument();
     view.unmount();
-    render(<OrganiserTicketTypesManager eventId="event" />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Add ticket type" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Add ticket type" }));
-    expect(screen.getByRole("combobox", { name: "Ticket category" })).toHaveAttribute("aria-disabled", "true");
-    fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: "Club guests" } });
-    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Dinner invitation" } });
-    fireEvent.change(screen.getByLabelText("Sort order"), { target: { value: "2" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(call).toHaveBeenCalledWith("saveOrganiserGuestTicketType", expect.objectContaining({ eventId: "event", title: "Club guests", description: "Dinner invitation", sortOrder: 2, priceMinor: 0 })));
   });
   it("keeps cancellation explicit and shows paid refund obligations", async () => {
     call.mockResolvedValue({

@@ -6,7 +6,7 @@ type CheckoutSession = Awaited<
   ReturnType<StripeClient["checkout"]["sessions"]["retrieve"]>
 >;
 async function guestById(id: string) {
-  const guest = (await db.getOrganiserGuest({ id })).data.organiserGuest;
+  const guest = (await db.getOrganiserGuest({ id })).data.organiserGuests[0];
   if (!guest) throw new Error("Guest payment record missing");
   return guest;
 }

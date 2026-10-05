@@ -17,7 +17,6 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  Archive as ArchiveIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
   Download as DownloadIcon,
@@ -25,7 +24,7 @@ import {
 } from "@mui/icons-material";
 import { BookingApprovalStatus } from "@dataconnect/generated";
 import PageHeader from "../../../../shared/components/PageHeader";
-import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL, ORGANISER_GUEST } from "../../../../shared/utils/ticketAudienceLabels";
+import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../../shared/utils/ticketAudienceLabels";
 import type {
   EventBookingAdminRow,
   EventRow,
@@ -273,7 +272,7 @@ export function TicketTypesTable({
         <TableBody>
           {ticketTypes.map((ticketType) => (
             <TableRow key={ticketType.id}>
-              <TableCell>{ticketType.title}{ticketType.active === false && <Chip size="small" label="Archived" sx={{ ml: 1 }} />}</TableCell>
+              <TableCell>{ticketType.title}</TableCell>
               <TableCell>{ticketType.description ?? "—"}</TableCell>
               <TableCell>{ticketType.price}</TableCell>
               <TableCell>{getTicketCategoryLabel(ticketType.audience)}</TableCell>
@@ -297,11 +296,11 @@ export function TicketTypesTable({
                 <IconButton
                   size="small"
                   color="error"
-                  aria-label={`${ticketType.audience === ORGANISER_GUEST ? "Archive" : "Delete"} ${ticketType.title}`}
-                  disabled={deletingTicketTypeId === ticketType.id || ticketType.active === false}
+                  aria-label={`Delete ${ticketType.title}`}
+                  disabled={deletingTicketTypeId === ticketType.id}
                   onClick={() => onDelete(ticketType.id)}
                 >
-                  {deletingTicketTypeId === ticketType.id ? <CircularProgress size={16} /> : ticketType.audience === ORGANISER_GUEST ? <ArchiveIcon /> : <DeleteIcon />}
+                  {deletingTicketTypeId === ticketType.id ? <CircularProgress size={16} /> : <DeleteIcon />}
                 </IconButton>
               </TableCell>
             </TableRow>

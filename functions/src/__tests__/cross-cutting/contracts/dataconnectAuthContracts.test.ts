@@ -39,6 +39,19 @@ describe("Data Connect auth contracts", () => {
     expect(operations.length).toBeGreaterThan(10);
     for (const operation of operations) expect(operation).toContain(NO_ACCESS);
     expect(source).not.toMatch(/organiserGuest(?:TicketType)?_delete/);
+    const ticketLookup = extractOperationBlock(
+      source,
+      "query GetOrganiserGuestType",
+    );
+    expect(ticketLookup).toContain("eventId: { eq: $eventId }");
+    expect(ticketLookup).toContain("audience: { eq: ORGANISER_GUEST }");
+    const guestLookup = extractOperationBlock(
+      source,
+      "query GetOrganiserGuest($id:",
+    );
+    expect(guestLookup).toContain(
+      "organiserGuests(where: { id: { eq: $id } }, limit: 1)",
+    );
     const dietary = source.slice(source.indexOf("mutation UpdateOrganiserGuestDietary"), source.indexOf("mutation RotateOrganiserGuestLink"));
     expect(dietary).toContain("gt_expr: \"request.time\"");
     expect(dietary).toContain("tokenHash: { eq: $tokenHash }");
@@ -273,12 +286,38 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation UpdateEvent", mustInclude: ADMIN_EXPR },
       { op: "mutation DeleteEvent", mustInclude: ADMIN_EXPR },
     ]);
+    expect(groupMutations).toContain("event_deleteMany(");
+    expect(groupMutations).toContain(
+      "bookingPlaces_on_event: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "ticketOrders_on_event: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "organiserGuests_on_event: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "@check(expr: \"this == 1\", message: \"EVENT_HAS_TICKETS\")",
+    );
 
     // Ticket type CRUD
     assertAuth(groupMutations, [
       { op: "mutation UpdateTicketType", mustInclude: ADMIN_EXPR },
       { op: "mutation DeleteTicketType", mustInclude: ADMIN_EXPR },
     ]);
+    expect(groupMutations).toContain("ticketType_deleteMany(");
+    expect(groupMutations).toContain(
+      "bookingLines_on_ticketType: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "ticketOrders_on_ticketType: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "organiserGuests_on_standardTicketType: { count: { eq: 0 } }",
+    );
+    expect(groupMutations).toContain(
+      "@check(expr: \"this == 1\", message: \"TICKET_TYPE_IN_USE\")",
+    );
   });
 
   it("Phase F: all booking-mutations.gql operations have correct auth level", () => {
