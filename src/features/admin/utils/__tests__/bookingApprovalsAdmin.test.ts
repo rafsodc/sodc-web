@@ -131,9 +131,22 @@ describe("booking approval admin model", () => {
       }),
     ]);
     expect(eventTicketRowsCsv(rows)).toContain(
-      "Jamie Guest,GUEST,Guest ticket,No,Yes,Yes,Taylor Member,No nuts,APPROVED,UNPAID"
+      "Jamie Guest,,GUEST,Guest ticket,No,Yes,Yes,Taylor Member,No nuts,APPROVED,UNPAID"
     );
     expect(eventTicketRowsCsv(rows)).not.toContain("Revision");
+  });
+
+  it("uses each attendee's own rank, never the booker's rank for an unlinked guest", () => {
+    const active = booking({
+      booker: { id: "booker", firstName: "Alex", lastName: "Member", email: "alex@example.com", rank: "Wing Commander" },
+      lines: [
+        { id: "member", sortOrder: 0, ticketType: { title: "Member", audience: TicketAudience.MEMBER, price: 0 } },
+        { id: "linked", sortOrder: 1, guestUser: { id: "guest", firstName: "Jamie", lastName: "Guest", rank: " Squadron Leader " }, ticketType: { title: "Guest", audience: TicketAudience.GUEST, price: 0 } },
+        { id: "unlinked", sortOrder: 2, guestDisplayName: "Other Guest", ticketType: { title: "Guest", audience: TicketAudience.GUEST, price: 0 } },
+      ] as EventBookingAdminRow["lines"],
+    });
+    expect(activeEventTicketRows([active], new Map()).map(row => row.rank)).toEqual(["Wing Commander", "Squadron Leader", null]);
+    expect(eventTicketRowsCsv(activeEventTicketRows([active], new Map()))).toContain("Jamie Guest,Squadron Leader,GUEST");
   });
 
   it("does not include superseded, rejected, or pending revisions in the active ticket roster", () => {
@@ -215,6 +228,7 @@ describe("booking approval admin model", () => {
         key: "booking-1:line-1",
         bookingId: "booking-1",
         attendeeName: "=2+2",
+        rank: "=RANK()",
         audience: TicketAudience.GUEST,
         ticketType: "+Guest ticket",
         includesDinner: true,
@@ -229,6 +243,7 @@ describe("booking approval admin model", () => {
         key: "booking-1:line-2",
         bookingId: "booking-1",
         attendeeName: "@SUM(1,1)",
+        rank: null,
         audience: TicketAudience.GUEST,
         ticketType: "Guest ticket",
         includesDinner: false,
@@ -242,9 +257,9 @@ describe("booking approval admin model", () => {
     ];
 
     expect(eventTicketRowsCsv(rows)).toBe([
-      "Attendee,Audience,Ticket,Dinner,Symposium,Accommodation,Seating preferences,Dietary requirements,Approval,Payment",
-      "'=2+2,GUEST,'+Guest ticket,Yes,No,Yes,'=Seating name,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID",
-      "\"'@SUM(1,1)\",GUEST,Guest ticket,No,Yes,No,,\"No nuts, please\",APPROVED,PAID",
+      "Attendee,Rank,Audience,Ticket,Dinner,Symposium,Accommodation,Seating preferences,Dietary requirements,Approval,Payment",
+      "'=2+2,'=RANK(),GUEST,'+Guest ticket,Yes,No,Yes,'=Seating name,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID",
+      "\"'@SUM(1,1)\",,GUEST,Guest ticket,No,Yes,No,,\"No nuts, please\",APPROVED,PAID",
     ].join("\n"));
   });
 
