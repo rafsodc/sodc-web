@@ -25,6 +25,7 @@ import {
 import { BookingApprovalStatus } from "@dataconnect/generated";
 import PageHeader from "../../../../shared/components/PageHeader";
 import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../../shared/utils/ticketAudienceLabels";
+import { getMembershipStatusLabel } from "../../../../shared/utils/membershipStatusLabels";
 import type {
   EventBookingAdminRow,
   EventRow,
@@ -505,12 +506,13 @@ function EventAttendeeTicketsSection({
       <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
         <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>Export CSV</Button>
       </Box>
-      <AdminTable minWidth={1360}>
+      <AdminTable minWidth={1490}>
         <TableHead>
           <TableRow>
             <TableCell>Attendee</TableCell>
             <TableCell>Email</TableCell>
             <TableCell>Rank</TableCell>
+            <TableCell>Membership status</TableCell>
             <TableCell>Audience</TableCell>
             <TableCell>Ticket</TableCell>
             <TableCell>Dinner</TableCell>
@@ -528,6 +530,7 @@ function EventAttendeeTicketsSection({
               <TableCell>{row.attendeeName}</TableCell>
               <TableCell>{row.email ?? "—"}</TableCell>
               <TableCell>{row.rank || "—"}</TableCell>
+              <TableCell>{row.membershipStatus ? getMembershipStatusLabel(row.membershipStatus) : "—"}</TableCell>
               <TableCell>{getTicketCategoryLabel(row.audience)}</TableCell>
               <TableCell>{row.ticketType}</TableCell>
               <TableCell>{row.includesDinner ? "Yes" : "No"}</TableCell>

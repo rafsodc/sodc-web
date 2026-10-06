@@ -2,6 +2,7 @@ import type { ManagedTicketAudience } from "../../../shared/utils/ticketAudience
 import {
   BookingApprovalStatus,
   BookingStatus,
+  MembershipStatus,
   TicketAudience,
   TicketOrderStatus,
 } from "@dataconnect/generated";
@@ -26,6 +27,7 @@ export interface EventAttendeeTicketRow {
   attendeeName: string;
   email: string | null;
   rank: string | null;
+  membershipStatus: MembershipStatus | null;
   audience: ManagedTicketAudience;
   ticketType: string;
   includesDinner: boolean;
@@ -144,6 +146,10 @@ export function activeEventTicketRows(
               ? booking.booker.email.trim() || null
               : line.guestUser?.email?.trim() || null,
           rank: (line.ticketType.audience === TicketAudience.MEMBER ? booking.booker.rank : line.guestUser?.rank)?.trim() || null,
+          membershipStatus:
+            line.ticketType.audience === TicketAudience.MEMBER
+              ? booking.booker.membershipStatus
+              : line.guestUser?.membershipStatus ?? null,
           audience: line.ticketType.audience,
           ticketType: line.ticketType.title,
           includesDinner: line.ticketType.includesDinner,
