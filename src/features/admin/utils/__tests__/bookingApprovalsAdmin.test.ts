@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BookingApprovalStatus,
   BookingStatus,
+  MembershipStatus,
   TicketAudience,
   TicketOrderStatus,
 } from "@dataconnect/generated";
@@ -133,24 +134,26 @@ describe("booking approval admin model", () => {
       }),
     ]);
     expect(eventTicketRowsCsv(rows)).toContain(
-      "Jamie Guest,,GUEST,Guest ticket,No,Yes,Yes,Taylor Member,No nuts,APPROVED,UNPAID"
+      "Jamie Guest,,,GUEST,Guest ticket,No,Yes,Yes,Taylor Member,No nuts,APPROVED,UNPAID"
     );
     expect(eventTicketRowsCsv(rows)).not.toContain("Revision");
   });
 
   it("uses each attendee's own rank, never the booker's rank for an unlinked guest", () => {
     const active = booking({
-      booker: { id: "booker", firstName: "Alex", lastName: "Member", email: "alex@example.com", rank: "Wing Commander" },
+      booker: { id: "booker", firstName: "Alex", lastName: "Member", email: "alex@example.com", rank: "Wing Commander", membershipStatus: MembershipStatus.REGULAR },
       lines: [
         { id: "member", sortOrder: 0, ticketType: { title: "Member", audience: TicketAudience.MEMBER, price: 0 } },
-        { id: "linked", sortOrder: 1, guestUser: { id: "guest", firstName: "Jamie", lastName: "Guest", email: "jamie@example.com", rank: " Squadron Leader " }, ticketType: { title: "Guest", audience: TicketAudience.GUEST, price: 0 } },
+        { id: "linked", sortOrder: 1, guestUser: { id: "guest", firstName: "Jamie", lastName: "Guest", email: "jamie@example.com", rank: " Squadron Leader ", membershipStatus: MembershipStatus.RESERVE }, ticketType: { title: "Guest", audience: TicketAudience.GUEST, price: 0 } },
         { id: "unlinked", sortOrder: 2, guestDisplayName: "Other Guest", ticketType: { title: "Guest", audience: TicketAudience.GUEST, price: 0 } },
       ] as EventBookingAdminRow["lines"],
     });
     const rows = activeEventTicketRows([active], new Map());
     expect(rows.map(row => row.rank)).toEqual(["Wing Commander", "Squadron Leader", null]);
     expect(rows.map(row => row.email)).toEqual(["alex@example.com", "jamie@example.com", null]);
-    expect(eventTicketRowsCsv(rows)).toContain("Jamie Guest,Squadron Leader,GUEST");
+    expect(rows.map(row => row.membershipStatus)).toEqual([MembershipStatus.REGULAR, MembershipStatus.RESERVE, null]);
+    expect(eventTicketRowsCsv(rows)).toContain("Alex Member,Wing Commander,Regular,MEMBER");
+    expect(eventTicketRowsCsv(rows)).toContain("Jamie Guest,Squadron Leader,Reserve,GUEST");
     expect(eventTicketRowsCsv(rows)).not.toContain("alex@example.com");
     expect(eventTicketRowsCsv(rows)).not.toContain("jamie@example.com");
   });
@@ -236,6 +239,7 @@ describe("booking approval admin model", () => {
         attendeeName: "=2+2",
         email: "private@example.com",
         rank: "=RANK()",
+        membershipStatus: MembershipStatus.INDUSTRY,
         audience: TicketAudience.GUEST,
         ticketType: "+Guest ticket",
         includesDinner: true,
@@ -252,6 +256,7 @@ describe("booking approval admin model", () => {
         attendeeName: "@SUM(1,1)",
         email: "second@example.com",
         rank: null,
+        membershipStatus: null,
         audience: TicketAudience.GUEST,
         ticketType: "Guest ticket",
         includesDinner: false,
@@ -265,12 +270,13 @@ describe("booking approval admin model", () => {
     ];
 
     expect(eventTicketRowsCsv(rows)).toBe([
-      "Attendee,Rank,Audience,Ticket,Dinner,Symposium,Accommodation,Seating preferences,Dietary requirements,Approval,Payment",
-      "'=2+2,'=RANK(),GUEST,'+Guest ticket,Yes,No,Yes,'=Seating name,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID",
-      "\"'@SUM(1,1)\",,GUEST,Guest ticket,No,Yes,No,,\"No nuts, please\",APPROVED,PAID",
+      "Attendee,Rank,Membership status,Audience,Ticket,Dinner,Symposium,Accommodation,Seating preferences,Dietary requirements,Approval,Payment",
+      "'=2+2,'=RANK(),Industry,GUEST,'+Guest ticket,Yes,No,Yes,'=Seating name,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID",
+      "\"'@SUM(1,1)\",,,GUEST,Guest ticket,No,Yes,No,,\"No nuts, please\",APPROVED,PAID",
     ].join("\n"));
     expect(eventTicketRowsCsv(rows)).not.toContain("private@example.com");
     expect(eventTicketRowsCsv(rows)).not.toContain("second@example.com");
+    expect(eventTicketRowsCsv(rows)).toContain("Industry");
   });
 
   it("never exposes an unresolved seating preference UUID", () => {

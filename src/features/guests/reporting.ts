@@ -13,6 +13,7 @@ export function organiserGuestTicketRows(
       attendeeName: `${g.firstName} ${g.lastName}`,
       email: null,
       rank: null,
+      membershipStatus: null,
       audience: ORGANISER_GUEST,
       ticketType: `${g.ticketTitle} (organiser guest)`,
       includesDinner: g.includesDinner,

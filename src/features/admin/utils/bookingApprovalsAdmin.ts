@@ -2,10 +2,12 @@ import type { ManagedTicketAudience } from "../../../shared/utils/ticketAudience
 import {
   BookingApprovalStatus,
   BookingStatus,
+  MembershipStatus,
   TicketAudience,
   TicketOrderStatus,
 } from "@dataconnect/generated";
 import type { EventBookingAdminRow } from "../components/sectionEventsManagerTypes";
+import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 
 export type TicketOrdersById = ReadonlyMap<string, { id: string; status: TicketOrderStatus }>;
 
@@ -26,6 +28,7 @@ export interface EventAttendeeTicketRow {
   attendeeName: string;
   email: string | null;
   rank: string | null;
+  membershipStatus: MembershipStatus | null;
   audience: ManagedTicketAudience;
   ticketType: string;
   includesDinner: boolean;
@@ -144,6 +147,10 @@ export function activeEventTicketRows(
               ? booking.booker.email.trim() || null
               : line.guestUser?.email?.trim() || null,
           rank: (line.ticketType.audience === TicketAudience.MEMBER ? booking.booker.rank : line.guestUser?.rank)?.trim() || null,
+          membershipStatus:
+            line.ticketType.audience === TicketAudience.MEMBER
+              ? booking.booker.membershipStatus
+              : line.guestUser?.membershipStatus ?? null,
           audience: line.ticketType.audience,
           ticketType: line.ticketType.title,
           includesDinner: line.ticketType.includesDinner,
@@ -168,6 +175,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
   const header = [
     "Attendee",
     "Rank",
+    "Membership status",
     "Audience",
     "Ticket",
     "Dinner",
@@ -181,6 +189,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
   const body = rows.map((row) => [
     row.attendeeName,
     row.rank ?? "",
+    row.membershipStatus ? getMembershipStatusLabel(row.membershipStatus) : "",
     row.audience,
     row.ticketType,
     row.includesDinner ? "Yes" : "No",

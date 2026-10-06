@@ -623,6 +623,7 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
         firstName
         lastName
         email
+        membershipStatus
       }
       lines: bookingLines_on_booking {
         id
@@ -648,6 +649,7 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
           firstName
           lastName
           email
+          membershipStatus
         }
         ticketType {
           id

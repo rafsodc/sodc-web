@@ -2740,6 +2740,7 @@ export interface ListEventBookingsForAdminData {
         firstName: string;
         lastName: string;
         email: string;
+        membershipStatus: MembershipStatus;
       } & User_Key;
       lines: ({
         id: UUIDString;
@@ -2761,6 +2762,7 @@ export interface ListEventBookingsForAdminData {
           firstName: string;
           lastName: string;
           email: string;
+          membershipStatus: MembershipStatus;
         } & User_Key;
         ticketType: {
           id: UUIDString;
