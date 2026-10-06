@@ -7,6 +7,7 @@ import {
   TicketOrderStatus,
 } from "@dataconnect/generated";
 import type { EventBookingAdminRow } from "../components/sectionEventsManagerTypes";
+import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 
 export type TicketOrdersById = ReadonlyMap<string, { id: string; status: TicketOrderStatus }>;
 
@@ -174,6 +175,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
   const header = [
     "Attendee",
     "Rank",
+    "Membership status",
     "Audience",
     "Ticket",
     "Dinner",
@@ -187,6 +189,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
   const body = rows.map((row) => [
     row.attendeeName,
     row.rank ?? "",
+    row.membershipStatus ? getMembershipStatusLabel(row.membershipStatus) : "",
     row.audience,
     row.ticketType,
     row.includesDinner ? "Yes" : "No",
