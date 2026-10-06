@@ -40,6 +40,8 @@ export const CALLABLE_RATE_LIMITS = {
   // first submission exhausted the weighted write allowance.
   submitEventBookingReplayLookup: { limit: 60, windowMs: 5 * MINUTE_MS },
   reviewBookingRevision: { limit: 30, windowMs: HOUR_MS },
+  amendEventBookingAsOrganiser: { limit: 60, windowMs: HOUR_MS },
+  getEventAdministrationData: { limit: 120, windowMs: 5 * MINUTE_MS },
   updateMembershipStatus: { limit: 20, windowMs: HOUR_MS },
   resignMembership: { limit: 3, windowMs: HOUR_MS },
   getSectionMembersMerged: { limit: 60, windowMs: 5 * MINUTE_MS },

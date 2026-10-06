@@ -11,6 +11,7 @@ export const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE: "PENDING_AUTO_CHARGE",
+  REFUND_FAILED: "REFUND_FAILED",
   SETTLED: "SETTLED",
 }
 
@@ -947,6 +948,18 @@ updateBookingPlaceAllocationRefundFromCallableRef.operationName = 'UpdateBooking
 export function updateBookingPlaceAllocationRefundFromCallable(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(updateBookingPlaceAllocationRefundFromCallableRef(dcInstance, inputVars));
+}
+
+export const updateBookingPlaceAllocationRefundStateFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateBookingPlaceAllocationRefundStateFromCallable', inputVars);
+}
+updateBookingPlaceAllocationRefundStateFromCallableRef.operationName = 'UpdateBookingPlaceAllocationRefundStateFromCallable';
+
+export function updateBookingPlaceAllocationRefundStateFromCallable(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateBookingPlaceAllocationRefundStateFromCallableRef(dcInstance, inputVars));
 }
 
 export const getTicketOrderForWebhookRef = (dcOrVars, vars) => {
@@ -2035,6 +2048,42 @@ reassignOrganiserGuestTicketRef.operationName = 'ReassignOrganiserGuestTicket';
 export function reassignOrganiserGuestTicket(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(reassignOrganiserGuestTicketRef(dcInstance, inputVars));
+}
+
+export const attachOrganiserGuestAdditionalCheckoutRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AttachOrganiserGuestAdditionalCheckout', inputVars);
+}
+attachOrganiserGuestAdditionalCheckoutRef.operationName = 'AttachOrganiserGuestAdditionalCheckout';
+
+export function attachOrganiserGuestAdditionalCheckout(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(attachOrganiserGuestAdditionalCheckoutRef(dcInstance, inputVars));
+}
+
+export const markOrganiserGuestAdditionalPaymentPaidRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkOrganiserGuestAdditionalPaymentPaid', inputVars);
+}
+markOrganiserGuestAdditionalPaymentPaidRef.operationName = 'MarkOrganiserGuestAdditionalPaymentPaid';
+
+export function markOrganiserGuestAdditionalPaymentPaid(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(markOrganiserGuestAdditionalPaymentPaidRef(dcInstance, inputVars));
+}
+
+export const markOrganiserGuestAdditionalPaymentRefundedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkOrganiserGuestAdditionalPaymentRefunded', inputVars);
+}
+markOrganiserGuestAdditionalPaymentRefundedRef.operationName = 'MarkOrganiserGuestAdditionalPaymentRefunded';
+
+export function markOrganiserGuestAdditionalPaymentRefunded(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(markOrganiserGuestAdditionalPaymentRefundedRef(dcInstance, inputVars));
 }
 
 export const getCurrentUserRef = (dc) => {

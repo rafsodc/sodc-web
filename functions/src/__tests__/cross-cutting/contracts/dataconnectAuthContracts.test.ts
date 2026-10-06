@@ -305,6 +305,11 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation UpdateTicketType", mustInclude: ADMIN_EXPR },
       { op: "mutation DeleteTicketType", mustInclude: ADMIN_EXPR },
     ]);
+    expect(groupMutations).toContain("ticketType_updateMany(");
+    expect(groupMutations).toContain("{ price: { eq: $price } }");
+    expect(groupMutations).toContain(
+      "@check(expr: \"this == 1\", message: \"TICKET_TYPE_PRICE_LOCKED\")",
+    );
     expect(groupMutations).toContain("ticketType_deleteMany(");
     expect(groupMutations).toContain(
       "bookingLines_on_ticketType: { count: { eq: 0 } }",

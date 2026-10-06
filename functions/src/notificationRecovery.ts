@@ -250,6 +250,7 @@ export function createNotificationRecoveryDispatcher(
           bookingId: payload.bookingId,
           idempotencyKey: payload.idempotencyKey,
           paymentDelta: payload.paymentDelta,
+          refundOutcome: payload.refundOutcome,
           appBaseUrl,
           deliveryMode: payload.deliveryMode,
         });

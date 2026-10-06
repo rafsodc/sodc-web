@@ -21,7 +21,12 @@ export interface Guest {
   version: number;
   cancelled: boolean;
   paymentStatus: string;
+  paidAmountMinor: number;
+  settledAmountMinor: number;
+  paymentRequiredMinor: number;
   refundedAmountMinor: number;
+  refundPendingMinor: number;
+  refundFailureReason: string | null;
 }
 export interface GuestList {
   event: { id: string; title: string; bookingEndDateTime: string };
@@ -40,6 +45,7 @@ export interface GuestTicket {
   dietaryEditable: boolean;
   paymentDueAt: string;
   paymentStatus: string;
+  paymentRequiredMinor: number;
   cancelled: boolean;
   version: number;
 }
@@ -56,4 +62,8 @@ export const money = (minor: number) =>
     minor / 100,
   );
 export const paymentLabel = (status: string) =>
-  status.toLowerCase().replaceAll("_", " ");
+  status === "PAYMENT_REQUIRED"
+    ? "Payment required—please pay as soon as possible"
+    : status === "REFUND_FAILED"
+      ? "Refund failed—organiser action required"
+      : status.toLowerCase().replaceAll("_", " ");

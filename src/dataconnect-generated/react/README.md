@@ -156,6 +156,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*UpdateBookingApprovalFromCallable*](#updatebookingapprovalfromcallable)
   - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
   - [*UpdateBookingPlaceAllocationRefundFromCallable*](#updatebookingplaceallocationrefundfromcallable)
+  - [*UpdateBookingPlaceAllocationRefundStateFromCallable*](#updatebookingplaceallocationrefundstatefromcallable)
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
   - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
@@ -199,6 +200,9 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*MarkOrganiserGuestPaid*](#markorganiserguestpaid)
   - [*MarkOrganiserGuestRefunded*](#markorganiserguestrefunded)
   - [*ReassignOrganiserGuestTicket*](#reassignorganiserguestticket)
+  - [*AttachOrganiserGuestAdditionalCheckout*](#attachorganiserguestadditionalcheckout)
+  - [*MarkOrganiserGuestAdditionalPaymentPaid*](#markorganiserguestadditionalpaymentpaid)
+  - [*MarkOrganiserGuestAdditionalPaymentRefunded*](#markorganiserguestadditionalpaymentrefunded)
   - [*CreateSection*](#createsection)
   - [*CreateUserGroup*](#createusergroup)
   - [*AddUserToUserGroup*](#addusertousergroup)
@@ -2479,10 +2483,16 @@ export interface GetBookingsForBookerAndEventData {
       sitNextToUserIds?: string[] | null;
       accommodationRequested: boolean;
       accommodationNote?: string | null;
+      adjustments: ({
+        id: UUIDString;
+        deltaAmountMinor: number;
+        status: BookingPaymentAdjustmentStatus;
+      })[];
       createdAt: TimestampString;
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
@@ -2490,6 +2500,9 @@ export interface GetBookingsForBookerAndEventData {
             ticketOrderId: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
+            refundFailureReason?: string | null;
+            refundUpdatedAt?: TimestampString | null;
             stripeRefundId?: string | null;
             createdAt: TimestampString;
           } & BookingPlacePaymentAllocation_Key)[];
@@ -2621,6 +2634,7 @@ export interface GetBookingRevisionForApprovalFromCallableData {
     } & Booking_Key;
     lines: ({
       id: UUIDString;
+      priceMinor?: number | null;
       sortOrder: number;
       guestDisplayName?: string | null;
       dietaryNote?: string | null;
@@ -2727,6 +2741,7 @@ export interface GetTicketOrdersForBookerAndEventData {
       quantity: number;
       unitAmountMinor: number;
       totalAmountMinor: number;
+      stripeCheckoutSessionId?: string | null;
       createdAt: TimestampString;
       ticketType: {
         id: UUIDString;
@@ -3535,6 +3550,7 @@ export interface GetBookingForNotificationData {
       } & Section_Key;
     } & Event_Key;
     lines: ({
+      priceMinor?: number | null;
       sortOrder: number;
       guestDisplayName?: string | null;
       dietaryNote?: string | null;
@@ -6597,11 +6613,28 @@ export interface ListOrganiserGuestsData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -6715,11 +6748,28 @@ export interface GetOrganiserGuestData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -6833,11 +6883,28 @@ export interface GetOrganiserGuestByTokenData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -8708,12 +8775,14 @@ export interface GetMyBookingsForEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
             ticketOrderId: UUIDString;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
         sortOrder: number;
@@ -8818,6 +8887,11 @@ export interface GetMyBookingsData {
       approvalNote?: string | null;
       revisionNumber: number;
       updatedAt: TimestampString;
+      adjustments: ({
+        id: UUIDString;
+        deltaAmountMinor: number;
+        status: BookingPaymentAdjustmentStatus;
+      })[];
       event: {
         id: UUIDString;
         title: string;
@@ -8830,6 +8904,7 @@ export interface GetMyBookingsData {
       } & Event_Key;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
         } & BookingPlace_Key;
@@ -9243,6 +9318,7 @@ export interface ListEventBookingsForAdminData {
       } & User_Key;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
@@ -9252,6 +9328,9 @@ export interface ListEventBookingsForAdminData {
             id: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
+            refundFailureReason?: string | null;
+            refundUpdatedAt?: TimestampString | null;
             ticketOrderId: UUIDString;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
@@ -13957,6 +14036,108 @@ export default function UpdateBookingPlaceAllocationRefundFromCallableComponent(
 }
 ```
 
+## UpdateBookingPlaceAllocationRefundStateFromCallable
+You can execute the `UpdateBookingPlaceAllocationRefundStateFromCallable` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateBookingPlaceAllocationRefundStateFromCallable(options?: useDataConnectMutationOptions<UpdateBookingPlaceAllocationRefundStateFromCallableData, FirebaseError, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>): UseDataConnectMutationResult<UpdateBookingPlaceAllocationRefundStateFromCallableData, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateBookingPlaceAllocationRefundStateFromCallable(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateBookingPlaceAllocationRefundStateFromCallableData, FirebaseError, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>): UseDataConnectMutationResult<UpdateBookingPlaceAllocationRefundStateFromCallableData, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>;
+```
+
+### Variables
+The `UpdateBookingPlaceAllocationRefundStateFromCallable` Mutation requires an argument of type `UpdateBookingPlaceAllocationRefundStateFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateBookingPlaceAllocationRefundStateFromCallableVariables {
+  id: UUIDString;
+  refundedAmountMinor: number;
+  refundPendingAmountMinor: number;
+  stripeRefundId?: string | null;
+  refundFailureReason?: string | null;
+}
+```
+### Return Type
+Recall that calling the `UpdateBookingPlaceAllocationRefundStateFromCallable` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateBookingPlaceAllocationRefundStateFromCallable` Mutation is of type `UpdateBookingPlaceAllocationRefundStateFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateBookingPlaceAllocationRefundStateFromCallableData {
+  bookingPlacePaymentAllocation_update?: BookingPlacePaymentAllocation_Key | null;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateBookingPlaceAllocationRefundStateFromCallable`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateBookingPlaceAllocationRefundStateFromCallableVariables } from '@dataconnect/generated';
+import { useUpdateBookingPlaceAllocationRefundStateFromCallable } from '@dataconnect/generated/react'
+
+export default function UpdateBookingPlaceAllocationRefundStateFromCallableComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateBookingPlaceAllocationRefundStateFromCallable();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateBookingPlaceAllocationRefundStateFromCallable(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateBookingPlaceAllocationRefundStateFromCallable(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateBookingPlaceAllocationRefundStateFromCallable(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateBookingPlaceAllocationRefundStateFromCallable` Mutation requires an argument of type `UpdateBookingPlaceAllocationRefundStateFromCallableVariables`:
+  const updateBookingPlaceAllocationRefundStateFromCallableVars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables = {
+    id: ..., 
+    refundedAmountMinor: ..., 
+    refundPendingAmountMinor: ..., 
+    stripeRefundId: ..., // optional
+    refundFailureReason: ..., // optional
+  };
+  mutation.mutate(updateBookingPlaceAllocationRefundStateFromCallableVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., refundedAmountMinor: ..., refundPendingAmountMinor: ..., stripeRefundId: ..., refundFailureReason: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateBookingPlaceAllocationRefundStateFromCallableVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.bookingPlacePaymentAllocation_update);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## CreatePaymentWebhookEvent
 You can execute the `CreatePaymentWebhookEvent` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -18163,6 +18344,7 @@ export interface MarkOrganiserGuestPaidVariables {
   id: UUIDString;
   sessionId: string;
   paymentIntentId: string;
+  paidAmountMinor: number;
 }
 ```
 ### Return Type
@@ -18216,10 +18398,11 @@ export default function MarkOrganiserGuestPaidComponent() {
     id: ..., 
     sessionId: ..., 
     paymentIntentId: ..., 
+    paidAmountMinor: ..., 
   };
   mutation.mutate(markOrganiserGuestPaidVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., sessionId: ..., paymentIntentId: ..., });
+  mutation.mutate({ id: ..., sessionId: ..., paymentIntentId: ..., paidAmountMinor: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -18264,6 +18447,8 @@ export interface MarkOrganiserGuestRefundedVariables {
   paymentIntentId: string;
   refundedAmountMinor: number;
   refundPendingMinor: number;
+  refundFailureReason?: string | null;
+  stripeRefundId?: string | null;
   version: number;
 }
 ```
@@ -18319,11 +18504,13 @@ export default function MarkOrganiserGuestRefundedComponent() {
     paymentIntentId: ..., 
     refundedAmountMinor: ..., 
     refundPendingMinor: ..., 
+    refundFailureReason: ..., // optional
+    stripeRefundId: ..., // optional
     version: ..., 
   };
   mutation.mutate(markOrganiserGuestRefundedVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., paymentIntentId: ..., refundedAmountMinor: ..., refundPendingMinor: ..., version: ..., });
+  mutation.mutate({ id: ..., paymentIntentId: ..., refundedAmountMinor: ..., refundPendingMinor: ..., refundFailureReason: ..., stripeRefundId: ..., version: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -18372,6 +18559,7 @@ export interface ReassignOrganiserGuestTicketVariables {
   email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
+  paidAmountMinor?: number | null;
   includesSymposium: boolean;
   includesDinner: boolean;
   checkoutKey: string;
@@ -18434,6 +18622,7 @@ export default function ReassignOrganiserGuestTicketComponent() {
     email: ..., // optional
     dietaryRequirements: ..., 
     priceMinor: ..., 
+    paidAmountMinor: ..., // optional
     includesSymposium: ..., 
     includesDinner: ..., 
     checkoutKey: ..., 
@@ -18441,7 +18630,7 @@ export default function ReassignOrganiserGuestTicketComponent() {
   };
   mutation.mutate(reassignOrganiserGuestTicketVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., checkoutKey: ..., actor: ..., });
+  mutation.mutate({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., priceMinor: ..., paidAmountMinor: ..., includesSymposium: ..., includesDinner: ..., checkoutKey: ..., actor: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -18462,6 +18651,318 @@ export default function ReassignOrganiserGuestTicketComponent() {
   if (mutation.isSuccess) {
     console.log(mutation.data.organiserGuest_updateMany);
     console.log(mutation.data.organiserGuestAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## AttachOrganiserGuestAdditionalCheckout
+You can execute the `AttachOrganiserGuestAdditionalCheckout` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useAttachOrganiserGuestAdditionalCheckout(options?: useDataConnectMutationOptions<AttachOrganiserGuestAdditionalCheckoutData, FirebaseError, AttachOrganiserGuestAdditionalCheckoutVariables>): UseDataConnectMutationResult<AttachOrganiserGuestAdditionalCheckoutData, AttachOrganiserGuestAdditionalCheckoutVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useAttachOrganiserGuestAdditionalCheckout(dc: DataConnect, options?: useDataConnectMutationOptions<AttachOrganiserGuestAdditionalCheckoutData, FirebaseError, AttachOrganiserGuestAdditionalCheckoutVariables>): UseDataConnectMutationResult<AttachOrganiserGuestAdditionalCheckoutData, AttachOrganiserGuestAdditionalCheckoutVariables>;
+```
+
+### Variables
+The `AttachOrganiserGuestAdditionalCheckout` Mutation requires an argument of type `AttachOrganiserGuestAdditionalCheckoutVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface AttachOrganiserGuestAdditionalCheckoutVariables {
+  id: UUIDString;
+  guestId: UUIDString;
+  checkoutKey: string;
+  sessionId: string;
+  amountMinor: number;
+}
+```
+### Return Type
+Recall that calling the `AttachOrganiserGuestAdditionalCheckout` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AttachOrganiserGuestAdditionalCheckout` Mutation is of type `AttachOrganiserGuestAdditionalCheckoutData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface AttachOrganiserGuestAdditionalCheckoutData {
+  organiserGuest_updateMany: number;
+  organiserGuestPayment_insert: OrganiserGuestPayment_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `AttachOrganiserGuestAdditionalCheckout`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, AttachOrganiserGuestAdditionalCheckoutVariables } from '@dataconnect/generated';
+import { useAttachOrganiserGuestAdditionalCheckout } from '@dataconnect/generated/react'
+
+export default function AttachOrganiserGuestAdditionalCheckoutComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useAttachOrganiserGuestAdditionalCheckout();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useAttachOrganiserGuestAdditionalCheckout(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAttachOrganiserGuestAdditionalCheckout(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAttachOrganiserGuestAdditionalCheckout(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useAttachOrganiserGuestAdditionalCheckout` Mutation requires an argument of type `AttachOrganiserGuestAdditionalCheckoutVariables`:
+  const attachOrganiserGuestAdditionalCheckoutVars: AttachOrganiserGuestAdditionalCheckoutVariables = {
+    id: ..., 
+    guestId: ..., 
+    checkoutKey: ..., 
+    sessionId: ..., 
+    amountMinor: ..., 
+  };
+  mutation.mutate(attachOrganiserGuestAdditionalCheckoutVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., guestId: ..., checkoutKey: ..., sessionId: ..., amountMinor: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(attachOrganiserGuestAdditionalCheckoutVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.organiserGuest_updateMany);
+    console.log(mutation.data.organiserGuestPayment_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## MarkOrganiserGuestAdditionalPaymentPaid
+You can execute the `MarkOrganiserGuestAdditionalPaymentPaid` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useMarkOrganiserGuestAdditionalPaymentPaid(options?: useDataConnectMutationOptions<MarkOrganiserGuestAdditionalPaymentPaidData, FirebaseError, MarkOrganiserGuestAdditionalPaymentPaidVariables>): UseDataConnectMutationResult<MarkOrganiserGuestAdditionalPaymentPaidData, MarkOrganiserGuestAdditionalPaymentPaidVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useMarkOrganiserGuestAdditionalPaymentPaid(dc: DataConnect, options?: useDataConnectMutationOptions<MarkOrganiserGuestAdditionalPaymentPaidData, FirebaseError, MarkOrganiserGuestAdditionalPaymentPaidVariables>): UseDataConnectMutationResult<MarkOrganiserGuestAdditionalPaymentPaidData, MarkOrganiserGuestAdditionalPaymentPaidVariables>;
+```
+
+### Variables
+The `MarkOrganiserGuestAdditionalPaymentPaid` Mutation requires an argument of type `MarkOrganiserGuestAdditionalPaymentPaidVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface MarkOrganiserGuestAdditionalPaymentPaidVariables {
+  id: UUIDString;
+  guestId: UUIDString;
+  sessionId: string;
+  paymentIntentId: string;
+}
+```
+### Return Type
+Recall that calling the `MarkOrganiserGuestAdditionalPaymentPaid` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkOrganiserGuestAdditionalPaymentPaid` Mutation is of type `MarkOrganiserGuestAdditionalPaymentPaidData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface MarkOrganiserGuestAdditionalPaymentPaidData {
+  organiserGuestPayment_updateMany: number;
+  organiserGuest_update?: OrganiserGuest_Key | null;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `MarkOrganiserGuestAdditionalPaymentPaid`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, MarkOrganiserGuestAdditionalPaymentPaidVariables } from '@dataconnect/generated';
+import { useMarkOrganiserGuestAdditionalPaymentPaid } from '@dataconnect/generated/react'
+
+export default function MarkOrganiserGuestAdditionalPaymentPaidComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useMarkOrganiserGuestAdditionalPaymentPaid();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useMarkOrganiserGuestAdditionalPaymentPaid(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkOrganiserGuestAdditionalPaymentPaid(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkOrganiserGuestAdditionalPaymentPaid(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useMarkOrganiserGuestAdditionalPaymentPaid` Mutation requires an argument of type `MarkOrganiserGuestAdditionalPaymentPaidVariables`:
+  const markOrganiserGuestAdditionalPaymentPaidVars: MarkOrganiserGuestAdditionalPaymentPaidVariables = {
+    id: ..., 
+    guestId: ..., 
+    sessionId: ..., 
+    paymentIntentId: ..., 
+  };
+  mutation.mutate(markOrganiserGuestAdditionalPaymentPaidVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., guestId: ..., sessionId: ..., paymentIntentId: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(markOrganiserGuestAdditionalPaymentPaidVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.organiserGuestPayment_updateMany);
+    console.log(mutation.data.organiserGuest_update);
+    console.log(mutation.data.organiserGuestAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## MarkOrganiserGuestAdditionalPaymentRefunded
+You can execute the `MarkOrganiserGuestAdditionalPaymentRefunded` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useMarkOrganiserGuestAdditionalPaymentRefunded(options?: useDataConnectMutationOptions<MarkOrganiserGuestAdditionalPaymentRefundedData, FirebaseError, MarkOrganiserGuestAdditionalPaymentRefundedVariables>): UseDataConnectMutationResult<MarkOrganiserGuestAdditionalPaymentRefundedData, MarkOrganiserGuestAdditionalPaymentRefundedVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useMarkOrganiserGuestAdditionalPaymentRefunded(dc: DataConnect, options?: useDataConnectMutationOptions<MarkOrganiserGuestAdditionalPaymentRefundedData, FirebaseError, MarkOrganiserGuestAdditionalPaymentRefundedVariables>): UseDataConnectMutationResult<MarkOrganiserGuestAdditionalPaymentRefundedData, MarkOrganiserGuestAdditionalPaymentRefundedVariables>;
+```
+
+### Variables
+The `MarkOrganiserGuestAdditionalPaymentRefunded` Mutation requires an argument of type `MarkOrganiserGuestAdditionalPaymentRefundedVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface MarkOrganiserGuestAdditionalPaymentRefundedVariables {
+  id: UUIDString;
+  paymentIntentId: string;
+  refundedAmountMinor: number;
+  refundPendingMinor: number;
+  refundFailureReason?: string | null;
+  stripeRefundId?: string | null;
+}
+```
+### Return Type
+Recall that calling the `MarkOrganiserGuestAdditionalPaymentRefunded` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `MarkOrganiserGuestAdditionalPaymentRefunded` Mutation is of type `MarkOrganiserGuestAdditionalPaymentRefundedData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface MarkOrganiserGuestAdditionalPaymentRefundedData {
+  organiserGuestPayment_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `MarkOrganiserGuestAdditionalPaymentRefunded`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, MarkOrganiserGuestAdditionalPaymentRefundedVariables } from '@dataconnect/generated';
+import { useMarkOrganiserGuestAdditionalPaymentRefunded } from '@dataconnect/generated/react'
+
+export default function MarkOrganiserGuestAdditionalPaymentRefundedComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useMarkOrganiserGuestAdditionalPaymentRefunded();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useMarkOrganiserGuestAdditionalPaymentRefunded(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkOrganiserGuestAdditionalPaymentRefunded(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useMarkOrganiserGuestAdditionalPaymentRefunded(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useMarkOrganiserGuestAdditionalPaymentRefunded` Mutation requires an argument of type `MarkOrganiserGuestAdditionalPaymentRefundedVariables`:
+  const markOrganiserGuestAdditionalPaymentRefundedVars: MarkOrganiserGuestAdditionalPaymentRefundedVariables = {
+    id: ..., 
+    paymentIntentId: ..., 
+    refundedAmountMinor: ..., 
+    refundPendingMinor: ..., 
+    refundFailureReason: ..., // optional
+    stripeRefundId: ..., // optional
+  };
+  mutation.mutate(markOrganiserGuestAdditionalPaymentRefundedVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., paymentIntentId: ..., refundedAmountMinor: ..., refundPendingMinor: ..., refundFailureReason: ..., stripeRefundId: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(markOrganiserGuestAdditionalPaymentRefundedVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.organiserGuestPayment_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -19907,7 +20408,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateTicketType` Mutation is of type `UpdateTicketTypeData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface UpdateTicketTypeData {
-  ticketType_update?: TicketType_Key | null;
+  ticketType_updateMany: number;
 }
 ```
 
@@ -19975,7 +20476,7 @@ export default function UpdateTicketTypeComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.ticketType_update);
+    console.log(mutation.data.ticketType_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

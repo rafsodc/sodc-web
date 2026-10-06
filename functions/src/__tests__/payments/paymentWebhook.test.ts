@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Stripe from "stripe";
 import {
+  BookingPaymentAdjustmentStatus,
   PaymentWebhookEventOutcome,
   TicketOrderStatus,
 } from "@dataconnect/admin-generated";
@@ -45,7 +46,8 @@ const getWebhookEvent = vi.spyOn(admin, "getPaymentWebhookEventByStripeEventId")
 const createWebhookEvent = vi.spyOn(admin, "createPaymentWebhookEvent");
 const getOrder = vi.spyOn(admin, "getTicketOrderForWebhook");
 const upsertDispute = vi.spyOn(admin, "upsertTicketOrderDisputeFromWebhook");
-const updateAllocationRefund = vi.spyOn(admin, "updateBookingPlaceAllocationRefundFromCallable");
+const updateAllocationRefund = vi.spyOn(admin, "updateBookingPlaceAllocationRefundStateFromCallable");
+const settleAdjustments = vi.spyOn(admin, "settleBookingPaymentAdjustmentsFromCallable");
 
 type Handler = (
   req: { headers: Record<string, unknown>; rawBody: Buffer },
@@ -113,6 +115,7 @@ describe("stripe payment webhook orchestration", () => {
     } as never);
     upsertDispute.mockResolvedValue({ data: {} } as never);
     updateAllocationRefund.mockResolvedValue({ data: {} } as never);
+    settleAdjustments.mockResolvedValue({ data: {} } as never);
     serviceMocks.applyTransitions.mockResolvedValue({
       appliedCount: 1,
       reconciledOrderIds: [ORDER_ID],
@@ -313,7 +316,9 @@ describe("stripe payment webhook orchestration", () => {
     expect(updateAllocationRefund).toHaveBeenCalledWith({
       id: allocationId,
       refundedAmountMinor: 1000,
+      refundPendingAmountMinor: 0,
       stripeRefundId: "re_partial",
+      refundFailureReason: null,
     });
     expect(updateAllocationRefund.mock.invocationCallOrder[0]).toBeLessThan(
       serviceMocks.applyTransitions.mock.invocationCallOrder[0]
@@ -329,6 +334,49 @@ describe("stripe payment webhook orchestration", () => {
       })
     );
     expect(response.send).toHaveBeenCalledWith(200, "ok");
+  });
+
+  it("marks an organiser amendment refund as failed when Stripe reports an asynchronous failure", async () => {
+    const response = responseHarness();
+    const allocationId = "22222222-2222-4222-8222-222222222222";
+    const bookingId = "33333333-3333-4333-8333-333333333333";
+
+    await handler(
+      signedRequest(
+        stripeEvent({
+          id: "evt_refund_failed",
+          type: "refund.failed",
+          object: {
+            id: "re_failed",
+            amount: 1000,
+            status: "failed",
+            failure_reason: "declined",
+            metadata: {
+              ticketOrderId: ORDER_ID,
+              allocationId,
+              bookingId,
+              refundAmountMinor: "1000",
+              resultingRefundedAmountMinor: "1000",
+            },
+          },
+        })
+      ),
+      response.res
+    );
+
+    expect(updateAllocationRefund).toHaveBeenCalledWith({
+      id: allocationId,
+      refundedAmountMinor: 0,
+      refundPendingAmountMinor: 0,
+      stripeRefundId: "re_failed",
+      refundFailureReason: "declined",
+    });
+    expect(settleAdjustments).toHaveBeenCalledWith({
+      revisionBookingId: bookingId,
+      status: BookingPaymentAdjustmentStatus.REFUND_FAILED,
+    });
+    expect(serviceMocks.applyTransitions).not.toHaveBeenCalled();
+    expect(response.send).toHaveBeenCalledWith(200, "Ignored event");
   });
 
   it("ignores cumulative charge.refunded events in favour of exact refund.created routing", async () => {

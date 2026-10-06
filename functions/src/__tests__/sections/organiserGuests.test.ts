@@ -15,7 +15,7 @@ const stripe = vi.hoisted(() => ({
   checkout: {
     sessions: { create: vi.fn(), retrieve: vi.fn(), expire: vi.fn() },
   },
-  refunds: { list: vi.fn() },
+  refunds: { create: vi.fn(), list: vi.fn() },
   paymentIntents: { retrieve: vi.fn() },
 }));
 vi.mock("../../paymentConfig", () => ({
@@ -43,8 +43,11 @@ const base = {
   stripeSessionId: null,
   stripePaymentIntentId: null,
   paidAt: null,
+  paidAmountMinor: null,
   refundedAmountMinor: 0,
   refundPendingMinor: 0,
+  refundFailureReason: null,
+  payments: [],
   cancelledAt: null,
   createdBy: "organiser",
   updatedBy: "organiser",
@@ -64,7 +67,9 @@ const dietary = vi.spyOn(db, "updateOrganiserGuestDietary");
 const cancel = vi.spyOn(db, "cancelOrganiserGuest");
 const rotate = vi.spyOn(db, "rotateOrganiserGuestLink");
 const attach = vi.spyOn(db, "attachOrganiserGuestCheckout");
+const attachAdditional = vi.spyOn(db, "attachOrganiserGuestAdditionalCheckout");
 const paid = vi.spyOn(db, "markOrganiserGuestPaid");
+const paidAdditional = vi.spyOn(db, "markOrganiserGuestAdditionalPaymentPaid");
 const refund = vi.spyOn(db, "markOrganiserGuestRefunded");
 const create = vi.spyOn(db, "createOrganiserGuest");
 const typeQuery = vi.spyOn(db, "getOrganiserGuestType");
@@ -118,14 +123,35 @@ beforeEach(() => {
   dietary.mockResolvedValue({} as never);
   cancel.mockResolvedValue({} as never);
   rotate.mockResolvedValue({} as never);
-  paid.mockResolvedValue({} as never);
+  paid.mockImplementation(async ({ paymentIntentId, paidAmountMinor }) => {
+    Object.assign(guest, {
+      paidAt: "2026-01-01",
+      stripePaymentIntentId: paymentIntentId,
+      paidAmountMinor,
+    });
+    return {} as never;
+  });
   refund.mockResolvedValue({} as never);
   create.mockResolvedValue({} as never);
   attach.mockResolvedValue({ data: { organiserGuest_updateMany: 1 } });
+  attachAdditional.mockResolvedValue({ data: { organiserGuest_updateMany: 1 } });
+  paidAdditional.mockResolvedValue({} as never);
   stripe.checkout.sessions.create.mockResolvedValue({
     id: "cs_guest",
     status: "open",
     url: "https://checkout.stripe.test/session",
+  });
+  stripe.refunds.create.mockResolvedValue({
+    id: "re_guest",
+    payment_intent: "pi_guest",
+    status: "succeeded",
+  });
+  stripe.paymentIntents.retrieve.mockResolvedValue({
+    metadata: { domain: "organiser-guest", guestId: id },
+  });
+  stripe.refunds.list.mockResolvedValue({
+    data: [{ id: "re_guest", status: "succeeded", amount: 1000 }],
+    has_more: false,
   });
 });
 describe("organiser guest capability and permissions", () => {
@@ -348,16 +374,60 @@ describe("organiser guest capability and permissions", () => {
 describe("organiser ticket reassignment", () => {
   it("reassigns an unpaid guest atomically while preserving their link and reservation identity", async () => {
     const reassign = vi.spyOn(db, "reassignOrganiserGuestTicket").mockResolvedValue({} as never);
-    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, action: "edit" }, true));
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, expectedTicketPriceMinor: 1000, action: "edit" }, true));
     expect(reassign).toHaveBeenCalledWith(expect.objectContaining({ id, version: 1, ticketTypeId: other, priceMinor: 1000, checkoutKey: expect.any(String) }));
     expect(reassign.mock.calls[0][0]).not.toHaveProperty("tokenHash");
     expect(cancel).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled();
   });
-  it("rejects reassignment once a ticket is paid", async () => {
+  it("reassigns a paid ticket while preserving its original paid amount", async () => {
     Object.assign(guest, { paidAt: "2026-01-01", stripePaymentIntentId: "pi_guest" });
-    const reassign = vi.spyOn(db, "reassignOrganiserGuestTicket");
-    await expect(manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, action: "edit" }, true))).rejects.toMatchObject({ code: "failed-precondition" });
-    expect(reassign).not.toHaveBeenCalled();
+    const reassign = vi.spyOn(db, "reassignOrganiserGuestTicket").mockResolvedValue({} as never);
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, expectedTicketPriceMinor: 1000, action: "edit" }, true));
+    expect(reassign).toHaveBeenCalledWith(expect.objectContaining({
+      id,
+      paidAmountMinor: 1000,
+      priceMinor: 1000,
+    }));
+  });
+  it("refunds only the net reduction when a paid guest ticket is downgraded", async () => {
+    Object.assign(guest, { paidAt: "2026-01-01", paidAmountMinor: 1000, stripePaymentIntentId: "pi_guest" });
+    typeQuery.mockResolvedValue({ data: { ticketTypes: [{ ...base.ticketType, id: other, price: 5, includesDinner: false, includesSymposium: false }] } } as never);
+    vi.spyOn(db, "reassignOrganiserGuestTicket").mockImplementation(async (input) => {
+      Object.assign(guest, { priceMinor: input.priceMinor, paidAmountMinor: input.paidAmountMinor, includesDinner: false });
+      return {} as never;
+    });
+    stripe.refunds.list.mockResolvedValue({ data: [{ id: "re_guest", status: "succeeded", amount: 500 }], has_more: false });
+
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, expectedTicketPriceMinor: 500, action: "edit" }, true));
+
+    expect(stripe.refunds.create).toHaveBeenCalledWith(
+      expect.objectContaining({ payment_intent: "pi_guest", amount: 500 }),
+      { idempotencyKey: `organiser-guest-refund:${id}:original:500` },
+    );
+  });
+  it("leaves only the net increase payable through the existing guest link", async () => {
+    Object.assign(guest, { paidAt: "2026-01-01", paidAmountMinor: 1000, stripePaymentIntentId: "pi_guest" });
+    typeQuery.mockResolvedValue({ data: { ticketTypes: [{ ...base.ticketType, id: other, price: 15, includesDinner: true, includesSymposium: true }] } } as never);
+    vi.spyOn(db, "reassignOrganiserGuestTicket").mockImplementation(async (input) => {
+      Object.assign(guest, { priceMinor: input.priceMinor, paidAmountMinor: input.paidAmountMinor, checkoutKey: input.checkoutKey, stripeSessionId: null });
+      return {} as never;
+    });
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, expectedTicketPriceMinor: 1500, action: "edit" }, true));
+
+    await createOrganiserGuestCheckout.run(request({ token }));
+
+    expect(stripe.refunds.create).not.toHaveBeenCalled();
+    expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 500 }) })],
+        metadata: expect.objectContaining({ guestPaymentId: expect.any(String) }),
+      }),
+      { idempotencyKey: expect.stringMatching(new RegExp(`^organiser-guest:${id}:`)) },
+    );
+    expect(attachAdditional).toHaveBeenCalledWith(expect.objectContaining({
+      guestId: id,
+      amountMinor: 500,
+    }));
   });
 });
 describe("guest payments and cancellation", () => {
@@ -403,6 +473,7 @@ describe("guest payments and cancellation", () => {
       id,
       sessionId: "cs_guest",
       paymentIntentId: "pi_guest",
+      paidAmountMinor: 1000,
     });
     expect(guestPaymentStatus({ ...guest, paidAt: "2026-01-01" })).toBe(
       "REFUND_REQUIRED",
@@ -453,6 +524,8 @@ describe("guest payments and cancellation", () => {
       paymentIntentId: "pi_guest",
       refundedAmountMinor: 500,
       refundPendingMinor: 0,
+      refundFailureReason: null,
+      stripeRefundId: null,
       version: 1,
     });
     refund.mockClear();
@@ -482,6 +555,8 @@ describe("guest payments and cancellation", () => {
       paymentIntentId: "pi_guest",
       refundedAmountMinor: 0,
       refundPendingMinor: 1000,
+      refundFailureReason: null,
+      stripeRefundId: null,
       version: 1,
     });
     expect(guestPaymentStatus({ ...guest, refundPendingMinor: 1000 })).toBe(
@@ -498,6 +573,8 @@ describe("guest payments and cancellation", () => {
       paymentIntentId: "pi_guest",
       refundedAmountMinor: 0,
       refundPendingMinor: 0,
+      refundFailureReason: "Stripe refund failed",
+      stripeRefundId: null,
       version: 1,
     });
   });

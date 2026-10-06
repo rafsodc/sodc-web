@@ -117,6 +117,7 @@ describe("summarizeEventBookingPayment", () => {
 describe("hasExpiredDraftHold", () => {
   it("requires cancelled bookings without any active booking", () => {
     expect(hasExpiredDraftHold([{ status: BookingStatus.CANCELLED }])).toBe(true);
+    expect(hasExpiredDraftHold([{ status: BookingStatus.CANCELLED, approvalStatus: "APPROVED" }])).toBe(false);
     expect(hasExpiredDraftHold([{ status: BookingStatus.CANCELLED }, { status: BookingStatus.SUBMITTED }])).toBe(false);
   });
 });

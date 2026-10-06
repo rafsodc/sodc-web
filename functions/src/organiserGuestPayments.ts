@@ -23,23 +23,65 @@ export async function handleOrganiserGuestStripeEvent(
     if (session.metadata?.domain !== "organiser-guest") return false;
     const guest = await guestById(validateUUID(session.metadata.guestId));
     if (session.payment_status !== "paid") return true;
-    if (session.amount_total !== guest.priceMinor || session.currency !== "gbp")
+    const guestPaymentId = session.metadata.guestPaymentId;
+    const additionalPayment = guestPaymentId
+      ? guest.payments.find((payment) => validateUUID(payment.id) === validateUUID(guestPaymentId))
+      : null;
+    const expectedAmountMinor = additionalPayment?.amountMinor ?? guest.priceMinor;
+    if (session.amount_total !== expectedAmountMinor || session.currency !== "gbp")
       throw new Error("Guest payment evidence mismatch");
     const paymentIntentId =
       typeof session.payment_intent === "string"
         ? session.payment_intent
         : session.payment_intent?.id;
     if (!paymentIntentId) throw new Error("Missing guest payment intent");
-    if (guest.paidAt) {
-      if (guest.stripePaymentIntentId !== paymentIntentId)
-        throw new Error("Duplicate guest payment requires review");
-      return true;
+    if (additionalPayment) {
+      if (additionalPayment.paidAt) {
+        if (additionalPayment.stripePaymentIntentId !== paymentIntentId)
+          throw new Error("Duplicate guest payment requires review");
+        return true;
+      }
+      await db.markOrganiserGuestAdditionalPaymentPaid({
+        id: additionalPayment.id,
+        guestId: guest.id,
+        sessionId: session.id,
+        paymentIntentId,
+      });
+      if (guest.cancelledAt) {
+        const refund = await stripe.refunds.create(
+          {
+            payment_intent: paymentIntentId,
+            amount: additionalPayment.amountMinor,
+            metadata: { domain: "organiser-guest", guestId: guest.id, guestPaymentId: additionalPayment.id },
+          },
+          { idempotencyKey: `organiser-guest-refund:${guest.id}:${additionalPayment.id}:${additionalPayment.amountMinor}` },
+        );
+        await handleOrganiserGuestStripeEvent({ type: "refund.created", data: { object: refund } }, stripe);
+      }
+    } else {
+      if (guest.paidAt) {
+        if (guest.stripePaymentIntentId !== paymentIntentId)
+          throw new Error("Duplicate guest payment requires review");
+        return true;
+      }
+      await db.markOrganiserGuestPaid({
+        id: guest.id,
+        sessionId: session.id,
+        paymentIntentId,
+        paidAmountMinor: expectedAmountMinor,
+      });
+      if (guest.cancelledAt) {
+        const refund = await stripe.refunds.create(
+          {
+            payment_intent: paymentIntentId,
+            amount: expectedAmountMinor,
+            metadata: { domain: "organiser-guest", guestId: guest.id },
+          },
+          { idempotencyKey: `organiser-guest-refund:${guest.id}:original:${expectedAmountMinor}` },
+        );
+        await handleOrganiserGuestStripeEvent({ type: "refund.created", data: { object: refund } }, stripe);
+      }
     }
-    await db.markOrganiserGuestPaid({
-      id: guest.id,
-      sessionId: session.id,
-      paymentIntentId,
-    });
     return true;
   }
   if (event.type === "checkout.session.expired")
@@ -69,10 +111,16 @@ export async function handleOrganiserGuestStripeEvent(
     const intent = await stripe.paymentIntents.retrieve(id);
     if (intent.metadata.domain !== "organiser-guest") return false;
     const guest = await guestById(validateUUID(intent.metadata.guestId));
-    if (!guest.paidAt)
-      throw new Error("Guest payment confirmation not yet recorded");
-    if (guest.stripePaymentIntentId !== id)
+    const guestPaymentId = intent.metadata.guestPaymentId;
+    const additionalPayment = guestPaymentId
+      ? guest.payments.find((payment) => validateUUID(payment.id) === validateUUID(guestPaymentId))
+      : null;
+    if (additionalPayment) {
+      if (!additionalPayment.paidAt || additionalPayment.stripePaymentIntentId !== id)
+        throw new Error("Guest refund evidence mismatch");
+    } else if (!guest.paidAt || guest.stripePaymentIntentId !== id) {
       throw new Error("Guest refund evidence mismatch");
+    }
     // Read Stripe's current refund state, not a potentially stale webhook snapshot.
     let refundedAmountMinor = 0;
     let refundPendingMinor = 0;
@@ -94,22 +142,44 @@ export async function handleOrganiserGuestStripeEvent(
       if (!page.has_more) break;
       startingAfter = page.data[page.data.length - 1].id;
     }
-    if (refundedAmountMinor + refundPendingMinor > guest.priceMinor)
+    const sourceAmountMinor = additionalPayment?.amountMinor ?? guest.paidAmountMinor ?? guest.priceMinor;
+    if (refundedAmountMinor + refundPendingMinor > sourceAmountMinor)
       throw new Error("Guest refund amount mismatch");
-    if (refundedAmountMinor < guest.refundedAmountMinor)
+    const previousRefundedAmountMinor = additionalPayment?.refundedAmountMinor ?? guest.refundedAmountMinor;
+    const previousRefundPendingMinor = additionalPayment?.refundPendingMinor ?? guest.refundPendingMinor;
+    const previousRefundFailureReason = additionalPayment?.refundFailureReason ?? guest.refundFailureReason;
+    const refundObject = event.data.object as { id?: string; status?: string; failure_reason?: string | null };
+    const refundFailureReason = event.type === "refund.failed" || refundObject.status === "failed" || refundObject.status === "canceled"
+      ? refundObject.failure_reason ?? "Stripe refund failed"
+      : null;
+    if (refundedAmountMinor < previousRefundedAmountMinor)
       throw new Error("Stale guest refund evidence");
     if (
-      guest.refundedAmountMinor === refundedAmountMinor &&
-      guest.refundPendingMinor === refundPendingMinor
+      previousRefundedAmountMinor === refundedAmountMinor &&
+      previousRefundPendingMinor === refundPendingMinor &&
+      previousRefundFailureReason === refundFailureReason
     )
       return true;
-    await db.markOrganiserGuestRefunded({
-      id: guest.id,
-      paymentIntentId: id,
-      refundedAmountMinor,
-      refundPendingMinor,
-      version: guest.version,
-    });
+    if (additionalPayment) {
+      await db.markOrganiserGuestAdditionalPaymentRefunded({
+        id: additionalPayment.id,
+        paymentIntentId: id,
+        refundedAmountMinor,
+        refundPendingMinor,
+        refundFailureReason,
+        stripeRefundId: refundObject.id ?? null,
+      });
+    } else {
+      await db.markOrganiserGuestRefunded({
+        id: guest.id,
+        paymentIntentId: id,
+        refundedAmountMinor,
+        refundPendingMinor,
+        refundFailureReason,
+        stripeRefundId: refundObject.id ?? null,
+        version: guest.version,
+      });
+    }
     return true;
   }
   return false;

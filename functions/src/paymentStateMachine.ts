@@ -30,6 +30,8 @@ export const SUPPORTED_STRIPE_EVENT_TYPES = new Set<string>([
   "checkout.session.async_payment_failed",
   "charge.refunded",
   "refund.created",
+  "refund.updated",
+  "refund.failed",
   "charge.dispute.created",
   "charge.dispute.updated",
   "charge.dispute.closed",
@@ -99,13 +101,20 @@ export function normalizeStripeEvent(event: StripeEventLike): StripeEventNormali
         reason: "checkout_failed_or_expired",
       };
     case "refund.created":
+    case "refund.updated":
+    case "refund.failed": {
+      const status = (event.data.object as { status?: unknown }).status;
+      if (typeof status === "string" && status !== "succeeded") {
+        return { kind: "ignore", orderId, orderIds, reason: `refund_${status}` };
+      }
       return {
         kind: "payment_transition",
         intent: "MARK_REFUNDED",
         orderId,
         orderIds,
-        reason: "refund_created",
+        reason: "refund_succeeded",
       };
+    }
     case "charge.refunded":
       // A Charge contains cumulative refunds for every order sharing its
       // PaymentIntent. Exact allocation/order routing comes from refund.created metadata.

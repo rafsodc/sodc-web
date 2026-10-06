@@ -17,6 +17,7 @@ export enum BookingPaymentAdjustmentStatus {
   NOT_REQUIRED = "NOT_REQUIRED",
   PENDING_AUTO_REFUND = "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE = "PENDING_AUTO_CHARGE",
+  REFUND_FAILED = "REFUND_FAILED",
   SETTLED = "SETTLED",
 }
 export enum BookingStatus {
@@ -217,6 +218,19 @@ export interface AnnouncementRecipient_Key {
 export interface AnnouncementSend_Key {
   id: UUIDString;
   __typename?: 'AnnouncementSend_Key';
+}
+
+export interface AttachOrganiserGuestAdditionalCheckoutData {
+  organiserGuest_updateMany: number;
+  organiserGuestPayment_insert: OrganiserGuestPayment_Key;
+}
+
+export interface AttachOrganiserGuestAdditionalCheckoutVariables {
+  id: UUIDString;
+  guestId: UUIDString;
+  checkoutKey: string;
+  sessionId: string;
+  amountMinor: number;
 }
 
 export interface AttachOrganiserGuestCheckoutData {
@@ -1185,6 +1199,7 @@ export interface GetBookingForNotificationData {
       } & Section_Key;
     } & Event_Key;
     lines: ({
+      priceMinor?: number | null;
       sortOrder: number;
       guestDisplayName?: string | null;
       dietaryNote?: string | null;
@@ -1272,6 +1287,7 @@ export interface GetBookingRevisionForApprovalFromCallableData {
     } & Booking_Key;
     lines: ({
       id: UUIDString;
+      priceMinor?: number | null;
       sortOrder: number;
       guestDisplayName?: string | null;
       dietaryNote?: string | null;
@@ -1318,10 +1334,16 @@ export interface GetBookingsForBookerAndEventData {
       sitNextToUserIds?: string[] | null;
       accommodationRequested: boolean;
       accommodationNote?: string | null;
+      adjustments: ({
+        id: UUIDString;
+        deltaAmountMinor: number;
+        status: BookingPaymentAdjustmentStatus;
+      })[];
       createdAt: TimestampString;
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
@@ -1329,6 +1351,9 @@ export interface GetBookingsForBookerAndEventData {
             ticketOrderId: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
+            refundFailureReason?: string | null;
+            refundUpdatedAt?: TimestampString | null;
             stripeRefundId?: string | null;
             createdAt: TimestampString;
           } & BookingPlacePaymentAllocation_Key)[];
@@ -1634,6 +1659,11 @@ export interface GetMyBookingsData {
       approvalNote?: string | null;
       revisionNumber: number;
       updatedAt: TimestampString;
+      adjustments: ({
+        id: UUIDString;
+        deltaAmountMinor: number;
+        status: BookingPaymentAdjustmentStatus;
+      })[];
       event: {
         id: UUIDString;
         title: string;
@@ -1646,6 +1676,7 @@ export interface GetMyBookingsData {
       } & Event_Key;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
         } & BookingPlace_Key;
@@ -1683,12 +1714,14 @@ export interface GetMyBookingsForEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
             ticketOrderId: UUIDString;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
         sortOrder: number;
@@ -1918,11 +1951,28 @@ export interface GetOrganiserGuestByTokenData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -1962,11 +2012,28 @@ export interface GetOrganiserGuestData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -2364,6 +2431,7 @@ export interface GetTicketOrdersForBookerAndEventData {
       quantity: number;
       unitAmountMinor: number;
       totalAmountMinor: number;
+      stripeCheckoutSessionId?: string | null;
       createdAt: TimestampString;
       ticketType: {
         id: UUIDString;
@@ -2721,6 +2789,7 @@ export interface ListEventBookingsForAdminData {
       } & User_Key;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
@@ -2730,6 +2799,9 @@ export interface ListEventBookingsForAdminData {
             id: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
+            refundFailureReason?: string | null;
+            refundUpdatedAt?: TimestampString | null;
             ticketOrderId: UUIDString;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
@@ -2955,11 +3027,28 @@ export interface ListOrganiserGuestsData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -3266,6 +3355,32 @@ export interface MarkNotifyDeliveryReceiptProcessedVariables {
   processedAt: TimestampString;
 }
 
+export interface MarkOrganiserGuestAdditionalPaymentPaidData {
+  organiserGuestPayment_updateMany: number;
+  organiserGuest_update?: OrganiserGuest_Key | null;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface MarkOrganiserGuestAdditionalPaymentPaidVariables {
+  id: UUIDString;
+  guestId: UUIDString;
+  sessionId: string;
+  paymentIntentId: string;
+}
+
+export interface MarkOrganiserGuestAdditionalPaymentRefundedData {
+  organiserGuestPayment_updateMany: number;
+}
+
+export interface MarkOrganiserGuestAdditionalPaymentRefundedVariables {
+  id: UUIDString;
+  paymentIntentId: string;
+  refundedAmountMinor: number;
+  refundPendingMinor: number;
+  refundFailureReason?: string | null;
+  stripeRefundId?: string | null;
+}
+
 export interface MarkOrganiserGuestPaidData {
   organiserGuest_updateMany: number;
   organiserGuestAudit_insert: OrganiserGuestAudit_Key;
@@ -3275,6 +3390,7 @@ export interface MarkOrganiserGuestPaidVariables {
   id: UUIDString;
   sessionId: string;
   paymentIntentId: string;
+  paidAmountMinor: number;
 }
 
 export interface MarkOrganiserGuestRefundedData {
@@ -3287,6 +3403,8 @@ export interface MarkOrganiserGuestRefundedVariables {
   paymentIntentId: string;
   refundedAmountMinor: number;
   refundPendingMinor: number;
+  refundFailureReason?: string | null;
+  stripeRefundId?: string | null;
   version: number;
 }
 
@@ -3393,6 +3511,11 @@ export interface OrganiserGuestAudit_Key {
   __typename?: 'OrganiserGuestAudit_Key';
 }
 
+export interface OrganiserGuestPayment_Key {
+  id: UUIDString;
+  __typename?: 'OrganiserGuestPayment_Key';
+}
+
 export interface OrganiserGuestTicketType_Key {
   id: UUIDString;
   __typename?: 'OrganiserGuestTicketType_Key';
@@ -3432,6 +3555,7 @@ export interface ReassignOrganiserGuestTicketVariables {
   email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
+  paidAmountMinor?: number | null;
   includesSymposium: boolean;
   includesDinner: boolean;
   checkoutKey: string;
@@ -3783,6 +3907,18 @@ export interface UpdateBookingPlaceAllocationRefundFromCallableVariables {
   stripeRefundId: string;
 }
 
+export interface UpdateBookingPlaceAllocationRefundStateFromCallableData {
+  bookingPlacePaymentAllocation_update?: BookingPlacePaymentAllocation_Key | null;
+}
+
+export interface UpdateBookingPlaceAllocationRefundStateFromCallableVariables {
+  id: UUIDString;
+  refundedAmountMinor: number;
+  refundPendingAmountMinor: number;
+  stripeRefundId?: string | null;
+  refundFailureReason?: string | null;
+}
+
 export interface UpdateBookingStatusFromCallableData {
   booking_update?: Booking_Key | null;
 }
@@ -3881,7 +4017,7 @@ export interface UpdateSectionVariables {
 }
 
 export interface UpdateTicketTypeData {
-  ticketType_update?: TicketType_Key | null;
+  ticketType_updateMany: number;
 }
 
 export interface UpdateTicketTypeVariables {
@@ -4371,6 +4507,11 @@ export function updateBookingPlaceAllocationRefundFromCallable(dc: DataConnect, 
 /** Generated Node Admin SDK operation action function for the 'UpdateBookingPlaceAllocationRefundFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
 export function updateBookingPlaceAllocationRefundFromCallable(vars: UpdateBookingPlaceAllocationRefundFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingPlaceAllocationRefundFromCallableData>>;
 
+/** Generated Node Admin SDK operation action function for the 'UpdateBookingPlaceAllocationRefundStateFromCallable' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateBookingPlaceAllocationRefundStateFromCallable(dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingPlaceAllocationRefundStateFromCallableData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateBookingPlaceAllocationRefundStateFromCallable' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateBookingPlaceAllocationRefundStateFromCallable(vars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateBookingPlaceAllocationRefundStateFromCallableData>>;
+
 /** Generated Node Admin SDK operation action function for the 'GetTicketOrderForWebhook' Query. Allow users to execute without passing in DataConnect. */
 export function getTicketOrderForWebhook(dc: DataConnect, vars: GetTicketOrderForWebhookVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketOrderForWebhookData>>;
 /** Generated Node Admin SDK operation action function for the 'GetTicketOrderForWebhook' Query. Allow users to pass in custom DataConnect instances. */
@@ -4805,6 +4946,21 @@ export function markOrganiserGuestRefunded(vars: MarkOrganiserGuestRefundedVaria
 export function reassignOrganiserGuestTicket(dc: DataConnect, vars: ReassignOrganiserGuestTicketVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReassignOrganiserGuestTicketData>>;
 /** Generated Node Admin SDK operation action function for the 'ReassignOrganiserGuestTicket' Mutation. Allow users to pass in custom DataConnect instances. */
 export function reassignOrganiserGuestTicket(vars: ReassignOrganiserGuestTicketVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReassignOrganiserGuestTicketData>>;
+
+/** Generated Node Admin SDK operation action function for the 'AttachOrganiserGuestAdditionalCheckout' Mutation. Allow users to execute without passing in DataConnect. */
+export function attachOrganiserGuestAdditionalCheckout(dc: DataConnect, vars: AttachOrganiserGuestAdditionalCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AttachOrganiserGuestAdditionalCheckoutData>>;
+/** Generated Node Admin SDK operation action function for the 'AttachOrganiserGuestAdditionalCheckout' Mutation. Allow users to pass in custom DataConnect instances. */
+export function attachOrganiserGuestAdditionalCheckout(vars: AttachOrganiserGuestAdditionalCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AttachOrganiserGuestAdditionalCheckoutData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkOrganiserGuestAdditionalPaymentPaid' Mutation. Allow users to execute without passing in DataConnect. */
+export function markOrganiserGuestAdditionalPaymentPaid(dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentPaidVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkOrganiserGuestAdditionalPaymentPaidData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkOrganiserGuestAdditionalPaymentPaid' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markOrganiserGuestAdditionalPaymentPaid(vars: MarkOrganiserGuestAdditionalPaymentPaidVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkOrganiserGuestAdditionalPaymentPaidData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkOrganiserGuestAdditionalPaymentRefunded' Mutation. Allow users to execute without passing in DataConnect. */
+export function markOrganiserGuestAdditionalPaymentRefunded(dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkOrganiserGuestAdditionalPaymentRefundedData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkOrganiserGuestAdditionalPaymentRefunded' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markOrganiserGuestAdditionalPaymentRefunded(vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkOrganiserGuestAdditionalPaymentRefundedData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetCurrentUser' Query. Allow users to execute without passing in DataConnect. */
 export function getCurrentUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserData>>;

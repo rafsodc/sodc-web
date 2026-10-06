@@ -30,8 +30,12 @@ export async function confirmBookingIfFullyPaid(
   dependencies: BookingPaymentFinalizationDependencies = defaultDependencies
 ): Promise<{ bookingId: UUIDString | null; confirmed: boolean }> {
   const result = await dependencies.getBookings(args);
-  const booking = selectLatestPaymentEligibleBooking(hydrateBookingsWithTicketOrders(result.data));
-  if (!booking || !bookingIsFullyPaid(booking)) {
+  const bookings = hydrateBookingsWithTicketOrders(result.data);
+  const booking = selectLatestPaymentEligibleBooking(bookings);
+  const history = booking
+    ? bookings.filter((row) => row.revisionGroupId.replace(/-/g, "") === booking.revisionGroupId.replace(/-/g, ""))
+    : [];
+  if (!booking || !bookingIsFullyPaid(booking, history)) {
     return { bookingId: booking?.id ?? null, confirmed: false };
   }
   if (booking.status !== BookingStatus.CONFIRMED) {

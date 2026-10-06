@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import type { GetMyBookingsForEventData } from "@dataconnect/generated";
+import { BookingPaymentAdjustmentStatus } from "@dataconnect/generated";
 import { ROUTES } from "../../../constants/routes";
 import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
 import {
@@ -115,11 +116,17 @@ export default function EventBookingStatusSummary({
     ticketOrders,
     adjustments: paymentAdjustments,
   });
-  const ticketRows = buildBookingTicketRowsWithPaymentStatus({
+  const rawTicketRows = buildBookingTicketRowsWithPaymentStatus({
     booking: paymentDisplayBooking,
     eventId,
     ticketOrders,
   });
+  const adjustmentSettled = paymentAdjustments.some(
+    (adjustment) => adjustment.status === BookingPaymentAdjustmentStatus.SETTLED
+  );
+  const ticketRows = adjustmentSettled
+    ? rawTicketRows.map((row) => ({ ...row, paymentStatus: "paid" as const, paymentStatusLabel: "Paid" }))
+    : rawTicketRows;
   const statusCard = bookingStatusCard(booking, paymentSummary, hasSeparatePaymentBooking);
   const showPayNow =
     Boolean(onPayNow) &&

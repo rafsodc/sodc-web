@@ -14,6 +14,7 @@ export const MAX_ATOMIC_BOOKING_LINES = 100;
 export interface SubmissionLine {
   ticketTypeId: UUIDString;
   audience: TicketAudience;
+  priceMinor?: number;
   sortOrder: number;
   guestUserId?: string | null;
   guestDisplayName?: string | null;
@@ -28,6 +29,7 @@ export interface ExistingSubmissionLine extends SubmissionLine {
 export interface PlannedSubmissionLine extends SubmissionLine {
   id: UUIDString;
   bookingPlaceId: UUIDString;
+  priceMinor: number;
 }
 
 export interface BookingPlacePlan {
@@ -80,7 +82,14 @@ export function planBookingPlaces(args: {
       const bookingPlaceId = matched?.bookingPlaceId ?? createId();
       if (matched?.bookingPlaceId) reusedPlaceIds.add(uuidKey(matched.bookingPlaceId));
       else newBookingPlaceIds.push(bookingPlaceId);
-      return { ...line, id: createId(), bookingPlaceId };
+      return {
+        ...line,
+        // Reusing a place means the attendee/ticket identity is unchanged, so
+        // its agreed price must survive later catalogue price changes.
+        priceMinor: matched?.priceMinor ?? line.priceMinor ?? 0,
+        id: createId(),
+        bookingPlaceId,
+      };
     });
 
   const removed = (args.previousLines ?? []).filter(
@@ -123,6 +132,7 @@ interface CompleteBookingVariables {
     bookingPlaceId: UUIDString;
     bookingId: UUIDString;
     ticketTypeId: UUIDString;
+    priceMinor: number;
     guestUserId?: string | null;
     guestDisplayName?: string | null;
     dietaryNote?: string | null;
@@ -145,6 +155,8 @@ export interface CompleteBookingPersistenceInput {
   accommodationRequested: boolean;
   accommodationNote?: string | null;
   placePlan: BookingPlacePlan;
+  status?: BookingStatus;
+  actorId?: string;
 }
 
 function completeVariables(input: CompleteBookingPersistenceInput): CompleteBookingVariables {
@@ -156,31 +168,32 @@ function completeVariables(input: CompleteBookingPersistenceInput): CompleteBook
     revisionGroupId: input.revisionGroupId,
     revisionNumber: input.revisionNumber,
     supersedesBookingId: input.supersedesBookingId ?? null,
-    status: BookingStatus.SUBMITTED,
+    status: input.status ?? BookingStatus.SUBMITTED,
     approvalStatus: input.approvalStatus,
     sitNextToUserIds: input.sitNextToUserIds,
     accommodationRequested: input.accommodationRequested,
     accommodationNote: input.accommodationRequested ? input.accommodationNote ?? null : null,
-    createdBy: "system",
-    updatedBy: "system",
+    createdBy: input.actorId ?? "system",
+    updatedBy: input.actorId ?? "system",
     bookingPlaces: input.placePlan.newBookingPlaceIds.map((id) => ({
       id,
       eventId: input.eventId,
       bookerId: input.bookerId,
-      createdBy: "system",
-      updatedBy: "system",
+      createdBy: input.actorId ?? "system",
+      updatedBy: input.actorId ?? "system",
     })),
     bookingLines: input.placePlan.lines.map((line) => ({
       id: line.id,
       bookingPlaceId: line.bookingPlaceId,
       bookingId: input.bookingId,
       ticketTypeId: line.ticketTypeId,
+      priceMinor: line.priceMinor,
       guestUserId: line.guestUserId?.trim() || null,
       guestDisplayName: line.guestDisplayName?.trim() || null,
       dietaryNote: line.dietaryNote?.trim() || null,
       sortOrder: line.sortOrder,
-      createdBy: "system",
-      updatedBy: "system",
+      createdBy: input.actorId ?? "system",
+      updatedBy: input.actorId ?? "system",
     })),
   };
 }

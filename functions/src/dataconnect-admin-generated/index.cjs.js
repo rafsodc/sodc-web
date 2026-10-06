@@ -12,6 +12,7 @@ const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE: "PENDING_AUTO_CHARGE",
+  REFUND_FAILED: "REFUND_FAILED",
   SETTLED: "SETTLED",
 }
 exports.BookingPaymentAdjustmentStatus = BookingPaymentAdjustmentStatus;
@@ -621,6 +622,13 @@ function updateBookingPlaceAllocationRefundFromCallable(dcOrVarsOrOptions, varsO
 }
 exports.updateBookingPlaceAllocationRefundFromCallable = updateBookingPlaceAllocationRefundFromCallable;
 
+function updateBookingPlaceAllocationRefundStateFromCallable(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateBookingPlaceAllocationRefundStateFromCallable', inputVars, inputOpts);
+}
+exports.updateBookingPlaceAllocationRefundStateFromCallable = updateBookingPlaceAllocationRefundStateFromCallable;
+
 function getTicketOrderForWebhook(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -1229,6 +1237,27 @@ function reassignOrganiserGuestTicket(dcOrVarsOrOptions, varsOrOptions, options)
   return dcInstance.executeMutation('ReassignOrganiserGuestTicket', inputVars, inputOpts);
 }
 exports.reassignOrganiserGuestTicket = reassignOrganiserGuestTicket;
+
+function attachOrganiserGuestAdditionalCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AttachOrganiserGuestAdditionalCheckout', inputVars, inputOpts);
+}
+exports.attachOrganiserGuestAdditionalCheckout = attachOrganiserGuestAdditionalCheckout;
+
+function markOrganiserGuestAdditionalPaymentPaid(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkOrganiserGuestAdditionalPaymentPaid', inputVars, inputOpts);
+}
+exports.markOrganiserGuestAdditionalPaymentPaid = markOrganiserGuestAdditionalPaymentPaid;
+
+function markOrganiserGuestAdditionalPaymentRefunded(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkOrganiserGuestAdditionalPaymentRefunded', inputVars, inputOpts);
+}
+exports.markOrganiserGuestAdditionalPaymentRefunded = markOrganiserGuestAdditionalPaymentRefunded;
 
 function getCurrentUser(dcOrOptions, options) {
   const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);

@@ -8,6 +8,8 @@ export * from "./sections";
 export * from "./eventAttendees";
 export * from "./bookings";
 export * from "./bookingApprovals";
+export * from "./organiserBookingAmendments";
+export * from "./eventAdministration";
 export * from "./payments";
 export * from "./stagedExpiry";
 export * from "./userGroups";

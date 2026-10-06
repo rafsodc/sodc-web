@@ -131,6 +131,7 @@ function ticketTypeIdsFromBooking(booking: EventBookingSummaryInput): string[] {
 export function buildBookingTicketDisplayRows(booking: {
   lines?: Array<{
     id: string;
+    priceMinor?: number | null;
     guestDisplayName?: string | null;
     ticketType?: { id?: string; title?: string; price?: number | null } | null;
   }> | null;
@@ -143,7 +144,7 @@ export function buildBookingTicketDisplayRows(booking: {
       ticketTypeId: line.ticketType?.id ?? null,
       ticketTitle: line.ticketType?.title ?? "Ticket",
       guestName: line.guestDisplayName ?? null,
-      price: line.ticketType?.price ?? null,
+      price: line.priceMinor != null ? line.priceMinor / 100 : line.ticketType?.price ?? null,
       source: "line",
     });
   }
@@ -235,10 +236,12 @@ export function isBookingPaymentComplete(summary: EventBookingPaymentSummary): b
 }
 
 export function hasExpiredDraftHold(
-  bookings: Array<{ status: BookingStatus | string }> | null | undefined
+  bookings: Array<{ status: BookingStatus | string; approvalStatus?: string }> | null | undefined
 ): boolean {
   const list = bookings ?? [];
-  const hasCancelled = list.some((booking) => booking.status === BookingStatus.CANCELLED);
+  const hasCancelled = list.some(
+    (booking) => booking.status === BookingStatus.CANCELLED && booking.approvalStatus !== "APPROVED"
+  );
   const hasActive = list.some(
     (booking) =>
       booking.status === BookingStatus.DRAFT ||
@@ -255,6 +258,17 @@ export function summarizeEventBookingPayment(params: {
   adjustments: EventBookingPaymentAdjustmentInput[];
 }): EventBookingPaymentSummary {
   const { booking, eventId, ticketOrders, adjustments } = params;
+  const failedRefund = adjustments.find(
+    (adjustment) => adjustment.status === BookingPaymentAdjustmentStatus.REFUND_FAILED
+  );
+  if (failedRefund) {
+    return {
+      kind: "failed",
+      label: getBookingPaymentAdjustmentStatusLabel(failedRefund.status),
+      severity: "error",
+      unpaidTicketTypeId: null,
+    };
+  }
   const pendingRefund = adjustments.find(
     (a) => a.status === BookingPaymentAdjustmentStatus.PENDING_AUTO_REFUND
   );
@@ -263,6 +277,14 @@ export function summarizeEventBookingPayment(params: {
       kind: "adjustment_refund",
       label: getBookingPaymentAdjustmentStatusLabel(pendingRefund.status),
       severity: "info",
+      unpaidTicketTypeId: null,
+    };
+  }
+  if (adjustments.some((adjustment) => adjustment.status === BookingPaymentAdjustmentStatus.SETTLED)) {
+    return {
+      kind: "paid",
+      label: getBookingPaymentAdjustmentStatusLabel(BookingPaymentAdjustmentStatus.SETTLED),
+      severity: "success",
       unpaidTicketTypeId: null,
     };
   }

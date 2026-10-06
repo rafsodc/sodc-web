@@ -433,12 +433,14 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
       updatedAt
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
         id
+        priceMinor
         bookingPlace {
           id
           paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
             id
             ticketOrderId
             refundedAmountMinor
+            refundPendingAmountMinor
           }
         }
         sortOrder
@@ -475,6 +477,11 @@ query GetMyBookings @auth(expr: "auth.token.enabled == true") {
       approvalNote
       revisionNumber
       updatedAt
+      adjustments: bookingPaymentAdjustments_on_revisionBooking {
+        id
+        deltaAmountMinor
+        status
+      }
       event {
         id
         title
@@ -487,6 +494,7 @@ query GetMyBookings @auth(expr: "auth.token.enabled == true") {
       }
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
         id
+        priceMinor
         bookingPlace {
           id
         }
@@ -626,6 +634,7 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
       }
       lines: bookingLines_on_booking {
         id
+        priceMinor
         sortOrder
         guestDisplayName
         dietaryNote
@@ -639,6 +648,9 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
             id
             allocatedAmountMinor
             refundedAmountMinor
+            refundPendingAmountMinor
+            refundFailureReason
+            refundUpdatedAt
             ticketOrderId
           }
         }

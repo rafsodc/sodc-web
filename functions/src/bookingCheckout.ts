@@ -4,6 +4,7 @@ import type {
 } from "@dataconnect/admin-generated";
 import { bookingApprovalAllowsPayment } from "./bookingRules";
 import type { HydratedBookingRow } from "./bookingQueryHydration";
+import { bookingLinePriceMinor, bookingSettlementTotals } from "./bookingPaymentAdjustments";
 
 type BookingRow = HydratedBookingRow;
 type TicketOrderRow = NonNullable<GetTicketOrdersForBookerAndEventData["user"]>["ticketOrders"][number];
@@ -30,6 +31,8 @@ export interface BookingAllocationRefund {
   stripePaymentIntentId: string | null;
   amountMinor: number;
   resultingRefundedAmountMinor: number;
+  resultingPendingAmountMinor: number;
+  previousStripeRefundId: string | null;
 }
 
 function normalizeUuidKey(id: string): string {
@@ -58,77 +61,76 @@ export function selectLatestPaymentEligibleBooking(bookings: BookingRow[]): Book
   }, null);
 }
 
-function paidAmountMinor(line: BookingRow["lines"][number]): number {
-  return (line.bookingPlace.paymentAllocations ?? []).reduce(
-    (total, allocation) =>
-      allocation.ticketOrder.status === TicketOrderStatus.PAID ||
-      allocation.ticketOrder.status === TicketOrderStatus.REFUNDED
-        ? total + Math.max(0, allocation.allocatedAmountMinor - allocation.refundedAmountMinor)
-        : total,
+/** Plans allocation-specific refunds against the net position of one revision group. */
+export function planBookingAllocationRefunds(
+  booking: BookingRow,
+  financialHistory: readonly BookingRow[] = [booking]
+): BookingAllocationRefund[] {
+  const refunds: BookingAllocationRefund[] = [];
+  const requiredTotalMinor = booking.lines.reduce(
+    (total, line) => total + bookingLinePriceMinor(line),
     0
   );
-}
-
-function hasSettledAllocation(line: BookingRow["lines"][number]): boolean {
-  return (line.bookingPlace.paymentAllocations ?? []).some(
-    (allocation) =>
-      allocation.ticketOrder.status === TicketOrderStatus.PAID ||
-      allocation.ticketOrder.status === TicketOrderStatus.REFUNDED
+  let excessAmountMinor = Math.max(
+    0,
+    bookingSettlementTotals(financialHistory).settledAmountMinor - requiredTotalMinor
   );
-}
-
-/** Plans place-specific refunds for an approved revision that costs less than its paid entitlement. */
-export function planBookingAllocationRefunds(booking: BookingRow): BookingAllocationRefund[] {
-  const refunds: BookingAllocationRefund[] = [];
-  for (const line of booking.lines) {
-    const requiredAmountMinor = Math.round(line.ticketType.price * 100);
-    let excessAmountMinor = Math.max(0, paidAmountMinor(line) - requiredAmountMinor);
-    if (excessAmountMinor === 0) continue;
-
-    const refundable = [...(line.bookingPlace.paymentAllocations ?? [])]
-      .filter(
-        (allocation) =>
-          (allocation.ticketOrder.status === TicketOrderStatus.PAID ||
-            allocation.ticketOrder.status === TicketOrderStatus.REFUNDED) &&
-          allocation.allocatedAmountMinor > allocation.refundedAmountMinor
-      )
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-    for (const allocation of refundable) {
-      if (excessAmountMinor === 0) break;
-      const available = allocation.allocatedAmountMinor - allocation.refundedAmountMinor;
-      const amountMinor = Math.min(excessAmountMinor, available);
-      refunds.push({
-        allocationId: allocation.id,
-        ticketOrderId: allocation.ticketOrder.id,
-        stripePaymentIntentId: allocation.ticketOrder.stripePaymentIntentId ?? null,
-        amountMinor,
-        resultingRefundedAmountMinor: allocation.refundedAmountMinor + amountMinor,
-      });
-      excessAmountMinor -= amountMinor;
-    }
+  const seen = new Set<string>();
+  const refundable = financialHistory
+    .flatMap((row) => row.lines)
+    .flatMap((line) => line.bookingPlace.paymentAllocations ?? [])
+    .filter((allocation) => {
+      if (seen.has(allocation.id)) return false;
+      seen.add(allocation.id);
+      return (
+        (allocation.ticketOrder.status === TicketOrderStatus.PAID ||
+          allocation.ticketOrder.status === TicketOrderStatus.REFUNDED) &&
+        allocation.allocatedAmountMinor >
+          allocation.refundedAmountMinor + (allocation.refundPendingAmountMinor ?? 0)
+      );
+    })
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  for (const allocation of refundable) {
+    if (excessAmountMinor === 0) break;
+    const pending = allocation.refundPendingAmountMinor ?? 0;
+    const available = allocation.allocatedAmountMinor - allocation.refundedAmountMinor - pending;
+    const amountMinor = Math.min(excessAmountMinor, available);
+    refunds.push({
+      allocationId: allocation.id,
+      ticketOrderId: allocation.ticketOrder.id,
+      stripePaymentIntentId: allocation.ticketOrder.stripePaymentIntentId ?? null,
+      amountMinor,
+      resultingRefundedAmountMinor: allocation.refundedAmountMinor + amountMinor,
+      resultingPendingAmountMinor: pending + amountMinor,
+      previousStripeRefundId: allocation.stripeRefundId ?? null,
+    });
+    excessAmountMinor -= amountMinor;
   }
   return refunds;
 }
 
-export function bookingIsFullyPaid(booking: BookingRow): boolean {
-  return (
-    booking.lines.length > 0 &&
-    booking.lines.every(
-      (line) =>
-        hasSettledAllocation(line) &&
-        paidAmountMinor(line) >= Math.round(line.ticketType.price * 100)
-    )
-  );
+export function bookingIsFullyPaid(
+  booking: BookingRow,
+  financialHistory: readonly BookingRow[] = [booking]
+): boolean {
+  const required = booking.lines.reduce((total, line) => total + bookingLinePriceMinor(line), 0);
+  return booking.lines.length > 0 && bookingSettlementTotals(financialHistory).settledAmountMinor >= required;
 }
 
-/** Returns exact unpaid places; aggregate paid quantities can never satisfy a different guest. */
-export function computeUnpaidBookingCheckoutItems(booking: BookingRow): BookingCheckoutPlaceItem[] {
+/** Applies the booking/payer's settled credit once, then returns the exact current places to charge. */
+export function computeUnpaidBookingCheckoutItems(
+  booking: BookingRow,
+  financialHistory: readonly BookingRow[] = [booking]
+): BookingCheckoutPlaceItem[] {
   const items: BookingCheckoutPlaceItem[] = [];
+  let availableCreditMinor = bookingSettlementTotals(financialHistory).settledAmountMinor;
   for (const line of booking.lines) {
     const bookingPlaceId = line.bookingPlace.id;
-    const requiredAmountMinor = Math.round(line.ticketType.price * 100);
-    const remainingAmountMinor = Math.max(0, requiredAmountMinor - paidAmountMinor(line));
-    if (remainingAmountMinor === 0 && hasSettledAllocation(line)) continue;
+    const requiredAmountMinor = bookingLinePriceMinor(line);
+    const appliedCreditMinor = Math.min(requiredAmountMinor, availableCreditMinor);
+    availableCreditMinor -= appliedCreditMinor;
+    const remainingAmountMinor = requiredAmountMinor - appliedCreditMinor;
+    if (remainingAmountMinor === 0 && requiredAmountMinor > 0) continue;
     items.push({
       bookingPlaceId,
       ticketTypeId: line.ticketType.id,

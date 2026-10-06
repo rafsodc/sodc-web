@@ -47,6 +47,7 @@ const OTHER_GROUP_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const TICKET_TYPE_ID = "44444444-4444-4444-8444-444444444444";
 const ORDER_ID = "55555555-5555-4555-8555-555555555555";
 const STALE_ORDER_ID = "66666666-6666-4666-8666-666666666666";
+const UNRELATED_ORDER_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const BOOKING_ID = "77777777-7777-4777-8777-777777777777";
 const PLACE_A = "88888888-8888-4888-8888-888888888888";
 const PLACE_B = "99999999-9999-4999-8999-999999999999";
@@ -60,7 +61,7 @@ const getUserGroups = vi.spyOn(admin, "getUserUserGroupsForAdmin");
 const getBookings = vi.spyOn(admin, "getBookingsForBookerAndEvent");
 const getOrders = vi.spyOn(admin, "getTicketOrdersForBookerAndEvent");
 const markFailed = vi.spyOn(admin, "markTicketOrderFailedFromWebhook");
-const updateAllocationRefund = vi.spyOn(admin, "updateBookingPlaceAllocationRefundFromCallable");
+const updateAllocationRefund = vi.spyOn(admin, "updateBookingPlaceAllocationRefundStateFromCallable");
 
 type Handler = (request: { auth?: { uid: string; token: Record<string, unknown> }; data: Record<string, unknown> }) => Promise<unknown>;
 const ticketHandler = createTicketCheckoutSession as unknown as Handler;
@@ -226,10 +227,17 @@ describe("payment checkout callables", () => {
 
   it("reuses only an exactly allocated pending order and fails stale pending orders", async () => {
     const current = booking(BookingApprovalStatus.NOT_REQUIRED);
-    getBookings.mockResolvedValue({ data: { user: { bookings: [current] } } } as never);
+    current.revisionNumber = 2;
+    const previous = structuredClone(current);
+    previous.id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    previous.revisionNumber = 1;
+    previous.supersededAt = "2026-08-01T11:30:00Z";
+    previous.lines[0]!.bookingPlace.id = PLACE_B;
+    getBookings.mockResolvedValue({ data: { user: { bookings: [current, previous] } } } as never);
     getOrders.mockResolvedValue({ data: { user: { ticketOrders: [
       { id: ORDER_ID, status: TicketOrderStatus.PENDING, quantity: 1, unitAmountMinor: 5000, totalAmountMinor: 5000, createdAt: "2026-08-01T12:00:00Z", ticketType: { id: TICKET_TYPE_ID }, event: { id: EVENT_ID }, paymentAllocations: [{ id: "allocation", allocatedAmountMinor: 5000, bookingPlace: { id: PLACE_A } }] },
-      { id: STALE_ORDER_ID, status: TicketOrderStatus.PENDING, quantity: 1, unitAmountMinor: 5000, totalAmountMinor: 5000, createdAt: "2026-08-01T11:00:00Z", ticketType: { id: TICKET_TYPE_ID }, event: { id: EVENT_ID }, paymentAllocations: [] },
+      { id: STALE_ORDER_ID, status: TicketOrderStatus.PENDING, quantity: 1, unitAmountMinor: 5000, totalAmountMinor: 5000, createdAt: "2026-08-01T11:00:00Z", ticketType: { id: TICKET_TYPE_ID }, event: { id: EVENT_ID }, paymentAllocations: [{ id: "stale-allocation", allocatedAmountMinor: 5000, bookingPlace: { id: PLACE_B } }] },
+      { id: UNRELATED_ORDER_ID, status: TicketOrderStatus.PENDING, quantity: 1, unitAmountMinor: 5000, totalAmountMinor: 5000, createdAt: "2026-08-01T10:00:00Z", ticketType: { id: TICKET_TYPE_ID }, event: { id: EVENT_ID }, paymentAllocations: [{ id: "unrelated-allocation", allocatedAmountMinor: 5000, bookingPlace: { id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" } }] },
     ] } } } as never);
     const stripe = stripeClient();
     mocks.requireStripe.mockReturnValue(stripe);
@@ -238,6 +246,7 @@ describe("payment checkout callables", () => {
 
     expect(mocks.createAllocatedTicketOrder).not.toHaveBeenCalled();
     expect(markFailed).toHaveBeenCalledWith({ id: STALE_ORDER_ID, webhookEventId: `checkout-supersede:${STALE_ORDER_ID}` });
+    expect(markFailed).not.toHaveBeenCalledWith(expect.objectContaining({ id: UNRELATED_ORDER_ID }));
   });
 
   it("creates paid zero-value allocations, confirms, and never contacts Stripe", async () => {
@@ -292,7 +301,9 @@ describe("payment checkout callables", () => {
     expect(updateAllocationRefund).toHaveBeenCalledWith({
       id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       refundedAmountMinor: 1000,
+      refundPendingAmountMinor: 0,
       stripeRefundId: "re_test_1",
+      refundFailureReason: null,
     });
     expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
     expect(result).toEqual({ url: null, orderIds: [], confirmed: true });

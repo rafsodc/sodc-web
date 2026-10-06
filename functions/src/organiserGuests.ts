@@ -79,26 +79,42 @@ export async function loadOrganiserGuestTypes(eventId: string) {
   }
 }
 export function guestPaymentStatus(
-  guest: Pick<
-    Guest,
-    | "priceMinor"
-    | "paidAt"
-    | "refundedAmountMinor"
-    | "refundPendingMinor"
-    | "cancelledAt"
-  >,
+  guest: Pick<Guest, "priceMinor" | "paidAt" | "paidAmountMinor" | "refundedAmountMinor" | "refundPendingMinor" | "refundFailureReason" | "cancelledAt" | "payments">,
 ) {
-  if (guest.paidAt && guest.refundedAmountMinor >= guest.priceMinor)
-    return "REFUNDED";
-  if (guest.refundPendingMinor > 0) return "REFUND_PENDING";
-  if (guest.paidAt && guest.cancelledAt) return "REFUND_REQUIRED";
-  if (guest.paidAt)
-    return guest.refundedAmountMinor > 0 ? "PARTIALLY_REFUNDED" : "PAID";
+  const position = guestFinancialPosition(guest);
+  if (position.refundFailureReason) return "REFUND_FAILED";
+  if (position.refundPendingMinor > 0) return "REFUND_PENDING";
+  if (guest.cancelledAt && position.settledAmountMinor > 0) return "REFUND_REQUIRED";
+  if (guest.cancelledAt && position.grossPaidMinor > 0) return "REFUNDED";
+  if (position.paymentRequiredMinor > 0 && position.grossPaidMinor > 0) return "PAYMENT_REQUIRED";
+  if (position.grossPaidMinor > 0)
+    return position.refundedAmountMinor > 0 ? "PARTIALLY_REFUNDED" : "PAID";
   return guest.priceMinor === 0 ? "FREE" : "UNPAID";
+}
+
+export function guestFinancialPosition(
+  guest: Pick<Guest, "priceMinor" | "paidAt" | "paidAmountMinor" | "refundedAmountMinor" | "refundPendingMinor" | "refundFailureReason" | "payments">
+) {
+  const originalPaidMinor = guest.paidAt ? (guest.paidAmountMinor ?? guest.priceMinor) : 0;
+  const paidAdditional = (guest.payments ?? []).filter((payment) => payment.paidAt);
+  const grossPaidMinor = originalPaidMinor + paidAdditional.reduce((total, payment) => total + payment.amountMinor, 0);
+  const refundedAmountMinor = guest.refundedAmountMinor + paidAdditional.reduce((total, payment) => total + payment.refundedAmountMinor, 0);
+  const refundPendingMinor = guest.refundPendingMinor + paidAdditional.reduce((total, payment) => total + payment.refundPendingMinor, 0);
+  const settledAmountMinor = Math.max(0, grossPaidMinor - refundedAmountMinor - refundPendingMinor);
+  return {
+    grossPaidMinor,
+    refundedAmountMinor,
+    refundPendingMinor,
+    settledAmountMinor,
+    paymentRequiredMinor: Math.max(0, guest.priceMinor - settledAmountMinor),
+    refundDueMinor: Math.max(0, settledAmountMinor - guest.priceMinor),
+    refundFailureReason: guest.refundFailureReason ?? paidAdditional.find((payment) => payment.refundFailureReason)?.refundFailureReason ?? null,
+  };
 }
 function project(guest: Omit<Guest, "tokenHash">) {
   const ticketType = guest.standardTicketType ?? guest.ticketType;
   if (!ticketType) throw new Error("Guest ticket type missing");
+  const financial = guestFinancialPosition(guest);
   return {
     id: guest.id,
     firstName: guest.firstName,
@@ -113,7 +129,12 @@ function project(guest: Omit<Guest, "tokenHash">) {
     version: guest.version,
     cancelled: Boolean(guest.cancelledAt),
     paymentStatus: guestPaymentStatus(guest),
-    refundedAmountMinor: guest.refundedAmountMinor,
+    paidAmountMinor: financial.grossPaidMinor,
+    settledAmountMinor: financial.settledAmountMinor,
+    paymentRequiredMinor: financial.paymentRequiredMinor,
+    refundedAmountMinor: financial.refundedAmountMinor,
+    refundPendingMinor: financial.refundPendingMinor,
+    refundFailureReason: financial.refundFailureReason,
   };
 }
 async function organiserTicketType(id: string, eventId: string) {
@@ -160,7 +181,7 @@ function failure(error: unknown): never {
   );
 }
 async function expireOpenCheckout(guest: Guest) {
-  if (!guest.stripeSessionId || guest.paidAt) return;
+  if (!guest.stripeSessionId) return;
   const stripe = requireStripe(stripeSecret.value());
   const session = await stripe.checkout.sessions.retrieve(
     guest.stripeSessionId,
@@ -172,6 +193,55 @@ async function expireOpenCheckout(guest: Guest) {
       { type: "checkout.session.completed", data: { object: session } },
       stripe,
     );
+}
+
+async function initiateOutstandingGuestRefund(guest: Guest): Promise<void> {
+  const targetPriceMinor = guest.cancelledAt ? 0 : guest.priceMinor;
+  let amountRemainingMinor = Math.max(0, guestFinancialPosition(guest).settledAmountMinor - targetPriceMinor);
+  if (amountRemainingMinor === 0) return;
+  const stripe = requireStripe(stripeSecret.value());
+  const sources = [
+    ...(guest.payments ?? []).filter((payment) => payment.paidAt && payment.stripePaymentIntentId).reverse().map((payment) => ({
+      id: payment.id,
+      paymentIntentId: payment.stripePaymentIntentId!,
+      amountMinor: payment.amountMinor,
+      refundedAmountMinor: payment.refundedAmountMinor,
+      refundPendingMinor: payment.refundPendingMinor,
+      stripeRefundId: payment.stripeRefundId,
+    })),
+    ...(guest.paidAt && guest.stripePaymentIntentId ? [{
+      id: null,
+      paymentIntentId: guest.stripePaymentIntentId,
+      amountMinor: guest.paidAmountMinor ?? guest.priceMinor,
+      refundedAmountMinor: guest.refundedAmountMinor,
+      refundPendingMinor: guest.refundPendingMinor,
+      stripeRefundId: guest.stripeRefundId,
+    }] : []),
+  ];
+  for (const source of sources) {
+    if (amountRemainingMinor === 0) break;
+    const refundableMinor = Math.max(0, source.amountMinor - source.refundedAmountMinor - source.refundPendingMinor);
+    const amountMinor = Math.min(amountRemainingMinor, refundableMinor);
+    if (amountMinor === 0) continue;
+    const targetRefundedMinor = source.refundedAmountMinor + source.refundPendingMinor + amountMinor;
+    const refund = await stripe.refunds.create(
+      {
+        payment_intent: source.paymentIntentId,
+        amount: amountMinor,
+        metadata: {
+          domain: "organiser-guest",
+          guestId: guest.id,
+          ...(source.id ? { guestPaymentId: source.id } : {}),
+        },
+      },
+      { idempotencyKey: `organiser-guest-refund:${guest.id}:${source.id ?? "original"}:${targetRefundedMinor}${source.stripeRefundId ? `:retry:${source.stripeRefundId}` : ""}` },
+    );
+    await handleOrganiserGuestStripeEvent(
+      { type: "refund.created", data: { object: refund } },
+      stripe,
+    );
+    amountRemainingMinor -= amountMinor;
+  }
 }
 
 export const getOrganiserGuestList = onCall(
@@ -257,7 +327,8 @@ export const manageOrganiserGuest = onCall(
       const expectedVersion = version(request.data.version);
       if (request.data.action === "cancel" && guest.cancelledAt) {
         await expireOpenCheckout(guest);
-        return { guest: project(guest), link: null };
+        await initiateOutstandingGuestRefund(guest);
+        return { guest: project(await guestById(id)), link: null };
       }
       if (request.data.action === "edit") {
         const input = { id, version: expectedVersion, ...details(request.data), actor };
@@ -272,11 +343,25 @@ export const manageOrganiserGuest = onCall(
           requestedTicketTypeId !==
             (currentTicketType ? validateUUID(currentTicketType.id) : null)
         ) {
-          if (guest.paidAt) throw new HttpsError("failed-precondition", "Paid tickets cannot be reassigned. Cancel and create a new reservation so payment history is retained.");
           const ticketTypeId = requestedTicketTypeId;
           const ticket = await organiserTicketType(ticketTypeId, eventId);
+          if (Number(request.data.expectedTicketPriceMinor) !== ticket.priceMinor) {
+            throw new HttpsError(
+              "aborted",
+              "The ticket price changed. Refresh and review the amendment again.",
+            );
+          }
           await expireOpenCheckout(guest);
-          await db.reassignOrganiserGuestTicket({ ...input, ticketTypeId, priceMinor: ticket.priceMinor, includesSymposium: ticket.includesSymposium, includesDinner: ticket.includesDinner, checkoutKey: randomUUID() });
+          await db.reassignOrganiserGuestTicket({
+            ...input,
+            ticketTypeId,
+            priceMinor: ticket.priceMinor,
+            paidAmountMinor: guest.paidAt ? (guest.paidAmountMinor ?? guest.priceMinor) : null,
+            includesSymposium: ticket.includesSymposium,
+            includesDinner: ticket.includesDinner,
+            checkoutKey: randomUUID(),
+          });
+          await initiateOutstandingGuestRefund(await guestById(id));
         } else await db.updateOrganiserGuestDetails(input);
       } else if (request.data.action === "replace-link") {
         const token = randomBytes(32).toString("hex");
@@ -292,6 +377,7 @@ export const manageOrganiserGuest = onCall(
       } else if (request.data.action === "cancel") {
         await db.cancelOrganiserGuest({ id, version: expectedVersion, actor });
         await expireOpenCheckout(guest);
+        await initiateOutstandingGuestRefund(await guestById(id));
       } else throw new HttpsError("invalid-argument", "Unknown guest action");
       return { guest: project(await guestById(id)), link: null };
     } catch (error) {
@@ -322,6 +408,7 @@ export const getOrganiserGuestTicket = onCall(
           Date.now() < Date.parse(guest.event.bookingEndDateTime),
         paymentDueAt: guest.event.bookingEndDateTime,
         paymentStatus: guestPaymentStatus(guest),
+        paymentRequiredMinor: guestFinancialPosition(guest).paymentRequiredMinor,
         cancelled: Boolean(guest.cancelledAt),
         version: guest.version,
       };
@@ -374,7 +461,8 @@ export const createOrganiserGuestCheckout = onCall(
         "createOrganiserGuestCheckout",
         `guest:${guest.id}`,
       );
-      if (guest.cancelledAt || guest.paidAt || guest.priceMinor === 0)
+      const position = guestFinancialPosition(guest);
+      if (guest.cancelledAt || position.paymentRequiredMinor === 0)
         throw new HttpsError(
           "failed-precondition",
           "This ticket does not require payment",
@@ -414,10 +502,13 @@ export const createOrganiserGuestCheckout = onCall(
         });
         guest = await guestByToken(request.data.token);
       }
+      const additionalPayment = position.grossPaidMinor > 0;
+      const paymentId = additionalPayment ? randomUUID() : null;
       const metadata = {
         domain: "organiser-guest",
         guestId: guest.id,
         checkoutKey: guest.checkoutKey,
+        ...(paymentId ? { guestPaymentId: paymentId } : {}),
       };
       const session = await stripe.checkout.sessions.create(
         {
@@ -428,7 +519,7 @@ export const createOrganiserGuestCheckout = onCall(
               quantity: 1,
               price_data: {
                 currency: "gbp",
-                unit_amount: guest.priceMinor,
+                unit_amount: position.paymentRequiredMinor,
                 product_data: { name: "Event guest ticket" },
               },
             },
@@ -440,13 +531,24 @@ export const createOrganiserGuestCheckout = onCall(
         },
         { idempotencyKey: `organiser-guest:${guest.id}:${guest.checkoutKey}` },
       );
-      const attached = await db.attachOrganiserGuestCheckout({
-        id: guest.id,
-        checkoutKey: guest.checkoutKey,
-        tokenHash: guest.tokenHash,
-        sessionId: session.id,
-      });
-      if (attached.data.organiserGuest_updateMany !== 1) {
+      const attached = paymentId
+        ? await db.attachOrganiserGuestAdditionalCheckout({
+            id: paymentId,
+            guestId: guest.id,
+            checkoutKey: guest.checkoutKey,
+            sessionId: session.id,
+            amountMinor: position.paymentRequiredMinor,
+          })
+        : await db.attachOrganiserGuestCheckout({
+            id: guest.id,
+            checkoutKey: guest.checkoutKey,
+            tokenHash: guest.tokenHash,
+            sessionId: session.id,
+          });
+      const attachedCount = paymentId
+        ? attached.data.organiserGuest_updateMany
+        : attached.data.organiserGuest_updateMany;
+      if (attachedCount !== 1) {
         if (session.status === "open")
           await stripe.checkout.sessions.expire(session.id);
         throw new HttpsError(

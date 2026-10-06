@@ -76,6 +76,26 @@ describe("booking submission place planning", () => {
     expect(plan.removedBookingPlaceIds).toEqual([]);
   });
 
+  it("preserves the agreed price when an unchanged place is reused", () => {
+    const plan = planBookingPlaces({
+      previousLines: [{
+        ticketTypeId: "member-ticket",
+        audience: TicketAudience.MEMBER,
+        priceMinor: 5_000,
+        sortOrder: 0,
+        bookingPlaceId: "place-member",
+      }],
+      lines: [{
+        ticketTypeId: "member-ticket",
+        audience: TicketAudience.MEMBER,
+        priceMinor: 7_000,
+        sortOrder: 0,
+      }],
+    });
+
+    expect(plan.lines[0]?.priceMinor).toBe(5_000);
+  });
+
   it("treats an attendee or ticket change as place replacement", () => {
     const plan = planBookingPlaces({
       createId: idFactory(),

@@ -40,6 +40,7 @@ export type BookingEmailTemplates = {
 
 type BookingLineRow = {
   sortOrder: number;
+  priceMinor?: number | null;
   guestDisplayName?: string | null;
   dietaryNote?: string | null;
   ticketType: { title: string; audience: string; price: number };
@@ -86,6 +87,7 @@ export type BookingRevisionEmailPersonalisation = BookingEmailPersonalisation & 
   previousTotalFormatted: string;
   revisedTotalFormatted: string;
   paymentRemainingFormatted: string;
+  financialEffectSummary: string;
 };
 
 export type BookingChangesRequestedEmailPersonalisation = BookingEmailPersonalisation & {
@@ -110,7 +112,7 @@ function linePriceMinor(price: number): number {
 }
 
 export function bookingTotalMinorFromLines(lines: BookingLineRow[]): number {
-  return lines.reduce((acc, line) => acc + linePriceMinor(line.ticketType.price), 0);
+  return lines.reduce((acc, line) => acc + (line.priceMinor ?? linePriceMinor(line.ticketType.price)), 0);
 }
 
 export function buildTicketLinesSummary(lines: BookingLineRow[]): string {
@@ -260,6 +262,11 @@ export async function notifyBookingRevisionEmail(args: {
   idempotencyKey: string;
   appBaseUrl: string;
   paymentDelta: BookingPaymentDelta;
+  refundOutcome?: {
+    completedAmountMinor: number;
+    pendingAmountMinor: number;
+    failedAmountMinor: number;
+  } | null;
   getMailer?: () => ReturnType<typeof createBookingMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
 }): Promise<void> {
@@ -282,6 +289,17 @@ export async function notifyBookingRevisionEmail(args: {
       previousTotalFormatted: formatMinorCurrency(args.paymentDelta.previousTotalMinor, "GBP"),
       revisedTotalFormatted: formatMinorCurrency(args.paymentDelta.revisedTotalMinor, "GBP"),
       paymentRemainingFormatted: formatMinorCurrency(args.paymentDelta.paymentRemainingMinor, "GBP"),
+      financialEffectSummary: args.paymentDelta.paymentRemainingMinor > 0
+        ? `Payment required—please pay as soon as possible. Amount due: ${formatMinorCurrency(args.paymentDelta.paymentRemainingMinor, "GBP")}.`
+        : args.paymentDelta.refundDueMinor > 0
+          ? args.refundOutcome?.failedAmountMinor
+            ? `A refund of ${formatMinorCurrency(args.paymentDelta.refundDueMinor, "GBP")} could not be completed. The organiser has been asked to retry it.`
+            : args.refundOutcome?.pendingAmountMinor
+              ? `A refund of ${formatMinorCurrency(args.paymentDelta.refundDueMinor, "GBP")} is being processed. Your payment record will update when it is confirmed.`
+              : (args.refundOutcome?.completedAmountMinor ?? 0) >= args.paymentDelta.refundDueMinor
+                ? `A refund of ${formatMinorCurrency(args.paymentDelta.refundDueMinor, "GBP")} has been completed.`
+                : `A refund of ${formatMinorCurrency(args.paymentDelta.refundDueMinor, "GBP")} has been requested. Your payment record will update when it is confirmed.`
+          : "No further payment is required.",
     };
     const reference = `BOOKING_REVISION:${args.bookingId}:${args.idempotencyKey}`;
     const deliveryKey = bookingRevisionDeliveryKey(args.bookingId, args.idempotencyKey);
@@ -300,6 +318,7 @@ export async function notifyBookingRevisionEmail(args: {
         bookingId: args.bookingId,
         idempotencyKey: args.idempotencyKey,
         paymentDelta: args.paymentDelta,
+        refundOutcome: args.refundOutcome ?? undefined,
       },
       send: async (deliveryMode) => {
         const r = await mailer.sendEmail({

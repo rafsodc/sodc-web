@@ -149,6 +149,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*UpdateBookingApprovalFromCallable*](#updatebookingapprovalfromcallable)
   - [*CreateTicketOrderForCheckout*](#createticketorderforcheckout)
   - [*UpdateBookingPlaceAllocationRefundFromCallable*](#updatebookingplaceallocationrefundfromcallable)
+  - [*UpdateBookingPlaceAllocationRefundStateFromCallable*](#updatebookingplaceallocationrefundstatefromcallable)
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
   - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
@@ -192,6 +193,9 @@ This README will guide you through the process of using the generated JavaScript
   - [*MarkOrganiserGuestPaid*](#markorganiserguestpaid)
   - [*MarkOrganiserGuestRefunded*](#markorganiserguestrefunded)
   - [*ReassignOrganiserGuestTicket*](#reassignorganiserguestticket)
+  - [*AttachOrganiserGuestAdditionalCheckout*](#attachorganiserguestadditionalcheckout)
+  - [*MarkOrganiserGuestAdditionalPaymentPaid*](#markorganiserguestadditionalpaymentpaid)
+  - [*MarkOrganiserGuestAdditionalPaymentRefunded*](#markorganiserguestadditionalpaymentrefunded)
   - [*CreateSection*](#createsection)
   - [*CreateUserGroup*](#createusergroup)
   - [*AddUserToUserGroup*](#addusertousergroup)
@@ -3050,10 +3054,16 @@ export interface GetBookingsForBookerAndEventData {
       sitNextToUserIds?: string[] | null;
       accommodationRequested: boolean;
       accommodationNote?: string | null;
+      adjustments: ({
+        id: UUIDString;
+        deltaAmountMinor: number;
+        status: BookingPaymentAdjustmentStatus;
+      })[];
       createdAt: TimestampString;
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
@@ -3061,6 +3071,9 @@ export interface GetBookingsForBookerAndEventData {
             ticketOrderId: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
+            refundFailureReason?: string | null;
+            refundUpdatedAt?: TimestampString | null;
             stripeRefundId?: string | null;
             createdAt: TimestampString;
           } & BookingPlacePaymentAllocation_Key)[];
@@ -3220,6 +3233,7 @@ export interface GetBookingRevisionForApprovalFromCallableData {
     } & Booking_Key;
     lines: ({
       id: UUIDString;
+      priceMinor?: number | null;
       sortOrder: number;
       guestDisplayName?: string | null;
       dietaryNote?: string | null;
@@ -3353,6 +3367,7 @@ export interface GetTicketOrdersForBookerAndEventData {
       quantity: number;
       unitAmountMinor: number;
       totalAmountMinor: number;
+      stripeCheckoutSessionId?: string | null;
       createdAt: TimestampString;
       ticketType: {
         id: UUIDString;
@@ -4384,6 +4399,7 @@ export interface GetBookingForNotificationData {
       } & Section_Key;
     } & Event_Key;
     lines: ({
+      priceMinor?: number | null;
       sortOrder: number;
       guestDisplayName?: string | null;
       dietaryNote?: string | null;
@@ -8372,11 +8388,28 @@ export interface ListOrganiserGuestsData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -8518,11 +8551,28 @@ export interface GetOrganiserGuestData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -8663,11 +8713,28 @@ export interface GetOrganiserGuestByTokenData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -11042,12 +11109,14 @@ export interface GetMyBookingsForEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
             ticketOrderId: UUIDString;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
         sortOrder: number;
@@ -11179,6 +11248,11 @@ export interface GetMyBookingsData {
       approvalNote?: string | null;
       revisionNumber: number;
       updatedAt: TimestampString;
+      adjustments: ({
+        id: UUIDString;
+        deltaAmountMinor: number;
+        status: BookingPaymentAdjustmentStatus;
+      })[];
       event: {
         id: UUIDString;
         title: string;
@@ -11191,6 +11265,7 @@ export interface GetMyBookingsData {
       } & Event_Key;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
         } & BookingPlace_Key;
@@ -11697,6 +11772,7 @@ export interface ListEventBookingsForAdminData {
       } & User_Key;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
@@ -11706,6 +11782,9 @@ export interface ListEventBookingsForAdminData {
             id: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
+            refundFailureReason?: string | null;
+            refundUpdatedAt?: TimestampString | null;
             ticketOrderId: UUIDString;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
@@ -17333,6 +17412,127 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## UpdateBookingPlaceAllocationRefundStateFromCallable
+You can execute the `UpdateBookingPlaceAllocationRefundStateFromCallable` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateBookingPlaceAllocationRefundStateFromCallable(vars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables): MutationPromise<UpdateBookingPlaceAllocationRefundStateFromCallableData, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>;
+
+interface UpdateBookingPlaceAllocationRefundStateFromCallableRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables): MutationRef<UpdateBookingPlaceAllocationRefundStateFromCallableData, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>;
+}
+export const updateBookingPlaceAllocationRefundStateFromCallableRef: UpdateBookingPlaceAllocationRefundStateFromCallableRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateBookingPlaceAllocationRefundStateFromCallable(dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables): MutationPromise<UpdateBookingPlaceAllocationRefundStateFromCallableData, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>;
+
+interface UpdateBookingPlaceAllocationRefundStateFromCallableRef {
+  ...
+  (dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables): MutationRef<UpdateBookingPlaceAllocationRefundStateFromCallableData, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>;
+}
+export const updateBookingPlaceAllocationRefundStateFromCallableRef: UpdateBookingPlaceAllocationRefundStateFromCallableRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateBookingPlaceAllocationRefundStateFromCallableRef:
+```typescript
+const name = updateBookingPlaceAllocationRefundStateFromCallableRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateBookingPlaceAllocationRefundStateFromCallable` mutation requires an argument of type `UpdateBookingPlaceAllocationRefundStateFromCallableVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateBookingPlaceAllocationRefundStateFromCallableVariables {
+  id: UUIDString;
+  refundedAmountMinor: number;
+  refundPendingAmountMinor: number;
+  stripeRefundId?: string | null;
+  refundFailureReason?: string | null;
+}
+```
+### Return Type
+Recall that executing the `UpdateBookingPlaceAllocationRefundStateFromCallable` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateBookingPlaceAllocationRefundStateFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateBookingPlaceAllocationRefundStateFromCallableData {
+  bookingPlacePaymentAllocation_update?: BookingPlacePaymentAllocation_Key | null;
+}
+```
+### Using `UpdateBookingPlaceAllocationRefundStateFromCallable`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateBookingPlaceAllocationRefundStateFromCallable, UpdateBookingPlaceAllocationRefundStateFromCallableVariables } from '@dataconnect/generated';
+
+// The `UpdateBookingPlaceAllocationRefundStateFromCallable` mutation requires an argument of type `UpdateBookingPlaceAllocationRefundStateFromCallableVariables`:
+const updateBookingPlaceAllocationRefundStateFromCallableVars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables = {
+  id: ..., 
+  refundedAmountMinor: ..., 
+  refundPendingAmountMinor: ..., 
+  stripeRefundId: ..., // optional
+  refundFailureReason: ..., // optional
+};
+
+// Call the `updateBookingPlaceAllocationRefundStateFromCallable()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateBookingPlaceAllocationRefundStateFromCallable(updateBookingPlaceAllocationRefundStateFromCallableVars);
+// Variables can be defined inline as well.
+const { data } = await updateBookingPlaceAllocationRefundStateFromCallable({ id: ..., refundedAmountMinor: ..., refundPendingAmountMinor: ..., stripeRefundId: ..., refundFailureReason: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateBookingPlaceAllocationRefundStateFromCallable(dataConnect, updateBookingPlaceAllocationRefundStateFromCallableVars);
+
+console.log(data.bookingPlacePaymentAllocation_update);
+
+// Or, you can use the `Promise` API.
+updateBookingPlaceAllocationRefundStateFromCallable(updateBookingPlaceAllocationRefundStateFromCallableVars).then((response) => {
+  const data = response.data;
+  console.log(data.bookingPlacePaymentAllocation_update);
+});
+```
+
+### Using `UpdateBookingPlaceAllocationRefundStateFromCallable`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateBookingPlaceAllocationRefundStateFromCallableRef, UpdateBookingPlaceAllocationRefundStateFromCallableVariables } from '@dataconnect/generated';
+
+// The `UpdateBookingPlaceAllocationRefundStateFromCallable` mutation requires an argument of type `UpdateBookingPlaceAllocationRefundStateFromCallableVariables`:
+const updateBookingPlaceAllocationRefundStateFromCallableVars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables = {
+  id: ..., 
+  refundedAmountMinor: ..., 
+  refundPendingAmountMinor: ..., 
+  stripeRefundId: ..., // optional
+  refundFailureReason: ..., // optional
+};
+
+// Call the `updateBookingPlaceAllocationRefundStateFromCallableRef()` function to get a reference to the mutation.
+const ref = updateBookingPlaceAllocationRefundStateFromCallableRef(updateBookingPlaceAllocationRefundStateFromCallableVars);
+// Variables can be defined inline as well.
+const ref = updateBookingPlaceAllocationRefundStateFromCallableRef({ id: ..., refundedAmountMinor: ..., refundPendingAmountMinor: ..., stripeRefundId: ..., refundFailureReason: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateBookingPlaceAllocationRefundStateFromCallableRef(dataConnect, updateBookingPlaceAllocationRefundStateFromCallableVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.bookingPlacePaymentAllocation_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.bookingPlacePaymentAllocation_update);
+});
+```
+
 ## CreatePaymentWebhookEvent
 You can execute the `CreatePaymentWebhookEvent` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -22386,6 +22586,7 @@ export interface MarkOrganiserGuestPaidVariables {
   id: UUIDString;
   sessionId: string;
   paymentIntentId: string;
+  paidAmountMinor: number;
 }
 ```
 ### Return Type
@@ -22409,13 +22610,14 @@ const markOrganiserGuestPaidVars: MarkOrganiserGuestPaidVariables = {
   id: ..., 
   sessionId: ..., 
   paymentIntentId: ..., 
+  paidAmountMinor: ..., 
 };
 
 // Call the `markOrganiserGuestPaid()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await markOrganiserGuestPaid(markOrganiserGuestPaidVars);
 // Variables can be defined inline as well.
-const { data } = await markOrganiserGuestPaid({ id: ..., sessionId: ..., paymentIntentId: ..., });
+const { data } = await markOrganiserGuestPaid({ id: ..., sessionId: ..., paymentIntentId: ..., paidAmountMinor: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -22443,12 +22645,13 @@ const markOrganiserGuestPaidVars: MarkOrganiserGuestPaidVariables = {
   id: ..., 
   sessionId: ..., 
   paymentIntentId: ..., 
+  paidAmountMinor: ..., 
 };
 
 // Call the `markOrganiserGuestPaidRef()` function to get a reference to the mutation.
 const ref = markOrganiserGuestPaidRef(markOrganiserGuestPaidVars);
 // Variables can be defined inline as well.
-const ref = markOrganiserGuestPaidRef({ id: ..., sessionId: ..., paymentIntentId: ..., });
+const ref = markOrganiserGuestPaidRef({ id: ..., sessionId: ..., paymentIntentId: ..., paidAmountMinor: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -22507,6 +22710,8 @@ export interface MarkOrganiserGuestRefundedVariables {
   paymentIntentId: string;
   refundedAmountMinor: number;
   refundPendingMinor: number;
+  refundFailureReason?: string | null;
+  stripeRefundId?: string | null;
   version: number;
 }
 ```
@@ -22532,6 +22737,8 @@ const markOrganiserGuestRefundedVars: MarkOrganiserGuestRefundedVariables = {
   paymentIntentId: ..., 
   refundedAmountMinor: ..., 
   refundPendingMinor: ..., 
+  refundFailureReason: ..., // optional
+  stripeRefundId: ..., // optional
   version: ..., 
 };
 
@@ -22539,7 +22746,7 @@ const markOrganiserGuestRefundedVars: MarkOrganiserGuestRefundedVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await markOrganiserGuestRefunded(markOrganiserGuestRefundedVars);
 // Variables can be defined inline as well.
-const { data } = await markOrganiserGuestRefunded({ id: ..., paymentIntentId: ..., refundedAmountMinor: ..., refundPendingMinor: ..., version: ..., });
+const { data } = await markOrganiserGuestRefunded({ id: ..., paymentIntentId: ..., refundedAmountMinor: ..., refundPendingMinor: ..., refundFailureReason: ..., stripeRefundId: ..., version: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -22568,13 +22775,15 @@ const markOrganiserGuestRefundedVars: MarkOrganiserGuestRefundedVariables = {
   paymentIntentId: ..., 
   refundedAmountMinor: ..., 
   refundPendingMinor: ..., 
+  refundFailureReason: ..., // optional
+  stripeRefundId: ..., // optional
   version: ..., 
 };
 
 // Call the `markOrganiserGuestRefundedRef()` function to get a reference to the mutation.
 const ref = markOrganiserGuestRefundedRef(markOrganiserGuestRefundedVars);
 // Variables can be defined inline as well.
-const ref = markOrganiserGuestRefundedRef({ id: ..., paymentIntentId: ..., refundedAmountMinor: ..., refundPendingMinor: ..., version: ..., });
+const ref = markOrganiserGuestRefundedRef({ id: ..., paymentIntentId: ..., refundedAmountMinor: ..., refundPendingMinor: ..., refundFailureReason: ..., stripeRefundId: ..., version: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -22637,6 +22846,7 @@ export interface ReassignOrganiserGuestTicketVariables {
   email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
+  paidAmountMinor?: number | null;
   includesSymposium: boolean;
   includesDinner: boolean;
   checkoutKey: string;
@@ -22669,6 +22879,7 @@ const reassignOrganiserGuestTicketVars: ReassignOrganiserGuestTicketVariables = 
   email: ..., // optional
   dietaryRequirements: ..., 
   priceMinor: ..., 
+  paidAmountMinor: ..., // optional
   includesSymposium: ..., 
   includesDinner: ..., 
   checkoutKey: ..., 
@@ -22679,7 +22890,7 @@ const reassignOrganiserGuestTicketVars: ReassignOrganiserGuestTicketVariables = 
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await reassignOrganiserGuestTicket(reassignOrganiserGuestTicketVars);
 // Variables can be defined inline as well.
-const { data } = await reassignOrganiserGuestTicket({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., checkoutKey: ..., actor: ..., });
+const { data } = await reassignOrganiserGuestTicket({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., priceMinor: ..., paidAmountMinor: ..., includesSymposium: ..., includesDinner: ..., checkoutKey: ..., actor: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -22712,6 +22923,7 @@ const reassignOrganiserGuestTicketVars: ReassignOrganiserGuestTicketVariables = 
   email: ..., // optional
   dietaryRequirements: ..., 
   priceMinor: ..., 
+  paidAmountMinor: ..., // optional
   includesSymposium: ..., 
   includesDinner: ..., 
   checkoutKey: ..., 
@@ -22721,7 +22933,7 @@ const reassignOrganiserGuestTicketVars: ReassignOrganiserGuestTicketVariables = 
 // Call the `reassignOrganiserGuestTicketRef()` function to get a reference to the mutation.
 const ref = reassignOrganiserGuestTicketRef(reassignOrganiserGuestTicketVars);
 // Variables can be defined inline as well.
-const ref = reassignOrganiserGuestTicketRef({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., checkoutKey: ..., actor: ..., });
+const ref = reassignOrganiserGuestTicketRef({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., priceMinor: ..., paidAmountMinor: ..., includesSymposium: ..., includesDinner: ..., checkoutKey: ..., actor: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -22739,6 +22951,384 @@ executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.organiserGuest_updateMany);
   console.log(data.organiserGuestAudit_insert);
+});
+```
+
+## AttachOrganiserGuestAdditionalCheckout
+You can execute the `AttachOrganiserGuestAdditionalCheckout` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+attachOrganiserGuestAdditionalCheckout(vars: AttachOrganiserGuestAdditionalCheckoutVariables): MutationPromise<AttachOrganiserGuestAdditionalCheckoutData, AttachOrganiserGuestAdditionalCheckoutVariables>;
+
+interface AttachOrganiserGuestAdditionalCheckoutRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AttachOrganiserGuestAdditionalCheckoutVariables): MutationRef<AttachOrganiserGuestAdditionalCheckoutData, AttachOrganiserGuestAdditionalCheckoutVariables>;
+}
+export const attachOrganiserGuestAdditionalCheckoutRef: AttachOrganiserGuestAdditionalCheckoutRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+attachOrganiserGuestAdditionalCheckout(dc: DataConnect, vars: AttachOrganiserGuestAdditionalCheckoutVariables): MutationPromise<AttachOrganiserGuestAdditionalCheckoutData, AttachOrganiserGuestAdditionalCheckoutVariables>;
+
+interface AttachOrganiserGuestAdditionalCheckoutRef {
+  ...
+  (dc: DataConnect, vars: AttachOrganiserGuestAdditionalCheckoutVariables): MutationRef<AttachOrganiserGuestAdditionalCheckoutData, AttachOrganiserGuestAdditionalCheckoutVariables>;
+}
+export const attachOrganiserGuestAdditionalCheckoutRef: AttachOrganiserGuestAdditionalCheckoutRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the attachOrganiserGuestAdditionalCheckoutRef:
+```typescript
+const name = attachOrganiserGuestAdditionalCheckoutRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `AttachOrganiserGuestAdditionalCheckout` mutation requires an argument of type `AttachOrganiserGuestAdditionalCheckoutVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface AttachOrganiserGuestAdditionalCheckoutVariables {
+  id: UUIDString;
+  guestId: UUIDString;
+  checkoutKey: string;
+  sessionId: string;
+  amountMinor: number;
+}
+```
+### Return Type
+Recall that executing the `AttachOrganiserGuestAdditionalCheckout` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `AttachOrganiserGuestAdditionalCheckoutData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface AttachOrganiserGuestAdditionalCheckoutData {
+  organiserGuest_updateMany: number;
+  organiserGuestPayment_insert: OrganiserGuestPayment_Key;
+}
+```
+### Using `AttachOrganiserGuestAdditionalCheckout`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, attachOrganiserGuestAdditionalCheckout, AttachOrganiserGuestAdditionalCheckoutVariables } from '@dataconnect/generated';
+
+// The `AttachOrganiserGuestAdditionalCheckout` mutation requires an argument of type `AttachOrganiserGuestAdditionalCheckoutVariables`:
+const attachOrganiserGuestAdditionalCheckoutVars: AttachOrganiserGuestAdditionalCheckoutVariables = {
+  id: ..., 
+  guestId: ..., 
+  checkoutKey: ..., 
+  sessionId: ..., 
+  amountMinor: ..., 
+};
+
+// Call the `attachOrganiserGuestAdditionalCheckout()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await attachOrganiserGuestAdditionalCheckout(attachOrganiserGuestAdditionalCheckoutVars);
+// Variables can be defined inline as well.
+const { data } = await attachOrganiserGuestAdditionalCheckout({ id: ..., guestId: ..., checkoutKey: ..., sessionId: ..., amountMinor: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await attachOrganiserGuestAdditionalCheckout(dataConnect, attachOrganiserGuestAdditionalCheckoutVars);
+
+console.log(data.organiserGuest_updateMany);
+console.log(data.organiserGuestPayment_insert);
+
+// Or, you can use the `Promise` API.
+attachOrganiserGuestAdditionalCheckout(attachOrganiserGuestAdditionalCheckoutVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuest_updateMany);
+  console.log(data.organiserGuestPayment_insert);
+});
+```
+
+### Using `AttachOrganiserGuestAdditionalCheckout`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, attachOrganiserGuestAdditionalCheckoutRef, AttachOrganiserGuestAdditionalCheckoutVariables } from '@dataconnect/generated';
+
+// The `AttachOrganiserGuestAdditionalCheckout` mutation requires an argument of type `AttachOrganiserGuestAdditionalCheckoutVariables`:
+const attachOrganiserGuestAdditionalCheckoutVars: AttachOrganiserGuestAdditionalCheckoutVariables = {
+  id: ..., 
+  guestId: ..., 
+  checkoutKey: ..., 
+  sessionId: ..., 
+  amountMinor: ..., 
+};
+
+// Call the `attachOrganiserGuestAdditionalCheckoutRef()` function to get a reference to the mutation.
+const ref = attachOrganiserGuestAdditionalCheckoutRef(attachOrganiserGuestAdditionalCheckoutVars);
+// Variables can be defined inline as well.
+const ref = attachOrganiserGuestAdditionalCheckoutRef({ id: ..., guestId: ..., checkoutKey: ..., sessionId: ..., amountMinor: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = attachOrganiserGuestAdditionalCheckoutRef(dataConnect, attachOrganiserGuestAdditionalCheckoutVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.organiserGuest_updateMany);
+console.log(data.organiserGuestPayment_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuest_updateMany);
+  console.log(data.organiserGuestPayment_insert);
+});
+```
+
+## MarkOrganiserGuestAdditionalPaymentPaid
+You can execute the `MarkOrganiserGuestAdditionalPaymentPaid` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+markOrganiserGuestAdditionalPaymentPaid(vars: MarkOrganiserGuestAdditionalPaymentPaidVariables): MutationPromise<MarkOrganiserGuestAdditionalPaymentPaidData, MarkOrganiserGuestAdditionalPaymentPaidVariables>;
+
+interface MarkOrganiserGuestAdditionalPaymentPaidRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkOrganiserGuestAdditionalPaymentPaidVariables): MutationRef<MarkOrganiserGuestAdditionalPaymentPaidData, MarkOrganiserGuestAdditionalPaymentPaidVariables>;
+}
+export const markOrganiserGuestAdditionalPaymentPaidRef: MarkOrganiserGuestAdditionalPaymentPaidRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+markOrganiserGuestAdditionalPaymentPaid(dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentPaidVariables): MutationPromise<MarkOrganiserGuestAdditionalPaymentPaidData, MarkOrganiserGuestAdditionalPaymentPaidVariables>;
+
+interface MarkOrganiserGuestAdditionalPaymentPaidRef {
+  ...
+  (dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentPaidVariables): MutationRef<MarkOrganiserGuestAdditionalPaymentPaidData, MarkOrganiserGuestAdditionalPaymentPaidVariables>;
+}
+export const markOrganiserGuestAdditionalPaymentPaidRef: MarkOrganiserGuestAdditionalPaymentPaidRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the markOrganiserGuestAdditionalPaymentPaidRef:
+```typescript
+const name = markOrganiserGuestAdditionalPaymentPaidRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `MarkOrganiserGuestAdditionalPaymentPaid` mutation requires an argument of type `MarkOrganiserGuestAdditionalPaymentPaidVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface MarkOrganiserGuestAdditionalPaymentPaidVariables {
+  id: UUIDString;
+  guestId: UUIDString;
+  sessionId: string;
+  paymentIntentId: string;
+}
+```
+### Return Type
+Recall that executing the `MarkOrganiserGuestAdditionalPaymentPaid` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `MarkOrganiserGuestAdditionalPaymentPaidData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface MarkOrganiserGuestAdditionalPaymentPaidData {
+  organiserGuestPayment_updateMany: number;
+  organiserGuest_update?: OrganiserGuest_Key | null;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+```
+### Using `MarkOrganiserGuestAdditionalPaymentPaid`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, markOrganiserGuestAdditionalPaymentPaid, MarkOrganiserGuestAdditionalPaymentPaidVariables } from '@dataconnect/generated';
+
+// The `MarkOrganiserGuestAdditionalPaymentPaid` mutation requires an argument of type `MarkOrganiserGuestAdditionalPaymentPaidVariables`:
+const markOrganiserGuestAdditionalPaymentPaidVars: MarkOrganiserGuestAdditionalPaymentPaidVariables = {
+  id: ..., 
+  guestId: ..., 
+  sessionId: ..., 
+  paymentIntentId: ..., 
+};
+
+// Call the `markOrganiserGuestAdditionalPaymentPaid()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await markOrganiserGuestAdditionalPaymentPaid(markOrganiserGuestAdditionalPaymentPaidVars);
+// Variables can be defined inline as well.
+const { data } = await markOrganiserGuestAdditionalPaymentPaid({ id: ..., guestId: ..., sessionId: ..., paymentIntentId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await markOrganiserGuestAdditionalPaymentPaid(dataConnect, markOrganiserGuestAdditionalPaymentPaidVars);
+
+console.log(data.organiserGuestPayment_updateMany);
+console.log(data.organiserGuest_update);
+console.log(data.organiserGuestAudit_insert);
+
+// Or, you can use the `Promise` API.
+markOrganiserGuestAdditionalPaymentPaid(markOrganiserGuestAdditionalPaymentPaidVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestPayment_updateMany);
+  console.log(data.organiserGuest_update);
+  console.log(data.organiserGuestAudit_insert);
+});
+```
+
+### Using `MarkOrganiserGuestAdditionalPaymentPaid`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, markOrganiserGuestAdditionalPaymentPaidRef, MarkOrganiserGuestAdditionalPaymentPaidVariables } from '@dataconnect/generated';
+
+// The `MarkOrganiserGuestAdditionalPaymentPaid` mutation requires an argument of type `MarkOrganiserGuestAdditionalPaymentPaidVariables`:
+const markOrganiserGuestAdditionalPaymentPaidVars: MarkOrganiserGuestAdditionalPaymentPaidVariables = {
+  id: ..., 
+  guestId: ..., 
+  sessionId: ..., 
+  paymentIntentId: ..., 
+};
+
+// Call the `markOrganiserGuestAdditionalPaymentPaidRef()` function to get a reference to the mutation.
+const ref = markOrganiserGuestAdditionalPaymentPaidRef(markOrganiserGuestAdditionalPaymentPaidVars);
+// Variables can be defined inline as well.
+const ref = markOrganiserGuestAdditionalPaymentPaidRef({ id: ..., guestId: ..., sessionId: ..., paymentIntentId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = markOrganiserGuestAdditionalPaymentPaidRef(dataConnect, markOrganiserGuestAdditionalPaymentPaidVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.organiserGuestPayment_updateMany);
+console.log(data.organiserGuest_update);
+console.log(data.organiserGuestAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestPayment_updateMany);
+  console.log(data.organiserGuest_update);
+  console.log(data.organiserGuestAudit_insert);
+});
+```
+
+## MarkOrganiserGuestAdditionalPaymentRefunded
+You can execute the `MarkOrganiserGuestAdditionalPaymentRefunded` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+markOrganiserGuestAdditionalPaymentRefunded(vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables): MutationPromise<MarkOrganiserGuestAdditionalPaymentRefundedData, MarkOrganiserGuestAdditionalPaymentRefundedVariables>;
+
+interface MarkOrganiserGuestAdditionalPaymentRefundedRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables): MutationRef<MarkOrganiserGuestAdditionalPaymentRefundedData, MarkOrganiserGuestAdditionalPaymentRefundedVariables>;
+}
+export const markOrganiserGuestAdditionalPaymentRefundedRef: MarkOrganiserGuestAdditionalPaymentRefundedRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+markOrganiserGuestAdditionalPaymentRefunded(dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables): MutationPromise<MarkOrganiserGuestAdditionalPaymentRefundedData, MarkOrganiserGuestAdditionalPaymentRefundedVariables>;
+
+interface MarkOrganiserGuestAdditionalPaymentRefundedRef {
+  ...
+  (dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables): MutationRef<MarkOrganiserGuestAdditionalPaymentRefundedData, MarkOrganiserGuestAdditionalPaymentRefundedVariables>;
+}
+export const markOrganiserGuestAdditionalPaymentRefundedRef: MarkOrganiserGuestAdditionalPaymentRefundedRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the markOrganiserGuestAdditionalPaymentRefundedRef:
+```typescript
+const name = markOrganiserGuestAdditionalPaymentRefundedRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `MarkOrganiserGuestAdditionalPaymentRefunded` mutation requires an argument of type `MarkOrganiserGuestAdditionalPaymentRefundedVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface MarkOrganiserGuestAdditionalPaymentRefundedVariables {
+  id: UUIDString;
+  paymentIntentId: string;
+  refundedAmountMinor: number;
+  refundPendingMinor: number;
+  refundFailureReason?: string | null;
+  stripeRefundId?: string | null;
+}
+```
+### Return Type
+Recall that executing the `MarkOrganiserGuestAdditionalPaymentRefunded` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `MarkOrganiserGuestAdditionalPaymentRefundedData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface MarkOrganiserGuestAdditionalPaymentRefundedData {
+  organiserGuestPayment_updateMany: number;
+}
+```
+### Using `MarkOrganiserGuestAdditionalPaymentRefunded`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, markOrganiserGuestAdditionalPaymentRefunded, MarkOrganiserGuestAdditionalPaymentRefundedVariables } from '@dataconnect/generated';
+
+// The `MarkOrganiserGuestAdditionalPaymentRefunded` mutation requires an argument of type `MarkOrganiserGuestAdditionalPaymentRefundedVariables`:
+const markOrganiserGuestAdditionalPaymentRefundedVars: MarkOrganiserGuestAdditionalPaymentRefundedVariables = {
+  id: ..., 
+  paymentIntentId: ..., 
+  refundedAmountMinor: ..., 
+  refundPendingMinor: ..., 
+  refundFailureReason: ..., // optional
+  stripeRefundId: ..., // optional
+};
+
+// Call the `markOrganiserGuestAdditionalPaymentRefunded()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await markOrganiserGuestAdditionalPaymentRefunded(markOrganiserGuestAdditionalPaymentRefundedVars);
+// Variables can be defined inline as well.
+const { data } = await markOrganiserGuestAdditionalPaymentRefunded({ id: ..., paymentIntentId: ..., refundedAmountMinor: ..., refundPendingMinor: ..., refundFailureReason: ..., stripeRefundId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await markOrganiserGuestAdditionalPaymentRefunded(dataConnect, markOrganiserGuestAdditionalPaymentRefundedVars);
+
+console.log(data.organiserGuestPayment_updateMany);
+
+// Or, you can use the `Promise` API.
+markOrganiserGuestAdditionalPaymentRefunded(markOrganiserGuestAdditionalPaymentRefundedVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestPayment_updateMany);
+});
+```
+
+### Using `MarkOrganiserGuestAdditionalPaymentRefunded`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, markOrganiserGuestAdditionalPaymentRefundedRef, MarkOrganiserGuestAdditionalPaymentRefundedVariables } from '@dataconnect/generated';
+
+// The `MarkOrganiserGuestAdditionalPaymentRefunded` mutation requires an argument of type `MarkOrganiserGuestAdditionalPaymentRefundedVariables`:
+const markOrganiserGuestAdditionalPaymentRefundedVars: MarkOrganiserGuestAdditionalPaymentRefundedVariables = {
+  id: ..., 
+  paymentIntentId: ..., 
+  refundedAmountMinor: ..., 
+  refundPendingMinor: ..., 
+  refundFailureReason: ..., // optional
+  stripeRefundId: ..., // optional
+};
+
+// Call the `markOrganiserGuestAdditionalPaymentRefundedRef()` function to get a reference to the mutation.
+const ref = markOrganiserGuestAdditionalPaymentRefundedRef(markOrganiserGuestAdditionalPaymentRefundedVars);
+// Variables can be defined inline as well.
+const ref = markOrganiserGuestAdditionalPaymentRefundedRef({ id: ..., paymentIntentId: ..., refundedAmountMinor: ..., refundPendingMinor: ..., refundFailureReason: ..., stripeRefundId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = markOrganiserGuestAdditionalPaymentRefundedRef(dataConnect, markOrganiserGuestAdditionalPaymentRefundedVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.organiserGuestPayment_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestPayment_updateMany);
 });
 ```
 
@@ -24451,7 +25041,7 @@ Recall that executing the `UpdateTicketType` mutation returns a `MutationPromise
 The `data` property is an object of type `UpdateTicketTypeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface UpdateTicketTypeData {
-  ticketType_update?: TicketType_Key | null;
+  ticketType_updateMany: number;
 }
 ```
 ### Using `UpdateTicketType`'s action shortcut function
@@ -24483,12 +25073,12 @@ const { data } = await updateTicketType({ id: ..., userGroupId: ..., audience: .
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await updateTicketType(dataConnect, updateTicketTypeVars);
 
-console.log(data.ticketType_update);
+console.log(data.ticketType_updateMany);
 
 // Or, you can use the `Promise` API.
 updateTicketType(updateTicketTypeVars).then((response) => {
   const data = response.data;
-  console.log(data.ticketType_update);
+  console.log(data.ticketType_updateMany);
 });
 ```
 
@@ -24524,12 +25114,12 @@ const ref = updateTicketTypeRef(dataConnect, updateTicketTypeVars);
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.ticketType_update);
+console.log(data.ticketType_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.ticketType_update);
+  console.log(data.ticketType_updateMany);
 });
 ```
 

@@ -60,6 +60,10 @@ describe("whole-booking approval review", () => {
       revisedTotalMinor: 3000,
       deltaAmountMinor: 1000,
       paymentRemainingMinor: 1000,
+      settledAmountMinor: 2000,
+      refundedAmountMinor: 0,
+      pendingRefundAmountMinor: 0,
+      refundDueMinor: 0,
       status: BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE,
     });
   });

@@ -463,6 +463,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
     const submissionLines: SubmissionLine[] = lines.map((line) => ({
       ticketTypeId: line.ticketTypeId as UUIDString,
       audience: ticketTypesById.get(line.ticketTypeId)!.audience,
+      priceMinor: Math.round((ticketPriceById.get(line.ticketTypeId) ?? 0) * 100),
       sortOrder: line.sortOrder,
       guestUserId: line.guestUserId,
       guestDisplayName: line.guestDisplayName,
@@ -471,6 +472,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
     const previousLines: ExistingSubmissionLine[] = (baseBooking?.lines ?? []).map((line) => ({
       ticketTypeId: validateUUID(line.ticketType.id, "ticketTypeId") as UUIDString,
       audience: line.ticketType.audience,
+      priceMinor: line.priceMinor ?? Math.round(line.ticketType.price * 100),
       sortOrder: line.sortOrder,
       guestUserId: line.guestUser?.id ?? null,
       guestDisplayName: line.guestDisplayName ?? null,
@@ -542,8 +544,13 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
         }
         paymentDelta = computeBookingPaymentDelta(activeBooking, {
           lines: submissionLines.map((line) => ({
+            priceMinor: line.priceMinor,
             ticketType: { price: ticketPriceById.get(line.ticketTypeId) ?? 0 },
           })),
+        }, {
+          financialHistory: terminalBookings.filter((booking) =>
+            bookingIdsEqual(booking.revisionGroupId, revisionPlan.revisionGroupId)
+          ),
         });
         await persistActiveBookingRevision({
           input: persistenceInput,

@@ -71,6 +71,7 @@ enum BookingPaymentAdjustmentStatus {
   NOT_REQUIRED
   PENDING_AUTO_REFUND
   PENDING_AUTO_CHARGE
+  REFUND_FAILED
   SETTLED
 }
 
@@ -527,6 +528,10 @@ type BookingLine @table {
   bookingPlace: BookingPlace!
   booking: Booking!
   ticketType: TicketType!
+  # Immutable price agreed for this revision line. Nullable only for legacy
+  # rows created before price snapshots were introduced; readers fall back to
+  # the ticket type's current price for those rows.
+  priceMinor: Int
   guestUser: User
   guestDisplayName: String
   dietaryNote: String
@@ -585,6 +590,11 @@ type BookingPlacePaymentAllocation @table @unique(fields: ["ticketOrder", "booki
   # Refunds are tracked per exact place so partial refunds on a multi-ticket
   # Stripe charge never erase the paid entitlement of sibling tickets.
   refundedAmountMinor: Int! @default(value: 0)
+  # A Stripe refund can be asynchronous. Keep committed-but-not-yet-settled
+  # money separate so retries cannot issue it twice or describe it as paid.
+  refundPendingAmountMinor: Int! @default(value: 0)
+  refundFailureReason: String
+  refundUpdatedAt: Timestamp
   stripeRefundId: String
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
@@ -850,13 +860,38 @@ type OrganiserGuest @table {
   stripeSessionId: String
   stripePaymentIntentId: String
   paidAt: Timestamp
+  # Gross amount captured by the original guest checkout. Nullable for legacy
+  # rows, where readers use the pre-amendment allocation price.
+  paidAmountMinor: Int
   refundedAmountMinor: Int! @default(value: 0)
   refundPendingMinor: Int! @default(value: 0)
+  refundFailureReason: String
+  stripeRefundId: String
   cancelledAt: Timestamp
   createdBy: String!
   updatedBy: String!
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+# Additional balances caused by organiser amendments use separate payment
+# records so every charge and refund retains its own Stripe reference.
+type OrganiserGuestPayment @table {
+  id: UUID!
+  guest: OrganiserGuest!
+  amountMinor: Int!
+  checkoutKey: String!
+  stripeSessionId: String! @unique
+  stripePaymentIntentId: String @unique
+  paidAt: Timestamp
+  refundedAmountMinor: Int! @default(value: 0)
+  refundPendingMinor: Int! @default(value: 0)
+  refundFailureReason: String
+  stripeRefundId: String
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+  createdBy: String
+  updatedBy: String
 }
 
 type OrganiserGuestAudit @table {

@@ -1398,10 +1398,16 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
       sitNextToUserIds
       accommodationRequested
       accommodationNote
+      adjustments: bookingPaymentAdjustments_on_revisionBooking {
+        id
+        deltaAmountMinor
+        status
+      }
       createdAt
       updatedAt
       lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
         id
+        priceMinor
         bookingPlace {
           id
           paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
@@ -1409,6 +1415,9 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
             ticketOrderId
             allocatedAmountMinor
             refundedAmountMinor
+            refundPendingAmountMinor
+            refundFailureReason
+            refundUpdatedAt
             stripeRefundId
             createdAt
           }
@@ -1463,6 +1472,7 @@ query GetBookingRevisionForApprovalFromCallable($id: UUID!) @auth(level: NO_ACCE
     }
     lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
       id
+      priceMinor
       sortOrder
       guestDisplayName
       dietaryNote
@@ -1490,6 +1500,7 @@ query GetTicketOrdersForBookerAndEvent($userId: String!, $eventId: UUID!) @auth(
       quantity
       unitAmountMinor
       totalAmountMinor
+      stripeCheckoutSessionId
       createdAt
       ticketType {
         id
@@ -1526,7 +1537,7 @@ mutation SettleBookingPaymentAdjustmentsFromCallable(
   bookingPaymentAdjustment_updateMany(
     where: {
       revisionBookingId: { eq: $revisionBookingId }
-      status: { in: [PENDING_AUTO_CHARGE, PENDING_AUTO_REFUND] }
+      status: { in: [PENDING_AUTO_CHARGE, PENDING_AUTO_REFUND, REFUND_FAILED] }
     }
     data: {
       status: $status
@@ -1599,6 +1610,27 @@ mutation UpdateBookingPlaceAllocationRefundFromCallable(
     data: {
       refundedAmountMinor: $refundedAmountMinor
       stripeRefundId: $stripeRefundId
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation UpdateBookingPlaceAllocationRefundStateFromCallable(
+  $id: UUID!
+  $refundedAmountMinor: Int!
+  $refundPendingAmountMinor: Int!
+  $stripeRefundId: String
+  $refundFailureReason: String
+) @auth(level: NO_ACCESS) {
+  bookingPlacePaymentAllocation_update(
+    id: $id
+    data: {
+      refundedAmountMinor: $refundedAmountMinor
+      refundPendingAmountMinor: $refundPendingAmountMinor
+      stripeRefundId: $stripeRefundId
+      refundFailureReason: $refundFailureReason
+      refundUpdatedAt_expr: "request.time"
       updatedAt_expr: "request.time"
       updatedBy: "system"
     }
@@ -2104,6 +2136,7 @@ query GetBookingForNotification($bookingId: UUID!) @auth(level: NO_ACCESS) {
       }
     }
     lines: bookingLines_on_booking(orderBy: { sortOrder: ASC }) {
+      priceMinor
       sortOrder
       guestDisplayName
       dietaryNote

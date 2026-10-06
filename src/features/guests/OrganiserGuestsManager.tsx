@@ -73,6 +73,7 @@ export default function OrganiserGuestsManager({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const [amendmentReviewed, setAmendmentReviewed] = useState(false);
   async function run(name: string, input: Record<string, unknown>) {
     setBusy(true);
     setError("");
@@ -251,7 +252,7 @@ export default function OrganiserGuestsManager({
                     <TableCell>
                       <Button
                         disabled={busy || g.cancelled}
-                        onClick={() => setGuest(g)}
+                        onClick={() => { setAmendmentReviewed(false); setGuest(g); }}
                       >
                         Edit guest
                       </Button>
@@ -273,6 +274,19 @@ export default function OrganiserGuestsManager({
                       >
                         Cancel guest
                       </Button>
+                      {g.cancelled && ["REFUND_REQUIRED", "REFUND_FAILED"].includes(g.paymentStatus) ? (
+                        <Button
+                          color="error"
+                          disabled={busy}
+                          onClick={() => void run("manageOrganiserGuest", {
+                            action: "cancel",
+                            id: g.id,
+                            version: g.version,
+                          })}
+                        >
+                          Retry refund
+                        </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -282,7 +296,7 @@ export default function OrganiserGuestsManager({
           <Typography variant="body2" sx={{ mt: 2 }}>
             Copy link creates a new personal link and immediately revokes the
             previous one. Paid cancellations retain their payment history and
-            show any refund still required.
+            start the applicable refund immediately.
           </Typography>
         </>
       )}
@@ -344,30 +358,37 @@ export default function OrganiserGuestsManager({
                 onChange={(e) => setGuest({ ...guest, [key]: e.target.value })}
               />
             ))}
-            {guest?.version &&
-              !["UNPAID", "FREE"].includes(guest.paymentStatus ?? "") && (
-                <Typography variant="body2">
-                  To change a paid ticket, cancel this reservation and add a new
-                  one. Existing payment and refund history will be retained.
-                </Typography>
-              )}
-            {(!guest?.version ||
-              ["UNPAID", "FREE"].includes(guest.paymentStatus ?? "")) && (
-              <TextField
-                select
-                label="Guest ticket"
-                value={guest?.ticketTypeId ?? ""}
-                onChange={(e) =>
-                  setGuest({ ...guest, ticketTypeId: e.target.value })
-                }
-              >
-                {data?.ticketTypes.map((t) => (
-                    <MenuItem key={t.id} value={t.id}>
-                      {t.title} · {money(t.priceMinor)}
-                    </MenuItem>
-                  ))}
-              </TextField>
-            )}
+            <TextField
+              select
+              label="Guest ticket"
+              value={guest?.ticketTypeId ?? ""}
+              onChange={(e) => {
+                setAmendmentReviewed(false);
+                setGuest({ ...guest, ticketTypeId: e.target.value });
+              }}
+            >
+              {data?.ticketTypes.map((t) => (
+                <MenuItem key={t.id} value={t.id}>
+                  {t.title} · {money(t.priceMinor)}
+                </MenuItem>
+              ))}
+            </TextField>
+            {guest?.version && guest.ticketTypeId !== data?.guests.find((item) => item.id === guest.id)?.ticketTypeId ? (() => {
+              const selected = data?.ticketTypes.find((type) => type.id === guest.ticketTypeId);
+              const settled = guest.settledAmountMinor ?? 0;
+              const newPrice = selected?.priceMinor ?? 0;
+              const refund = Math.max(0, settled - newPrice);
+              const due = Math.max(0, newPrice - settled);
+              return (
+                <Alert severity={amendmentReviewed ? "warning" : "info"}>
+                  Current ticket: {money(guest.priceMinor ?? 0)}. New ticket: {money(newPrice)}. Amount paid after refunds: {money(settled)}. Refunds completed: {money(guest.refundedAmountMinor ?? 0)}. Refunds pending: {money(guest.refundPendingMinor ?? 0)}. {refund > 0
+                    ? `A ${money(refund)} refund will be started immediately.`
+                    : due > 0
+                      ? `Payment required—please pay as soon as possible: ${money(due)}.`
+                      : "No further payment or refund is required."}
+                </Alert>
+              );
+            })() : null}
             {error && <Alert severity="error">{error}</Alert>}
           </Stack>
         </DialogContent>
@@ -381,14 +402,24 @@ export default function OrganiserGuestsManager({
               !guest?.firstName?.trim() ||
               !guest?.lastName?.trim()
             }
-            onClick={() =>
+            onClick={() => {
+              const original = data?.guests.find((item) => item.id === guest?.id);
+              const ticketChanged = Boolean(guest?.version && original && guest.ticketTypeId !== original.ticketTypeId);
+              if (ticketChanged && !amendmentReviewed) {
+                setAmendmentReviewed(true);
+                return;
+              }
+              const selected = data?.ticketTypes.find((type) => type.id === guest?.ticketTypeId);
               void run("manageOrganiserGuest", {
                 ...guest,
+                expectedTicketPriceMinor: selected?.priceMinor,
                 action: guest?.version ? "edit" : "create",
-              })
-            }
+              });
+            }}
           >
-            Save guest
+            {guest?.version && data?.guests.find((item) => item.id === guest.id)?.ticketTypeId !== guest.ticketTypeId
+              ? amendmentReviewed ? "Confirm and apply amendment" : "Review amendment"
+              : "Save guest"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -396,8 +427,8 @@ export default function OrganiserGuestsManager({
         <DialogTitle>Cancel this guest?</DialogTitle>
         <DialogContent>
           This releases {cancel?.firstName} {cancel?.lastName}'s place and stops
-          further payment. Any existing payment remains recorded; cancellation
-          does not issue an automatic refund.
+          further payment. Any existing payment remains recorded and the
+          applicable refund is started immediately.
           {error && <Alert severity="error">{error}</Alert>}
         </DialogContent>
         <DialogActions>

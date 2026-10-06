@@ -7,7 +7,6 @@ import {
   getUserForCheckout,
   getUserUserGroupsForAdmin,
   markTicketOrderFailedFromWebhook,
-  updateBookingPlaceAllocationRefundFromCallable,
   updateUserStripeCustomerId,
   TicketAudience,
   TicketOrderStatus,
@@ -28,8 +27,8 @@ import {
   bookingIdsEqual,
   bookingIsFullyPaid,
   computeUnpaidBookingCheckoutItems,
-  planCheckoutOrderLines,
   planBookingAllocationRefunds,
+  planCheckoutOrderLines,
   selectLatestPaymentEligibleBooking,
   stalePendingOrderIds,
 } from "./bookingCheckout";
@@ -37,6 +36,7 @@ import { hydrateBookingsWithTicketOrders } from "./bookingQueryHydration";
 import { APP_BASE_URL, requireStripe, stripeSecret } from "./paymentConfig";
 import { createAllocatedTicketOrder } from "./bookingPaymentPersistence";
 import { confirmBookingIfFullyPaid } from "./bookingPaymentFinalization";
+import { initiateBookingAllocationRefunds } from "./bookingRefundOrchestration";
 
 const CHECKOUT_CURRENCY = "gbp";
 
@@ -150,59 +150,54 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
   const eventId = validateUUID(String(request.data?.eventId), "eventId") as UUIDString;
 
   const bookingsResult = await getBookingsForBookerAndEvent({ bookerId: uid, eventId });
-  let booking = selectLatestPaymentEligibleBooking(hydrateBookingsWithTicketOrders(bookingsResult.data));
-  if (!booking) {
+  let hydratedBookings = hydrateBookingsWithTicketOrders(bookingsResult.data);
+  const initialBooking = selectLatestPaymentEligibleBooking(hydratedBookings);
+  if (!initialBooking) {
     throw new HttpsError(
       "failed-precondition",
       "This booking must be approved before payment can begin"
     );
   }
-
+  let booking = initialBooking;
+  let bookingHistory = hydratedBookings.filter((row) => bookingIdsEqual(row.revisionGroupId, booking.revisionGroupId));
   let stripeClient: InstanceType<typeof Stripe> | null = null;
-  const plannedRefunds = planBookingAllocationRefunds(booking);
-  if (plannedRefunds.length > 0) {
+  const refundDue = planBookingAllocationRefunds(booking, bookingHistory);
+  if (refundDue.length > 0) {
     stripeClient = requireStripe(stripeSecret.value());
-    for (const refund of plannedRefunds) {
-      if (!refund.stripePaymentIntentId) {
-        throw new HttpsError(
-          "failed-precondition",
-          "A paid ticket is missing its Stripe payment reference; automatic refund cannot continue"
-        );
-      }
-      const stripeRefund = await stripeClient.refunds.create(
-        {
-          payment_intent: refund.stripePaymentIntentId,
-          amount: refund.amountMinor,
-          metadata: {
-            bookingId: booking.id,
-            allocationId: refund.allocationId,
-            ticketOrderId: refund.ticketOrderId,
-            refundAmountMinor: String(refund.amountMinor),
-            resultingRefundedAmountMinor: String(refund.resultingRefundedAmountMinor),
-          },
-        },
-        {
-          idempotencyKey: `booking-refund:${booking.id}:${refund.allocationId}:${refund.resultingRefundedAmountMinor}`,
-        }
-      );
-      await updateBookingPlaceAllocationRefundFromCallable({
-        id: validateUUID(refund.allocationId) as UUIDString,
-        refundedAmountMinor: refund.resultingRefundedAmountMinor,
-        stripeRefundId: stripeRefund.id,
-      });
+    const refundResult = await initiateBookingAllocationRefunds({
+      booking,
+      financialHistory: bookingHistory,
+      stripeClient,
+    });
+    if (refundResult.failedAmountMinor > 0) {
+      throw new HttpsError("internal", "The refund could not be completed; it remains visible for recovery");
     }
     const refreshed = await getBookingsForBookerAndEvent({ bookerId: uid, eventId });
-    booking = selectLatestPaymentEligibleBooking(hydrateBookingsWithTicketOrders(refreshed.data));
-    if (!booking) {
+    hydratedBookings = hydrateBookingsWithTicketOrders(refreshed.data);
+    const refreshedBooking = selectLatestPaymentEligibleBooking(hydratedBookings);
+    if (!refreshedBooking) {
       throw new HttpsError("failed-precondition", "The payable booking changed while applying its refund");
     }
+    booking = refreshedBooking;
+    bookingHistory = hydratedBookings.filter((row) => bookingIdsEqual(row.revisionGroupId, booking.revisionGroupId));
   }
 
   const ordersResult = await getTicketOrdersForBookerAndEvent({ userId: uid, eventId });
-  const eventTicketOrders = ordersResult.data?.user?.ticketOrders ?? [];
-  const unpaidItems = computeUnpaidBookingCheckoutItems(booking);
+  const bookingPlaceIds = new Set(
+    bookingHistory.flatMap((row) =>
+      row.lines.map((line) => line.bookingPlace.id.replace(/-/g, "").toLowerCase())
+    )
+  );
+  // A member can have an older cancelled booking and a newer booking for the
+  // same event. Never reuse or expire the other revision group's checkout.
+  const eventTicketOrders = (ordersResult.data?.user?.ticketOrders ?? []).filter((order) =>
+    order.paymentAllocations.some((allocation) =>
+      bookingPlaceIds.has(allocation.bookingPlace.id.replace(/-/g, "").toLowerCase())
+    )
+  );
+  const unpaidItems = computeUnpaidBookingCheckoutItems(booking, bookingHistory);
   if (unpaidItems.length === 0) {
-    if (bookingIsFullyPaid(booking)) {
+    if (bookingIsFullyPaid(booking, bookingHistory)) {
       await confirmBookingIfFullyPaid({ bookerId: uid, eventId });
       return { url: null, orderIds: [], confirmed: true };
     }
@@ -212,6 +207,19 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
   const checkoutLines = planCheckoutOrderLines(unpaidItems, eventTicketOrders);
   const reusedOrderIds = checkoutLines.flatMap((line) => (line.existingOrderId ? [line.existingOrderId] : []));
   for (const staleOrderId of stalePendingOrderIds(eventTicketOrders, reusedOrderIds)) {
+    const staleOrder = eventTicketOrders.find((order) => bookingIdsEqual(order.id, staleOrderId));
+    if (staleOrder?.stripeCheckoutSessionId) {
+      stripeClient ??= requireStripe(stripeSecret.value());
+      const staleSession = await stripeClient.checkout.sessions.retrieve(staleOrder.stripeCheckoutSessionId);
+      if (staleSession.status === "open") {
+        await stripeClient.checkout.sessions.expire(staleSession.id);
+      } else if (staleSession.status === "complete") {
+        throw new HttpsError(
+          "aborted",
+          "A previous payment completed while this booking was changing. Refresh before paying again."
+        );
+      }
+    }
     await markTicketOrderFailedFromWebhook({
       id: staleOrderId as UUIDString,
       webhookEventId: `checkout-supersede:${staleOrderId}`,
@@ -234,7 +242,12 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
     if (ticketType.audience !== TicketAudience.MEMBER && ticketType.audience !== TicketAudience.GUEST) {
       throw new HttpsError("failed-precondition", "Unsupported ticket audience for checkout");
     }
-    await ensureTicketCheckoutEligibility({ uid, ticketType });
+    const payingOrganiserAmendment = (booking.adjustments ?? []).some(
+      (adjustment) => adjustment.status === "PENDING_AUTO_CHARGE" && adjustment.deltaAmountMinor > 0
+    );
+    if (!payingOrganiserAmendment) {
+      await ensureTicketCheckoutEligibility({ uid, ticketType });
+    }
 
     if (line.unitAmountMinor === 0) {
       await createAllocatedTicketOrder({

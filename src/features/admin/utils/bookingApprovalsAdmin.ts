@@ -18,7 +18,8 @@ export type AttendeePaymentState =
   | "REFUNDED"
   | "UNKNOWN"
   | "PARTIALLY_REFUNDED"
-  | "REFUND_PENDING";
+  | "REFUND_PENDING"
+  | "REFUND_FAILED";
 
 export interface EventAttendeeTicketRow {
   key: string;
@@ -88,11 +89,11 @@ export function attendeePaymentState(
   line: EventBookingAdminRow["lines"][number],
   ticketOrdersById: TicketOrdersById
 ): AttendeePaymentState {
-  if (line.ticketType.price <= 0) return "FREE";
+  const requiredMinor = line.priceMinor ?? Math.round(line.ticketType.price * 100);
+  if (requiredMinor <= 0) return "FREE";
   const allocations = line.bookingPlace.paymentAllocations ?? [];
   if (allocations.some((allocation) => !ticketOrdersById.has(allocation.ticketOrderId))) return "UNKNOWN";
 
-  const requiredMinor = Math.round(line.ticketType.price * 100);
   let settledMinor = 0;
   let pendingMinor = 0;
   let settledAllocatedMinor = 0;
@@ -102,6 +103,8 @@ export function attendeePaymentState(
     if (status === TicketOrderStatus.PAID || status === TicketOrderStatus.REFUNDED) {
       settledAllocatedMinor += allocation.allocatedAmountMinor;
       settledRefundedMinor += allocation.refundedAmountMinor;
+      if (allocation.refundFailureReason) return "REFUND_FAILED";
+      if ((allocation.refundPendingAmountMinor ?? 0) > 0) return "REFUND_PENDING";
       settledMinor += Math.max(0, allocation.allocatedAmountMinor - allocation.refundedAmountMinor);
     } else if (status === TicketOrderStatus.PENDING) {
       pendingMinor += Math.max(0, allocation.allocatedAmountMinor - allocation.refundedAmountMinor);
