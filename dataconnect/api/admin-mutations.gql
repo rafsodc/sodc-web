@@ -1623,8 +1623,11 @@ mutation UpdateBookingPlaceAllocationRefundStateFromCallable(
   $stripeRefundId: String
   $refundFailureReason: String
 ) @auth(level: NO_ACCESS) {
-  bookingPlacePaymentAllocation_update(
-    id: $id
+  bookingPlacePaymentAllocation_updateMany(
+    where: {
+      id: { eq: $id }
+      refundedAmountMinor: { le: $refundedAmountMinor }
+    }
     data: {
       refundedAmountMinor: $refundedAmountMinor
       refundPendingAmountMinor: $refundPendingAmountMinor

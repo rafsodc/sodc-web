@@ -15,6 +15,18 @@ import { APP_BASE_URL, requireStripe, stripeSecret } from "./paymentConfig";
 type Guest = db.GetOrganiserGuestData["organiserGuests"][number];
 const hash = (token: string) =>
   createHash("sha256").update(token).digest("hex");
+function stableGuestPaymentId(guestId: string, checkoutKey: string): string {
+  const digest = createHash("sha256")
+    .update(`${guestId}:${checkoutKey}`)
+    .digest("hex");
+  return [
+    digest.slice(0, 8),
+    digest.slice(8, 12),
+    `5${digest.slice(13, 16)}`,
+    `8${digest.slice(17, 20)}`,
+    digest.slice(20, 32),
+  ].join("-");
+}
 function text(
   value: unknown,
   label: string,
@@ -474,10 +486,11 @@ export const createOrganiserGuestCheckout = onCall(
         );
         if (previous.status === "open" && previous.url) {
           const current = await guestByToken(request.data.token);
+          const currentPosition = guestFinancialPosition(current);
           if (
             current.cancelledAt ||
-            current.paidAt ||
-            current.checkoutKey !== guest.checkoutKey
+            current.checkoutKey !== guest.checkoutKey ||
+            currentPosition.paymentRequiredMinor !== position.paymentRequiredMinor
           )
             throw new HttpsError(
               "failed-precondition",
@@ -503,7 +516,9 @@ export const createOrganiserGuestCheckout = onCall(
         guest = await guestByToken(request.data.token);
       }
       const additionalPayment = position.grossPaidMinor > 0;
-      const paymentId = additionalPayment ? randomUUID() : null;
+      const paymentId = additionalPayment
+        ? stableGuestPaymentId(guest.id, guest.checkoutKey)
+        : null;
       const metadata = {
         domain: "organiser-guest",
         guestId: guest.id,

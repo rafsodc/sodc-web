@@ -14068,7 +14068,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateBookingPlaceAllocationRefundStateFromCallable` Mutation is of type `UpdateBookingPlaceAllocationRefundStateFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface UpdateBookingPlaceAllocationRefundStateFromCallableData {
-  bookingPlacePaymentAllocation_update?: BookingPlacePaymentAllocation_Key | null;
+  bookingPlacePaymentAllocation_updateMany: number;
 }
 ```
 
@@ -14132,7 +14132,7 @@ export default function UpdateBookingPlaceAllocationRefundStateFromCallableCompo
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
-    console.log(mutation.data.bookingPlacePaymentAllocation_update);
+    console.log(mutation.data.bookingPlacePaymentAllocation_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

@@ -62,6 +62,7 @@ const getBookings = vi.spyOn(admin, "getBookingsForBookerAndEvent");
 const getOrders = vi.spyOn(admin, "getTicketOrdersForBookerAndEvent");
 const markFailed = vi.spyOn(admin, "markTicketOrderFailedFromWebhook");
 const updateAllocationRefund = vi.spyOn(admin, "updateBookingPlaceAllocationRefundStateFromCallable");
+const updateStripeCustomer = vi.spyOn(admin, "updateUserStripeCustomerId");
 
 type Handler = (request: { auth?: { uid: string; token: Record<string, unknown> }; data: Record<string, unknown> }) => Promise<unknown>;
 const ticketHandler = createTicketCheckoutSession as unknown as Handler;
@@ -128,6 +129,7 @@ describe("payment checkout callables", () => {
     getOrders.mockResolvedValue({ data: { user: { ticketOrders: [] } } } as never);
     markFailed.mockResolvedValue({ data: {} } as never);
     updateAllocationRefund.mockResolvedValue({ data: {} } as never);
+    updateStripeCustomer.mockResolvedValue({ data: {} } as never);
     mocks.createAllocatedTicketOrder.mockResolvedValue(ORDER_ID);
     mocks.confirmBookingIfFullyPaid.mockResolvedValue({ bookingId: BOOKING_ID, confirmed: true });
   });
@@ -175,6 +177,58 @@ describe("payment checkout callables", () => {
       { idempotencyKey: bookingCheckoutIdempotencyKey(BOOKING_ID, [ORDER_ID]) }
     );
     expect(result).toEqual({ url: "https://checkout.stripe.test/session", orderIds: [ORDER_ID], confirmed: false });
+  });
+
+  it("creates and stores a Stripe customer when the member has none", async () => {
+    getUser.mockResolvedValue({
+      data: {
+        user: {
+          id: USER_ID,
+          email: "member@example.com",
+          firstName: "Sam",
+          lastName: "Member",
+          membershipStatus: MembershipStatus.REGULAR,
+          stripeCustomerId: null,
+        },
+      },
+    } as never);
+    getBookings.mockResolvedValue({
+      data: { user: { bookings: [booking(BookingApprovalStatus.APPROVED)] } },
+    } as never);
+    const stripe = stripeClient();
+    mocks.requireStripe.mockReturnValue(stripe);
+
+    await eventHandler(enabledRequest({ eventId: EVENT_ID }));
+
+    expect(stripe.customers.create).toHaveBeenCalledWith({
+      email: "member@example.com",
+      name: "Sam Member",
+      metadata: { firebaseUid: USER_ID },
+    });
+    expect(updateStripeCustomer).toHaveBeenCalledWith({
+      userId: USER_ID,
+      stripeCustomerId: "cus_new",
+    });
+  });
+
+  it("uses the approved organiser amendment price without rechecking self-service eligibility", async () => {
+    const amendedBooking = booking(BookingApprovalStatus.APPROVED);
+    amendedBooking.adjustments = [
+      { status: "PENDING_AUTO_CHARGE", deltaAmountMinor: 5000 },
+    ];
+    getBookings.mockResolvedValue({
+      data: { user: { bookings: [amendedBooking] } },
+    } as never);
+    const stripe = stripeClient();
+    mocks.requireStripe.mockReturnValue(stripe);
+
+    await expect(
+      eventHandler(enabledRequest({ eventId: EVENT_ID })),
+    ).resolves.toMatchObject({
+      url: "https://checkout.stripe.test/session",
+    });
+
+    expect(getSection).not.toHaveBeenCalled();
   });
 
   it("allows an eligible member with a payment-ready booking to pay after closing", async () => {

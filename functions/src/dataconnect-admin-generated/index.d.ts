@@ -3908,7 +3908,7 @@ export interface UpdateBookingPlaceAllocationRefundFromCallableVariables {
 }
 
 export interface UpdateBookingPlaceAllocationRefundStateFromCallableData {
-  bookingPlacePaymentAllocation_update?: BookingPlacePaymentAllocation_Key | null;
+  bookingPlacePaymentAllocation_updateMany: number;
 }
 
 export interface UpdateBookingPlaceAllocationRefundStateFromCallableVariables {

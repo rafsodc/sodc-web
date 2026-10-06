@@ -17459,7 +17459,7 @@ Recall that executing the `UpdateBookingPlaceAllocationRefundStateFromCallable` 
 The `data` property is an object of type `UpdateBookingPlaceAllocationRefundStateFromCallableData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface UpdateBookingPlaceAllocationRefundStateFromCallableData {
-  bookingPlacePaymentAllocation_update?: BookingPlacePaymentAllocation_Key | null;
+  bookingPlacePaymentAllocation_updateMany: number;
 }
 ```
 ### Using `UpdateBookingPlaceAllocationRefundStateFromCallable`'s action shortcut function
@@ -17487,12 +17487,12 @@ const { data } = await updateBookingPlaceAllocationRefundStateFromCallable({ id:
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await updateBookingPlaceAllocationRefundStateFromCallable(dataConnect, updateBookingPlaceAllocationRefundStateFromCallableVars);
 
-console.log(data.bookingPlacePaymentAllocation_update);
+console.log(data.bookingPlacePaymentAllocation_updateMany);
 
 // Or, you can use the `Promise` API.
 updateBookingPlaceAllocationRefundStateFromCallable(updateBookingPlaceAllocationRefundStateFromCallableVars).then((response) => {
   const data = response.data;
-  console.log(data.bookingPlacePaymentAllocation_update);
+  console.log(data.bookingPlacePaymentAllocation_updateMany);
 });
 ```
 
@@ -17524,12 +17524,12 @@ const ref = updateBookingPlaceAllocationRefundStateFromCallableRef(dataConnect, 
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
-console.log(data.bookingPlacePaymentAllocation_update);
+console.log(data.bookingPlacePaymentAllocation_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
-  console.log(data.bookingPlacePaymentAllocation_update);
+  console.log(data.bookingPlacePaymentAllocation_updateMany);
 });
 ```
 

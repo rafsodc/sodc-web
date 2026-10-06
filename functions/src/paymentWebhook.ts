@@ -29,6 +29,7 @@ import {
   requireStripe,
   stripeSecret,
   stripeWebhookPaymentsSecret,
+  type StripeClient,
 } from "./paymentConfig";
 import {
   applyPaymentTransitionToOrders,
@@ -72,6 +73,135 @@ function isoTimestampFromStripeEpochSeconds(value: unknown): string | null {
     return null;
   }
   return new Date(value * 1000).toISOString();
+}
+
+interface BookingRefundObject {
+  id?: string;
+  amount?: number;
+  status?: string | null;
+  failure_reason?: string | null;
+  payment_intent?: string | { id?: string } | null;
+  metadata?: {
+    allocationId?: string;
+    bookingId?: string;
+    refundAmountMinor?: string;
+    resultingRefundedAmountMinor?: string;
+  };
+}
+
+function refundPaymentIntentId(refund: BookingRefundObject): string | null {
+  if (typeof refund.payment_intent === "string") return refund.payment_intent;
+  return refund.payment_intent?.id ?? null;
+}
+
+function refundTargetAmount(refund: BookingRefundObject): number {
+  const amount = Number(refund.metadata?.resultingRefundedAmountMinor);
+  return Number.isSafeInteger(amount) && amount >= 0 ? amount : 0;
+}
+
+async function reconcileBookingAllocationRefund(
+  stripeClient: StripeClient,
+  eventRefund: BookingRefundObject,
+): Promise<{
+  bookingId?: string;
+  completedTarget: boolean;
+  failureReason: string | null;
+} | null> {
+  const allocationId = eventRefund.metadata?.allocationId;
+  const refundAmountMinor = Number(eventRefund.metadata?.refundAmountMinor);
+  const resultingRefundedAmountMinor = refundTargetAmount(eventRefund);
+  const paymentIntentId = refundPaymentIntentId(eventRefund);
+  if (
+    !allocationId ||
+    !paymentIntentId ||
+    !Number.isSafeInteger(refundAmountMinor) ||
+    refundAmountMinor <= 0 ||
+    eventRefund.amount !== refundAmountMinor ||
+    resultingRefundedAmountMinor < refundAmountMinor
+  ) {
+    return null;
+  }
+
+  const validatedAllocationId = validateUUID(
+    allocationId,
+    "allocationId",
+  ) as UUIDString;
+  const refunds: BookingRefundObject[] = [];
+  let startingAfter: string | undefined;
+  for (;;) {
+    const page = await stripeClient.refunds.list({
+      payment_intent: paymentIntentId,
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    const pageRefunds = page.data as BookingRefundObject[];
+    refunds.push(
+      ...pageRefunds.filter(
+        (refund) => refund.metadata?.allocationId === allocationId,
+      ),
+    );
+    if (!page.has_more || pageRefunds.length === 0) break;
+    startingAfter = pageRefunds.at(-1)?.id;
+    if (!startingAfter) break;
+  }
+
+  const succeeded = refunds.filter(
+    (refund) => !refund.status || refund.status === "succeeded",
+  );
+  const pending = refunds.filter(
+    (refund) =>
+      refund.status !== "succeeded" &&
+      refund.status !== "failed" &&
+      refund.status !== "canceled",
+  );
+  const failed = refunds.filter(
+    (refund) =>
+      refund.status === "failed" || refund.status === "canceled",
+  );
+  const amountFor = (refund: BookingRefundObject) =>
+    Number.isSafeInteger(refund.amount) && Number(refund.amount) > 0
+      ? Number(refund.amount)
+      : 0;
+  const refundedAmountMinor = succeeded.reduce(
+    (total, refund) => total + amountFor(refund),
+    0,
+  );
+  const refundPendingAmountMinor = pending.reduce(
+    (total, refund) => total + amountFor(refund),
+    0,
+  );
+  const targetAmountMinor = Math.max(
+    resultingRefundedAmountMinor,
+    ...refunds.map(refundTargetAmount),
+  );
+  const unresolvedFailure =
+    refundPendingAmountMinor === 0 && refundedAmountMinor < targetAmountMinor
+      ? failed[0]
+      : undefined;
+  const failureReason = unresolvedFailure
+    ? unresolvedFailure.failure_reason ?? "Stripe refund failed"
+    : null;
+  const latestRefund = refunds[0] ?? eventRefund;
+
+  await updateBookingPlaceAllocationRefundStateFromCallable({
+    id: validatedAllocationId,
+    refundedAmountMinor,
+    refundPendingAmountMinor,
+    stripeRefundId: latestRefund.id ?? null,
+    refundFailureReason: failureReason,
+  });
+
+  return {
+    bookingId:
+      unresolvedFailure?.metadata?.bookingId ??
+      latestRefund.metadata?.bookingId ??
+      eventRefund.metadata?.bookingId,
+    completedTarget:
+      refundPendingAmountMinor === 0 &&
+      !failureReason &&
+      refundedAmountMinor >= targetAmountMinor,
+    failureReason,
+  };
 }
 
 type PaymentTransitionEventContext = Pick<
@@ -188,6 +318,23 @@ async function handleStripeWebhookRequest(args: {
     }
     const stripeObjectId = stripeObjectIdFromEvent(event);
     const normalized = normalizeStripeEvent(event);
+    if (["refund.created", "refund.updated", "refund.failed"].includes(event.type)) {
+      const reconciliation = await reconcileBookingAllocationRefund(
+        stripeClient,
+        event.data.object as BookingRefundObject,
+      );
+      if (reconciliation?.failureReason && reconciliation.bookingId) {
+        await settleBookingPaymentAdjustmentsFromCallable({
+          revisionBookingId: validateUUID(
+            reconciliation.bookingId,
+            "bookingId",
+          ) as UUIDString,
+          status: BookingPaymentAdjustmentStatus.REFUND_FAILED,
+        });
+      } else if (reconciliation?.completedTarget) {
+        await settleRefundAdjustmentIfComplete(reconciliation.bookingId);
+      }
+    }
     const existingWebhookEvent = await getPaymentWebhookEventByStripeEventId({ stripeEventId: event.id });
     if ((existingWebhookEvent.data?.paymentWebhookEvents?.length ?? 0) > 0) {
       if (
@@ -230,50 +377,6 @@ async function handleStripeWebhookRequest(args: {
       }
       res.status(200).send("Duplicate event");
       return;
-    }
-
-    if (["refund.created", "refund.updated", "refund.failed"].includes(event.type)) {
-      const refund = event.data.object as {
-        id?: string;
-        amount?: number;
-        status?: string;
-        failure_reason?: string | null;
-        metadata?: {
-          allocationId?: string;
-          bookingId?: string;
-          refundAmountMinor?: string;
-          resultingRefundedAmountMinor?: string;
-        };
-      };
-      const allocationId = refund.metadata?.allocationId;
-      const refundAmountMinor = Number(refund.metadata?.refundAmountMinor);
-      const resultingRefundedAmountMinor = Number(refund.metadata?.resultingRefundedAmountMinor);
-      if (
-        allocationId &&
-        Number.isInteger(refundAmountMinor) &&
-        refundAmountMinor > 0 &&
-        refund.amount === refundAmountMinor &&
-        Number.isInteger(resultingRefundedAmountMinor) &&
-        resultingRefundedAmountMinor >= refundAmountMinor
-      ) {
-        const succeeded = !refund.status || refund.status === "succeeded";
-        const failed = refund.status === "failed" || refund.status === "canceled" || event.type === "refund.failed";
-        await updateBookingPlaceAllocationRefundStateFromCallable({
-          id: validateUUID(allocationId, "allocationId") as UUIDString,
-          refundedAmountMinor: succeeded
-            ? resultingRefundedAmountMinor
-            : resultingRefundedAmountMinor - refundAmountMinor,
-          refundPendingAmountMinor: succeeded || failed ? 0 : refundAmountMinor,
-          stripeRefundId: refund.id ?? null,
-          refundFailureReason: failed ? refund.failure_reason ?? "Stripe refund failed" : null,
-        });
-        if (failed && refund.metadata?.bookingId) {
-          await settleBookingPaymentAdjustmentsFromCallable({
-            revisionBookingId: validateUUID(refund.metadata.bookingId, "bookingId") as UUIDString,
-            status: BookingPaymentAdjustmentStatus.REFUND_FAILED,
-          });
-        }
-      }
     }
 
     if (normalized.kind === "ignore") {

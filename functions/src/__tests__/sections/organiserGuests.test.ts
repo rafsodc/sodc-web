@@ -429,6 +429,55 @@ describe("organiser ticket reassignment", () => {
       amountMinor: 500,
     }));
   });
+  it("reuses an open top-up checkout for a previously paid guest", async () => {
+    Object.assign(guest, {
+      paidAt: "2026-01-01",
+      paidAmountMinor: 1000,
+      priceMinor: 1500,
+      stripePaymentIntentId: "pi_guest",
+      stripeSessionId: "cs_topup",
+    });
+    stripe.checkout.sessions.retrieve.mockResolvedValue({
+      id: "cs_topup",
+      status: "open",
+      url: "https://checkout.stripe.test/topup",
+    });
+
+    await expect(
+      createOrganiserGuestCheckout.run(request({ token })),
+    ).resolves.toEqual({ url: "https://checkout.stripe.test/topup" });
+
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    expect(attachAdditional).not.toHaveBeenCalled();
+  });
+  it("uses the same top-up payment id when retrying after a lost database response", async () => {
+    Object.assign(guest, {
+      paidAt: "2026-01-01",
+      paidAmountMinor: 1000,
+      priceMinor: 1500,
+      stripePaymentIntentId: "pi_guest",
+    });
+    attachAdditional
+      .mockRejectedValueOnce(new Error("database timeout"))
+      .mockResolvedValueOnce({ data: { organiserGuest_updateMany: 1 } });
+
+    await expect(
+      createOrganiserGuestCheckout.run(request({ token })),
+    ).rejects.toMatchObject({ code: "internal" });
+    await expect(
+      createOrganiserGuestCheckout.run(request({ token })),
+    ).resolves.toEqual({ url: "https://checkout.stripe.test/session" });
+
+    const firstMetadata = stripe.checkout.sessions.create.mock.calls[0][0].metadata;
+    const secondMetadata = stripe.checkout.sessions.create.mock.calls[1][0].metadata;
+    expect(firstMetadata).toEqual(secondMetadata);
+    expect(firstMetadata.guestPaymentId).toMatch(
+      /^[a-f0-9]{8}-[a-f0-9]{4}-5[a-f0-9]{3}-8[a-f0-9]{3}-[a-f0-9]{12}$/,
+    );
+    expect(attachAdditional.mock.calls[0][0].id).toBe(
+      attachAdditional.mock.calls[1][0].id,
+    );
+  });
 });
 describe("guest payments and cancellation", () => {
   it("allows payment after booking closes using the allocated price and a stable idempotency key", async () => {
