@@ -24,6 +24,7 @@ export interface EventAttendeeTicketRow {
   key: string;
   bookingId: string;
   attendeeName: string;
+  email: string | null;
   rank: string | null;
   audience: ManagedTicketAudience;
   ticketType: string;
@@ -138,6 +139,10 @@ export function activeEventTicketRows(
           key: `${booking.id}:${line.id}`,
           bookingId: booking.id,
           attendeeName,
+          email:
+            line.ticketType.audience === TicketAudience.MEMBER
+              ? booking.booker.email.trim() || null
+              : line.guestUser?.email?.trim() || null,
           rank: (line.ticketType.audience === TicketAudience.MEMBER ? booking.booker.rank : line.guestUser?.rank)?.trim() || null,
           audience: line.ticketType.audience,
           ticketType: line.ticketType.title,
