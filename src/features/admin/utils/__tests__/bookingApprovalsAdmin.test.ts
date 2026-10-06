@@ -113,6 +113,7 @@ describe("booking approval admin model", () => {
     expect(rows).toEqual([
       expect.objectContaining({
         attendeeName: "Alex Member",
+        email: "alex@example.com",
         includesDinner: true,
         includesSymposium: false,
         accommodationRequested: true,
@@ -122,6 +123,7 @@ describe("booking approval admin model", () => {
       }),
       expect.objectContaining({
         attendeeName: "Jamie Guest",
+        email: null,
         includesDinner: false,
         includesSymposium: true,
         accommodationRequested: true,
@@ -141,12 +143,16 @@ describe("booking approval admin model", () => {
       booker: { id: "booker", firstName: "Alex", lastName: "Member", email: "alex@example.com", rank: "Wing Commander" },
       lines: [
         { id: "member", sortOrder: 0, ticketType: { title: "Member", audience: TicketAudience.MEMBER, price: 0 } },
-        { id: "linked", sortOrder: 1, guestUser: { id: "guest", firstName: "Jamie", lastName: "Guest", rank: " Squadron Leader " }, ticketType: { title: "Guest", audience: TicketAudience.GUEST, price: 0 } },
+        { id: "linked", sortOrder: 1, guestUser: { id: "guest", firstName: "Jamie", lastName: "Guest", email: "jamie@example.com", rank: " Squadron Leader " }, ticketType: { title: "Guest", audience: TicketAudience.GUEST, price: 0 } },
         { id: "unlinked", sortOrder: 2, guestDisplayName: "Other Guest", ticketType: { title: "Guest", audience: TicketAudience.GUEST, price: 0 } },
       ] as EventBookingAdminRow["lines"],
     });
-    expect(activeEventTicketRows([active], new Map()).map(row => row.rank)).toEqual(["Wing Commander", "Squadron Leader", null]);
-    expect(eventTicketRowsCsv(activeEventTicketRows([active], new Map()))).toContain("Jamie Guest,Squadron Leader,GUEST");
+    const rows = activeEventTicketRows([active], new Map());
+    expect(rows.map(row => row.rank)).toEqual(["Wing Commander", "Squadron Leader", null]);
+    expect(rows.map(row => row.email)).toEqual(["alex@example.com", "jamie@example.com", null]);
+    expect(eventTicketRowsCsv(rows)).toContain("Jamie Guest,Squadron Leader,GUEST");
+    expect(eventTicketRowsCsv(rows)).not.toContain("alex@example.com");
+    expect(eventTicketRowsCsv(rows)).not.toContain("jamie@example.com");
   });
 
   it("does not include superseded, rejected, or pending revisions in the active ticket roster", () => {
@@ -228,6 +234,7 @@ describe("booking approval admin model", () => {
         key: "booking-1:line-1",
         bookingId: "booking-1",
         attendeeName: "=2+2",
+        email: "private@example.com",
         rank: "=RANK()",
         audience: TicketAudience.GUEST,
         ticketType: "+Guest ticket",
@@ -243,6 +250,7 @@ describe("booking approval admin model", () => {
         key: "booking-1:line-2",
         bookingId: "booking-1",
         attendeeName: "@SUM(1,1)",
+        email: "second@example.com",
         rank: null,
         audience: TicketAudience.GUEST,
         ticketType: "Guest ticket",
@@ -261,6 +269,8 @@ describe("booking approval admin model", () => {
       "'=2+2,'=RANK(),GUEST,'+Guest ticket,Yes,No,Yes,'=Seating name,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID",
       "\"'@SUM(1,1)\",,GUEST,Guest ticket,No,Yes,No,,\"No nuts, please\",APPROVED,PAID",
     ].join("\n"));
+    expect(eventTicketRowsCsv(rows)).not.toContain("private@example.com");
+    expect(eventTicketRowsCsv(rows)).not.toContain("second@example.com");
   });
 
   it("never exposes an unresolved seating preference UUID", () => {

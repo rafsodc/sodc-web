@@ -2738,6 +2738,7 @@ export interface ListEventBookingsForAdminData {
           id: string;
           firstName: string;
           lastName: string;
+          email: string;
         } & User_Key;
         ticketType: {
           id: UUIDString;

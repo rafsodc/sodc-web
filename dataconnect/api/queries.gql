@@ -647,6 +647,7 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
           id
           firstName
           lastName
+          email
         }
         ticketType {
           id

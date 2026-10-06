@@ -508,6 +508,7 @@ describe("SectionEventsManager", () => {
     await user.click(screen.getByRole("button", { name: /event admin/i }));
     await user.click(screen.getByRole("button", { name: /^current attendee tickets$/i }));
 
+    expect(screen.getByRole("columnheader", { name: "Email" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Dinner" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Symposium" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Accommodation" })).toBeInTheDocument();
@@ -526,6 +527,7 @@ describe("SectionEventsManager", () => {
     );
     expect(screen.getByRole("columnheader", { name: "Rank" })).toBeInTheDocument();
     expect(screen.getByText("Wing Commander")).toBeInTheDocument();
+    expect(screen.getByText("alex@example.com")).toBeInTheDocument();
   });
 
   it("updates Dinner and Symposium flags on a ticket type", async () => {

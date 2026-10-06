@@ -505,10 +505,11 @@ function EventAttendeeTicketsSection({
       <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
         <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>Export CSV</Button>
       </Box>
-      <AdminTable minWidth={1260}>
+      <AdminTable minWidth={1360}>
         <TableHead>
           <TableRow>
             <TableCell>Attendee</TableCell>
+            <TableCell>Email</TableCell>
             <TableCell>Rank</TableCell>
             <TableCell>Audience</TableCell>
             <TableCell>Ticket</TableCell>
@@ -525,6 +526,7 @@ function EventAttendeeTicketsSection({
           {rows.map((row) => (
             <TableRow key={row.key}>
               <TableCell>{row.attendeeName}</TableCell>
+              <TableCell>{row.email ?? "—"}</TableCell>
               <TableCell>{row.rank || "—"}</TableCell>
               <TableCell>{getTicketCategoryLabel(row.audience)}</TableCell>
               <TableCell>{row.ticketType}</TableCell>
