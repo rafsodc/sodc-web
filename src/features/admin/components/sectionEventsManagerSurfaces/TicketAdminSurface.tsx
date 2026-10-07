@@ -21,7 +21,9 @@ import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
   Edit as EditIcon,
+  ContentCopy as ContentCopyIcon,
 } from "@mui/icons-material";
+import { useId, useMemo, useState } from "react";
 import { BookingApprovalStatus } from "@dataconnect/generated";
 import PageHeader from "../../../../shared/components/PageHeader";
 import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../../shared/utils/ticketAudienceLabels";
@@ -38,9 +40,13 @@ import SafeMarkdown from "../../../../shared/components/SafeMarkdown";
 import type { EventAttendeeTicketRow, TicketOrdersById } from "../../utils/bookingApprovalsAdmin";
 import {
   attendeePaymentState,
+  emptyEventAttendeeTicketFilters,
   eventTicketRowsCsv,
+  filterEventAttendeeTicketRows,
   previousActiveBooking,
+  uniqueEventAttendeeEmails,
 } from "../../utils/bookingApprovalsAdmin";
+import type { EventAttendeeTicketFilters } from "../../utils/bookingApprovalsAdmin";
 import { AdminAccordion, AdminTable } from "./adminSurfacePrimitives";
 
 interface TicketAdminSurfaceProps {
@@ -480,7 +486,9 @@ function BookingApprovalsSection({
   );
 }
 
-function EventAttendeeTicketsSection({
+const attendeeFilterCellSx = { minWidth: 140, verticalAlign: "top" } as const;
+
+export function EventAttendeeTicketsSection({
   eventTitle,
   loading,
   rows,
@@ -489,6 +497,29 @@ function EventAttendeeTicketsSection({
   loading: boolean;
   rows: EventAttendeeTicketRow[];
 }) {
+  const [filters, setFilters] = useState<EventAttendeeTicketFilters>(emptyEventAttendeeTicketFilters);
+  const [copyMessage, setCopyMessage] = useState<{ severity: "success" | "error"; text: string } | null>(null);
+  const filteredRows = useMemo(() => filterEventAttendeeTicketRows(rows, filters), [filters, rows]);
+  const emails = useMemo(() => uniqueEventAttendeeEmails(filteredRows), [filteredRows]);
+  const hasActiveFilters = Object.values(filters).some(Boolean);
+
+  const setFilter = (key: keyof EventAttendeeTicketFilters, value: string) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+    setCopyMessage(null);
+  };
+
+  const copyEmails = async () => {
+    try {
+      await navigator.clipboard.writeText(emails.join(", "));
+      setCopyMessage({
+        severity: "success",
+        text: `${emails.length} unique email address${emails.length === 1 ? "" : "es"} copied.`,
+      });
+    } catch {
+      setCopyMessage({ severity: "error", text: "Email addresses could not be copied." });
+    }
+  };
+
   const exportCsv = () => {
     const blob = new Blob([eventTicketRowsCsv(rows)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -503,10 +534,34 @@ function EventAttendeeTicketsSection({
   if (rows.length === 0) return <Alert severity="info">No active attendee tickets for this event.</Alert>;
   return (
     <Box>
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>Export CSV</Button>
+      {copyMessage ? (
+        <Alert severity={copyMessage.severity} onClose={() => setCopyMessage(null)} sx={{ mb: 2 }}>
+          {copyMessage.text}
+        </Alert>
+      ) : null}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Showing {filteredRows.length} of {rows.length} attendees
+        </Typography>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Button size="small" disabled={!hasActiveFilters} onClick={() => {
+            setFilters(emptyEventAttendeeTicketFilters);
+            setCopyMessage(null);
+          }}>
+            Clear filters
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<ContentCopyIcon />}
+            disabled={emails.length === 0}
+            onClick={() => void copyEmails()}
+          >
+            Copy email addresses ({emails.length})
+          </Button>
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>Export CSV</Button>
+        </Box>
       </Box>
-      <AdminTable minWidth={1490}>
+      <AdminTable minWidth={1640}>
         <TableHead>
           <TableRow>
             <TableCell>Attendee</TableCell>
@@ -523,9 +578,40 @@ function EventAttendeeTicketsSection({
             <TableCell>Approval</TableCell>
             <TableCell>Payment</TableCell>
           </TableRow>
+          <TableRow>
+            <TableCell component="td" sx={attendeeFilterCellSx}>
+              <TextField size="small" label="Filter attendee" value={filters.attendeeName} onChange={(event) => setFilter("attendeeName", event.target.value)} />
+            </TableCell>
+            <TableCell component="td" />
+            <TableCell component="td" sx={attendeeFilterCellSx}>
+              <TextField size="small" label="Filter rank" value={filters.rank} onChange={(event) => setFilter("rank", event.target.value)} />
+            </TableCell>
+            <TableCell component="td" sx={attendeeFilterCellSx}>
+              <CompactFilterSelect label="Membership" value={filters.membershipStatus} onChange={(value) => setFilter("membershipStatus", value)} options={uniqueOptions(rows, (row) => row.membershipStatus, getMembershipStatusLabel)} />
+            </TableCell>
+            <TableCell component="td" sx={attendeeFilterCellSx}>
+              <CompactFilterSelect label="Audience" value={filters.audience} onChange={(value) => setFilter("audience", value)} options={uniqueOptions(rows, (row) => row.audience, getTicketCategoryLabel)} />
+            </TableCell>
+            <TableCell component="td" sx={attendeeFilterCellSx}>
+              <TextField size="small" label="Filter ticket" value={filters.ticketType} onChange={(event) => setFilter("ticketType", event.target.value)} />
+            </TableCell>
+            <TableCell component="td" sx={attendeeFilterCellSx}><YesNoFilter label="Dinner" value={filters.includesDinner} onChange={(value) => setFilter("includesDinner", value)} /></TableCell>
+            <TableCell component="td" sx={attendeeFilterCellSx}><YesNoFilter label="Symposium" value={filters.includesSymposium} onChange={(value) => setFilter("includesSymposium", value)} /></TableCell>
+            <TableCell component="td" sx={attendeeFilterCellSx}><YesNoFilter label="Accommodation" value={filters.accommodationRequested} onChange={(value) => setFilter("accommodationRequested", value)} /></TableCell>
+            <TableCell component="td" />
+            <TableCell component="td" />
+            <TableCell component="td" sx={attendeeFilterCellSx}>
+              <CompactFilterSelect label="Approval" value={filters.approvalStatus} onChange={(value) => setFilter("approvalStatus", value)} options={uniqueOptions(rows, (row) => row.approvalStatus, titleCaseStatus)} />
+            </TableCell>
+            <TableCell component="td" sx={attendeeFilterCellSx}>
+              <CompactFilterSelect label="Payment" value={filters.paymentState} onChange={(value) => setFilter("paymentState", value)} options={uniqueOptions(rows, (row) => row.paymentState, titleCaseStatus)} />
+            </TableCell>
+          </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((row) => (
+          {filteredRows.length === 0 ? (
+            <TableRow><TableCell colSpan={13}><Alert severity="info">No attendees match the current filters.</Alert></TableCell></TableRow>
+          ) : filteredRows.map((row) => (
             <TableRow key={row.key}>
               <TableCell>{row.attendeeName}</TableCell>
               <TableCell>{row.email ?? "—"}</TableCell>
@@ -546,6 +632,47 @@ function EventAttendeeTicketsSection({
       </AdminTable>
     </Box>
   );
+}
+
+function titleCaseStatus(value: string): string {
+  return value.replaceAll("_", " ").toLocaleLowerCase().replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
+}
+
+function uniqueOptions<T extends string>(
+  rows: readonly EventAttendeeTicketRow[],
+  valueFor: (row: EventAttendeeTicketRow) => T | null,
+  labelFor: (value: T) => string
+): Array<{ value: string; label: string }> {
+  return Array.from(new Set(rows.map(valueFor).filter((value): value is T => Boolean(value))))
+    .map((value) => ({ value, label: labelFor(value) }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function CompactFilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+}) {
+  const labelId = useId();
+  return (
+    <FormControl size="small" fullWidth>
+      <InputLabel id={labelId}>{label}</InputLabel>
+      <Select labelId={labelId} label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+        <MenuItem value="">All</MenuItem>
+        {options.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+      </Select>
+    </FormControl>
+  );
+}
+
+function YesNoFilter({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return <CompactFilterSelect label={label} value={value} onChange={onChange} options={[{ value: "YES", label: "Yes" }, { value: "NO", label: "No" }]} />;
 }
 
 function BookingAuditSection({ loading, bookings }: { loading: boolean; bookings: EventBookingAdminRow[] }) {
