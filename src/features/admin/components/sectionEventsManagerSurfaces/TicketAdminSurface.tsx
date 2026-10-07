@@ -23,7 +23,7 @@ import {
   Edit as EditIcon,
   ContentCopy as ContentCopyIcon,
 } from "@mui/icons-material";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { BookingApprovalStatus } from "@dataconnect/generated";
 import PageHeader from "../../../../shared/components/PageHeader";
 import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../../shared/utils/ticketAudienceLabels";
@@ -47,6 +47,13 @@ import {
   uniqueEventAttendeeEmails,
 } from "../../utils/bookingApprovalsAdmin";
 import type { EventAttendeeTicketFilters } from "../../utils/bookingApprovalsAdmin";
+import {
+  DEFAULT_ATTENDEE_EMAIL_SEPARATOR,
+  readAttendeeEmailSeparator,
+  writeAttendeeEmailSeparator,
+  type AttendeeEmailSeparator,
+} from "../../utils/attendeeEmailSeparatorPreference";
+import { useCookiePreferences } from "../../../../shared/cookies/CookiePreferencesContext";
 import { AdminAccordion, AdminTable } from "./adminSurfacePrimitives";
 
 interface TicketAdminSurfaceProps {
@@ -487,7 +494,6 @@ function BookingApprovalsSection({
 }
 
 const attendeeFilterCellSx = { minWidth: 140, verticalAlign: "top" } as const;
-type EmailSeparator = ", " | "; ";
 
 export function EventAttendeeTicketsSection({
   eventTitle,
@@ -498,13 +504,24 @@ export function EventAttendeeTicketsSection({
   loading: boolean;
   rows: EventAttendeeTicketRow[];
 }) {
+  const { decision: cookieDecision, acceptPreferenceCookies } = useCookiePreferences();
   const emailSeparatorLabelId = useId();
   const [filters, setFilters] = useState<EventAttendeeTicketFilters>(emptyEventAttendeeTicketFilters);
-  const [emailSeparator, setEmailSeparator] = useState<EmailSeparator>(", ");
+  const [emailSeparator, setEmailSeparator] = useState<AttendeeEmailSeparator>(() =>
+    cookieDecision === "rejected"
+      ? DEFAULT_ATTENDEE_EMAIL_SEPARATOR
+      : readAttendeeEmailSeparator()
+  );
   const [copyMessage, setCopyMessage] = useState<{ severity: "success" | "error"; text: string } | null>(null);
   const filteredRows = useMemo(() => filterEventAttendeeTicketRows(rows, filters), [filters, rows]);
   const emails = useMemo(() => uniqueEventAttendeeEmails(filteredRows), [filteredRows]);
   const hasActiveFilters = Object.values(filters).some(Boolean);
+
+  useEffect(() => {
+    if (cookieDecision === "rejected") {
+      setEmailSeparator(DEFAULT_ATTENDEE_EMAIL_SEPARATOR);
+    }
+  }, [cookieDecision]);
 
   const setFilter = (key: keyof EventAttendeeTicketFilters, value: string) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -521,6 +538,12 @@ export function EventAttendeeTicketsSection({
     } catch {
       setCopyMessage({ severity: "error", text: "Email addresses could not be copied." });
     }
+  };
+
+  const changeEmailSeparator = (separator: AttendeeEmailSeparator) => {
+    setEmailSeparator(separator);
+    acceptPreferenceCookies();
+    writeAttendeeEmailSeparator(separator);
   };
 
   const exportCsv = () => {
@@ -559,7 +582,7 @@ export function EventAttendeeTicketsSection({
               labelId={emailSeparatorLabelId}
               label="Email separator"
               value={emailSeparator}
-              onChange={(event) => setEmailSeparator(event.target.value as EmailSeparator)}
+              onChange={(event) => changeEmailSeparator(event.target.value as AttendeeEmailSeparator)}
             >
               <MenuItem value=", ">Commas</MenuItem>
               <MenuItem value="; ">Semicolons (Outlook)</MenuItem>

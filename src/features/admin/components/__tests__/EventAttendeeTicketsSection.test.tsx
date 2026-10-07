@@ -1,6 +1,6 @@
 import { BookingApprovalStatus, MembershipStatus, TicketAudience } from "@dataconnect/generated";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "../../../../test-utils";
 import type { EventAttendeeTicketRow } from "../../utils/bookingApprovalsAdmin";
 import { EventAttendeeTicketsSection } from "../sectionEventsManagerSurfaces/TicketAdminSurface";
@@ -27,6 +27,13 @@ function attendeeRow(overrides: Partial<EventAttendeeTicketRow> = {}): EventAtte
 }
 
 describe("current attendee ticket filters", () => {
+  beforeEach(() => {
+    document.cookie.split(";").forEach((cookie) => {
+      const name = cookie.split("=")[0]?.trim();
+      if (name) document.cookie = `${name}=; max-age=0; path=/`;
+    });
+  });
+
   it("combines column filters and copies unique emails from only the visible rows", async () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
@@ -64,10 +71,24 @@ describe("current attendee ticket filters", () => {
     writeText.mockClear();
     await user.click(screen.getByRole("combobox", { name: "Email separator" }));
     await user.click(screen.getByRole("option", { name: "Semicolons (Outlook)" }));
+    expect(document.cookie).toContain("sodc-attendee-email-separator=semicolon");
+    expect(document.cookie).toContain("sodc-cookie-preferences=accepted");
     await user.click(screen.getByRole("button", { name: "Copy email addresses (2)" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("alex@example.com; second@example.com"));
     expect(screen.getByText("CSV includes all attendees")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Export full CSV" })).toBeInTheDocument();
+  });
+
+  it("restores a saved separator and ignores an invalid cookie value", () => {
+    document.cookie = "sodc-cookie-preferences=accepted; path=/";
+    document.cookie = "sodc-attendee-email-separator=semicolon; path=/";
+    const first = render(<EventAttendeeTicketsSection eventTitle="Dinner" loading={false} rows={[attendeeRow()]} />);
+    expect(screen.getByRole("combobox", { name: "Email separator" })).toHaveTextContent("Semicolons (Outlook)");
+
+    first.unmount();
+    document.cookie = "sodc-attendee-email-separator=invalid; path=/";
+    render(<EventAttendeeTicketsSection eventTitle="Dinner" loading={false} rows={[attendeeRow()]} />);
+    expect(screen.getByRole("combobox", { name: "Email separator" })).toHaveTextContent("Commas");
   });
 
   it("shows a no-match state and clear filters restores every row", async () => {

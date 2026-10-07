@@ -51,7 +51,7 @@ describe("site footer and cookie controls", () => {
     expect(screen.getByText(/do not use analytics or advertising cookies/i)).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: "Decline appearance cookie" })
+      screen.getByRole("button", { name: "Decline preference cookies" })
     );
 
     expect(
@@ -132,11 +132,12 @@ describe("site footer and cookie controls", () => {
     expect(within(lightButton).getByTestId("LightModeIcon")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cookie settings" }));
 
-    const appearanceSwitch = screen.getByRole("switch", {
-      name: "Remember my Light or Dark appearance choice",
+    document.cookie = "sodc-attendee-email-separator=semicolon; path=/";
+    const preferenceSwitch = screen.getByRole("switch", {
+      name: "Remember my preferences",
     });
-    expect(appearanceSwitch).toBeChecked();
-    await user.click(appearanceSwitch);
+    expect(preferenceSwitch).toBeChecked();
+    await user.click(preferenceSwitch);
     await user.click(screen.getByRole("button", { name: "Save cookie settings" }));
 
     await waitFor(() => {
@@ -147,6 +148,7 @@ describe("site footer and cookie controls", () => {
       ).toBeInTheDocument();
     });
     expect(document.cookie).not.toContain("sodc-color-mode-preference=");
+    expect(document.cookie).not.toContain("sodc-attendee-email-separator=");
     expect(document.cookie).toContain("sodc-cookie-preferences=rejected");
 
     await user.click(
