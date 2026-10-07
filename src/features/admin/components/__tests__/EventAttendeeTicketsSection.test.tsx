@@ -60,6 +60,14 @@ describe("current attendee ticket filters", () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("alex@example.com, second@example.com"));
     expect(screen.getByText("2 unique email addresses copied.")).toBeInTheDocument();
+
+    writeText.mockClear();
+    await user.click(screen.getByRole("combobox", { name: "Email separator" }));
+    await user.click(screen.getByRole("option", { name: "Semicolons (Outlook)" }));
+    await user.click(screen.getByRole("button", { name: "Copy email addresses (2)" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("alex@example.com; second@example.com"));
+    expect(screen.getByText("CSV includes all attendees")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export full CSV" })).toBeInTheDocument();
   });
 
   it("shows a no-match state and clear filters restores every row", async () => {

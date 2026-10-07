@@ -487,6 +487,7 @@ function BookingApprovalsSection({
 }
 
 const attendeeFilterCellSx = { minWidth: 140, verticalAlign: "top" } as const;
+type EmailSeparator = ", " | "; ";
 
 export function EventAttendeeTicketsSection({
   eventTitle,
@@ -497,7 +498,9 @@ export function EventAttendeeTicketsSection({
   loading: boolean;
   rows: EventAttendeeTicketRow[];
 }) {
+  const emailSeparatorLabelId = useId();
   const [filters, setFilters] = useState<EventAttendeeTicketFilters>(emptyEventAttendeeTicketFilters);
+  const [emailSeparator, setEmailSeparator] = useState<EmailSeparator>(", ");
   const [copyMessage, setCopyMessage] = useState<{ severity: "success" | "error"; text: string } | null>(null);
   const filteredRows = useMemo(() => filterEventAttendeeTicketRows(rows, filters), [filters, rows]);
   const emails = useMemo(() => uniqueEventAttendeeEmails(filteredRows), [filteredRows]);
@@ -510,7 +513,7 @@ export function EventAttendeeTicketsSection({
 
   const copyEmails = async () => {
     try {
-      await navigator.clipboard.writeText(emails.join(", "));
+      await navigator.clipboard.writeText(emails.join(emailSeparator));
       setCopyMessage({
         severity: "success",
         text: `${emails.length} unique email address${emails.length === 1 ? "" : "es"} copied.`,
@@ -550,6 +553,18 @@ export function EventAttendeeTicketsSection({
           }}>
             Clear filters
           </Button>
+          <FormControl size="small" sx={{ minWidth: 175 }}>
+            <InputLabel id={emailSeparatorLabelId}>Email separator</InputLabel>
+            <Select
+              labelId={emailSeparatorLabelId}
+              label="Email separator"
+              value={emailSeparator}
+              onChange={(event) => setEmailSeparator(event.target.value as EmailSeparator)}
+            >
+              <MenuItem value=", ">Commas</MenuItem>
+              <MenuItem value="; ">Semicolons (Outlook)</MenuItem>
+            </Select>
+          </FormControl>
           <Button
             variant="outlined"
             startIcon={<ContentCopyIcon />}
@@ -558,7 +573,10 @@ export function EventAttendeeTicketsSection({
           >
             Copy email addresses ({emails.length})
           </Button>
-          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>Export CSV</Button>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography variant="caption" color="text.secondary">CSV includes all attendees</Typography>
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>Export full CSV</Button>
+          </Box>
         </Box>
       </Box>
       <AdminTable minWidth={1640}>
