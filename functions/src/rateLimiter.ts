@@ -19,6 +19,8 @@ export interface RateLimitPolicy {
  */
 export const CALLABLE_RATE_LIMITS = {
   getOrganiserGuestList: { limit: 60, windowMs: 5 * MINUTE_MS },
+  getManagedEventTickets: { limit: 60, windowMs: 5 * MINUTE_MS },
+  manageTicketAttendance: { limit: 120, windowMs: HOUR_MS },
   manageOrganiserGuest: { limit: 120, windowMs: HOUR_MS },
   getOrganiserGuestTicket: { limit: 120, windowMs: 5 * MINUTE_MS },
   updateOrganiserGuestDietary: { limit: 30, windowMs: HOUR_MS },

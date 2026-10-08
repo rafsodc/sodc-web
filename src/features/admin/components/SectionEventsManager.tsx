@@ -1,4 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import TicketAttendanceDialog from "./TicketAttendanceDialog";
+import type { EventAttendeeTicketRow } from "../utils/bookingApprovalsAdmin";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { guestCall, type GuestList } from "../../guests/api";
 import { organiserGuestTicketRows } from "../../guests/reporting";
 import OrganiserGuestsManager from "../../guests/OrganiserGuestsManager";
@@ -63,6 +65,8 @@ interface SectionEventsManagerProps {
 }
 
 export default function SectionEventsManager({ sectionId, sectionName, initialEventId, onBack }: SectionEventsManagerProps) {
+  const queryClient = useQueryClient();
+  const [ticketEdit, setTicketEdit] = useState<{ row: EventAttendeeTicketRow; action: "edit" | "delete" } | null>(null);
   const {
     data: eventsData,
     isLoading: loadingEvents,
@@ -146,7 +150,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const seatingPreferenceUserIds = useMemo(
     () => Array.from(new Set(
       currentActiveBookings(eventBookingsData?.event?.bookings ?? [])
-        .flatMap((booking) => booking.sitNextToUserIds ?? [])
+        .flatMap((booking) => [...(booking.sitNextToUserIds ?? []), ...booking.lines.flatMap((line) => line.bookingPlace?.attendanceSitNextToUserIds ?? [])])
     )),
     [eventBookingsData]
   );
@@ -550,6 +554,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           allEventBookings={eventBookings}
           ticketOrdersById={ticketOrdersById}
           attendeeTickets={attendeeTickets}
+          onManageTicket={(row, action) => setTicketEdit({ row, action })}
           attendeeGuestsUnavailable={guestReport.isPending || guestReport.isError}
           moderatorNoteDraft={moderatorNoteDraft}
           onModeratorNoteChange={(bookingId, value) =>
@@ -565,7 +570,22 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           bookingPaymentAdjustments={bookingPaymentAdjustments}
         />
 
-        <OrganiserGuestsManager key={ticketTypesEventId} eventId={ticketTypesEventId} />
+        {ticketEdit && <TicketAttendanceDialog
+          key={ticketEdit.row.key}
+          sectionId={sectionId}
+          eventId={ticketTypesEventId}
+          row={ticketEdit.row}
+          action={ticketEdit.action}
+          ticketTypes={ticketTypes}
+          onClose={() => setTicketEdit(null)}
+          onSaved={async () => {
+            await Promise.all([refetchEventBookings(), refetchEventDetail(),
+              queryClient.invalidateQueries({ queryKey: ["eventAttendees", ticketTypesEventId] })]);
+            setTicketEdit(null);
+            showSuccess(ticketEdit.action === "delete" ? "Ticket deleted. Transactions unchanged." : "Ticket saved. Transactions unchanged.");
+          }}
+        />}
+        <OrganiserGuestsManager sectionId={sectionId} key={ticketTypesEventId} eventId={ticketTypesEventId} />
 
         <TicketTypeDialogSurface
           open={ticketTypeDialogOpen}

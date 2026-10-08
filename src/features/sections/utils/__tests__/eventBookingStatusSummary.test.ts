@@ -120,3 +120,11 @@ describe("hasExpiredDraftHold", () => {
     expect(hasExpiredDraftHold([{ status: BookingStatus.CANCELLED }, { status: BookingStatus.SUBMITTED }])).toBe(false);
   });
 });
+
+
+it("displays corrected tickets while preserving purchase amounts and omitting removed places", () => {
+  expect(buildBookingTicketDisplayRows({ lines: [
+    { id: "removed", ticketType: { id: "old", title: "Original", price: 20 }, bookingPlace: { attendanceRemoved: true } },
+    { id: "kept", ticketType: { id: "old", title: "Original", price: 20 }, bookingPlace: { attendanceName: "Updated name", attendanceTicketType: { title: "Replacement" } } },
+  ] })).toEqual([{ id: "kept", ticketTypeId: "old", ticketTitle: "Replacement", guestName: "Updated name", price: 20, source: "line" }]);
+});

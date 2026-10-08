@@ -2798,6 +2798,64 @@ exports.getMyAnnouncementPreferences = function getMyAnnouncementPreferences(dcO
 }
 ;
 
+const getTicketAttendanceForManagementRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetTicketAttendanceForManagement', inputVars);
+}
+getTicketAttendanceForManagementRef.operationName = 'GetTicketAttendanceForManagement';
+exports.getTicketAttendanceForManagementRef = getTicketAttendanceForManagementRef;
+
+exports.getTicketAttendanceForManagement = function getTicketAttendanceForManagement(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getTicketAttendanceForManagementRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAttendanceTicketTypeRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAttendanceTicketType', inputVars);
+}
+getAttendanceTicketTypeRef.operationName = 'GetAttendanceTicketType';
+exports.getAttendanceTicketTypeRef = getAttendanceTicketTypeRef;
+
+exports.getAttendanceTicketType = function getAttendanceTicketType(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAttendanceTicketTypeRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const updateTicketAttendanceRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateTicketAttendance', inputVars);
+}
+updateTicketAttendanceRef.operationName = 'UpdateTicketAttendance';
+exports.updateTicketAttendanceRef = updateTicketAttendanceRef;
+
+exports.updateTicketAttendance = function updateTicketAttendance(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateTicketAttendanceRef(dcInstance, inputVars));
+}
+;
+
+const editOrganiserGuestAttendanceRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'EditOrganiserGuestAttendance', inputVars);
+}
+editOrganiserGuestAttendanceRef.operationName = 'EditOrganiserGuestAttendance';
+exports.editOrganiserGuestAttendanceRef = editOrganiserGuestAttendanceRef;
+
+exports.editOrganiserGuestAttendance = function editOrganiserGuestAttendance(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(editOrganiserGuestAttendanceRef(dcInstance, inputVars));
+}
+;
+
 const createSectionRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

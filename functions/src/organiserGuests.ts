@@ -1,3 +1,4 @@
+import { ticketPreferences } from "./ticketPreferences";
 import { handleOrganiserGuestStripeEvent } from "./organiserGuestPayments";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
@@ -38,7 +39,10 @@ function details(data: Record<string, unknown>) {
   const email = text(data.email ?? "", "email", 254, false).toLowerCase();
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new HttpsError("invalid-argument", "Invalid email");
+  const preferences = ticketPreferences(data);
   return {
+    ...preferences,
+    accommodationRequested: preferences.accommodationRequested ?? false,
     firstName: text(data.firstName, "first name", 100),
     lastName: text(data.lastName, "last name", 100),
     email: email || null,
@@ -105,6 +109,9 @@ function project(guest: Omit<Guest, "tokenHash">) {
     lastName: guest.lastName,
     email: guest.email ?? null,
     dietaryRequirements: guest.dietaryRequirements,
+    accommodationRequested: guest.accommodationRequested,
+    accommodationNote: guest.accommodationNote ?? null,
+    sitNextToUserIds: guest.sitNextToUserIds ?? [],
     ticketTypeId: ticketType.id,
     ticketTitle: ticketType.title,
     includesSymposium: guest.includesSymposium,
@@ -191,6 +198,12 @@ export const getOrganiserGuestList = onCall(
         guests.push(...data.organiserGuests.map(project));
         if (data.organiserGuests.length < 500) break;
       }
+      const ids = Array.from(new Set(guests.flatMap((guest) => guest.sitNextToUserIds)));
+      const names = new Map<string, string>();
+      for (let offset = 0; offset < ids.length; offset += 100) {
+        const { data } = await db.listUserNamesByIds({ ids: ids.slice(offset, offset + 100) });
+        for (const user of data.users) names.set(user.id, `${user.firstName} ${user.lastName}`.trim());
+      }
       return {
         event: {
           id: event.id,
@@ -198,7 +211,7 @@ export const getOrganiserGuestList = onCall(
           bookingEndDateTime: event.bookingEndDateTime,
         },
         ticketTypes,
-        guests,
+        guests: guests.map((guest) => ({ ...guest, seatingPreferences: guest.sitNextToUserIds.map((id) => names.get(id) ?? "Unavailable member") })),
       };
     } catch (error) {
       failure(error);
@@ -256,27 +269,21 @@ export const manageOrganiserGuest = onCall(
         throw new HttpsError("not-found", "Guest not found");
       const expectedVersion = version(request.data.version);
       if (request.data.action === "cancel" && guest.cancelledAt) {
-        await expireOpenCheckout(guest);
         return { guest: project(guest), link: null };
       }
       if (request.data.action === "edit") {
-        const input = { id, version: expectedVersion, ...details(request.data), actor };
+        const input = { id, version: expectedVersion, ...details({ ...guest, ...request.data }), actor };
         const currentTicketType = guest.standardTicketType ?? guest.ticketType;
         const requestedTicketTypeId = request.data.ticketTypeId
           ? validateUUID(
               requireString(request.data.ticketTypeId, "ticketTypeId"),
             )
           : null;
-        if (
-          requestedTicketTypeId &&
-          requestedTicketTypeId !==
-            (currentTicketType ? validateUUID(currentTicketType.id) : null)
-        ) {
-          if (guest.paidAt) throw new HttpsError("failed-precondition", "Paid tickets cannot be reassigned. Cancel and create a new reservation so payment history is retained.");
-          const ticketTypeId = requestedTicketTypeId;
-          const ticket = await organiserTicketType(ticketTypeId, eventId);
-          await expireOpenCheckout(guest);
-          await db.reassignOrganiserGuestTicket({ ...input, ticketTypeId, priceMinor: ticket.priceMinor, includesSymposium: ticket.includesSymposium, includesDinner: ticket.includesDinner, checkoutKey: randomUUID() });
+        if (requestedTicketTypeId && requestedTicketTypeId !== (currentTicketType ? validateUUID(currentTicketType.id) : null)) {
+          const ticket = await organiserTicketType(requestedTicketTypeId, eventId);
+          // Change attendance only. Keep the original agreed price and all payment references.
+          await db.editOrganiserGuestAttendance({ ...input, ticketTypeId: requestedTicketTypeId,
+            includesSymposium: ticket.includesSymposium, includesDinner: ticket.includesDinner });
         } else await db.updateOrganiserGuestDetails(input);
       } else if (request.data.action === "replace-link") {
         const token = randomBytes(32).toString("hex");
@@ -291,7 +298,6 @@ export const manageOrganiserGuest = onCall(
         return { guest: project(await guestById(id)), link: link(token) };
       } else if (request.data.action === "cancel") {
         await db.cancelOrganiserGuest({ id, version: expectedVersion, actor });
-        await expireOpenCheckout(guest);
       } else throw new HttpsError("invalid-argument", "Unknown guest action");
       return { guest: project(await guestById(id)), link: null };
     } catch (error) {

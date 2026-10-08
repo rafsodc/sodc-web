@@ -8,6 +8,10 @@ export interface GuestType {
   includesDinner: boolean;
 }
 export interface Guest {
+  accommodationRequested?: boolean;
+  accommodationNote?: string | null;
+  seatingPreferences?: string[];
+  sitNextToUserIds?: string[];
   id: string;
   firstName: string;
   lastName: string;
