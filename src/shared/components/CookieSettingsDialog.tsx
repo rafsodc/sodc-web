@@ -22,14 +22,14 @@ export default function CookieSettingsDialog() {
     rejectPreferenceCookies,
     closeSettings,
   } = useCookiePreferences();
-  const [allowAppearance, setAllowAppearance] = useState(false);
+  const [allowPreferences, setAllowPreferences] = useState(false);
 
   useEffect(() => {
-    if (settingsOpen) setAllowAppearance(decision === "accepted");
+    if (settingsOpen) setAllowPreferences(decision === "accepted");
   }, [decision, settingsOpen]);
 
   const save = () => {
-    if (allowAppearance) acceptPreferenceCookies();
+    if (allowPreferences) acceptPreferenceCookies();
     else rejectPreferenceCookies();
     closeSettings();
   };
@@ -59,16 +59,17 @@ export default function CookieSettingsDialog() {
             <FormControlLabel
               control={
                 <Switch
-                  checked={allowAppearance}
-                  onChange={(_, checked) => setAllowAppearance(checked)}
+                  checked={allowPreferences}
+                  onChange={(_, checked) => setAllowPreferences(checked)}
                 />
               }
-              label="Remember my Light or Dark appearance choice"
+              label="Remember my preferences"
             />
             <Typography variant="body2" color="text.secondary">
-              When disabled, the site follows your device setting and removes
-              the appearance cookie. Choosing Light or Dark later enables this
-              preference again. The appearance cookie lasts up to one year.
+              When disabled, the site follows your device appearance and
+              removes optional preferences, including organiser email
+              formatting. Choosing a preference later enables storage again.
+              Preference cookies last up to one year.
             </Typography>
           </Box>
         </Stack>

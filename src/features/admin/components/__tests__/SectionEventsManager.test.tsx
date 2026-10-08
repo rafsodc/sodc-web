@@ -460,7 +460,7 @@ describe("SectionEventsManager", () => {
             updatedAt: "2026-02-01T01:00:00Z",
             createdBy: "u-1",
             updatedBy: "u-1",
-            booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com", rank: "Wing Commander" },
+            booker: { id: "u-1", firstName: "Alex", lastName: "Smith", email: "alex@example.com", rank: "Wing Commander", membershipStatus: "REGULAR" },
             lines: [{
               id: "line-member",
               sortOrder: 0,
@@ -508,6 +508,7 @@ describe("SectionEventsManager", () => {
     await user.click(screen.getByRole("button", { name: /event admin/i }));
     await user.click(screen.getByRole("button", { name: /^current attendee tickets$/i }));
 
+    expect(screen.getByRole("columnheader", { name: "Email" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Dinner" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Symposium" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Accommodation" })).toBeInTheDocument();
@@ -525,7 +526,10 @@ describe("SectionEventsManager", () => {
       expect.anything()
     );
     expect(screen.getByRole("columnheader", { name: "Rank" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Membership status" })).toBeInTheDocument();
     expect(screen.getByText("Wing Commander")).toBeInTheDocument();
+    expect(screen.getByText("Regular")).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "alex@example.com" })).toBeInTheDocument();
   });
 
   it("updates Dinner and Symposium flags on a ticket type", async () => {

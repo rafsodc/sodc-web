@@ -599,7 +599,11 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
       id
       status
     }
-    bookings: bookings_on_event {
+    # Data Connect silently defaults unbounded relations to 100 rows. This graph
+    # feeds the organiser attendee table and its CSV export, so use the same
+    # admin-report ceiling as ticket orders. Add server-side pagination before
+    # an event can approach this limit.
+    bookings: bookings_on_event(limit: 5000) {
       id
       status
       approvalStatus
@@ -631,6 +635,7 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
         firstName
         lastName
         email
+        membershipStatus
       }
       lines: bookingLines_on_booking {
         id
@@ -659,6 +664,8 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
           id
           firstName
           lastName
+          email
+          membershipStatus
         }
         ticketType {
           id

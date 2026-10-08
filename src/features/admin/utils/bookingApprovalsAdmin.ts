@@ -2,10 +2,12 @@ import type { ManagedTicketAudience } from "../../../shared/utils/ticketAudience
 import {
   BookingApprovalStatus,
   BookingStatus,
+  MembershipStatus,
   TicketAudience,
   TicketOrderStatus,
 } from "@dataconnect/generated";
 import type { EventBookingAdminRow } from "../components/sectionEventsManagerTypes";
+import { getMembershipStatusLabel } from "../../../shared/utils/membershipStatusLabels";
 
 export type TicketOrdersById = ReadonlyMap<string, { id: string; status: TicketOrderStatus }>;
 
@@ -25,7 +27,9 @@ export interface EventAttendeeTicketRow {
   key: string;
   bookingId: string;
   attendeeName: string;
+  email: string | null;
   rank: string | null;
+  membershipStatus: MembershipStatus | null;
   audience: ManagedTicketAudience;
   ticketType: string;
   includesDinner: boolean;
@@ -35,6 +39,71 @@ export interface EventAttendeeTicketRow {
   dietaryNote: string | null;
   approvalStatus: BookingApprovalStatus;
   paymentState: AttendeePaymentState;
+}
+
+export interface EventAttendeeTicketFilters {
+  attendeeName: string;
+  rank: string;
+  membershipStatus: string;
+  audience: string;
+  ticketType: string;
+  includesDinner: string;
+  includesSymposium: string;
+  accommodationRequested: string;
+  approvalStatus: string;
+  paymentState: string;
+}
+
+export const emptyEventAttendeeTicketFilters: EventAttendeeTicketFilters = {
+  attendeeName: "",
+  rank: "",
+  membershipStatus: "",
+  audience: "",
+  ticketType: "",
+  includesDinner: "",
+  includesSymposium: "",
+  accommodationRequested: "",
+  approvalStatus: "",
+  paymentState: "",
+};
+
+function includesText(value: string | null, filter: string): boolean {
+  const normalizedFilter = filter.trim().toLocaleLowerCase();
+  return !normalizedFilter || (value ?? "").toLocaleLowerCase().includes(normalizedFilter);
+}
+
+function matchesBoolean(value: boolean, filter: string): boolean {
+  return !filter || (value ? "YES" : "NO") === filter;
+}
+
+export function filterEventAttendeeTicketRows(
+  rows: readonly EventAttendeeTicketRow[],
+  filters: EventAttendeeTicketFilters
+): EventAttendeeTicketRow[] {
+  return rows.filter(
+    (row) =>
+      includesText(row.attendeeName, filters.attendeeName) &&
+      includesText(row.rank, filters.rank) &&
+      (!filters.membershipStatus || row.membershipStatus === filters.membershipStatus) &&
+      (!filters.audience || row.audience === filters.audience) &&
+      includesText(row.ticketType, filters.ticketType) &&
+      matchesBoolean(row.includesDinner, filters.includesDinner) &&
+      matchesBoolean(row.includesSymposium, filters.includesSymposium) &&
+      matchesBoolean(row.accommodationRequested, filters.accommodationRequested) &&
+      (!filters.approvalStatus || row.approvalStatus === filters.approvalStatus) &&
+      (!filters.paymentState || row.paymentState === filters.paymentState)
+  );
+}
+
+export function uniqueEventAttendeeEmails(rows: readonly EventAttendeeTicketRow[]): string[] {
+  const emails = new Map<string, string>();
+  for (const row of rows) {
+    const email = row.email?.trim();
+    if (!email) continue;
+    const key = email.toLowerCase();
+    if (!emails.has(key)) emails.set(key, email);
+  }
+  return Array.from(emails.values());
 }
 
 function terminal(booking: EventBookingAdminRow): boolean {
@@ -161,7 +230,15 @@ export function activeEventTicketRows(
           key: `${booking.id}:${line.id}`,
           bookingId: booking.id,
           attendeeName,
+          email:
+            line.ticketType.audience === TicketAudience.MEMBER
+              ? booking.booker.email.trim() || null
+              : line.guestUser?.email?.trim() || null,
           rank: (line.ticketType.audience === TicketAudience.MEMBER ? booking.booker.rank : line.guestUser?.rank)?.trim() || null,
+          membershipStatus:
+            line.ticketType.audience === TicketAudience.MEMBER
+              ? booking.booker.membershipStatus
+              : line.guestUser?.membershipStatus ?? null,
           audience: line.ticketType.audience,
           ticketType: line.ticketType.title,
           includesDinner: line.ticketType.includesDinner,
@@ -186,6 +263,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
   const header = [
     "Attendee",
     "Rank",
+    "Membership status",
     "Audience",
     "Ticket",
     "Dinner",
@@ -199,6 +277,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
   const body = rows.map((row) => [
     row.attendeeName,
     row.rank ?? "",
+    row.membershipStatus ? getMembershipStatusLabel(row.membershipStatus) : "",
     row.audience,
     row.ticketType,
     row.includesDinner ? "Yes" : "No",

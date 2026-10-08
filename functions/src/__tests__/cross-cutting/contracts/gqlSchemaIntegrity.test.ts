@@ -40,6 +40,16 @@ function extractAllOperationHeaders(source: string): Array<{ name: string; heade
 }
 
 describe("GQL schema integrity", () => {
+  it("does not truncate the organiser attendee report at Data Connect's default relation limit", () => {
+    const queries = readApiFile("queries.gql");
+    const start = queries.indexOf("query ListEventBookingsForAdmin");
+    const end = queries.indexOf("\nquery ListTicketOrdersForAdmin", start);
+    const query = queries.slice(start, end);
+
+    expect(start, "ListEventBookingsForAdmin must exist").toBeGreaterThanOrEqual(0);
+    expect(query).toContain("bookings: bookings_on_event(limit: 5000)");
+  });
+
   it("keeps member ticket-order status outside the deeply nested booking allocation path", () => {
     const queries = readApiFile("queries.gql");
     const start = queries.indexOf("query GetMyBookingsForEvent");
