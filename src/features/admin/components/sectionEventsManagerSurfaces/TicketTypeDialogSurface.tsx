@@ -31,6 +31,7 @@ interface TicketTypeDialogSurfaceProps {
   title: string;
   description: string;
   price: string;
+  priceLocked: boolean;
   sortOrder: string;
   audience: ManagedTicketAudience;
   includesDinner: boolean;
@@ -57,6 +58,7 @@ export function TicketTypeDialogSurface({
   title,
   description,
   price,
+  priceLocked,
   sortOrder,
   audience,
   includesDinner,
@@ -105,6 +107,8 @@ export function TicketTypeDialogSurface({
           value={price}
           onChange={(event) => onPriceChange(event.target.value)}
           margin="dense"
+          disabled={priceLocked}
+          helperText={priceLocked ? "Price cannot be changed because tickets already exist for this type." : undefined}
           inputProps={{ min: 0, step: 0.01 }}
         />
         <TextField

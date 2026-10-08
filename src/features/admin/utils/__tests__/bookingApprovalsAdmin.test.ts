@@ -402,3 +402,14 @@ describe("booking approval admin model", () => {
     expect(eventTicketRowsCsv([row])).not.toContain("unresolved-user-id");
   });
 });
+
+
+it("carries historical paid credit into replacement attendee tickets and CSV", () => {
+  const old = booking({ supersededAt: "2026-10-01", lines: [{ id: "old-line", sortOrder: 0, priceMinor: 5000, ticketType: { price: 50, title: "Old", audience: TicketAudience.MEMBER }, bookingPlace: { id: "old-place", paymentAllocations: [{ id: "old-allocation", ticketOrderId: "old-order", allocatedAmountMinor: 5000, refundedAmountMinor: 0 }] } }] as EventBookingAdminRow["lines"] });
+  const current = booking({ id: "current", revisionNumber: 2, lines: [{ id: "new-line", sortOrder: 0, priceMinor: 7000, ticketType: { price: 70, title: "Upgraded", audience: TicketAudience.MEMBER }, bookingPlace: { id: "new-place", paymentAllocations: [{ id: "new-allocation", ticketOrderId: "new-order", allocatedAmountMinor: 2000, refundedAmountMinor: 0 }] } }] as EventBookingAdminRow["lines"] });
+  const rows = activeEventTicketRows([old, current], ticketOrdersById([{ id: "old-order", status: TicketOrderStatus.PAID }, { id: "new-order", status: TicketOrderStatus.PAID }]));
+  expect(rows[0].paymentState).toBe("PAID");
+  expect(eventTicketRowsCsv(rows)).toContain(",PAID");
+  const unrelated = booking({ ...old, revisionGroupId: "unrelated", booker: { ...old.booker, id: "another-payer" } });
+  expect(activeEventTicketRows([unrelated, current], ticketOrdersById([{ id: "old-order", status: TicketOrderStatus.PAID }, { id: "new-order", status: TicketOrderStatus.PAID }]))[0].paymentState).toBe("PARTIALLY_PAID");
+});

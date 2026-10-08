@@ -30,7 +30,7 @@ import {
   type GuestList,
 } from "./api";
 
-type LinkResult = { link?: string };
+type LinkResult = { link?: string; notification?: { outcome: string } };
 
 function startClipboardWrite(
   result: Promise<LinkResult>,
@@ -73,6 +73,8 @@ export default function OrganiserGuestsManager({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const [amendmentReviewed, setAmendmentReviewed] = useState(false);
+  const [amendmentId, setAmendmentId] = useState(crypto.randomUUID());
   async function run(name: string, input: Record<string, unknown>) {
     setBusy(true);
     setError("");
@@ -81,6 +83,7 @@ export default function OrganiserGuestsManager({
     try {
       const resultPromise = guestCall<LinkResult>(name, {
         ...input,
+        ...(["edit", "cancel"].includes(String(input.action)) ? { amendmentId: input.amendmentId ?? amendmentId } : {}),
         eventId,
       });
       const shouldCopyLink = ["create", "replace-link"].includes(
@@ -116,6 +119,12 @@ export default function OrganiserGuestsManager({
             : "Guest list saved.",
         );
       }
+      if (result.notification?.outcome === "failed") {
+        setSuccess("");
+        setError("The amendment was saved, but the email could not be sent. Use Retry email; the amendment and refund will not be repeated.");
+      } else if (result.notification?.outcome === "no_email") {
+        setSuccess("The amendment was saved. No email address is recorded; send the personal link to the guest yourself.");
+      }
       setGuest(null);
       setCancel(null);
       await refetch();
@@ -134,7 +143,7 @@ export default function OrganiserGuestsManager({
       </Typography>
       <Typography sx={{ mb: 2 }}>
         Places remain reserved until you cancel them, including unpaid tickets.
-        Copy each personal link and send it yourself. Links do not expire.
+        For new guests, copy and send their personal link. Amendments are emailed automatically when an email address is recorded. Links do not expire.
       </Typography>
       {success && (
         <Alert severity="success" onClose={() => setSuccess("")}>
@@ -247,11 +256,14 @@ export default function OrganiserGuestsManager({
                     <TableCell>
                       {g.cancelled ? "Cancelled" : "Reserved"} ·{" "}
                       {paymentLabel(g.paymentStatus)}
+                      {g.notificationStatus === "FAILED" ? <Typography color="error">Amendment email failed</Typography> : null}
+                      {g.notificationStatus === "PENDING" ? <Typography>Amendment email pending</Typography> : null}
+                      {g.notificationStatus === "NOT_REQUIRED" ? <Typography>No email address recorded</Typography> : null}
                     </TableCell>
                     <TableCell>
                       <Button
                         disabled={busy || g.cancelled}
-                        onClick={() => setGuest(g)}
+                        onClick={() => { setAmendmentId(crypto.randomUUID()); setAmendmentReviewed(false); setGuest(g); }}
                       >
                         Edit guest
                       </Button>
@@ -269,10 +281,28 @@ export default function OrganiserGuestsManager({
                       </Button>
                       <Button
                         disabled={busy || g.cancelled}
-                        onClick={() => setCancel(g)}
+                        onClick={() => { setAmendmentId(crypto.randomUUID()); setCancel(g); }}
                       >
                         Cancel guest
                       </Button>
+                      {["REFUND_REQUIRED", "REFUND_FAILED"].includes(g.paymentStatus) ? (
+                        <Button
+                          color="error"
+                          disabled={busy}
+                          onClick={() => void run("manageOrganiserGuest", {
+                            action: "retry-refund",
+                            id: g.id,
+                            version: g.version,
+                          })}
+                        >
+                          Retry refund
+                        </Button>
+                      ) : null}
+                      {g.latestAmendmentId && ["FAILED", "PENDING"].includes(g.notificationStatus ?? "") ? (
+                        <Button disabled={busy} onClick={() => void run("manageOrganiserGuest", {
+                          action: "retry-notification", id: g.id, version: g.version, amendmentId: g.latestAmendmentId,
+                        })}>Retry email</Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -282,7 +312,7 @@ export default function OrganiserGuestsManager({
           <Typography variant="body2" sx={{ mt: 2 }}>
             Copy link creates a new personal link and immediately revokes the
             previous one. Paid cancellations retain their payment history and
-            show any refund still required.
+            start the applicable refund immediately.
           </Typography>
         </>
       )}
@@ -344,30 +374,37 @@ export default function OrganiserGuestsManager({
                 onChange={(e) => setGuest({ ...guest, [key]: e.target.value })}
               />
             ))}
-            {guest?.version &&
-              !["UNPAID", "FREE"].includes(guest.paymentStatus ?? "") && (
-                <Typography variant="body2">
-                  To change a paid ticket, cancel this reservation and add a new
-                  one. Existing payment and refund history will be retained.
-                </Typography>
-              )}
-            {(!guest?.version ||
-              ["UNPAID", "FREE"].includes(guest.paymentStatus ?? "")) && (
-              <TextField
-                select
-                label="Guest ticket"
-                value={guest?.ticketTypeId ?? ""}
-                onChange={(e) =>
-                  setGuest({ ...guest, ticketTypeId: e.target.value })
-                }
-              >
-                {data?.ticketTypes.map((t) => (
-                    <MenuItem key={t.id} value={t.id}>
-                      {t.title} · {money(t.priceMinor)}
-                    </MenuItem>
-                  ))}
-              </TextField>
-            )}
+            <TextField
+              select
+              label="Guest ticket"
+              value={guest?.ticketTypeId ?? ""}
+              onChange={(e) => {
+                setAmendmentReviewed(false);
+                setGuest({ ...guest, ticketTypeId: e.target.value });
+              }}
+            >
+              {data?.ticketTypes.map((t) => (
+                <MenuItem key={t.id} value={t.id}>
+                  {t.title} · {money(t.priceMinor)}
+                </MenuItem>
+              ))}
+            </TextField>
+            {guest?.version && guest.ticketTypeId !== data?.guests.find((item) => item.id === guest.id)?.ticketTypeId ? (() => {
+              const selected = data?.ticketTypes.find((type) => type.id === guest.ticketTypeId);
+              const settled = guest.settledAmountMinor ?? 0;
+              const newPrice = selected?.priceMinor ?? 0;
+              const refund = Math.max(0, settled - newPrice);
+              const due = Math.max(0, newPrice - settled);
+              return (
+                <Alert severity={amendmentReviewed ? "warning" : "info"}>
+                  Current ticket: {money(guest.priceMinor ?? 0)}. New ticket: {money(newPrice)}. Amount paid after refunds: {money(settled)}. Refunds completed: {money(guest.refundedAmountMinor ?? 0)}. Refunds pending: {money(guest.refundPendingMinor ?? 0)}. {refund > 0
+                    ? `A ${money(refund)} refund will be started immediately.`
+                    : due > 0
+                      ? `Payment required—please pay as soon as possible: ${money(due)}.`
+                      : "No further payment or refund is required."}
+                </Alert>
+              );
+            })() : null}
             {error && <Alert severity="error">{error}</Alert>}
           </Stack>
         </DialogContent>
@@ -381,14 +418,24 @@ export default function OrganiserGuestsManager({
               !guest?.firstName?.trim() ||
               !guest?.lastName?.trim()
             }
-            onClick={() =>
+            onClick={() => {
+              const original = data?.guests.find((item) => item.id === guest?.id);
+              const ticketChanged = Boolean(guest?.version && original && guest.ticketTypeId !== original.ticketTypeId);
+              if (ticketChanged && !amendmentReviewed) {
+                setAmendmentReviewed(true);
+                return;
+              }
+              const selected = data?.ticketTypes.find((type) => type.id === guest?.ticketTypeId);
               void run("manageOrganiserGuest", {
                 ...guest,
+                expectedTicketPriceMinor: selected?.priceMinor,
                 action: guest?.version ? "edit" : "create",
-              })
-            }
+              });
+            }}
           >
-            Save guest
+            {guest?.version && data?.guests.find((item) => item.id === guest.id)?.ticketTypeId !== guest.ticketTypeId
+              ? amendmentReviewed ? "Confirm and apply amendment" : "Review amendment"
+              : "Save guest"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -396,8 +443,8 @@ export default function OrganiserGuestsManager({
         <DialogTitle>Cancel this guest?</DialogTitle>
         <DialogContent>
           This releases {cancel?.firstName} {cancel?.lastName}'s place and stops
-          further payment. Any existing payment remains recorded; cancellation
-          does not issue an automatic refund.
+          further payment. Any existing payment remains recorded and the
+          applicable refund is started immediately.
           {error && <Alert severity="error">{error}</Alert>}
         </DialogContent>
         <DialogActions>

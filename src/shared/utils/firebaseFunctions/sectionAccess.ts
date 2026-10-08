@@ -1,5 +1,12 @@
 import { httpsCallable } from "firebase/functions";
-import type { GetEventByIdData, GetEventsForSectionData, GetSectionByIdData } from "@dataconnect/generated";
+import type {
+  GetEventByIdData,
+  GetEventsForSectionData,
+  GetSectionByIdData,
+  ListBookingPaymentAdjustmentsForAdminData,
+  ListEventBookingsForAdminData,
+  ListTicketOrdersForAdminData,
+} from "@dataconnect/generated";
 import { functions } from "../../../config/firebase";
 import { toCanonicalUuid } from "../uuid";
 
@@ -146,5 +153,28 @@ export async function getEventForUser(eventId: string): Promise<EventForUserResp
     "getEventForUser"
   );
   const result = await callable({ eventId });
+  return result.data;
+}
+
+export interface EventAdministrationDataResponse {
+  events: NonNullable<GetEventsForSectionData["section"]>["events"];
+  event?: NonNullable<GetEventByIdData["event"]> | null;
+  eventBookings?: NonNullable<ListEventBookingsForAdminData["event"]> | null;
+  ticketOrders?: NonNullable<ListTicketOrdersForAdminData["event"]> | null;
+  paymentAdjustments?: NonNullable<ListBookingPaymentAdjustmentsForAdminData["event"]> | null;
+}
+
+export async function getEventAdministrationData(
+  sectionId: string,
+  eventId?: string | null
+): Promise<EventAdministrationDataResponse> {
+  const callable = httpsCallable<
+    { sectionId: string; eventId?: string },
+    EventAdministrationDataResponse
+  >(functions, "getEventAdministrationData");
+  const result = await callable({
+    sectionId: toCanonicalUuid(sectionId),
+    eventId: eventId ? toCanonicalUuid(eventId) : undefined,
+  });
   return result.data;
 }

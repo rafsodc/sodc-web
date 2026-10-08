@@ -31,6 +31,8 @@ export function organiserGuestTicketRows(
               ? "REFUNDED"
               : g.paymentStatus === "REFUND_PENDING"
                 ? "REFUND_PENDING"
+                : g.paymentStatus === "REFUND_FAILED"
+                  ? "REFUND_FAILED"
                 : g.paymentStatus === "PARTIALLY_REFUNDED"
                   ? "PARTIALLY_REFUNDED"
                   : "PAID",

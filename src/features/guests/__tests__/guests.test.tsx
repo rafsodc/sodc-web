@@ -24,6 +24,7 @@ const ticket: GuestTicket = {
   dietaryEditable: true,
   paymentDueAt: "2020-01-01",
   paymentStatus: "UNPAID",
+  paymentRequiredMinor: 2000,
   cancelled: false,
   version: 3,
 };
@@ -33,6 +34,11 @@ const guest: Guest = {
   email: "guest@example.test",
   ticketTypeId: "type",
   refundedAmountMinor: 0,
+  paidAmountMinor: 0,
+  settledAmountMinor: 0,
+  paymentRequiredMinor: 2000,
+  refundPendingMinor: 0,
+  refundFailureReason: null,
 };
 beforeEach(() => {
   call.mockReset();
@@ -229,7 +235,7 @@ describe("organiser management and reports", () => {
     expect(screen.queryByRole("button", { name: /add guest ticket type/i })).not.toBeInTheDocument();
     view.unmount();
   });
-  it("keeps cancellation explicit and shows paid refund obligations", async () => {
+  it("keeps cancellation explicit and explains the automatic refund", async () => {
     call.mockResolvedValue({
       event: { id: "event" },
       ticketTypes: [],
@@ -240,7 +246,7 @@ describe("organiser management and reports", () => {
       await screen.findByRole("button", { name: "Cancel guest" }),
     );
     expect(
-      screen.getByText(/does not issue an automatic refund/),
+      screen.getByText(/refund is started immediately/),
     ).toBeInTheDocument();
     expect(call).not.toHaveBeenCalledWith(
       "manageOrganiserGuest",
@@ -255,6 +261,7 @@ describe("organiser management and reports", () => {
         id: "guest",
         version: 3,
         action: "cancel",
+        amendmentId: expect.any(String),
       }),
     );
   });
@@ -273,4 +280,16 @@ describe("organiser management and reports", () => {
     });
     expect(rows[1].paymentState).toBe("FREE");
   });
+});
+
+
+it("offers independent refund and email recovery for an active guest", async () => {
+  call.mockResolvedValue({ event: { id: "event" }, ticketTypes: [], guests: [{ ...guest, paymentStatus: "REFUND_FAILED", latestAmendmentId: "amendment", notificationStatus: "FAILED" }] });
+  render(<OrganiserGuestsManager eventId="event" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Retry refund" }));
+  await waitFor(() => expect(call).toHaveBeenCalledWith("manageOrganiserGuest", { eventId: "event", id: "guest", version: 3, action: "retry-refund" }));
+  const retryEmail = await screen.findByRole("button", { name: "Retry email" });
+  await waitFor(() => expect(retryEmail).toBeEnabled());
+  fireEvent.click(retryEmail);
+  await waitFor(() => expect(call).toHaveBeenCalledWith("manageOrganiserGuest", { eventId: "event", id: "guest", version: 3, action: "retry-notification", amendmentId: "amendment" }));
 });

@@ -65,6 +65,50 @@ export interface ReviewBookingRevisionResponse {
   paymentDelta: number | null;
 }
 
+export interface OrganiserBookingAmendmentLine {
+  ticketTypeId: string;
+  sortOrder: number;
+  guestUserId?: string | null;
+  guestDisplayName?: string | null;
+  dietaryNote?: string | null;
+}
+
+export interface OrganiserBookingAmendmentPreview {
+  previousTotalMinor: number;
+  revisedTotalMinor: number;
+  paidAfterCompletedAndPendingRefundsMinor: number;
+  completedRefundsMinor: number;
+  pendingRefundsMinor: number;
+  refundToInitiateMinor: number;
+  paymentRequiredMinor: number;
+  status: string;
+}
+
+export interface AmendEventBookingAsOrganiserRequest {
+  bookingId: string;
+  expectedRevisionNumber: number;
+  idempotencyKey: string;
+  lines: OrganiserBookingAmendmentLine[];
+  confirm: boolean;
+  previewToken?: string;
+}
+
+export interface AmendEventBookingAsOrganiserResponse {
+  applied: boolean;
+  idempotentReplay?: boolean;
+  bookingId?: string;
+  revisionNumber?: number;
+  status?: string;
+  previewToken?: string;
+  preview?: OrganiserBookingAmendmentPreview;
+  refund?: {
+    requestedAmountMinor: number;
+    completedAmountMinor: number;
+    pendingAmountMinor: number;
+    failedAmountMinor: number;
+  } | null;
+}
+
 export interface GetMyTicketOrderStripeArtifactsResponse {
   receiptUrl: string | null;
 }
@@ -147,6 +191,38 @@ export async function reviewBookingRevision(
     moderatorNote: payload.moderatorNote?.trim() || null,
   });
   return result.data;
+}
+
+export async function amendEventBookingAsOrganiser(
+  payload: AmendEventBookingAsOrganiserRequest
+): Promise<AmendEventBookingAsOrganiserResponse> {
+  const callable = httpsCallable<AmendEventBookingAsOrganiserRequest, AmendEventBookingAsOrganiserResponse>(
+    functions,
+    "amendEventBookingAsOrganiser"
+  );
+  const result = await callable({
+    ...payload,
+    bookingId: toCanonicalUuid(payload.bookingId),
+    idempotencyKey: toCanonicalUuid(payload.idempotencyKey),
+    lines: payload.lines.map((line) => ({
+      ...line,
+      ticketTypeId: toCanonicalUuid(line.ticketTypeId),
+      guestDisplayName: line.guestDisplayName?.trim() || null,
+      dietaryNote: line.dietaryNote?.trim() || null,
+    })),
+  });
+  return result.data;
+}
+
+export async function retryOrganiserBookingRefund(bookingId: string): Promise<{
+  bookingId: string;
+  refund: AmendEventBookingAsOrganiserResponse["refund"];
+}> {
+  const callable = httpsCallable<
+    { bookingId: string },
+    { bookingId: string; refund: AmendEventBookingAsOrganiserResponse["refund"] }
+  >(functions, "retryOrganiserBookingRefund");
+  return (await callable({ bookingId: toCanonicalUuid(bookingId) })).data;
 }
 
 export async function getMyTicketOrderStripeArtifactsBatch(

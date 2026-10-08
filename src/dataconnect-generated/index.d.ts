@@ -19,6 +19,7 @@ export enum BookingPaymentAdjustmentStatus {
   NOT_REQUIRED = "NOT_REQUIRED",
   PENDING_AUTO_REFUND = "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE = "PENDING_AUTO_CHARGE",
+  REFUND_FAILED = "REFUND_FAILED",
   SETTLED = "SETTLED",
 };
 
@@ -231,6 +232,54 @@ export interface AdminOptOutSectionAnnouncementVariables {
   sectionId: UUIDString;
 }
 
+export interface AmendOrganiserGuestDetailsData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+
+export interface AmendOrganiserGuestDetailsVariables {
+  id: UUIDString;
+  version: number;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
+}
+
+export interface AmendOrganiserGuestTicketData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+
+export interface AmendOrganiserGuestTicketVariables {
+  id: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  priceMinor: number;
+  paidAmountMinor?: number | null;
+  includesSymposium: boolean;
+  includesDinner: boolean;
+  checkoutKey: string;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
+}
+
 export interface AnnouncementRecipient_Key {
   id: UUIDString;
   __typename?: 'AnnouncementRecipient_Key';
@@ -239,6 +288,19 @@ export interface AnnouncementRecipient_Key {
 export interface AnnouncementSend_Key {
   id: UUIDString;
   __typename?: 'AnnouncementSend_Key';
+}
+
+export interface AttachOrganiserGuestAdditionalCheckoutData {
+  organiserGuest_updateMany: number;
+  organiserGuestPayment_insert: OrganiserGuestPayment_Key;
+}
+
+export interface AttachOrganiserGuestAdditionalCheckoutVariables {
+  id: UUIDString;
+  guestId: UUIDString;
+  checkoutKey: string;
+  sessionId: string;
+  amountMinor: number;
 }
 
 export interface AttachOrganiserGuestCheckoutData {
@@ -322,6 +384,23 @@ export interface CancelOrganiserGuestVariables {
   id: UUIDString;
   version: number;
   actor: string;
+}
+
+export interface CancelOrganiserGuestWithAmendmentData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+
+export interface CancelOrganiserGuestWithAmendmentVariables {
+  id: UUIDString;
+  version: number;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
 }
 
 export interface ChangeGovNotifyDeliveryModeData {
@@ -1207,6 +1286,7 @@ export interface GetBookingForNotificationData {
       } & Section_Key;
     } & Event_Key;
     lines: ({
+      priceMinor?: number | null;
       sortOrder: number;
       guestDisplayName?: string | null;
       dietaryNote?: string | null;
@@ -1294,6 +1374,7 @@ export interface GetBookingRevisionForApprovalFromCallableData {
     } & Booking_Key;
     lines: ({
       id: UUIDString;
+      priceMinor?: number | null;
       sortOrder: number;
       guestDisplayName?: string | null;
       dietaryNote?: string | null;
@@ -1340,10 +1421,16 @@ export interface GetBookingsForBookerAndEventData {
       sitNextToUserIds?: string[] | null;
       accommodationRequested: boolean;
       accommodationNote?: string | null;
+      adjustments: ({
+        id: UUIDString;
+        deltaAmountMinor: number;
+        status: BookingPaymentAdjustmentStatus;
+      })[];
       createdAt: TimestampString;
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
@@ -1351,6 +1438,9 @@ export interface GetBookingsForBookerAndEventData {
             ticketOrderId: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
+            refundFailureReason?: string | null;
+            refundUpdatedAt?: TimestampString | null;
             stripeRefundId?: string | null;
             createdAt: TimestampString;
           } & BookingPlacePaymentAllocation_Key)[];
@@ -1656,6 +1746,11 @@ export interface GetMyBookingsData {
       approvalNote?: string | null;
       revisionNumber: number;
       updatedAt: TimestampString;
+      adjustments: ({
+        id: UUIDString;
+        deltaAmountMinor: number;
+        status: BookingPaymentAdjustmentStatus;
+      })[];
       event: {
         id: UUIDString;
         title: string;
@@ -1668,6 +1763,7 @@ export interface GetMyBookingsData {
       } & Event_Key;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
         } & BookingPlace_Key;
@@ -1705,12 +1801,14 @@ export interface GetMyBookingsForEventData {
       updatedAt: TimestampString;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         bookingPlace: {
           id: UUIDString;
           paymentAllocations: ({
             id: UUIDString;
             ticketOrderId: UUIDString;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
         sortOrder: number;
@@ -1925,6 +2023,32 @@ export interface GetNotifyTemplateBindingsData {
   } & NotifyTemplateBinding_Key)[];
 }
 
+export interface GetOrganiserGuestAmendmentByTokenData {
+  organiserGuestAmendments: ({
+    guestId: UUIDString;
+  })[];
+}
+
+export interface GetOrganiserGuestAmendmentByTokenVariables {
+  tokenHash: string;
+}
+
+export interface GetOrganiserGuestAmendmentData {
+  organiserGuestAmendment?: {
+    id: UUIDString;
+    guestId: UUIDString;
+    requestHash: string;
+    payload: string;
+    tokenHash?: string | null;
+    notificationStatus: string;
+    createdBy: string;
+  } & OrganiserGuestAmendment_Key;
+}
+
+export interface GetOrganiserGuestAmendmentVariables {
+  id: UUIDString;
+}
+
 export interface GetOrganiserGuestByTokenData {
   organiserGuests: ({
     id: UUIDString;
@@ -1940,11 +2064,32 @@ export interface GetOrganiserGuestByTokenData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -1984,11 +2129,32 @@ export interface GetOrganiserGuestData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -2014,6 +2180,9 @@ export interface GetOrganiserGuestEventData {
     id: UUIDString;
     title: string;
     bookingEndDateTime: TimestampString;
+    startDateTime: TimestampString;
+    endDateTime: TimestampString;
+    location?: string | null;
     section: {
       id: UUIDString;
     } & Section_Key;
@@ -2386,6 +2555,7 @@ export interface GetTicketOrdersForBookerAndEventData {
       quantity: number;
       unitAmountMinor: number;
       totalAmountMinor: number;
+      stripeCheckoutSessionId?: string | null;
       createdAt: TimestampString;
       ticketType: {
         id: UUIDString;
@@ -2744,6 +2914,7 @@ export interface ListEventBookingsForAdminData {
       } & User_Key;
       lines: ({
         id: UUIDString;
+        priceMinor?: number | null;
         sortOrder: number;
         guestDisplayName?: string | null;
         dietaryNote?: string | null;
@@ -2753,6 +2924,9 @@ export interface ListEventBookingsForAdminData {
             id: UUIDString;
             allocatedAmountMinor: number;
             refundedAmountMinor: number;
+            refundPendingAmountMinor: number;
+            refundFailureReason?: string | null;
+            refundUpdatedAt?: TimestampString | null;
             ticketOrderId: UUIDString;
           } & BookingPlacePaymentAllocation_Key)[];
         } & BookingPlace_Key;
@@ -2980,11 +3154,32 @@ export interface ListOrganiserGuestsData {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     paidAt?: TimestampString | null;
+    paidAmountMinor?: number | null;
     refundedAmountMinor: number;
     refundPendingMinor: number;
+    refundFailureReason?: string | null;
+    stripeRefundId?: string | null;
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
+    payments: ({
+      id: UUIDString;
+      amountMinor: number;
+      checkoutKey: string;
+      stripeSessionId: string;
+      stripePaymentIntentId?: string | null;
+      paidAt?: TimestampString | null;
+      refundedAmountMinor: number;
+      refundPendingMinor: number;
+      refundFailureReason?: string | null;
+      stripeRefundId?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+    } & OrganiserGuestPayment_Key)[];
     ticketType?: {
       id: UUIDString;
       title: string;
@@ -3007,6 +3202,17 @@ export interface ListOrganiserGuestsData {
 export interface ListOrganiserGuestsVariables {
   eventId: UUIDString;
   offset: number;
+}
+
+export interface ListPendingOrganiserGuestAmendmentsData {
+  organiserGuestAmendments: ({
+    id: UUIDString;
+  } & OrganiserGuestAmendment_Key)[];
+}
+
+export interface ListPendingOrganiserGuestAmendmentsVariables {
+  before: TimestampString;
+  limit: number;
 }
 
 export interface ListPotentialLostProfilesData {
@@ -3291,6 +3497,32 @@ export interface MarkNotifyDeliveryReceiptProcessedVariables {
   processedAt: TimestampString;
 }
 
+export interface MarkOrganiserGuestAdditionalPaymentPaidData {
+  organiserGuestPayment_updateMany: number;
+  organiserGuest_update?: OrganiserGuest_Key | null;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface MarkOrganiserGuestAdditionalPaymentPaidVariables {
+  id: UUIDString;
+  guestId: UUIDString;
+  sessionId: string;
+  paymentIntentId: string;
+}
+
+export interface MarkOrganiserGuestAdditionalPaymentRefundedData {
+  organiserGuestPayment_updateMany: number;
+}
+
+export interface MarkOrganiserGuestAdditionalPaymentRefundedVariables {
+  id: UUIDString;
+  paymentIntentId: string;
+  refundedAmountMinor: number;
+  refundPendingMinor: number;
+  refundFailureReason?: string | null;
+  stripeRefundId?: string | null;
+}
+
 export interface MarkOrganiserGuestPaidData {
   organiserGuest_updateMany: number;
   organiserGuestAudit_insert: OrganiserGuestAudit_Key;
@@ -3300,6 +3532,7 @@ export interface MarkOrganiserGuestPaidVariables {
   id: UUIDString;
   sessionId: string;
   paymentIntentId: string;
+  paidAmountMinor: number;
 }
 
 export interface MarkOrganiserGuestRefundedData {
@@ -3312,6 +3545,8 @@ export interface MarkOrganiserGuestRefundedVariables {
   paymentIntentId: string;
   refundedAmountMinor: number;
   refundPendingMinor: number;
+  refundFailureReason?: string | null;
+  stripeRefundId?: string | null;
   version: number;
 }
 
@@ -3413,9 +3648,19 @@ export interface OptOutSectionAnnouncementVariables {
   sectionId: UUIDString;
 }
 
+export interface OrganiserGuestAmendment_Key {
+  id: UUIDString;
+  __typename?: 'OrganiserGuestAmendment_Key';
+}
+
 export interface OrganiserGuestAudit_Key {
   id: UUIDString;
   __typename?: 'OrganiserGuestAudit_Key';
+}
+
+export interface OrganiserGuestPayment_Key {
+  id: UUIDString;
+  __typename?: 'OrganiserGuestPayment_Key';
 }
 
 export interface OrganiserGuestTicketType_Key {
@@ -3457,6 +3702,7 @@ export interface ReassignOrganiserGuestTicketVariables {
   email?: string | null;
   dietaryRequirements: string;
   priceMinor: number;
+  paidAmountMinor?: number | null;
   includesSymposium: boolean;
   includesDinner: boolean;
   checkoutKey: string;
@@ -3582,6 +3828,7 @@ export interface RevokeUserGroupFromSectionForPurposeVariables {
 export interface RotateOrganiserGuestLinkData {
   organiserGuest_updateMany: number;
   organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_updateMany: number;
 }
 
 export interface RotateOrganiserGuestLinkVariables {
@@ -3666,6 +3913,15 @@ export interface SetNotifyTemplateReplyToOverrideVariables {
   reason?: string | null;
   previousValue?: string | null;
   newValue: string;
+}
+
+export interface SetOrganiserGuestAmendmentNotificationStatusData {
+  organiserGuestAmendment_updateMany: number;
+}
+
+export interface SetOrganiserGuestAmendmentNotificationStatusVariables {
+  id: UUIDString;
+  status: string;
 }
 
 export interface SettleBookingPaymentAdjustmentsFromCallableData {
@@ -3808,6 +4064,18 @@ export interface UpdateBookingPlaceAllocationRefundFromCallableVariables {
   stripeRefundId: string;
 }
 
+export interface UpdateBookingPlaceAllocationRefundStateFromCallableData {
+  bookingPlacePaymentAllocation_updateMany: number;
+}
+
+export interface UpdateBookingPlaceAllocationRefundStateFromCallableVariables {
+  id: UUIDString;
+  refundedAmountMinor: number;
+  refundPendingAmountMinor: number;
+  stripeRefundId?: string | null;
+  refundFailureReason?: string | null;
+}
+
 export interface UpdateBookingStatusFromCallableData {
   booking_update?: Booking_Key | null;
 }
@@ -3906,7 +4174,7 @@ export interface UpdateSectionVariables {
 }
 
 export interface UpdateTicketTypeData {
-  ticketType_update?: TicketType_Key | null;
+  ticketType_updateMany: number;
 }
 
 export interface UpdateTicketTypeVariables {
@@ -4850,6 +5118,18 @@ export const updateBookingPlaceAllocationRefundFromCallableRef: UpdateBookingPla
 
 export function updateBookingPlaceAllocationRefundFromCallable(vars: UpdateBookingPlaceAllocationRefundFromCallableVariables): MutationPromise<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
 export function updateBookingPlaceAllocationRefundFromCallable(dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundFromCallableVariables): MutationPromise<UpdateBookingPlaceAllocationRefundFromCallableData, UpdateBookingPlaceAllocationRefundFromCallableVariables>;
+
+interface UpdateBookingPlaceAllocationRefundStateFromCallableRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables): MutationRef<UpdateBookingPlaceAllocationRefundStateFromCallableData, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables): MutationRef<UpdateBookingPlaceAllocationRefundStateFromCallableData, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>;
+  operationName: string;
+}
+export const updateBookingPlaceAllocationRefundStateFromCallableRef: UpdateBookingPlaceAllocationRefundStateFromCallableRef;
+
+export function updateBookingPlaceAllocationRefundStateFromCallable(vars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables): MutationPromise<UpdateBookingPlaceAllocationRefundStateFromCallableData, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>;
+export function updateBookingPlaceAllocationRefundStateFromCallable(dc: DataConnect, vars: UpdateBookingPlaceAllocationRefundStateFromCallableVariables): MutationPromise<UpdateBookingPlaceAllocationRefundStateFromCallableData, UpdateBookingPlaceAllocationRefundStateFromCallableVariables>;
 
 interface GetTicketOrderForWebhookRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -5799,6 +6079,18 @@ export const updateOrganiserGuestDetailsRef: UpdateOrganiserGuestDetailsRef;
 export function updateOrganiserGuestDetails(vars: UpdateOrganiserGuestDetailsVariables): MutationPromise<UpdateOrganiserGuestDetailsData, UpdateOrganiserGuestDetailsVariables>;
 export function updateOrganiserGuestDetails(dc: DataConnect, vars: UpdateOrganiserGuestDetailsVariables): MutationPromise<UpdateOrganiserGuestDetailsData, UpdateOrganiserGuestDetailsVariables>;
 
+interface AmendOrganiserGuestDetailsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AmendOrganiserGuestDetailsVariables): MutationRef<AmendOrganiserGuestDetailsData, AmendOrganiserGuestDetailsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AmendOrganiserGuestDetailsVariables): MutationRef<AmendOrganiserGuestDetailsData, AmendOrganiserGuestDetailsVariables>;
+  operationName: string;
+}
+export const amendOrganiserGuestDetailsRef: AmendOrganiserGuestDetailsRef;
+
+export function amendOrganiserGuestDetails(vars: AmendOrganiserGuestDetailsVariables): MutationPromise<AmendOrganiserGuestDetailsData, AmendOrganiserGuestDetailsVariables>;
+export function amendOrganiserGuestDetails(dc: DataConnect, vars: AmendOrganiserGuestDetailsVariables): MutationPromise<AmendOrganiserGuestDetailsData, AmendOrganiserGuestDetailsVariables>;
+
 interface UpdateOrganiserGuestDietaryRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: UpdateOrganiserGuestDietaryVariables): MutationRef<UpdateOrganiserGuestDietaryData, UpdateOrganiserGuestDietaryVariables>;
@@ -5834,6 +6126,18 @@ export const cancelOrganiserGuestRef: CancelOrganiserGuestRef;
 
 export function cancelOrganiserGuest(vars: CancelOrganiserGuestVariables): MutationPromise<CancelOrganiserGuestData, CancelOrganiserGuestVariables>;
 export function cancelOrganiserGuest(dc: DataConnect, vars: CancelOrganiserGuestVariables): MutationPromise<CancelOrganiserGuestData, CancelOrganiserGuestVariables>;
+
+interface CancelOrganiserGuestWithAmendmentRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CancelOrganiserGuestWithAmendmentVariables): MutationRef<CancelOrganiserGuestWithAmendmentData, CancelOrganiserGuestWithAmendmentVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CancelOrganiserGuestWithAmendmentVariables): MutationRef<CancelOrganiserGuestWithAmendmentData, CancelOrganiserGuestWithAmendmentVariables>;
+  operationName: string;
+}
+export const cancelOrganiserGuestWithAmendmentRef: CancelOrganiserGuestWithAmendmentRef;
+
+export function cancelOrganiserGuestWithAmendment(vars: CancelOrganiserGuestWithAmendmentVariables): MutationPromise<CancelOrganiserGuestWithAmendmentData, CancelOrganiserGuestWithAmendmentVariables>;
+export function cancelOrganiserGuestWithAmendment(dc: DataConnect, vars: CancelOrganiserGuestWithAmendmentVariables): MutationPromise<CancelOrganiserGuestWithAmendmentData, CancelOrganiserGuestWithAmendmentVariables>;
 
 interface AttachOrganiserGuestCheckoutRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -5894,6 +6198,102 @@ export const reassignOrganiserGuestTicketRef: ReassignOrganiserGuestTicketRef;
 
 export function reassignOrganiserGuestTicket(vars: ReassignOrganiserGuestTicketVariables): MutationPromise<ReassignOrganiserGuestTicketData, ReassignOrganiserGuestTicketVariables>;
 export function reassignOrganiserGuestTicket(dc: DataConnect, vars: ReassignOrganiserGuestTicketVariables): MutationPromise<ReassignOrganiserGuestTicketData, ReassignOrganiserGuestTicketVariables>;
+
+interface AmendOrganiserGuestTicketRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AmendOrganiserGuestTicketVariables): MutationRef<AmendOrganiserGuestTicketData, AmendOrganiserGuestTicketVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AmendOrganiserGuestTicketVariables): MutationRef<AmendOrganiserGuestTicketData, AmendOrganiserGuestTicketVariables>;
+  operationName: string;
+}
+export const amendOrganiserGuestTicketRef: AmendOrganiserGuestTicketRef;
+
+export function amendOrganiserGuestTicket(vars: AmendOrganiserGuestTicketVariables): MutationPromise<AmendOrganiserGuestTicketData, AmendOrganiserGuestTicketVariables>;
+export function amendOrganiserGuestTicket(dc: DataConnect, vars: AmendOrganiserGuestTicketVariables): MutationPromise<AmendOrganiserGuestTicketData, AmendOrganiserGuestTicketVariables>;
+
+interface AttachOrganiserGuestAdditionalCheckoutRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AttachOrganiserGuestAdditionalCheckoutVariables): MutationRef<AttachOrganiserGuestAdditionalCheckoutData, AttachOrganiserGuestAdditionalCheckoutVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: AttachOrganiserGuestAdditionalCheckoutVariables): MutationRef<AttachOrganiserGuestAdditionalCheckoutData, AttachOrganiserGuestAdditionalCheckoutVariables>;
+  operationName: string;
+}
+export const attachOrganiserGuestAdditionalCheckoutRef: AttachOrganiserGuestAdditionalCheckoutRef;
+
+export function attachOrganiserGuestAdditionalCheckout(vars: AttachOrganiserGuestAdditionalCheckoutVariables): MutationPromise<AttachOrganiserGuestAdditionalCheckoutData, AttachOrganiserGuestAdditionalCheckoutVariables>;
+export function attachOrganiserGuestAdditionalCheckout(dc: DataConnect, vars: AttachOrganiserGuestAdditionalCheckoutVariables): MutationPromise<AttachOrganiserGuestAdditionalCheckoutData, AttachOrganiserGuestAdditionalCheckoutVariables>;
+
+interface MarkOrganiserGuestAdditionalPaymentPaidRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkOrganiserGuestAdditionalPaymentPaidVariables): MutationRef<MarkOrganiserGuestAdditionalPaymentPaidData, MarkOrganiserGuestAdditionalPaymentPaidVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentPaidVariables): MutationRef<MarkOrganiserGuestAdditionalPaymentPaidData, MarkOrganiserGuestAdditionalPaymentPaidVariables>;
+  operationName: string;
+}
+export const markOrganiserGuestAdditionalPaymentPaidRef: MarkOrganiserGuestAdditionalPaymentPaidRef;
+
+export function markOrganiserGuestAdditionalPaymentPaid(vars: MarkOrganiserGuestAdditionalPaymentPaidVariables): MutationPromise<MarkOrganiserGuestAdditionalPaymentPaidData, MarkOrganiserGuestAdditionalPaymentPaidVariables>;
+export function markOrganiserGuestAdditionalPaymentPaid(dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentPaidVariables): MutationPromise<MarkOrganiserGuestAdditionalPaymentPaidData, MarkOrganiserGuestAdditionalPaymentPaidVariables>;
+
+interface MarkOrganiserGuestAdditionalPaymentRefundedRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables): MutationRef<MarkOrganiserGuestAdditionalPaymentRefundedData, MarkOrganiserGuestAdditionalPaymentRefundedVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables): MutationRef<MarkOrganiserGuestAdditionalPaymentRefundedData, MarkOrganiserGuestAdditionalPaymentRefundedVariables>;
+  operationName: string;
+}
+export const markOrganiserGuestAdditionalPaymentRefundedRef: MarkOrganiserGuestAdditionalPaymentRefundedRef;
+
+export function markOrganiserGuestAdditionalPaymentRefunded(vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables): MutationPromise<MarkOrganiserGuestAdditionalPaymentRefundedData, MarkOrganiserGuestAdditionalPaymentRefundedVariables>;
+export function markOrganiserGuestAdditionalPaymentRefunded(dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables): MutationPromise<MarkOrganiserGuestAdditionalPaymentRefundedData, MarkOrganiserGuestAdditionalPaymentRefundedVariables>;
+
+interface GetOrganiserGuestAmendmentRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetOrganiserGuestAmendmentVariables): QueryRef<GetOrganiserGuestAmendmentData, GetOrganiserGuestAmendmentVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetOrganiserGuestAmendmentVariables): QueryRef<GetOrganiserGuestAmendmentData, GetOrganiserGuestAmendmentVariables>;
+  operationName: string;
+}
+export const getOrganiserGuestAmendmentRef: GetOrganiserGuestAmendmentRef;
+
+export function getOrganiserGuestAmendment(vars: GetOrganiserGuestAmendmentVariables, options?: ExecuteQueryOptions): QueryPromise<GetOrganiserGuestAmendmentData, GetOrganiserGuestAmendmentVariables>;
+export function getOrganiserGuestAmendment(dc: DataConnect, vars: GetOrganiserGuestAmendmentVariables, options?: ExecuteQueryOptions): QueryPromise<GetOrganiserGuestAmendmentData, GetOrganiserGuestAmendmentVariables>;
+
+interface GetOrganiserGuestAmendmentByTokenRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetOrganiserGuestAmendmentByTokenVariables): QueryRef<GetOrganiserGuestAmendmentByTokenData, GetOrganiserGuestAmendmentByTokenVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetOrganiserGuestAmendmentByTokenVariables): QueryRef<GetOrganiserGuestAmendmentByTokenData, GetOrganiserGuestAmendmentByTokenVariables>;
+  operationName: string;
+}
+export const getOrganiserGuestAmendmentByTokenRef: GetOrganiserGuestAmendmentByTokenRef;
+
+export function getOrganiserGuestAmendmentByToken(vars: GetOrganiserGuestAmendmentByTokenVariables, options?: ExecuteQueryOptions): QueryPromise<GetOrganiserGuestAmendmentByTokenData, GetOrganiserGuestAmendmentByTokenVariables>;
+export function getOrganiserGuestAmendmentByToken(dc: DataConnect, vars: GetOrganiserGuestAmendmentByTokenVariables, options?: ExecuteQueryOptions): QueryPromise<GetOrganiserGuestAmendmentByTokenData, GetOrganiserGuestAmendmentByTokenVariables>;
+
+interface ListPendingOrganiserGuestAmendmentsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListPendingOrganiserGuestAmendmentsVariables): QueryRef<ListPendingOrganiserGuestAmendmentsData, ListPendingOrganiserGuestAmendmentsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListPendingOrganiserGuestAmendmentsVariables): QueryRef<ListPendingOrganiserGuestAmendmentsData, ListPendingOrganiserGuestAmendmentsVariables>;
+  operationName: string;
+}
+export const listPendingOrganiserGuestAmendmentsRef: ListPendingOrganiserGuestAmendmentsRef;
+
+export function listPendingOrganiserGuestAmendments(vars: ListPendingOrganiserGuestAmendmentsVariables, options?: ExecuteQueryOptions): QueryPromise<ListPendingOrganiserGuestAmendmentsData, ListPendingOrganiserGuestAmendmentsVariables>;
+export function listPendingOrganiserGuestAmendments(dc: DataConnect, vars: ListPendingOrganiserGuestAmendmentsVariables, options?: ExecuteQueryOptions): QueryPromise<ListPendingOrganiserGuestAmendmentsData, ListPendingOrganiserGuestAmendmentsVariables>;
+
+interface SetOrganiserGuestAmendmentNotificationStatusRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SetOrganiserGuestAmendmentNotificationStatusVariables): MutationRef<SetOrganiserGuestAmendmentNotificationStatusData, SetOrganiserGuestAmendmentNotificationStatusVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: SetOrganiserGuestAmendmentNotificationStatusVariables): MutationRef<SetOrganiserGuestAmendmentNotificationStatusData, SetOrganiserGuestAmendmentNotificationStatusVariables>;
+  operationName: string;
+}
+export const setOrganiserGuestAmendmentNotificationStatusRef: SetOrganiserGuestAmendmentNotificationStatusRef;
+
+export function setOrganiserGuestAmendmentNotificationStatus(vars: SetOrganiserGuestAmendmentNotificationStatusVariables): MutationPromise<SetOrganiserGuestAmendmentNotificationStatusData, SetOrganiserGuestAmendmentNotificationStatusVariables>;
+export function setOrganiserGuestAmendmentNotificationStatus(dc: DataConnect, vars: SetOrganiserGuestAmendmentNotificationStatusVariables): MutationPromise<SetOrganiserGuestAmendmentNotificationStatusData, SetOrganiserGuestAmendmentNotificationStatusVariables>;
 
 interface GetCurrentUserRef {
   /* Allow users to create refs without passing in DataConnect */

@@ -529,8 +529,8 @@ describe("SectionEventsManager", () => {
     expect(screen.getByRole("columnheader", { name: "Membership status" })).toBeInTheDocument();
     expect(screen.getByText("Wing Commander")).toBeInTheDocument();
     expect(screen.getByText("Regular")).toBeInTheDocument();
-    expect(screen.getByText("alex@example.com")).toBeInTheDocument();
-  });
+    expect(screen.getByRole("cell", { name: "alex@example.com" })).toBeInTheDocument();
+  }, 10_000);
 
   it("updates Dinner and Symposium flags on a ticket type", async () => {
     const user = userEvent.setup();

@@ -1,4 +1,4 @@
-import { getGovNotifyDeliveryConfigurationRef, listGovNotifyDeliveryModeAuditsRef, createGovNotifyDeliveryConfigurationRef, changeGovNotifyDeliveryModeRef, getNotifyReplyToConfigurationRef, listNotifyReplyToAuditsRef, createNotifyEmailConfigurationRef, createNotifyReplyToAddressRef, updateNotifyReplyToAddressIdentityRef, recordNotifyReplyToProviderAcceptanceRef, confirmNotifyReplyToVerificationRef, updateNotifyReplyToAvailabilityRef, changeNotifyReplyToDefaultRef, disableDefaultNotifyReplyToAddressRef, setNotifyTemplateReplyToOverrideRef, clearNotifyTemplateReplyToOverrideRef, getNotifyTemplateBindingsRef, listNotifyTemplateBindingAuditsRef, upsertNotifyTemplateBindingRef, createPendingSectionFileRef, getSectionFileByIdRef, listSectionFilesByStatusRef, listStaleSectionFilesRef, listSectionFilesForQuotaRef, recordSectionFileAuditRef, abandonPendingSectionFileRef, finalizePendingSectionFileRef, updateAvailableSectionFileMetadataRef, beginSectionFileReplacementRef, finalizeSectionFileReplacementRef, abortSectionFileReplacementRef, beginSectionFileDeletionRef, markSectionFileDeletedRef, updateUserMembershipStatusRef, acquireUserEmailLeaseRef, releaseUserEmailLeaseRef, updateUserEmailFromAuthRef, deleteUserRef, createUserRef, createMigratedUserProfileAndIdentityRef, linkLegacyIdentityToExistingUserRef, getLegacyUserIdentityRef, listLegacyUserIdentitiesByBatchRef, listMigrationUsersRef, searchSectionMemberCandidatesRef, listLegacyUserIdentitiesForMigrationRef, createUserGroupAdminRef, addUserToUserGroupAdminRef, removeUserFromUserGroupAdminRef, getUserGroupByNameRef, getUserUserGroupsForAdminRef, getUserForCheckoutRef, getTicketTypeForCheckoutRef, updateUserStripeCustomerIdRef, getEventByIdForCallableRef, getSectionByIdForCallableRef, getBookingReplayForBookerEventKeyRef, getBookingsForBookerAndEventRef, getBookingRevisionForApprovalFromCallableRef, getTicketOrdersForBookerAndEventRef, updateBookingStatusFromCallableRef, settleBookingPaymentAdjustmentsFromCallableRef, updateBookingApprovalFromCallableRef, createTicketOrderForCheckoutRef, updateBookingPlaceAllocationRefundFromCallableRef, getTicketOrderForWebhookRef, getTicketOrderStripeArtifactsForCallableRef, getPaymentWebhookEventByStripeEventIdRef, createPaymentWebhookEventRef, getNotificationDeliveryByChannelAndKeyRef, listFailedNotificationDeliveriesForRecoveryRef, listStalePendingNotificationDeliveriesForRecoveryRef, createNotificationDeliveryRef, claimNotificationDeliveryByIdRef, recordNotificationRecoveryFailureByIdRef, markNotificationDeliverySentByIdRef, markNotificationDeliveryFailedByIdRef, markTicketOrderPaidFromWebhookRef, markTicketOrderFailedFromWebhookRef, markTicketOrderRefundedFromWebhookRef, recordTicketOrderPartialRefundFromWebhookRef, upsertTicketOrderDisputeFromWebhookRef, getPaymentReconciliationExceptionByOrderAndTypeRef, upsertPaymentReconciliationExceptionRef, getBookingForNotificationRef, listStaleDraftBookingsForSchedulerRef, listStalePendingTicketOrdersForSchedulerRef, getSectionAnnouncementOptOutsRef, getSectionAnnouncementOptOutsPagedRef, createAnnouncementSendRef, createAnnouncementSendWithDeliveryModeRef, createAnnouncementRecipientRef, createAnnouncementRecipientWithDeliveryModeRef, getAnnouncementRecipientProgressRef, getAnnouncementRecipientProgressPagedRef, getAnnouncementRecipientProgressSummaryRef, getAnnouncementRecipientsForResumeRef, getAnnouncementRecipientsForResumePagedRef, getAnnouncementSendHistoryRef, getAnnouncementSendRecipientsRef, getAnnouncementSendRecipientsPagedRef, getAnnouncementSendRecipientPageRef, getAnnouncementAudienceSectionRef, getAnnouncementAudiencePurposeLinksPagedRef, getAnnouncementExplicitMembersPagedRef, getAnnouncementStatusMembersPagedRef, getAnnouncementSendByIdRef, getAnnouncementRecipientBySendAndUserRef, tryUpdateAnnouncementRecipientProcessingStatusRef, tryMarkAnnouncementRecipientEnqueueFailedRef, tryUpdateAnnouncementRecipientDeliveryStatusRef, getUserByEmailRef, getNotifyCallbackUserByIdRef, tryApplyNotifyDeliveryUserStateRef, getNotifyDeliveryReceiptRef, createNotifyDeliveryReceiptRef, claimNotifyDeliveryReceiptRef, markNotifyDeliveryReceiptProcessedRef, markNotifyDeliveryReceiptFailedRef, getRecentNotifyDeliveryReceiptsForUserRef, getLatestNotifyDeliveryReceiptForReferenceRef, adminOptOutSectionAnnouncementRef, adminOptInSectionAnnouncementRef, getCallableInvocationRef, upsertCallableInvocationRef, ensureCallableRateLimitBucketRef, consumeCallableRateLimitRef, getAttendeeEventSectionRef, getEventAttendeeNamesRef, adminDeleteBookingLineRef, adminDeleteBookingRef, resolvePaymentReconciliationExceptionRef, listPotentialLostProfilesRef, getPotentialLostProfileRef, confirmPotentialLostRef, getOrganiserGuestEventRef, listOrganiserGuestTypesRef, getOrganiserGuestTypeRef, listOrganiserGuestsRef, getOrganiserGuestRef, getOrganiserGuestByTokenRef, getPublicOrganiserGuestAttendanceRef, createOrganiserGuestRef, updateOrganiserGuestDetailsRef, updateOrganiserGuestDietaryRef, rotateOrganiserGuestLinkRef, cancelOrganiserGuestRef, attachOrganiserGuestCheckoutRef, resetOrganiserGuestCheckoutRef, markOrganiserGuestPaidRef, markOrganiserGuestRefundedRef, reassignOrganiserGuestTicketRef, getCurrentUserRef, getUserByIdRef, listUsersRef, listUserNamesByIdsRef, listSectionsRef, getSectionsForUserRef, listUserGroupsRef, getUserAccessGroupsRef, checkUserProfileExistsRef, getUserMembershipStatusRef, getUserWithAccessGroupsRef, getUserAccessGroupsByIdRef, getEventsForSectionRef, getEventByIdRef, getSectionByIdRef, getUserGroupByIdRef, getAllUserGroupsWithStatusesRef, getSectionMembersRef, getMyBookingsForEventRef, getMyBookingsRef, getMyTicketOrderByIdRef, getMyTicketOrdersRef, getMyBookingPaymentAdjustmentsRef, listEventBookingsForAdminRef, listTicketOrdersForAdminRef, listBookingPaymentAdjustmentsForAdminRef, listOpenPaymentReconciliationExceptionsRef, getSectionAnnouncementOptOutRef, getMyAnnouncementPreferencesRef, createSectionRef, createUserGroupRef, addUserToUserGroupRef, removeUserFromUserGroupRef, grantUserGroupToSectionForPurposeRef, revokeUserGroupFromSectionForPurposeRef, updateUserGroupRef, deleteUserGroupRef, updateSectionRef, deleteSectionRef, createEventRef, updateEventRef, deleteEventRef, createTicketTypeRef, updateTicketTypeRef, deleteTicketTypeRef, createUserProfileRef, upsertUserRef, updateUserRef, registerForSectionRef, unregisterFromSectionRef, subscribeToUserGroupRef, unsubscribeFromUserGroupRef, optOutSectionAnnouncementRef, optInSectionAnnouncementRef, updateAnnouncementOptOutAllRef, confirmProfileReviewRef, connectorConfig } from '../../esm/index.esm.js';
+import { getGovNotifyDeliveryConfigurationRef, listGovNotifyDeliveryModeAuditsRef, createGovNotifyDeliveryConfigurationRef, changeGovNotifyDeliveryModeRef, getNotifyReplyToConfigurationRef, listNotifyReplyToAuditsRef, createNotifyEmailConfigurationRef, createNotifyReplyToAddressRef, updateNotifyReplyToAddressIdentityRef, recordNotifyReplyToProviderAcceptanceRef, confirmNotifyReplyToVerificationRef, updateNotifyReplyToAvailabilityRef, changeNotifyReplyToDefaultRef, disableDefaultNotifyReplyToAddressRef, setNotifyTemplateReplyToOverrideRef, clearNotifyTemplateReplyToOverrideRef, getNotifyTemplateBindingsRef, listNotifyTemplateBindingAuditsRef, upsertNotifyTemplateBindingRef, createPendingSectionFileRef, getSectionFileByIdRef, listSectionFilesByStatusRef, listStaleSectionFilesRef, listSectionFilesForQuotaRef, recordSectionFileAuditRef, abandonPendingSectionFileRef, finalizePendingSectionFileRef, updateAvailableSectionFileMetadataRef, beginSectionFileReplacementRef, finalizeSectionFileReplacementRef, abortSectionFileReplacementRef, beginSectionFileDeletionRef, markSectionFileDeletedRef, updateUserMembershipStatusRef, acquireUserEmailLeaseRef, releaseUserEmailLeaseRef, updateUserEmailFromAuthRef, deleteUserRef, createUserRef, createMigratedUserProfileAndIdentityRef, linkLegacyIdentityToExistingUserRef, getLegacyUserIdentityRef, listLegacyUserIdentitiesByBatchRef, listMigrationUsersRef, searchSectionMemberCandidatesRef, listLegacyUserIdentitiesForMigrationRef, createUserGroupAdminRef, addUserToUserGroupAdminRef, removeUserFromUserGroupAdminRef, getUserGroupByNameRef, getUserUserGroupsForAdminRef, getUserForCheckoutRef, getTicketTypeForCheckoutRef, updateUserStripeCustomerIdRef, getEventByIdForCallableRef, getSectionByIdForCallableRef, getBookingReplayForBookerEventKeyRef, getBookingsForBookerAndEventRef, getBookingRevisionForApprovalFromCallableRef, getTicketOrdersForBookerAndEventRef, updateBookingStatusFromCallableRef, settleBookingPaymentAdjustmentsFromCallableRef, updateBookingApprovalFromCallableRef, createTicketOrderForCheckoutRef, updateBookingPlaceAllocationRefundFromCallableRef, updateBookingPlaceAllocationRefundStateFromCallableRef, getTicketOrderForWebhookRef, getTicketOrderStripeArtifactsForCallableRef, getPaymentWebhookEventByStripeEventIdRef, createPaymentWebhookEventRef, getNotificationDeliveryByChannelAndKeyRef, listFailedNotificationDeliveriesForRecoveryRef, listStalePendingNotificationDeliveriesForRecoveryRef, createNotificationDeliveryRef, claimNotificationDeliveryByIdRef, recordNotificationRecoveryFailureByIdRef, markNotificationDeliverySentByIdRef, markNotificationDeliveryFailedByIdRef, markTicketOrderPaidFromWebhookRef, markTicketOrderFailedFromWebhookRef, markTicketOrderRefundedFromWebhookRef, recordTicketOrderPartialRefundFromWebhookRef, upsertTicketOrderDisputeFromWebhookRef, getPaymentReconciliationExceptionByOrderAndTypeRef, upsertPaymentReconciliationExceptionRef, getBookingForNotificationRef, listStaleDraftBookingsForSchedulerRef, listStalePendingTicketOrdersForSchedulerRef, getSectionAnnouncementOptOutsRef, getSectionAnnouncementOptOutsPagedRef, createAnnouncementSendRef, createAnnouncementSendWithDeliveryModeRef, createAnnouncementRecipientRef, createAnnouncementRecipientWithDeliveryModeRef, getAnnouncementRecipientProgressRef, getAnnouncementRecipientProgressPagedRef, getAnnouncementRecipientProgressSummaryRef, getAnnouncementRecipientsForResumeRef, getAnnouncementRecipientsForResumePagedRef, getAnnouncementSendHistoryRef, getAnnouncementSendRecipientsRef, getAnnouncementSendRecipientsPagedRef, getAnnouncementSendRecipientPageRef, getAnnouncementAudienceSectionRef, getAnnouncementAudiencePurposeLinksPagedRef, getAnnouncementExplicitMembersPagedRef, getAnnouncementStatusMembersPagedRef, getAnnouncementSendByIdRef, getAnnouncementRecipientBySendAndUserRef, tryUpdateAnnouncementRecipientProcessingStatusRef, tryMarkAnnouncementRecipientEnqueueFailedRef, tryUpdateAnnouncementRecipientDeliveryStatusRef, getUserByEmailRef, getNotifyCallbackUserByIdRef, tryApplyNotifyDeliveryUserStateRef, getNotifyDeliveryReceiptRef, createNotifyDeliveryReceiptRef, claimNotifyDeliveryReceiptRef, markNotifyDeliveryReceiptProcessedRef, markNotifyDeliveryReceiptFailedRef, getRecentNotifyDeliveryReceiptsForUserRef, getLatestNotifyDeliveryReceiptForReferenceRef, adminOptOutSectionAnnouncementRef, adminOptInSectionAnnouncementRef, getCallableInvocationRef, upsertCallableInvocationRef, ensureCallableRateLimitBucketRef, consumeCallableRateLimitRef, getAttendeeEventSectionRef, getEventAttendeeNamesRef, adminDeleteBookingLineRef, adminDeleteBookingRef, resolvePaymentReconciliationExceptionRef, listPotentialLostProfilesRef, getPotentialLostProfileRef, confirmPotentialLostRef, getOrganiserGuestEventRef, listOrganiserGuestTypesRef, getOrganiserGuestTypeRef, listOrganiserGuestsRef, getOrganiserGuestRef, getOrganiserGuestByTokenRef, getPublicOrganiserGuestAttendanceRef, createOrganiserGuestRef, updateOrganiserGuestDetailsRef, amendOrganiserGuestDetailsRef, updateOrganiserGuestDietaryRef, rotateOrganiserGuestLinkRef, cancelOrganiserGuestRef, cancelOrganiserGuestWithAmendmentRef, attachOrganiserGuestCheckoutRef, resetOrganiserGuestCheckoutRef, markOrganiserGuestPaidRef, markOrganiserGuestRefundedRef, reassignOrganiserGuestTicketRef, amendOrganiserGuestTicketRef, attachOrganiserGuestAdditionalCheckoutRef, markOrganiserGuestAdditionalPaymentPaidRef, markOrganiserGuestAdditionalPaymentRefundedRef, getOrganiserGuestAmendmentRef, getOrganiserGuestAmendmentByTokenRef, listPendingOrganiserGuestAmendmentsRef, setOrganiserGuestAmendmentNotificationStatusRef, getCurrentUserRef, getUserByIdRef, listUsersRef, listUserNamesByIdsRef, listSectionsRef, getSectionsForUserRef, listUserGroupsRef, getUserAccessGroupsRef, checkUserProfileExistsRef, getUserMembershipStatusRef, getUserWithAccessGroupsRef, getUserAccessGroupsByIdRef, getEventsForSectionRef, getEventByIdRef, getSectionByIdRef, getUserGroupByIdRef, getAllUserGroupsWithStatusesRef, getSectionMembersRef, getMyBookingsForEventRef, getMyBookingsRef, getMyTicketOrderByIdRef, getMyTicketOrdersRef, getMyBookingPaymentAdjustmentsRef, listEventBookingsForAdminRef, listTicketOrdersForAdminRef, listBookingPaymentAdjustmentsForAdminRef, listOpenPaymentReconciliationExceptionsRef, getSectionAnnouncementOptOutRef, getMyAnnouncementPreferencesRef, createSectionRef, createUserGroupRef, addUserToUserGroupRef, removeUserFromUserGroupRef, grantUserGroupToSectionForPurposeRef, revokeUserGroupFromSectionForPurposeRef, updateUserGroupRef, deleteUserGroupRef, updateSectionRef, deleteSectionRef, createEventRef, updateEventRef, deleteEventRef, createTicketTypeRef, updateTicketTypeRef, deleteTicketTypeRef, createUserProfileRef, upsertUserRef, updateUserRef, registerForSectionRef, unregisterFromSectionRef, subscribeToUserGroupRef, unsubscribeFromUserGroupRef, optOutSectionAnnouncementRef, optInSectionAnnouncementRef, updateAnnouncementOptOutAllRef, confirmProfileReviewRef, connectorConfig } from '../../esm/index.esm.js';
 import { validateArgs, CallerSdkTypeEnum } from 'firebase/data-connect';
 import { useDataConnectQuery, useDataConnectMutation, validateReactArgs } from '@tanstack-query-firebase/react/data-connect';
 
@@ -468,6 +468,14 @@ export function useUpdateBookingPlaceAllocationRefundFromCallable(dcOrOptions, o
   const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
   function refFactory(vars) {
     return updateBookingPlaceAllocationRefundFromCallableRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+export function useUpdateBookingPlaceAllocationRefundStateFromCallable(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return updateBookingPlaceAllocationRefundStateFromCallableRef(dcInstance, vars);
   }
   return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
 }
@@ -1016,6 +1024,14 @@ export function useUpdateOrganiserGuestDetails(dcOrOptions, options) {
   return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
 }
 
+export function useAmendOrganiserGuestDetails(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return amendOrganiserGuestDetailsRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
 export function useUpdateOrganiserGuestDietary(dcOrOptions, options) {
   const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
   function refFactory(vars) {
@@ -1036,6 +1052,14 @@ export function useCancelOrganiserGuest(dcOrOptions, options) {
   const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
   function refFactory(vars) {
     return cancelOrganiserGuestRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+export function useCancelOrganiserGuestWithAmendment(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return cancelOrganiserGuestWithAmendmentRef(dcInstance, vars);
   }
   return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
 }
@@ -1076,6 +1100,64 @@ export function useReassignOrganiserGuestTicket(dcOrOptions, options) {
   const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
   function refFactory(vars) {
     return reassignOrganiserGuestTicketRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+export function useAmendOrganiserGuestTicket(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return amendOrganiserGuestTicketRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+export function useAttachOrganiserGuestAdditionalCheckout(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return attachOrganiserGuestAdditionalCheckoutRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+export function useMarkOrganiserGuestAdditionalPaymentPaid(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return markOrganiserGuestAdditionalPaymentPaidRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+export function useMarkOrganiserGuestAdditionalPaymentRefunded(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return markOrganiserGuestAdditionalPaymentRefundedRef(dcInstance, vars);
+  }
+  return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+
+export function useGetOrganiserGuestAmendment(dcOrVars, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateReactArgs(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  const ref = getOrganiserGuestAmendmentRef(dcInstance, inputVars);
+  return useDataConnectQuery(ref, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+export function useGetOrganiserGuestAmendmentByToken(dcOrVars, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateReactArgs(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  const ref = getOrganiserGuestAmendmentByTokenRef(dcInstance, inputVars);
+  return useDataConnectQuery(ref, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+
+export function useListPendingOrganiserGuestAmendments(dcOrVars, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateReactArgs(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  const ref = listPendingOrganiserGuestAmendmentsRef(dcInstance, inputVars);
+  return useDataConnectQuery(ref, inputOpts, CallerSdkTypeEnum.GeneratedReact);
+}
+export function useSetOrganiserGuestAmendmentNotificationStatus(dcOrOptions, options) {
+  const { dc: dcInstance, vars: inputOpts } = validateArgs(connectorConfig, dcOrOptions, options);
+  function refFactory(vars) {
+    return setOrganiserGuestAmendmentNotificationStatusRef(dcInstance, vars);
   }
   return useDataConnectMutation(refFactory, inputOpts, CallerSdkTypeEnum.GeneratedReact);
 }

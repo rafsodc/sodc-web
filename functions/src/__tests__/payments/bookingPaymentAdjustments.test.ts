@@ -146,4 +146,55 @@ describe("bookingPaymentAdjustments", () => {
     expect(result.paymentRemainingMinor).toBe(3000);
     expect(result.status).toBe(BookingPaymentAdjustmentStatus.NOT_REQUIRED);
   });
+
+  it("nets a paid replacement against the full revision history", () => {
+    const paidHistory = { lines: [{
+      priceMinor: 5_000,
+      ticketType: { price: 50 },
+      bookingPlace: { paymentAllocations: [{
+        id: "allocation-1",
+        allocatedAmountMinor: 5_000,
+        refundedAmountMinor: 0,
+        refundPendingAmountMinor: 0,
+        ticketOrder: { status: "PAID" },
+      }] },
+    }] };
+    const upgraded = computeBookingPaymentDelta(
+      paidHistory,
+      { lines: [{ priceMinor: 7_000, ticketType: { price: 70 } }] },
+      { financialHistory: [paidHistory], includeUnpaidBalance: true }
+    );
+    const downgraded = computeBookingPaymentDelta(
+      paidHistory,
+      { lines: [{ priceMinor: 3_000, ticketType: { price: 30 } }] },
+      { financialHistory: [paidHistory], includeUnpaidBalance: true }
+    );
+
+    expect(upgraded).toMatchObject({ paymentRemainingMinor: 2_000, refundDueMinor: 0, deltaAmountMinor: 2_000 });
+    expect(downgraded).toMatchObject({ paymentRemainingMinor: 0, refundDueMinor: 2_000, deltaAmountMinor: -2_000 });
+  });
+
+  it("counts a reused allocation once and treats a pending refund as committed", () => {
+    const allocation = {
+      id: "allocation-1",
+      allocatedAmountMinor: 5_000,
+      refundedAmountMinor: 500,
+      refundPendingAmountMinor: 500,
+      ticketOrder: { status: "PAID" },
+    };
+    const oldRevision = { lines: [{ ticketType: { price: 50 }, bookingPlace: { paymentAllocations: [allocation] } }] };
+    const currentRevision = { lines: [{ ticketType: { price: 50 }, bookingPlace: { paymentAllocations: [allocation] } }] };
+    const result = computeBookingPaymentDelta(
+      currentRevision,
+      { lines: [{ priceMinor: 3_000, ticketType: { price: 30 } }] },
+      { financialHistory: [oldRevision, currentRevision], includeUnpaidBalance: true }
+    );
+
+    expect(result).toMatchObject({
+      settledAmountMinor: 4_000,
+      refundedAmountMinor: 500,
+      pendingRefundAmountMinor: 500,
+      refundDueMinor: 1_000,
+    });
+  });
 });

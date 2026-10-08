@@ -24,6 +24,10 @@ interface VersionedRecoveryPayload {
 
 export type NotificationRecoveryPayload =
   | (VersionedRecoveryPayload & {
+      kind: "ORGANISER_GUEST_AMENDMENT";
+      amendmentId: UUIDString;
+    })
+  | (VersionedRecoveryPayload & {
       kind: "BOOKING_CONFIRMATION";
       bookingId: UUIDString;
       idempotencyKey: string;
@@ -37,7 +41,16 @@ export type NotificationRecoveryPayload =
         revisedTotalMinor: number;
         deltaAmountMinor: number;
         paymentRemainingMinor: number;
+        settledAmountMinor: number;
+        refundedAmountMinor: number;
+        pendingRefundAmountMinor: number;
+        refundDueMinor: number;
         status: BookingPaymentAdjustmentStatus;
+      };
+      refundOutcome?: {
+        completedAmountMinor: number;
+        pendingAmountMinor: number;
+        failedAmountMinor: number;
       };
     })
   | (VersionedRecoveryPayload & {
@@ -206,6 +219,8 @@ export function parseNotificationRecoveryPayload(
   const kind = string(payload.kind, "kind");
 
   switch (kind) {
+    case "ORGANISER_GUEST_AMENDMENT":
+      return { ...base, kind, amendmentId: string(payload.amendmentId, "amendmentId") as UUIDString };
     case "BOOKING_CONFIRMATION":
       return {
         ...base,
@@ -215,6 +230,14 @@ export function parseNotificationRecoveryPayload(
       };
     case "BOOKING_REVISION": {
       const paymentDelta = record(payload.paymentDelta, "paymentDelta");
+      const revisedTotalMinor = finiteNumber(paymentDelta.revisedTotalMinor, "revisedTotalMinor");
+      const paymentRemainingMinor = finiteNumber(paymentDelta.paymentRemainingMinor, "paymentRemainingMinor");
+      const deltaAmountMinor = finiteNumber(paymentDelta.deltaAmountMinor, "deltaAmountMinor");
+      const legacyNumber = (value: unknown, fallback: number) =>
+        typeof value === "number" && Number.isFinite(value) ? value : fallback;
+      const refundOutcome = payload.refundOutcome === undefined
+        ? undefined
+        : record(payload.refundOutcome, "refundOutcome");
       return {
         ...base,
         kind,
@@ -222,15 +245,28 @@ export function parseNotificationRecoveryPayload(
         idempotencyKey: string(payload.idempotencyKey, "idempotencyKey"),
         paymentDelta: {
           previousTotalMinor: finiteNumber(paymentDelta.previousTotalMinor, "previousTotalMinor"),
-          revisedTotalMinor: finiteNumber(paymentDelta.revisedTotalMinor, "revisedTotalMinor"),
-          deltaAmountMinor: finiteNumber(paymentDelta.deltaAmountMinor, "deltaAmountMinor"),
-          paymentRemainingMinor: finiteNumber(paymentDelta.paymentRemainingMinor, "paymentRemainingMinor"),
+          revisedTotalMinor,
+          deltaAmountMinor,
+          paymentRemainingMinor,
+          settledAmountMinor: legacyNumber(paymentDelta.settledAmountMinor, Math.max(0, revisedTotalMinor - paymentRemainingMinor)),
+          refundedAmountMinor: legacyNumber(paymentDelta.refundedAmountMinor, 0),
+          pendingRefundAmountMinor: legacyNumber(paymentDelta.pendingRefundAmountMinor, 0),
+          refundDueMinor: legacyNumber(paymentDelta.refundDueMinor, Math.max(0, -deltaAmountMinor)),
           status: enumValue(
             paymentDelta.status,
             Object.values(BookingPaymentAdjustmentStatus),
             "paymentDelta.status"
           ),
         },
+        ...(refundOutcome
+          ? {
+              refundOutcome: {
+                completedAmountMinor: finiteNumber(refundOutcome.completedAmountMinor, "refundOutcome.completedAmountMinor"),
+                pendingAmountMinor: finiteNumber(refundOutcome.pendingAmountMinor, "refundOutcome.pendingAmountMinor"),
+                failedAmountMinor: finiteNumber(refundOutcome.failedAmountMinor, "refundOutcome.failedAmountMinor"),
+              },
+            }
+          : {}),
       };
     }
     case "BOOKING_PENDING_MEMBER":

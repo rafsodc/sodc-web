@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Stripe from "stripe";
 import {
+  BookingPaymentAdjustmentStatus,
   PaymentWebhookEventOutcome,
   TicketOrderStatus,
 } from "@dataconnect/admin-generated";
@@ -15,6 +16,21 @@ const serviceMocks = vi.hoisted(() => ({
 const opsMocks = vi.hoisted(() => ({
   notifyDispute: vi.fn(),
 }));
+const stripeApiMocks = vi.hoisted(() => ({
+  listRefunds: vi.fn(),
+}));
+
+vi.mock("../../paymentConfig", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../paymentConfig")>();
+  return {
+    ...actual,
+    requireStripe: (secret: string | undefined) => {
+      const client = actual.requireStripe(secret);
+      client.refunds.list = stripeApiMocks.listRefunds as never;
+      return client;
+    },
+  };
+});
 
 vi.mock("firebase-functions/v2/https", () => ({
   onRequest: vi.fn().mockImplementation((_options: unknown, handler: unknown) => handler),
@@ -45,7 +61,8 @@ const getWebhookEvent = vi.spyOn(admin, "getPaymentWebhookEventByStripeEventId")
 const createWebhookEvent = vi.spyOn(admin, "createPaymentWebhookEvent");
 const getOrder = vi.spyOn(admin, "getTicketOrderForWebhook");
 const upsertDispute = vi.spyOn(admin, "upsertTicketOrderDisputeFromWebhook");
-const updateAllocationRefund = vi.spyOn(admin, "updateBookingPlaceAllocationRefundFromCallable");
+const updateAllocationRefund = vi.spyOn(admin, "updateBookingPlaceAllocationRefundStateFromCallable");
+const settleAdjustments = vi.spyOn(admin, "settleBookingPaymentAdjustmentsFromCallable");
 
 type Handler = (
   req: { headers: Record<string, unknown>; rawBody: Buffer },
@@ -113,12 +130,17 @@ describe("stripe payment webhook orchestration", () => {
     } as never);
     upsertDispute.mockResolvedValue({ data: {} } as never);
     updateAllocationRefund.mockResolvedValue({ data: {} } as never);
+    settleAdjustments.mockResolvedValue({ data: {} } as never);
     serviceMocks.applyTransitions.mockResolvedValue({
       appliedCount: 1,
       reconciledOrderIds: [ORDER_ID],
     });
     serviceMocks.upsertSnapshot.mockResolvedValue(undefined);
     opsMocks.notifyDispute.mockResolvedValue(undefined);
+    stripeApiMocks.listRefunds.mockResolvedValue({
+      data: [],
+      has_more: false,
+    });
   });
 
   afterEach(() => {
@@ -241,6 +263,21 @@ describe("stripe payment webhook orchestration", () => {
     );
 
     const refundResponse = responseHarness();
+    stripeApiMocks.listRefunds.mockResolvedValueOnce({
+      data: [{
+        id: "re_1",
+        amount: 5000,
+        status: "succeeded",
+        payment_intent: "pi_refund",
+        metadata: {
+          ticketOrderId: ORDER_ID,
+          allocationId: "22222222-2222-4222-8222-222222222222",
+          refundAmountMinor: "5000",
+          resultingRefundedAmountMinor: "5000",
+        },
+      }],
+      has_more: false,
+    });
     await handler(
       signedRequest(
         stripeEvent({
@@ -249,6 +286,7 @@ describe("stripe payment webhook orchestration", () => {
           object: {
             id: "re_1",
             amount: 5000,
+            payment_intent: "pi_refund",
             metadata: {
               ticketOrderId: ORDER_ID,
               allocationId: "22222222-2222-4222-8222-222222222222",
@@ -290,21 +328,29 @@ describe("stripe payment webhook orchestration", () => {
     const response = responseHarness();
     const allocationId = "22222222-2222-4222-8222-222222222222";
 
+    const refund = {
+      id: "re_partial",
+      amount: 1000,
+      status: "succeeded",
+      payment_intent: "pi_refund",
+      metadata: {
+        ticketOrderId: ORDER_ID,
+        allocationId,
+        refundAmountMinor: "1000",
+        resultingRefundedAmountMinor: "1000",
+      },
+    };
+    stripeApiMocks.listRefunds.mockResolvedValueOnce({
+      data: [refund],
+      has_more: false,
+    });
+
     await handler(
       signedRequest(
         stripeEvent({
           id: "evt_partial_refund",
           type: "refund.created",
-          object: {
-            id: "re_partial",
-            amount: 1000,
-            metadata: {
-              ticketOrderId: ORDER_ID,
-              allocationId,
-              refundAmountMinor: "1000",
-              resultingRefundedAmountMinor: "1000",
-            },
-          },
+          object: refund,
         })
       ),
       response.res
@@ -313,7 +359,9 @@ describe("stripe payment webhook orchestration", () => {
     expect(updateAllocationRefund).toHaveBeenCalledWith({
       id: allocationId,
       refundedAmountMinor: 1000,
+      refundPendingAmountMinor: 0,
       stripeRefundId: "re_partial",
+      refundFailureReason: null,
     });
     expect(updateAllocationRefund.mock.invocationCallOrder[0]).toBeLessThan(
       serviceMocks.applyTransitions.mock.invocationCallOrder[0]
@@ -329,6 +377,241 @@ describe("stripe payment webhook orchestration", () => {
       })
     );
     expect(response.send).toHaveBeenCalledWith(200, "ok");
+  });
+
+  it("marks an organiser amendment refund as failed when Stripe reports an asynchronous failure", async () => {
+    const response = responseHarness();
+    const allocationId = "22222222-2222-4222-8222-222222222222";
+    const bookingId = "33333333-3333-4333-8333-333333333333";
+
+    const refund = {
+      id: "re_failed",
+      amount: 1000,
+      status: "failed",
+      failure_reason: "declined",
+      payment_intent: "pi_refund",
+      metadata: {
+        ticketOrderId: ORDER_ID,
+        allocationId,
+        bookingId,
+        refundAmountMinor: "1000",
+        resultingRefundedAmountMinor: "1000",
+      },
+    };
+    stripeApiMocks.listRefunds.mockResolvedValueOnce({
+      data: [refund],
+      has_more: false,
+    });
+
+    await handler(
+      signedRequest(
+        stripeEvent({
+          id: "evt_refund_failed",
+          type: "refund.failed",
+          object: refund,
+        })
+      ),
+      response.res
+    );
+
+    expect(updateAllocationRefund).toHaveBeenCalledWith({
+      id: allocationId,
+      refundedAmountMinor: 0,
+      refundPendingAmountMinor: 0,
+      stripeRefundId: "re_failed",
+      refundFailureReason: "declined",
+    });
+    expect(settleAdjustments).toHaveBeenCalledWith({
+      revisionBookingId: bookingId,
+      status: BookingPaymentAdjustmentStatus.REFUND_FAILED,
+    });
+    expect(serviceMocks.applyTransitions).not.toHaveBeenCalled();
+    expect(response.send).toHaveBeenCalledWith(200, "Ignored event");
+  });
+
+  it("keeps a completed allocation refund when an older pending event arrives later", async () => {
+    const response = responseHarness();
+    const allocationId = "22222222-2222-4222-8222-222222222222";
+    const metadata = {
+      ticketOrderId: ORDER_ID,
+      allocationId,
+      refundAmountMinor: "1000",
+      resultingRefundedAmountMinor: "1000",
+    };
+    stripeApiMocks.listRefunds.mockResolvedValueOnce({
+      data: [{
+        id: "re_pending_then_succeeded",
+        amount: 1000,
+        status: "succeeded",
+        payment_intent: "pi_refund",
+        metadata,
+      }],
+      has_more: false,
+    });
+
+    await handler(
+      signedRequest(
+        stripeEvent({
+          id: "evt_old_pending",
+          type: "refund.created",
+          object: {
+            id: "re_pending_then_succeeded",
+            amount: 1000,
+            status: "pending",
+            payment_intent: "pi_refund",
+            metadata,
+          },
+        }),
+      ),
+      response.res,
+    );
+
+    expect(updateAllocationRefund).toHaveBeenCalledWith({
+      id: allocationId,
+      refundedAmountMinor: 1000,
+      refundPendingAmountMinor: 0,
+      stripeRefundId: "re_pending_then_succeeded",
+      refundFailureReason: null,
+    });
+    expect(response.send).toHaveBeenCalledWith(200, "Ignored event");
+  });
+
+  it("records the current pending refund without marking the adjustment failed", async () => {
+    const response = responseHarness();
+    const allocationId = "22222222-2222-4222-8222-222222222222";
+    const bookingId = "33333333-3333-4333-8333-333333333333";
+    const refund = {
+      id: "re_pending",
+      amount: 1000,
+      status: "pending",
+      payment_intent: "pi_refund",
+      metadata: {
+        ticketOrderId: ORDER_ID,
+        allocationId,
+        bookingId,
+        refundAmountMinor: "1000",
+        resultingRefundedAmountMinor: "1000",
+      },
+    };
+    stripeApiMocks.listRefunds.mockResolvedValueOnce({
+      data: [refund],
+      has_more: false,
+    });
+
+    await handler(
+      signedRequest(
+        stripeEvent({
+          id: "evt_pending",
+          type: "refund.created",
+          object: refund,
+        }),
+      ),
+      response.res,
+    );
+
+    expect(updateAllocationRefund).toHaveBeenCalledWith({
+      id: allocationId,
+      refundedAmountMinor: 0,
+      refundPendingAmountMinor: 1000,
+      stripeRefundId: "re_pending",
+      refundFailureReason: null,
+    });
+    expect(settleAdjustments).not.toHaveBeenCalled();
+    expect(response.send).toHaveBeenCalledWith(200, "Ignored event");
+  });
+
+  it("ignores allocation reconciliation when refund metadata is incomplete", async () => {
+    const response = responseHarness();
+
+    await handler(
+      signedRequest(
+        stripeEvent({
+          id: "evt_incomplete_refund",
+          type: "refund.updated",
+          object: {
+            id: "re_incomplete",
+            amount: 1000,
+            status: "pending",
+            metadata: {
+              allocationId: "22222222-2222-4222-8222-222222222222",
+              refundAmountMinor: "1000",
+              resultingRefundedAmountMinor: "1000",
+            },
+          },
+        }),
+      ),
+      response.res,
+    );
+
+    expect(stripeApiMocks.listRefunds).not.toHaveBeenCalled();
+    expect(updateAllocationRefund).not.toHaveBeenCalled();
+    expect(response.send).toHaveBeenCalledWith(200, "Ignored event");
+  });
+
+  it("recomputes cumulative refunds instead of rolling back to an older target", async () => {
+    const response = responseHarness();
+    const allocationId = "22222222-2222-4222-8222-222222222222";
+    const firstMetadata = {
+      ticketOrderId: ORDER_ID,
+      allocationId,
+      refundAmountMinor: "1000",
+      resultingRefundedAmountMinor: "1000",
+    };
+    const secondMetadata = {
+      ...firstMetadata,
+      resultingRefundedAmountMinor: "2000",
+    };
+    stripeApiMocks.listRefunds
+      .mockResolvedValueOnce({
+        data: [{
+          id: "re_second",
+          amount: 1000,
+          status: "succeeded",
+          payment_intent: "pi_refund",
+          metadata: secondMetadata,
+        }],
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        data: [{
+          id: "re_first",
+          amount: 1000,
+          status: "succeeded",
+          payment_intent: "pi_refund",
+          metadata: firstMetadata,
+        }],
+        has_more: false,
+      });
+
+    await handler(
+      signedRequest(
+        stripeEvent({
+          id: "evt_old_first_refund",
+          type: "refund.updated",
+          object: {
+            id: "re_first",
+            amount: 1000,
+            status: "succeeded",
+            payment_intent: "pi_refund",
+            metadata: firstMetadata,
+          },
+        }),
+      ),
+      response.res,
+    );
+
+    expect(updateAllocationRefund).toHaveBeenCalledWith({
+      id: allocationId,
+      refundedAmountMinor: 2000,
+      refundPendingAmountMinor: 0,
+      stripeRefundId: "re_second",
+      refundFailureReason: null,
+    });
+    expect(stripeApiMocks.listRefunds).toHaveBeenNthCalledWith(2, {
+      payment_intent: "pi_refund",
+      limit: 100,
+      starting_after: "re_second",
+    });
   });
 
   it("ignores cumulative charge.refunded events in favour of exact refund.created routing", async () => {

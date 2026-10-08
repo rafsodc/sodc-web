@@ -10,12 +10,14 @@ import {
   manageOrganiserGuest,
   updateOrganiserGuestDietary,
 } from "../../organiserGuests";
+import { notifyOrganiserGuestAmendment } from "../../organiserGuestAmendmentNotifications";
+vi.mock("../../organiserGuestAmendmentNotifications", () => ({ notifyOrganiserGuestAmendment: vi.fn() }));
 import { handleOrganiserGuestStripeEvent } from "../../organiserGuestPayments";
 const stripe = vi.hoisted(() => ({
   checkout: {
     sessions: { create: vi.fn(), retrieve: vi.fn(), expire: vi.fn() },
   },
-  refunds: { list: vi.fn() },
+  refunds: { create: vi.fn(), list: vi.fn() },
   paymentIntents: { retrieve: vi.fn() },
 }));
 vi.mock("../../paymentConfig", () => ({
@@ -43,8 +45,11 @@ const base = {
   stripeSessionId: null,
   stripePaymentIntentId: null,
   paidAt: null,
+  paidAmountMinor: null,
   refundedAmountMinor: 0,
   refundPendingMinor: 0,
+  refundFailureReason: null,
+  payments: [],
   cancelledAt: null,
   createdBy: "organiser",
   updatedBy: "organiser",
@@ -54,6 +59,8 @@ const base = {
     id,
     title: "Event",
     bookingEndDateTime: "2099-01-01T00:00:00Z",
+    startDateTime: "2099-01-02T10:00:00Z",
+    endDateTime: "2099-01-02T20:00:00Z",
     section: { id },
   },
 };
@@ -61,10 +68,12 @@ let guest: typeof base;
 const getByToken = vi.spyOn(db, "getOrganiserGuestByToken");
 const getById = vi.spyOn(db, "getOrganiserGuest");
 const dietary = vi.spyOn(db, "updateOrganiserGuestDietary");
-const cancel = vi.spyOn(db, "cancelOrganiserGuest");
+const cancel = vi.spyOn(db, "cancelOrganiserGuestWithAmendment");
 const rotate = vi.spyOn(db, "rotateOrganiserGuestLink");
 const attach = vi.spyOn(db, "attachOrganiserGuestCheckout");
+const attachAdditional = vi.spyOn(db, "attachOrganiserGuestAdditionalCheckout");
 const paid = vi.spyOn(db, "markOrganiserGuestPaid");
+const paidAdditional = vi.spyOn(db, "markOrganiserGuestAdditionalPaymentPaid");
 const refund = vi.spyOn(db, "markOrganiserGuestRefunded");
 const create = vi.spyOn(db, "createOrganiserGuest");
 const typeQuery = vi.spyOn(db, "getOrganiserGuestType");
@@ -89,6 +98,9 @@ const webhook = (type: string, object: unknown) =>
   handleOrganiserGuestStripeEvent(event(type, object), stripe as never);
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.spyOn(db, "getOrganiserGuestAmendment").mockResolvedValue({ data: { organiserGuestAmendment: null } });
+  vi.spyOn(db, "getOrganiserGuestAmendmentByToken").mockResolvedValue({ data: { organiserGuestAmendments: [] } });
+  vi.mocked(notifyOrganiserGuestAmendment).mockResolvedValue({ outcome: "sent" });
   guest = structuredClone(base);
   getByToken.mockImplementation(
     async () => ({ data: { organiserGuests: [guest] } }) as never,
@@ -118,14 +130,35 @@ beforeEach(() => {
   dietary.mockResolvedValue({} as never);
   cancel.mockResolvedValue({} as never);
   rotate.mockResolvedValue({} as never);
-  paid.mockResolvedValue({} as never);
+  paid.mockImplementation(async ({ paymentIntentId, paidAmountMinor }) => {
+    Object.assign(guest, {
+      paidAt: "2026-01-01",
+      stripePaymentIntentId: paymentIntentId,
+      paidAmountMinor,
+    });
+    return {} as never;
+  });
   refund.mockResolvedValue({} as never);
   create.mockResolvedValue({} as never);
   attach.mockResolvedValue({ data: { organiserGuest_updateMany: 1 } });
+  attachAdditional.mockResolvedValue({ data: { organiserGuest_updateMany: 1 } });
+  paidAdditional.mockResolvedValue({} as never);
   stripe.checkout.sessions.create.mockResolvedValue({
     id: "cs_guest",
     status: "open",
     url: "https://checkout.stripe.test/session",
+  });
+  stripe.refunds.create.mockResolvedValue({
+    id: "re_guest",
+    payment_intent: "pi_guest",
+    status: "succeeded",
+  });
+  stripe.paymentIntents.retrieve.mockResolvedValue({
+    metadata: { domain: "organiser-guest", guestId: id },
+  });
+  stripe.refunds.list.mockResolvedValue({
+    data: [{ id: "re_guest", status: "succeeded", amount: 1000 }],
+    has_more: false,
   });
 });
 describe("organiser guest capability and permissions", () => {
@@ -314,9 +347,9 @@ describe("organiser guest capability and permissions", () => {
     guest.event.id = id.replaceAll("-", "");
     guest.ticketType.id = id.replaceAll("-", "");
     const update = vi
-      .spyOn(db, "updateOrganiserGuestDetails")
+      .spyOn(db, "amendOrganiserGuestDetails")
       .mockResolvedValue({} as never);
-    const reassign = vi.spyOn(db, "reassignOrganiserGuestTicket");
+    const reassign = vi.spyOn(db, "amendOrganiserGuestTicket");
     await manageOrganiserGuest.run(
       request(
         {
@@ -347,17 +380,110 @@ describe("organiser guest capability and permissions", () => {
 });
 describe("organiser ticket reassignment", () => {
   it("reassigns an unpaid guest atomically while preserving their link and reservation identity", async () => {
-    const reassign = vi.spyOn(db, "reassignOrganiserGuestTicket").mockResolvedValue({} as never);
-    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, action: "edit" }, true));
+    const reassign = vi.spyOn(db, "amendOrganiserGuestTicket").mockResolvedValue({} as never);
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, expectedTicketPriceMinor: 1000, action: "edit" }, true));
     expect(reassign).toHaveBeenCalledWith(expect.objectContaining({ id, version: 1, ticketTypeId: other, priceMinor: 1000, checkoutKey: expect.any(String) }));
     expect(reassign.mock.calls[0][0]).not.toHaveProperty("tokenHash");
     expect(cancel).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled();
   });
-  it("rejects reassignment once a ticket is paid", async () => {
+  it("reassigns a paid ticket while preserving its original paid amount", async () => {
     Object.assign(guest, { paidAt: "2026-01-01", stripePaymentIntentId: "pi_guest" });
-    const reassign = vi.spyOn(db, "reassignOrganiserGuestTicket");
-    await expect(manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, action: "edit" }, true))).rejects.toMatchObject({ code: "failed-precondition" });
-    expect(reassign).not.toHaveBeenCalled();
+    const reassign = vi.spyOn(db, "amendOrganiserGuestTicket").mockResolvedValue({} as never);
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, expectedTicketPriceMinor: 1000, action: "edit" }, true));
+    expect(reassign).toHaveBeenCalledWith(expect.objectContaining({
+      id,
+      paidAmountMinor: 1000,
+      priceMinor: 1000,
+    }));
+  });
+  it("refunds only the net reduction when a paid guest ticket is downgraded", async () => {
+    Object.assign(guest, { paidAt: "2026-01-01", paidAmountMinor: 1000, stripePaymentIntentId: "pi_guest" });
+    typeQuery.mockResolvedValue({ data: { ticketTypes: [{ ...base.ticketType, id: other, price: 5, includesDinner: false, includesSymposium: false }] } } as never);
+    vi.spyOn(db, "amendOrganiserGuestTicket").mockImplementation(async (input) => {
+      Object.assign(guest, { priceMinor: input.priceMinor, paidAmountMinor: input.paidAmountMinor, includesDinner: false });
+      return {} as never;
+    });
+    stripe.refunds.list.mockResolvedValue({ data: [{ id: "re_guest", status: "succeeded", amount: 500 }], has_more: false });
+
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, expectedTicketPriceMinor: 500, action: "edit" }, true));
+
+    expect(stripe.refunds.create).toHaveBeenCalledWith(
+      expect.objectContaining({ payment_intent: "pi_guest", amount: 500 }),
+      { idempotencyKey: `organiser-guest-refund:${id}:original:500` },
+    );
+  });
+  it("leaves only the net increase payable through the existing guest link", async () => {
+    Object.assign(guest, { paidAt: "2026-01-01", paidAmountMinor: 1000, stripePaymentIntentId: "pi_guest" });
+    typeQuery.mockResolvedValue({ data: { ticketTypes: [{ ...base.ticketType, id: other, price: 15, includesDinner: true, includesSymposium: true }] } } as never);
+    vi.spyOn(db, "amendOrganiserGuestTicket").mockImplementation(async (input) => {
+      Object.assign(guest, { priceMinor: input.priceMinor, paidAmountMinor: input.paidAmountMinor, checkoutKey: input.checkoutKey, stripeSessionId: null });
+      return {} as never;
+    });
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, expectedTicketPriceMinor: 1500, action: "edit" }, true));
+
+    await createOrganiserGuestCheckout.run(request({ token }));
+
+    expect(stripe.refunds.create).not.toHaveBeenCalled();
+    expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 500 }) })],
+        metadata: expect.objectContaining({ guestPaymentId: expect.any(String) }),
+      }),
+      { idempotencyKey: expect.stringMatching(new RegExp(`^organiser-guest:${id}:`)) },
+    );
+    expect(attachAdditional).toHaveBeenCalledWith(expect.objectContaining({
+      guestId: id,
+      amountMinor: 500,
+    }));
+  });
+  it("reuses an open top-up checkout for a previously paid guest", async () => {
+    Object.assign(guest, {
+      paidAt: "2026-01-01",
+      paidAmountMinor: 1000,
+      priceMinor: 1500,
+      stripePaymentIntentId: "pi_guest",
+      stripeSessionId: "cs_topup",
+    });
+    stripe.checkout.sessions.retrieve.mockResolvedValue({
+      id: "cs_topup",
+      status: "open",
+      url: "https://checkout.stripe.test/topup",
+    });
+
+    await expect(
+      createOrganiserGuestCheckout.run(request({ token })),
+    ).resolves.toEqual({ url: "https://checkout.stripe.test/topup" });
+
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    expect(attachAdditional).not.toHaveBeenCalled();
+  });
+  it("uses the same top-up payment id when retrying after a lost database response", async () => {
+    Object.assign(guest, {
+      paidAt: "2026-01-01",
+      paidAmountMinor: 1000,
+      priceMinor: 1500,
+      stripePaymentIntentId: "pi_guest",
+    });
+    attachAdditional
+      .mockRejectedValueOnce(new Error("database timeout"))
+      .mockResolvedValueOnce({ data: { organiserGuest_updateMany: 1 } });
+
+    await expect(
+      createOrganiserGuestCheckout.run(request({ token })),
+    ).rejects.toMatchObject({ code: "internal" });
+    await expect(
+      createOrganiserGuestCheckout.run(request({ token })),
+    ).resolves.toEqual({ url: "https://checkout.stripe.test/session" });
+
+    const firstMetadata = stripe.checkout.sessions.create.mock.calls[0][0].metadata;
+    const secondMetadata = stripe.checkout.sessions.create.mock.calls[1][0].metadata;
+    expect(firstMetadata).toEqual(secondMetadata);
+    expect(firstMetadata.guestPaymentId).toMatch(
+      /^[a-f0-9]{8}-[a-f0-9]{4}-5[a-f0-9]{3}-8[a-f0-9]{3}-[a-f0-9]{12}$/,
+    );
+    expect(attachAdditional.mock.calls[0][0].id).toBe(
+      attachAdditional.mock.calls[1][0].id,
+    );
   });
 });
 describe("guest payments and cancellation", () => {
@@ -403,6 +529,7 @@ describe("guest payments and cancellation", () => {
       id,
       sessionId: "cs_guest",
       paymentIntentId: "pi_guest",
+      paidAmountMinor: 1000,
     });
     expect(guestPaymentStatus({ ...guest, paidAt: "2026-01-01" })).toBe(
       "REFUND_REQUIRED",
@@ -453,6 +580,8 @@ describe("guest payments and cancellation", () => {
       paymentIntentId: "pi_guest",
       refundedAmountMinor: 500,
       refundPendingMinor: 0,
+      refundFailureReason: null,
+      stripeRefundId: null,
       version: 1,
     });
     refund.mockClear();
@@ -482,6 +611,8 @@ describe("guest payments and cancellation", () => {
       paymentIntentId: "pi_guest",
       refundedAmountMinor: 0,
       refundPendingMinor: 1000,
+      refundFailureReason: null,
+      stripeRefundId: null,
       version: 1,
     });
     expect(guestPaymentStatus({ ...guest, refundPendingMinor: 1000 })).toBe(
@@ -498,6 +629,8 @@ describe("guest payments and cancellation", () => {
       paymentIntentId: "pi_guest",
       refundedAmountMinor: 0,
       refundPendingMinor: 0,
+      refundFailureReason: "Stripe refund failed",
+      stripeRefundId: null,
       version: 1,
     });
   });
@@ -564,5 +697,73 @@ describe("guest payments and cancellation", () => {
         metadata: { orderIds: id },
       }),
     ).toBe(false);
+  });
+});
+
+
+describe("organiser amendment recovery", () => {
+  it("exposes and retries a failed refund without cancelling the downgraded guest", async () => {
+    Object.assign(guest, { paidAt: "2026-01-01", paidAmountMinor: 1000, stripePaymentIntentId: "pi_guest" });
+    typeQuery.mockResolvedValue({ data: { ticketTypes: [{ ...base.ticketType, id: other, price: 5, includesDinner: false, includesSymposium: false }] } } as never);
+    const reassign = vi.spyOn(db, "amendOrganiserGuestTicket").mockImplementation(async (input) => {
+      Object.assign(guest, { priceMinor: input.priceMinor, paidAmountMinor: input.paidAmountMinor, standardTicketType: { id: other, title: "Cheaper ticket" }, version: 2 });
+      return {} as never;
+    });
+    refund.mockImplementation(async (input) => { Object.assign(guest, input); return {} as never; });
+    stripe.refunds.create.mockRejectedValueOnce(new Error("Stripe unavailable"));
+    const result = await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, expectedTicketPriceMinor: 500, action: "edit" }, true));
+    expect(result.guest).toMatchObject({ cancelled: false, paymentStatus: "REFUND_FAILED" });
+    expect(notifyOrganiserGuestAmendment).toHaveBeenCalledTimes(1);
+    stripe.refunds.list.mockResolvedValue({ data: [{ id: "re_guest", status: "succeeded", amount: 500 }], has_more: false });
+    const recovered = await manageOrganiserGuest.run(request({ id, eventId: id, version: guest.version, action: "retry-refund" }, true));
+    expect(recovered.guest).toMatchObject({ cancelled: false, refundedAmountMinor: 500, refundFailureReason: null });
+    expect(stripe.refunds.create).toHaveBeenCalledTimes(2);
+    expect(stripe.refunds.create.mock.calls[0][1]).toEqual(stripe.refunds.create.mock.calls[1][1]);
+    expect(reassign).toHaveBeenCalledTimes(1);
+    expect(cancel).not.toHaveBeenCalled();
+    expect(notifyOrganiserGuestAmendment).toHaveBeenCalledTimes(1);
+  });
+
+  it("recognises a stranded active refund even if its failure could not be recorded", () => {
+    expect(guestPaymentStatus({ ...guest, paidAt: "2026-01-01", paidAmountMinor: 1000, priceMinor: 500 })).toBe("REFUND_REQUIRED");
+  });
+
+  it("accepts an emailed capability without invalidating the original guest link", async () => {
+    getByToken.mockResolvedValueOnce({ data: { organiserGuests: [] } });
+    vi.mocked(db.getOrganiserGuestAmendmentByToken).mockResolvedValue({ data: { organiserGuestAmendments: [{ guestId: id }] } });
+    await expect(getOrganiserGuestTicket.run(request({ token }))).resolves.toMatchObject({ firstName: "First" });
+    await expect(getOrganiserGuestTicket.run(request({ token }))).resolves.toMatchObject({ firstName: "First" });
+    expect(rotate).not.toHaveBeenCalled();
+  });
+
+  it("saves the notification snapshot and scoped link in the amendment transaction", async () => {
+    const update = vi.spyOn(db, "amendOrganiserGuestDetails").mockResolvedValue({} as never);
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: id, action: "edit", amendmentId: other }, true));
+    const input = update.mock.calls[0][0];
+    const snapshot = JSON.parse(input.amendmentPayload);
+    expect(snapshot).toMatchObject({ recipientEmail: base.email, previousTotalMinor: 1000, revisedTotalMinor: 1000 });
+    expect(input.amendmentTokenHash).toBe(createHash("sha256").update(snapshot.guestLink.split("#")[1]).digest("hex"));
+    expect(input.amendmentNotificationStatus).toBe("PENDING");
+    expect(notifyOrganiserGuestAmendment).toHaveBeenCalledWith({ amendmentId: other });
+  });
+
+  it("replays a saved amendment without making another reservation change", async () => {
+    const update = vi.spyOn(db, "amendOrganiserGuestDetails").mockResolvedValue({} as never);
+    const data = { ...base, eventId: id, ticketTypeId: id, action: "edit", amendmentId: other };
+    await manageOrganiserGuest.run(request(data, true));
+    const input = update.mock.calls[0][0];
+    vi.mocked(db.getOrganiserGuestAmendment).mockResolvedValue({ data: { organiserGuestAmendment: { id: other, guestId: id, requestHash: input.amendmentRequestHash } } } as never);
+    guest.version = 2;
+    await manageOrganiserGuest.run(request(data, true));
+    expect(update).toHaveBeenCalledTimes(1);
+    await expect(manageOrganiserGuest.run(request({ ...data, firstName: "Changed" }, true))).rejects.toMatchObject({ code: "already-exists" });
+  });
+
+  it("retries an email independently of the amendment and refunds", async () => {
+    vi.mocked(db.getOrganiserGuestAmendment).mockResolvedValue({ data: { organiserGuestAmendment: { id: other, guestId: id } } } as never);
+    await manageOrganiserGuest.run(request({ id, eventId: id, version: 1, action: "retry-notification", amendmentId: other }, true));
+    expect(notifyOrganiserGuestAmendment).toHaveBeenCalledWith({ amendmentId: other });
+    expect(stripe.refunds.create).not.toHaveBeenCalled();
+    expect(cancel).not.toHaveBeenCalled();
   });
 });

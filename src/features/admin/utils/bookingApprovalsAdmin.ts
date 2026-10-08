@@ -20,7 +20,8 @@ export type AttendeePaymentState =
   | "REFUNDED"
   | "UNKNOWN"
   | "PARTIALLY_REFUNDED"
-  | "REFUND_PENDING";
+  | "REFUND_PENDING"
+  | "REFUND_FAILED";
 
 export interface EventAttendeeTicketRow {
   key: string;
@@ -155,13 +156,14 @@ export function previousActiveBooking(
 
 export function attendeePaymentState(
   line: EventBookingAdminRow["lines"][number],
-  ticketOrdersById: TicketOrdersById
+  ticketOrdersById: TicketOrdersById,
+  settledCreditMinor?: number
 ): AttendeePaymentState {
-  if (line.ticketType.price <= 0) return "FREE";
+  const requiredMinor = line.priceMinor ?? Math.round(line.ticketType.price * 100);
+  if (requiredMinor <= 0) return "FREE";
   const allocations = line.bookingPlace.paymentAllocations ?? [];
   if (allocations.some((allocation) => !ticketOrdersById.has(allocation.ticketOrderId))) return "UNKNOWN";
 
-  const requiredMinor = Math.round(line.ticketType.price * 100);
   let settledMinor = 0;
   let pendingMinor = 0;
   let settledAllocatedMinor = 0;
@@ -171,11 +173,14 @@ export function attendeePaymentState(
     if (status === TicketOrderStatus.PAID || status === TicketOrderStatus.REFUNDED) {
       settledAllocatedMinor += allocation.allocatedAmountMinor;
       settledRefundedMinor += allocation.refundedAmountMinor;
+      if (allocation.refundFailureReason) return "REFUND_FAILED";
+      if ((allocation.refundPendingAmountMinor ?? 0) > 0) return "REFUND_PENDING";
       settledMinor += Math.max(0, allocation.allocatedAmountMinor - allocation.refundedAmountMinor);
     } else if (status === TicketOrderStatus.PENDING) {
       pendingMinor += Math.max(0, allocation.allocatedAmountMinor - allocation.refundedAmountMinor);
     }
   }
+  settledMinor = settledCreditMinor ?? settledMinor;
   if (settledMinor >= requiredMinor) return "PAID";
   const outstandingMinor = requiredMinor - settledMinor;
   if (pendingMinor >= outstandingMinor) return "PAYMENT_PENDING";
@@ -189,8 +194,23 @@ export function activeEventTicketRows(
   ticketOrdersById: TicketOrdersById,
   userNamesById: ReadonlyMap<string, string> = new Map()
 ): EventAttendeeTicketRow[] {
-  return currentActiveBookings(bookings).flatMap((booking) =>
-    [...booking.lines]
+  return currentActiveBookings(bookings).flatMap((booking) => {
+    const history = bookings.filter((row) =>
+      row.revisionGroupId.replace(/-/g, "").toLowerCase() === booking.revisionGroupId.replace(/-/g, "").toLowerCase() &&
+      row.booker.id === booking.booker.id
+    );
+    const allocations = new Map(history.flatMap((row) => row.lines.flatMap((line) =>
+      line.bookingPlace?.paymentAllocations ?? []
+    )).map((allocation) => [allocation.id, allocation]));
+    // Credit remains with the booking/payer when a paid place is replaced.
+    // Apply it once in the same line order as the checkout calculation.
+    let creditMinor = Array.from(allocations.values()).reduce((total, allocation) => {
+      const status = ticketOrdersById.get(allocation.ticketOrderId)?.status;
+      return status === TicketOrderStatus.PAID || status === TicketOrderStatus.REFUNDED
+        ? total + Math.max(0, allocation.allocatedAmountMinor - allocation.refundedAmountMinor - (allocation.refundPendingAmountMinor ?? 0))
+        : total;
+    }, 0);
+    return [...booking.lines]
       .sort((left, right) => left.sortOrder - right.sortOrder)
       .map((line) => {
         const linkedName = line.guestUser
@@ -203,6 +223,9 @@ export function activeEventTicketRows(
         const seatingPreferences = (booking.sitNextToUserIds ?? []).map(
           (userId) => userNamesById.get(userId) ?? "Unavailable member"
         );
+        const priceMinor = line.priceMinor ?? Math.round(line.ticketType.price * 100);
+        const appliedCreditMinor = Math.min(priceMinor, creditMinor);
+        creditMinor -= appliedCreditMinor;
         return {
           key: `${booking.id}:${line.id}`,
           bookingId: booking.id,
@@ -224,10 +247,10 @@ export function activeEventTicketRows(
           seatingPreferences,
           dietaryNote: line.dietaryNote?.trim() || null,
           approvalStatus: booking.approvalStatus,
-          paymentState: attendeePaymentState(line, ticketOrdersById),
+          paymentState: attendeePaymentState(line, ticketOrdersById, appliedCreditMinor),
         };
-      })
-  );
+      });
+  });
 }
 
 function csvCell(value: string | number): string {

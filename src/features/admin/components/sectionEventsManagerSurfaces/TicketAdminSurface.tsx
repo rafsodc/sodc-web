@@ -24,7 +24,7 @@ import {
   ContentCopy as ContentCopyIcon,
 } from "@mui/icons-material";
 import { useEffect, useId, useMemo, useState } from "react";
-import { BookingApprovalStatus } from "@dataconnect/generated";
+import { BookingApprovalStatus, BookingPaymentAdjustmentStatus } from "@dataconnect/generated";
 import PageHeader from "../../../../shared/components/PageHeader";
 import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../../shared/utils/ticketAudienceLabels";
 import { getMembershipStatusLabel } from "../../../../shared/utils/membershipStatusLabels";
@@ -83,12 +83,16 @@ interface TicketAdminSurfaceProps {
     booking: EventBookingAdminRow,
     decision: BookingApprovalStatus.APPROVED | BookingApprovalStatus.REJECTED
   ) => void;
+  activeBookings: EventBookingAdminRow[];
+  onAmendBooking: (booking: EventBookingAdminRow) => void;
   loadingEventBookings: boolean;
   eventBookings: EventBookingAdminRow[];
   loadingTicketOrders: boolean;
   ticketOrders: TicketOrderAdminRow[];
   loadingPaymentAdjustments: boolean;
   bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[];
+  retryingRefundBookingId: string | null;
+  onRetryRefund: (bookingId: string) => void;
 }
 export function TicketAdminSurface({
   event,
@@ -114,12 +118,16 @@ export function TicketAdminSurface({
   onModeratorNoteChange,
   reviewingBookingId,
   onReviewBooking,
+  activeBookings,
+  onAmendBooking,
   loadingEventBookings,
   eventBookings,
   loadingTicketOrders,
   ticketOrders,
   loadingPaymentAdjustments,
   bookingPaymentAdjustments,
+  retryingRefundBookingId,
+  onRetryRefund,
 }: TicketAdminSurfaceProps) {
   return (
     <>
@@ -158,6 +166,13 @@ export function TicketAdminSurface({
           onReview={onReviewBooking}
         />
       </AdminAccordion>
+      <AdminAccordion title="Booking amendments">
+        <BookingAmendmentsSection
+          loading={loadingEventBookings}
+          bookings={activeBookings}
+          onAmend={onAmendBooking}
+        />
+      </AdminAccordion>
       <AdminAccordion title="Current attendee tickets">
         {attendeeGuestsUnavailable ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert> : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} />}
       </AdminAccordion>
@@ -169,9 +184,63 @@ export function TicketAdminSurface({
           loading={loadingTicketOrders || loadingPaymentAdjustments}
           ticketOrders={ticketOrders}
           bookingPaymentAdjustments={bookingPaymentAdjustments}
+          eventBookings={eventBookings}
+          retryingRefundBookingId={retryingRefundBookingId}
+          onRetryRefund={onRetryRefund}
         />
       </AdminAccordion>
     </>
+  );
+}
+
+function BookingAmendmentsSection({
+  loading,
+  bookings,
+  onAmend,
+}: {
+  loading: boolean;
+  bookings: EventBookingAdminRow[];
+  onAmend: (booking: EventBookingAdminRow) => void;
+}) {
+  if (loading) return <CircularProgress size={22} />;
+  if (bookings.length === 0) return <Alert severity="info">No active bookings are available to amend.</Alert>;
+  return (
+    <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Amend tickets at any time. Changes apply immediately and the booking contact is emailed automatically.
+      </Typography>
+      <AdminTable minWidth={760}>
+        <TableHead>
+          <TableRow>
+            <TableCell>Booking contact</TableCell>
+            <TableCell>Current tickets</TableCell>
+            <TableCell align="right">Current total</TableCell>
+            <TableCell>Revision</TableCell>
+            <TableCell align="right">Action</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {bookings.map((booking) => (
+            <TableRow key={booking.id}>
+              <TableCell>
+                <Box>{booking.booker.firstName} {booking.booker.lastName}</Box>
+                <Typography variant="caption" color="text.secondary">{booking.booker.email}</Typography>
+              </TableCell>
+              <TableCell>{booking.lines.map((line) => line.ticketType.title).join(", ") || "No tickets"}</TableCell>
+              <TableCell align="right">
+                {(booking.lines.reduce((total, line) => total + (line.priceMinor ?? Math.round(line.ticketType.price * 100)), 0) / 100).toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
+              </TableCell>
+              <TableCell>Rev {booking.revisionNumber}</TableCell>
+              <TableCell align="right">
+                <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={() => onAmend(booking)}>
+                  Amend booking
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </AdminTable>
+    </Box>
   );
 }
 
@@ -792,13 +861,46 @@ function PaymentActivitySection({
   loading,
   ticketOrders,
   bookingPaymentAdjustments,
+  eventBookings,
+  retryingRefundBookingId,
+  onRetryRefund,
 }: {
   loading: boolean;
   ticketOrders: TicketOrderAdminRow[];
   bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[];
+  eventBookings: EventBookingAdminRow[];
+  retryingRefundBookingId: string | null;
+  onRetryRefund: (bookingId: string) => void;
 }) {
+  const refundFailures = Array.from(new Map(eventBookings.flatMap((booking) =>
+    booking.lines.flatMap((line) => line.bookingPlace.paymentAllocations ?? [])
+  ).filter((allocation) => allocation.refundFailureReason).map((allocation) => [allocation.id, allocation])).values());
+  const failedGroupIds = new Set(eventBookings.filter((booking) => booking.lines.some((line) =>
+    line.bookingPlace.paymentAllocations.some((allocation) => Boolean(allocation.refundFailureReason))
+  )).map((booking) => booking.revisionGroupId));
+  const retryBookings = Array.from(failedGroupIds).map((groupId) => eventBookings
+    .filter((booking) => booking.revisionGroupId === groupId)
+    .sort((left, right) => right.revisionNumber - left.revisionNumber)[0]).filter(Boolean) as EventBookingAdminRow[];
   return (
     <Box>
+      {refundFailures.length > 0 ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Box>{refundFailures.length} refund{refundFailures.length === 1 ? "" : "s"} need attention: {refundFailures.map((allocation) => allocation.refundFailureReason).join("; ")}</Box>
+          {retryBookings.map((booking) => (
+            <Button
+              key={booking.id}
+              size="small"
+              color="error"
+              variant="outlined"
+              sx={{ mt: 1, mr: 1 }}
+              disabled={retryingRefundBookingId === booking.id}
+              onClick={() => onRetryRefund(booking.id)}
+            >
+              {retryingRefundBookingId === booking.id ? "Retrying…" : `Retry refund for ${booking.booker.firstName} ${booking.booker.lastName}`}
+            </Button>
+          ))}
+        </Alert>
+      ) : null}
       {loading ? (
         <CircularProgress size={22} />
       ) : ticketOrders.length === 0 ? (
@@ -884,7 +986,13 @@ function PaymentActivitySection({
                 (booking.adjustments ?? []).map((adjustment) => (
                   <TableRow key={adjustment.id}>
                     <TableCell>
-                      <Chip size="small" color="warning" label={adjustment.status.replaceAll("_", " ")} />
+                      <Chip
+                        size="small"
+                        color="warning"
+                        label={adjustment.status === BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE
+                          ? "Payment required—please pay as soon as possible"
+                          : adjustment.status.replaceAll("_", " ")}
+                      />
                     </TableCell>
                     <TableCell>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "—"}</TableCell>
                     <TableCell align="right">{(adjustment.deltaAmountMinor / 100).toFixed(2)} GBP</TableCell>

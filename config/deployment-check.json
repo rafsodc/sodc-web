@@ -55,6 +55,7 @@
     "section-file-clamav-definitions"
   ],
   "expectedPublicInvokerFunctions": [
+    "amendEventBookingAsOrganiser",
     "cancelSectionFileReplacement",
     "changeNotifyReplyToDefault",
     "confirmNotifyReplyToVerification",
@@ -70,6 +71,7 @@
     "getAnnouncementSendHistory",
     "getAnnouncementSendRecipients",
     "getAnnouncementTemplates",
+    "getEventAdministrationData",
     "getEventAttendees",
     "getEventForUser",
     "getGovNotifyDeliveryAdminConfiguration",
@@ -102,6 +104,7 @@
     "requestSectionFileUpload",
     "resignMembership",
     "retryAnnouncementPreparation",
+    "retryOrganiserBookingRefund",
     "reviewBookingRevision",
     "revokeAdmin",
     "searchSectionMembers",

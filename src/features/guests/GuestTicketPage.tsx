@@ -93,27 +93,27 @@ function GuestTicket({ token }: { token: string }) {
               : "Your place is reserved."}{" "}
             Payment: {paymentLabel(data.paymentStatus)}.
           </Alert>
-          {data.paymentStatus === "REFUND_REQUIRED" && (
+          {["REFUND_REQUIRED", "REFUND_FAILED"].includes(data.paymentStatus) && (
             <Typography>
               Please contact the organiser about your outstanding refund.
             </Typography>
           )}
-          {!data.cancelled && data.paymentStatus === "UNPAID" && (
+          {!data.cancelled && ["UNPAID", "PAYMENT_REQUIRED"].includes(data.paymentStatus) && (
             <>
               <Typography>
-                {Date.now() >= Date.parse(data.paymentDueAt)
-                  ? "Payment is overdue. It was due by "
-                  : "Payment is due by "}
-                {new Date(data.paymentDueAt).toLocaleString("en-GB")}. You can
-                still pay after this date; your reservation remains until the
-                organiser cancels it.
+                {data.paymentStatus === "PAYMENT_REQUIRED"
+                  ? "Payment required—please pay as soon as possible."
+                  : <>{Date.now() >= Date.parse(data.paymentDueAt)
+                    ? "Payment is overdue. It was due by "
+                    : "Payment is due by "}
+                    {new Date(data.paymentDueAt).toLocaleString("en-GB")}.</>} Your reservation remains until the organiser cancels it.
               </Typography>
               <Button
                 variant="contained"
                 disabled={busy}
                 onClick={() => void act(true)}
               >
-                Pay {money(data.priceMinor)}
+                Pay {money(data.paymentRequiredMinor)}
               </Button>
             </>
           )}

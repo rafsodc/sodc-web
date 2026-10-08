@@ -3,6 +3,9 @@ query GetOrganiserGuestEvent($eventId: UUID!) @auth(level: NO_ACCESS) {
     id
     title
     bookingEndDateTime
+    startDateTime
+    endDateTime
+    location
     section {
       id
     }
@@ -66,11 +69,21 @@ query ListOrganiserGuests($eventId: UUID!, $offset: Int!)
     stripeSessionId
     stripePaymentIntentId
     paidAt
+    paidAmountMinor
     refundedAmountMinor
     refundPendingMinor
+    refundFailureReason
+    stripeRefundId
     cancelledAt
     createdBy
     updatedAt
+    amendments: organiserGuestAmendments_on_guest(orderBy: { createdAt: DESC }, limit: 1) {
+      id notificationStatus
+    }
+    payments: organiserGuestPayments_on_guest(orderBy: { createdAt: ASC }) {
+      id amountMinor checkoutKey stripeSessionId stripePaymentIntentId paidAt
+      refundedAmountMinor refundPendingMinor refundFailureReason stripeRefundId createdAt updatedAt
+    }
     ticketType {
       id
       title
@@ -104,11 +117,21 @@ query GetOrganiserGuest($id: UUID!) @auth(level: NO_ACCESS) {
     stripeSessionId
     stripePaymentIntentId
     paidAt
+    paidAmountMinor
     refundedAmountMinor
     refundPendingMinor
+    refundFailureReason
+    stripeRefundId
     cancelledAt
     createdBy
     updatedAt
+    amendments: organiserGuestAmendments_on_guest(orderBy: { createdAt: DESC }, limit: 1) {
+      id notificationStatus
+    }
+    payments: organiserGuestPayments_on_guest(orderBy: { createdAt: ASC }) {
+      id amountMinor checkoutKey stripeSessionId stripePaymentIntentId paidAt
+      refundedAmountMinor refundPendingMinor refundFailureReason stripeRefundId createdAt updatedAt
+    }
     ticketType {
       id
       title
@@ -143,11 +166,21 @@ query GetOrganiserGuestByToken($tokenHash: String!) @auth(level: NO_ACCESS) {
     stripeSessionId
     stripePaymentIntentId
     paidAt
+    paidAmountMinor
     refundedAmountMinor
     refundPendingMinor
+    refundFailureReason
+    stripeRefundId
     cancelledAt
     createdBy
     updatedAt
+    amendments: organiserGuestAmendments_on_guest(orderBy: { createdAt: DESC }, limit: 1) {
+      id notificationStatus
+    }
+    payments: organiserGuestPayments_on_guest(orderBy: { createdAt: ASC }) {
+      id amountMinor checkoutKey stripeSessionId stripePaymentIntentId paidAt
+      refundedAmountMinor refundPendingMinor refundFailureReason stripeRefundId createdAt updatedAt
+    }
     ticketType {
       id
       title
@@ -218,6 +251,7 @@ mutation CreateOrganiserGuest(
     data: { guestId: $id, action: "CREATED", actor: $actor }
   )
 }
+# Retained for functions from the previous deployment.
 mutation UpdateOrganiserGuestDetails(
   $id: UUID!
   $version: Int!
@@ -246,6 +280,52 @@ mutation UpdateOrganiserGuestDetails(
   organiserGuestAudit_insert(
     data: { guestId: $id, action: "DETAILS_UPDATED", actor: $actor }
   )
+}
+
+mutation AmendOrganiserGuestDetails(
+  $id: UUID!
+  $version: Int!
+  $firstName: String!
+  $lastName: String!
+  $email: String
+  $dietaryRequirements: String!
+  $actor: String!
+
+  $amendmentId: UUID!
+  $amendmentRequestHash: String!
+  $amendmentPayload: String!
+  $amendmentTokenHash: String
+  $amendmentNotificationStatus: String!
+) @auth(level: NO_ACCESS) @transaction {
+  organiserGuest_updateMany(
+    where: {
+      id: { eq: $id }
+      version: { eq: $version }
+      cancelledAt: { isNull: true }
+    }
+    data: {
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+      dietaryRequirements: $dietaryRequirements
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $actor
+    }
+  ) @check(expr: "this == 1", message: "GUEST_CONFLICT")
+  organiserGuestAudit_insert(
+    data: { guestId: $id, action: "DETAILS_UPDATED", actor: $actor }
+  )
+
+  organiserGuestAmendment_insert(data: {
+    id: $amendmentId
+    guestId: $id
+    requestHash: $amendmentRequestHash
+    payload: $amendmentPayload
+    tokenHash: $amendmentTokenHash
+    notificationStatus: $amendmentNotificationStatus
+    createdBy: $actor
+  })
 }
 mutation UpdateOrganiserGuestDietary(
   $id: UUID!
@@ -292,7 +372,9 @@ mutation RotateOrganiserGuestLink(
   organiserGuestAudit_insert(
     data: { guestId: $id, action: "LINK_REPLACED", actor: $actor }
   )
+  organiserGuestAmendment_updateMany(where: { guestId: { eq: $id } }, data: { tokenHash: null })
 }
+# Retained for functions from the previous deployment.
 mutation CancelOrganiserGuest($id: UUID!, $version: Int!, $actor: String!)
 @auth(level: NO_ACCESS)
 @transaction {
@@ -312,6 +394,43 @@ mutation CancelOrganiserGuest($id: UUID!, $version: Int!, $actor: String!)
   organiserGuestAudit_insert(
     data: { guestId: $id, action: "CANCELLED", actor: $actor }
   )
+}
+
+mutation CancelOrganiserGuestWithAmendment($id: UUID!, $version: Int!, $actor: String!
+  $amendmentId: UUID!
+  $amendmentRequestHash: String!
+  $amendmentPayload: String!
+  $amendmentTokenHash: String
+  $amendmentNotificationStatus: String!
+)
+@auth(level: NO_ACCESS)
+@transaction {
+  organiserGuest_updateMany(
+    where: {
+      id: { eq: $id }
+      version: { eq: $version }
+      cancelledAt: { isNull: true }
+    }
+    data: {
+      cancelledAt_expr: "request.time"
+      version_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+      updatedBy: $actor
+    }
+  ) @check(expr: "this == 1", message: "GUEST_CONFLICT")
+  organiserGuestAudit_insert(
+    data: { guestId: $id, action: "CANCELLED", actor: $actor }
+  )
+
+  organiserGuestAmendment_insert(data: {
+    id: $amendmentId
+    guestId: $id
+    requestHash: $amendmentRequestHash
+    payload: $amendmentPayload
+    tokenHash: $amendmentTokenHash
+    notificationStatus: $amendmentNotificationStatus
+    createdBy: $actor
+  })
 }
 mutation AttachOrganiserGuestCheckout(
   $id: UUID!
@@ -340,7 +459,6 @@ mutation ResetOrganiserGuestCheckout(
       id: { eq: $id }
       version: { eq: $version }
       cancelledAt: { isNull: true }
-      paidAt: { isNull: true }
     }
     data: {
       stripeSessionId: null
@@ -353,12 +471,14 @@ mutation MarkOrganiserGuestPaid(
   $id: UUID!
   $sessionId: String!
   $paymentIntentId: String!
+  $paidAmountMinor: Int!
 ) @auth(level: NO_ACCESS) @transaction {
   organiserGuest_updateMany(
     where: { id: { eq: $id }, paidAt: { isNull: true } }
     data: {
       stripeSessionId: $sessionId
       stripePaymentIntentId: $paymentIntentId
+      paidAmountMinor: $paidAmountMinor
       paidAt_expr: "request.time"
       version_update: { inc: 1 }
     }
@@ -372,6 +492,8 @@ mutation MarkOrganiserGuestRefunded(
   $paymentIntentId: String!
   $refundedAmountMinor: Int!
   $refundPendingMinor: Int!
+  $refundFailureReason: String
+  $stripeRefundId: String
   $version: Int!
 ) @auth(level: NO_ACCESS) @transaction {
   organiserGuest_updateMany(
@@ -384,6 +506,8 @@ mutation MarkOrganiserGuestRefunded(
     data: {
       refundedAmountMinor: $refundedAmountMinor
       refundPendingMinor: $refundPendingMinor
+      refundFailureReason: $refundFailureReason
+      stripeRefundId: $stripeRefundId
       version_update: { inc: 1 }
     }
   ) @check(expr: "this == 1", message: "GUEST_CONFLICT")
@@ -392,7 +516,63 @@ mutation MarkOrganiserGuestRefunded(
   )
 }
 
-mutation ReassignOrganiserGuestTicket($id: UUID!, $version: Int!, $ticketTypeId: UUID!, $firstName: String!, $lastName: String!, $email: String, $dietaryRequirements: String!, $priceMinor: Int!, $includesSymposium: Boolean!, $includesDinner: Boolean!, $checkoutKey: String!, $actor: String!) @auth(level: NO_ACCESS) @transaction {
-  organiserGuest_updateMany(where: { id: { eq: $id }, version: { eq: $version }, cancelledAt: { isNull: true }, paidAt: { isNull: true } }, data: { standardTicketTypeId: $ticketTypeId, ticketTypeId: null, firstName: $firstName, lastName: $lastName, email: $email, dietaryRequirements: $dietaryRequirements, priceMinor: $priceMinor, includesSymposium: $includesSymposium, includesDinner: $includesDinner, checkoutKey: $checkoutKey, stripeSessionId: null, version_update: { inc: 1 }, updatedBy: $actor, updatedAt_expr: "request.time" }) @check(expr: "this == 1", message: "GUEST_CONFLICT")
+# Retained for functions from the previous deployment.
+mutation ReassignOrganiserGuestTicket($id: UUID!, $version: Int!, $ticketTypeId: UUID!, $firstName: String!, $lastName: String!, $email: String, $dietaryRequirements: String!, $priceMinor: Int!, $paidAmountMinor: Int, $includesSymposium: Boolean!, $includesDinner: Boolean!, $checkoutKey: String!, $actor: String!) @auth(level: NO_ACCESS) @transaction {
+  organiserGuest_updateMany(where: { id: { eq: $id }, version: { eq: $version }, cancelledAt: { isNull: true } }, data: { standardTicketTypeId: $ticketTypeId, ticketTypeId: null, firstName: $firstName, lastName: $lastName, email: $email, dietaryRequirements: $dietaryRequirements, priceMinor: $priceMinor, paidAmountMinor: $paidAmountMinor, includesSymposium: $includesSymposium, includesDinner: $includesDinner, checkoutKey: $checkoutKey, stripeSessionId: null, version_update: { inc: 1 }, updatedBy: $actor, updatedAt_expr: "request.time" }) @check(expr: "this == 1", message: "GUEST_CONFLICT")
   organiserGuestAudit_insert(data: { guestId: $id, action: "TICKET_REASSIGNED", actor: $actor })
+}
+
+mutation AmendOrganiserGuestTicket($id: UUID!, $version: Int!, $ticketTypeId: UUID!, $firstName: String!, $lastName: String!, $email: String, $dietaryRequirements: String!, $priceMinor: Int!, $paidAmountMinor: Int, $includesSymposium: Boolean!, $includesDinner: Boolean!, $checkoutKey: String!, $actor: String!
+  $amendmentId: UUID!
+  $amendmentRequestHash: String!
+  $amendmentPayload: String!
+  $amendmentTokenHash: String
+  $amendmentNotificationStatus: String!
+) @auth(level: NO_ACCESS) @transaction {
+  organiserGuest_updateMany(where: { id: { eq: $id }, version: { eq: $version }, cancelledAt: { isNull: true } }, data: { standardTicketTypeId: $ticketTypeId, ticketTypeId: null, firstName: $firstName, lastName: $lastName, email: $email, dietaryRequirements: $dietaryRequirements, priceMinor: $priceMinor, paidAmountMinor: $paidAmountMinor, includesSymposium: $includesSymposium, includesDinner: $includesDinner, checkoutKey: $checkoutKey, stripeSessionId: null, version_update: { inc: 1 }, updatedBy: $actor, updatedAt_expr: "request.time" }) @check(expr: "this == 1", message: "GUEST_CONFLICT")
+  organiserGuestAudit_insert(data: { guestId: $id, action: "TICKET_REASSIGNED", actor: $actor })
+
+  organiserGuestAmendment_insert(data: {
+    id: $amendmentId
+    guestId: $id
+    requestHash: $amendmentRequestHash
+    payload: $amendmentPayload
+    tokenHash: $amendmentTokenHash
+    notificationStatus: $amendmentNotificationStatus
+    createdBy: $actor
+  })
+}
+
+mutation AttachOrganiserGuestAdditionalCheckout($id: UUID!, $guestId: UUID!, $checkoutKey: String!, $sessionId: String!, $amountMinor: Int!) @auth(level: NO_ACCESS) @transaction {
+  organiserGuest_updateMany(where: { id: { eq: $guestId }, checkoutKey: { eq: $checkoutKey }, cancelledAt: { isNull: true } }, data: { stripeSessionId: $sessionId }) @check(expr: "this == 1", message: "GUEST_CONFLICT")
+  organiserGuestPayment_insert(data: { id: $id, guestId: $guestId, amountMinor: $amountMinor, checkoutKey: $checkoutKey, stripeSessionId: $sessionId, createdBy: "system", updatedBy: "system" })
+}
+
+mutation MarkOrganiserGuestAdditionalPaymentPaid($id: UUID!, $guestId: UUID!, $sessionId: String!, $paymentIntentId: String!) @auth(level: NO_ACCESS) @transaction {
+  organiserGuestPayment_updateMany(where: { id: { eq: $id }, guestId: { eq: $guestId }, stripeSessionId: { eq: $sessionId }, paidAt: { isNull: true } }, data: { stripePaymentIntentId: $paymentIntentId, paidAt_expr: "request.time", updatedAt_expr: "request.time", updatedBy: "stripe" }) @check(expr: "this == 1", message: "GUEST_CONFLICT")
+  organiserGuest_update(id: $guestId, data: { version_update: { inc: 1 }, updatedAt_expr: "request.time", updatedBy: "stripe" })
+  organiserGuestAudit_insert(data: { guestId: $guestId, action: "ADDITIONAL_PAYMENT_PAID", actor: "stripe" })
+}
+
+mutation MarkOrganiserGuestAdditionalPaymentRefunded($id: UUID!, $paymentIntentId: String!, $refundedAmountMinor: Int!, $refundPendingMinor: Int!, $refundFailureReason: String, $stripeRefundId: String) @auth(level: NO_ACCESS) @transaction {
+  organiserGuestPayment_updateMany(where: { id: { eq: $id }, stripePaymentIntentId: { eq: $paymentIntentId }, refundedAmountMinor: { le: $refundedAmountMinor } }, data: { refundedAmountMinor: $refundedAmountMinor, refundPendingMinor: $refundPendingMinor, refundFailureReason: $refundFailureReason, stripeRefundId: $stripeRefundId, updatedAt_expr: "request.time", updatedBy: "stripe" }) @check(expr: "this == 1", message: "GUEST_CONFLICT")
+}
+
+query GetOrganiserGuestAmendment($id: UUID!) @auth(level: NO_ACCESS) {
+  organiserGuestAmendment(id: $id) {
+    id guestId requestHash payload tokenHash notificationStatus createdBy
+  }
+}
+query GetOrganiserGuestAmendmentByToken($tokenHash: String!) @auth(level: NO_ACCESS) {
+  organiserGuestAmendments(where: { tokenHash: { eq: $tokenHash } }, limit: 1) {
+    guestId
+  }
+}
+query ListPendingOrganiserGuestAmendments($before: Timestamp!, $limit: Int!) @auth(level: NO_ACCESS) {
+  organiserGuestAmendments(where: { notificationStatus: { eq: "PENDING" }, createdAt: { lt: $before } }, orderBy: { createdAt: ASC }, limit: $limit) {
+    id
+  }
+}
+mutation SetOrganiserGuestAmendmentNotificationStatus($id: UUID!, $status: String!) @auth(level: NO_ACCESS) {
+  organiserGuestAmendment_updateMany(where: { id: { eq: $id }, notificationStatus: { ne: "SENT" } }, data: { notificationStatus: $status })
 }

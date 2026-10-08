@@ -1,3 +1,9 @@
+import * as logger from "firebase-functions/logger";
+import { govNotifySecrets } from "./mailer";
+import { notifyOrganiserGuestAmendment, type GuestAmendmentEmailSnapshot } from "./organiserGuestAmendmentNotifications";
+import { formatTransactionalEventDateTime } from "./paymentLifecycleEmailDispatcher";
+import { guestFinancialPosition, guestPaymentStatus } from "./organiserGuestFinancialPosition";
+export { guestFinancialPosition, guestPaymentStatus } from "./organiserGuestFinancialPosition";
 import { handleOrganiserGuestStripeEvent } from "./organiserGuestPayments";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
@@ -15,6 +21,18 @@ import { APP_BASE_URL, requireStripe, stripeSecret } from "./paymentConfig";
 type Guest = db.GetOrganiserGuestData["organiserGuests"][number];
 const hash = (token: string) =>
   createHash("sha256").update(token).digest("hex");
+function stableGuestPaymentId(guestId: string, checkoutKey: string): string {
+  const digest = createHash("sha256")
+    .update(`${guestId}:${checkoutKey}`)
+    .digest("hex");
+  return [
+    digest.slice(0, 8),
+    digest.slice(8, 12),
+    `5${digest.slice(13, 16)}`,
+    `8${digest.slice(17, 20)}`,
+    digest.slice(20, 32),
+  ].join("-");
+}
 function text(
   value: unknown,
   label: string,
@@ -78,27 +96,10 @@ export async function loadOrganiserGuestTypes(eventId: string) {
         }));
   }
 }
-export function guestPaymentStatus(
-  guest: Pick<
-    Guest,
-    | "priceMinor"
-    | "paidAt"
-    | "refundedAmountMinor"
-    | "refundPendingMinor"
-    | "cancelledAt"
-  >,
-) {
-  if (guest.paidAt && guest.refundedAmountMinor >= guest.priceMinor)
-    return "REFUNDED";
-  if (guest.refundPendingMinor > 0) return "REFUND_PENDING";
-  if (guest.paidAt && guest.cancelledAt) return "REFUND_REQUIRED";
-  if (guest.paidAt)
-    return guest.refundedAmountMinor > 0 ? "PARTIALLY_REFUNDED" : "PAID";
-  return guest.priceMinor === 0 ? "FREE" : "UNPAID";
-}
 function project(guest: Omit<Guest, "tokenHash">) {
   const ticketType = guest.standardTicketType ?? guest.ticketType;
   if (!ticketType) throw new Error("Guest ticket type missing");
+  const financial = guestFinancialPosition(guest);
   return {
     id: guest.id,
     firstName: guest.firstName,
@@ -113,7 +114,14 @@ function project(guest: Omit<Guest, "tokenHash">) {
     version: guest.version,
     cancelled: Boolean(guest.cancelledAt),
     paymentStatus: guestPaymentStatus(guest),
-    refundedAmountMinor: guest.refundedAmountMinor,
+    paidAmountMinor: financial.grossPaidMinor,
+    settledAmountMinor: financial.settledAmountMinor,
+    paymentRequiredMinor: financial.paymentRequiredMinor,
+    refundedAmountMinor: financial.refundedAmountMinor,
+    refundPendingMinor: financial.refundPendingMinor,
+    refundFailureReason: financial.refundFailureReason,
+    latestAmendmentId: guest.amendments?.[0]?.id ?? null,
+    notificationStatus: guest.amendments?.[0]?.notificationStatus ?? null,
   };
 }
 async function organiserTicketType(id: string, eventId: string) {
@@ -140,9 +148,10 @@ export async function guestByToken(raw: unknown) {
   if (typeof raw !== "string" || !/^[a-f0-9]{64}$/.test(raw))
     throw new HttpsError("not-found", "This guest link is not valid");
   const { data } = await db.getOrganiserGuestByToken({ tokenHash: hash(raw) });
-  const guest = data.organiserGuests[0];
-  if (!guest) throw new HttpsError("not-found", "This guest link is not valid");
-  return guest;
+  if (data.organiserGuests[0]) return data.organiserGuests[0];
+  const amendment = (await db.getOrganiserGuestAmendmentByToken({ tokenHash: hash(raw) })).data.organiserGuestAmendments[0];
+  if (!amendment) throw new HttpsError("not-found", "This guest link is not valid");
+  return guestById(amendment.guestId);
 }
 function link(token: string) {
   return `${APP_BASE_URL.replace(/\/$/, "")}/guest-ticket#${token}`;
@@ -160,7 +169,7 @@ function failure(error: unknown): never {
   );
 }
 async function expireOpenCheckout(guest: Guest) {
-  if (!guest.stripeSessionId || guest.paidAt) return;
+  if (!guest.stripeSessionId) return;
   const stripe = requireStripe(stripeSecret.value());
   const session = await stripe.checkout.sessions.retrieve(
     guest.stripeSessionId,
@@ -172,6 +181,76 @@ async function expireOpenCheckout(guest: Guest) {
       { type: "checkout.session.completed", data: { object: session } },
       stripe,
     );
+}
+
+async function initiateOutstandingGuestRefund(guest: Guest): Promise<void> {
+  const targetPriceMinor = guest.cancelledAt ? 0 : guest.priceMinor;
+  let amountRemainingMinor = Math.max(0, guestFinancialPosition(guest).settledAmountMinor - targetPriceMinor);
+  if (amountRemainingMinor === 0) return;
+  const stripe = requireStripe(stripeSecret.value());
+  const sources = [
+    ...(guest.payments ?? []).filter((payment) => payment.paidAt && payment.stripePaymentIntentId).reverse().map((payment) => ({
+      id: payment.id,
+      paymentIntentId: payment.stripePaymentIntentId!,
+      amountMinor: payment.amountMinor,
+      refundedAmountMinor: payment.refundedAmountMinor,
+      refundPendingMinor: payment.refundPendingMinor,
+      stripeRefundId: payment.stripeRefundId,
+    })),
+    ...(guest.paidAt && guest.stripePaymentIntentId ? [{
+      id: null,
+      paymentIntentId: guest.stripePaymentIntentId,
+      amountMinor: guest.paidAmountMinor ?? guest.priceMinor,
+      refundedAmountMinor: guest.refundedAmountMinor,
+      refundPendingMinor: guest.refundPendingMinor,
+      stripeRefundId: guest.stripeRefundId,
+    }] : []),
+  ];
+  for (const source of sources) {
+    if (amountRemainingMinor === 0) break;
+    const refundableMinor = Math.max(0, source.amountMinor - source.refundedAmountMinor - source.refundPendingMinor);
+    const amountMinor = Math.min(amountRemainingMinor, refundableMinor);
+    if (amountMinor === 0) continue;
+    const targetRefundedMinor = source.refundedAmountMinor + source.refundPendingMinor + amountMinor;
+    try {
+      const refund = await stripe.refunds.create(
+        {
+          payment_intent: source.paymentIntentId,
+          amount: amountMinor,
+          metadata: {
+            domain: "organiser-guest",
+            guestId: guest.id,
+            ...(source.id ? { guestPaymentId: source.id } : {}),
+          },
+        },
+        { idempotencyKey: `organiser-guest-refund:${guest.id}:${source.id ?? "original"}:${targetRefundedMinor}${source.stripeRefundId ? `:retry:${source.stripeRefundId}` : ""}` },
+      );
+      await handleOrganiserGuestStripeEvent(
+        { type: "refund.created", data: { object: refund } },
+        stripe,
+      );
+    } catch {
+      const current = await guestById(guest.id);
+      // A webhook may have recorded the successful/pending outcome while the
+      // callable lost its response. Do not overwrite that evidence with failure.
+      if (guestFinancialPosition(current).settledAmountMinor <= (current.cancelledAt ? 0 : current.priceMinor)) return;
+      const payment = source.id ? current.payments.find((row) => row.id === source.id) : current;
+      if (!payment) throw new Error("Guest refund source is missing");
+      const failureState = {
+        paymentIntentId: source.paymentIntentId,
+        refundedAmountMinor: payment.refundedAmountMinor,
+        refundPendingMinor: payment.refundPendingMinor,
+        stripeRefundId: payment.stripeRefundId ?? null,
+        refundFailureReason: "The refund request could not be confirmed. Retry the refund.",
+      };
+      if (source.id) await db.markOrganiserGuestAdditionalPaymentRefunded({ id: source.id, ...failureState });
+      else await db.markOrganiserGuestRefunded({ id: guest.id, version: current.version, ...failureState });
+      // Stop after an ambiguous Stripe outcome. A retry reuses the same source
+      // and cumulative target before attempting any other payment source.
+      return;
+    }
+    amountRemainingMinor -= amountMinor;
+  }
 }
 
 export const getOrganiserGuestList = onCall(
@@ -207,7 +286,7 @@ export const getOrganiserGuestList = onCall(
 );
 
 export const manageOrganiserGuest = onCall(
-  { region: FUNCTIONS_REGION, secrets: [stripeSecret] },
+  { region: FUNCTIONS_REGION, secrets: [stripeSecret, ...govNotifySecrets] },
   async (request) => {
     try {
       requireEnabled(request);
@@ -215,7 +294,7 @@ export const manageOrganiserGuest = onCall(
       const eventId = validateUUID(
         requireString(request.data?.eventId, "eventId"),
       );
-      await moderate(request, eventId);
+      const event = await moderate(request, eventId);
       const id = validateUUID(requireString(request.data?.id, "id"));
       const actor = request.auth!.uid;
       if (request.data.action === "create") {
@@ -251,49 +330,104 @@ export const manageOrganiserGuest = onCall(
         });
         return { guest: project(await guestById(id)), link: link(token) };
       }
-      const guest = await guestById(id);
+      let guest = await guestById(id);
       if (validateUUID(guest.event.id) !== eventId)
         throw new HttpsError("not-found", "Guest not found");
+      const action = request.data.action;
       const expectedVersion = version(request.data.version);
-      if (request.data.action === "cancel" && guest.cancelledAt) {
+      if (action === "retry-refund" || (action === "cancel" && guest.cancelledAt)) {
         await expireOpenCheckout(guest);
-        return { guest: project(guest), link: null };
+        await initiateOutstandingGuestRefund(await guestById(id));
+        return { guest: project(await guestById(id)), link: null };
       }
-      if (request.data.action === "edit") {
-        const input = { id, version: expectedVersion, ...details(request.data), actor };
-        const currentTicketType = guest.standardTicketType ?? guest.ticketType;
-        const requestedTicketTypeId = request.data.ticketTypeId
-          ? validateUUID(
-              requireString(request.data.ticketTypeId, "ticketTypeId"),
-            )
-          : null;
-        if (
-          requestedTicketTypeId &&
-          requestedTicketTypeId !==
-            (currentTicketType ? validateUUID(currentTicketType.id) : null)
-        ) {
-          if (guest.paidAt) throw new HttpsError("failed-precondition", "Paid tickets cannot be reassigned. Cancel and create a new reservation so payment history is retained.");
-          const ticketTypeId = requestedTicketTypeId;
-          const ticket = await organiserTicketType(ticketTypeId, eventId);
-          await expireOpenCheckout(guest);
-          await db.reassignOrganiserGuestTicket({ ...input, ticketTypeId, priceMinor: ticket.priceMinor, includesSymposium: ticket.includesSymposium, includesDinner: ticket.includesDinner, checkoutKey: randomUUID() });
-        } else await db.updateOrganiserGuestDetails(input);
-      } else if (request.data.action === "replace-link") {
+      if (action === "retry-notification") {
+        const amendmentId = validateUUID(requireString(request.data.amendmentId, "amendmentId"));
+        const amendment = (await db.getOrganiserGuestAmendment({ id: amendmentId })).data.organiserGuestAmendment;
+        if (!amendment || validateUUID(amendment.guestId) !== id) throw new HttpsError("not-found", "Amendment not found");
+        const notification = await notifyOrganiserGuestAmendment({ amendmentId });
+        return { guest: project(await guestById(id)), link: null, notification };
+      }
+      if (action === "replace-link") {
         const token = randomBytes(32).toString("hex");
         await expireOpenCheckout(guest);
-        await db.rotateOrganiserGuestLink({
-          id,
-          version: expectedVersion,
-          tokenHash: hash(token),
-          checkoutKey: randomUUID(),
-          actor,
-        });
+        await db.rotateOrganiserGuestLink({ id, version: expectedVersion, tokenHash: hash(token), checkoutKey: randomUUID(), actor });
         return { guest: project(await guestById(id)), link: link(token) };
-      } else if (request.data.action === "cancel") {
-        await db.cancelOrganiserGuest({ id, version: expectedVersion, actor });
-        await expireOpenCheckout(guest);
-      } else throw new HttpsError("invalid-argument", "Unknown guest action");
-      return { guest: project(await guestById(id)), link: null };
+      }
+      if (action !== "edit" && action !== "cancel") throw new HttpsError("invalid-argument", "Unknown guest action");
+      const editedDetails = action === "edit" ? details(request.data) : null;
+      const currentTicketType = guest.standardTicketType ?? guest.ticketType;
+      const ticketTypeId = action === "edit" && request.data.ticketTypeId
+        ? validateUUID(requireString(request.data.ticketTypeId, "ticketTypeId"))
+        : currentTicketType ? validateUUID(currentTicketType.id) : null;
+      const amendmentId = request.data.amendmentId
+        ? validateUUID(requireString(request.data.amendmentId, "amendmentId"))
+        : stableGuestPaymentId(id, `${action}:${expectedVersion}`);
+      const requestHash = hash(JSON.stringify({ id, action, details: editedDetails, ticketTypeId,
+        expectedTicketPriceMinor: request.data.expectedTicketPriceMinor ?? null }));
+      const replay = (await db.getOrganiserGuestAmendment({ id: amendmentId })).data.organiserGuestAmendment;
+      if (replay && (validateUUID(replay.guestId) !== id || replay.requestHash !== requestHash)) {
+        throw new HttpsError("already-exists", "This amendment reference was already used for different changes");
+      }
+      if (!replay) {
+        const ticketChanged = action === "edit" && ticketTypeId && ticketTypeId !== (currentTicketType ? validateUUID(currentTicketType.id) : null);
+        const ticket = ticketChanged ? await organiserTicketType(ticketTypeId, eventId) : null;
+        if (ticket && Number(request.data.expectedTicketPriceMinor) !== ticket.priceMinor) {
+          throw new HttpsError("aborted", "The ticket price changed. Refresh and review the amendment again.");
+        }
+        if (guest.version !== expectedVersion) throw new HttpsError("aborted", "The guest changed. Refresh and review the amendment again.");
+        const before = guestFinancialPosition(guest);
+        const targetPrice = action === "cancel" ? 0 : ticket?.priceMinor ?? guest.priceMinor;
+        const token = randomBytes(32).toString("hex");
+        const recipientEmail = (editedDetails ? editedDetails.email : guest.email) ?? null;
+        const snapshot: GuestAmendmentEmailSnapshot = {
+          recipientEmail,
+          firstName: editedDetails?.firstName ?? guest.firstName,
+          eventTitle: event.title,
+          eventDateTime: event.startDateTime ? formatTransactionalEventDateTime(event.startDateTime, event.endDateTime) : "See event details",
+          eventLocation: event.location?.trim() || "To be confirmed",
+          previousTicket: `${currentTicketType?.title ?? "Ticket"} — ${guest.firstName} ${guest.lastName}`,
+          updatedTicket: action === "cancel" ? "Cancelled — no reservation remains" : `${ticket?.title ?? currentTicketType?.title ?? "Ticket"} — ${editedDetails!.firstName} ${editedDetails!.lastName}; dietary requirements: ${editedDetails!.dietaryRequirements || "None"}`,
+          previousTotalMinor: guest.priceMinor,
+          revisedTotalMinor: targetPrice,
+          refundDueMinor: Math.max(0, before.settledAmountMinor - targetPrice),
+          refundedBeforeMinor: before.refundedAmountMinor,
+          guestLink: link(token),
+        };
+        const amendment = {
+          amendmentId,
+          amendmentRequestHash: requestHash,
+          amendmentPayload: JSON.stringify(snapshot),
+          amendmentTokenHash: hash(token),
+          amendmentNotificationStatus: recipientEmail ? "PENDING" : "NOT_REQUIRED",
+        };
+        if (action === "cancel") {
+          await db.cancelOrganiserGuestWithAmendment({ id, version: expectedVersion, actor, ...amendment });
+          await expireOpenCheckout(guest);
+        } else if (ticket && ticketTypeId) {
+          await expireOpenCheckout(guest);
+          await db.amendOrganiserGuestTicket({
+            id, version: expectedVersion, ...editedDetails!, actor, ...amendment,
+            ticketTypeId, priceMinor: ticket.priceMinor,
+            paidAmountMinor: guest.paidAt ? (guest.paidAmountMinor ?? guest.priceMinor) : null,
+            includesSymposium: ticket.includesSymposium, includesDinner: ticket.includesDinner,
+            checkoutKey: randomUUID(),
+          });
+        } else {
+          await db.amendOrganiserGuestDetails({ id, version: expectedVersion, ...editedDetails!, actor, ...amendment });
+        }
+      }
+      // Always use today's guest balance, including for an ambiguous-response
+      // replay. Never refund against the immutable historical ticket total.
+      guest = await guestById(id);
+      await initiateOutstandingGuestRefund(guest);
+      let notification;
+      try {
+        notification = await notifyOrganiserGuestAmendment({ amendmentId });
+      } catch {
+        logger.error("Guest amendment notification remains queued", { amendmentId });
+        notification = { outcome: "failed" as const };
+      }
+      return { guest: project(await guestById(id)), link: null, notification };
     } catch (error) {
       failure(error);
     }
@@ -322,6 +456,7 @@ export const getOrganiserGuestTicket = onCall(
           Date.now() < Date.parse(guest.event.bookingEndDateTime),
         paymentDueAt: guest.event.bookingEndDateTime,
         paymentStatus: guestPaymentStatus(guest),
+        paymentRequiredMinor: guestFinancialPosition(guest).paymentRequiredMinor,
         cancelled: Boolean(guest.cancelledAt),
         version: guest.version,
       };
@@ -374,7 +509,8 @@ export const createOrganiserGuestCheckout = onCall(
         "createOrganiserGuestCheckout",
         `guest:${guest.id}`,
       );
-      if (guest.cancelledAt || guest.paidAt || guest.priceMinor === 0)
+      const position = guestFinancialPosition(guest);
+      if (guest.cancelledAt || position.paymentRequiredMinor === 0)
         throw new HttpsError(
           "failed-precondition",
           "This ticket does not require payment",
@@ -386,10 +522,11 @@ export const createOrganiserGuestCheckout = onCall(
         );
         if (previous.status === "open" && previous.url) {
           const current = await guestByToken(request.data.token);
+          const currentPosition = guestFinancialPosition(current);
           if (
             current.cancelledAt ||
-            current.paidAt ||
-            current.checkoutKey !== guest.checkoutKey
+            current.checkoutKey !== guest.checkoutKey ||
+            currentPosition.paymentRequiredMinor !== position.paymentRequiredMinor
           )
             throw new HttpsError(
               "failed-precondition",
@@ -414,10 +551,15 @@ export const createOrganiserGuestCheckout = onCall(
         });
         guest = await guestByToken(request.data.token);
       }
+      const additionalPayment = position.grossPaidMinor > 0;
+      const paymentId = additionalPayment
+        ? stableGuestPaymentId(guest.id, guest.checkoutKey)
+        : null;
       const metadata = {
         domain: "organiser-guest",
         guestId: guest.id,
         checkoutKey: guest.checkoutKey,
+        ...(paymentId ? { guestPaymentId: paymentId } : {}),
       };
       const session = await stripe.checkout.sessions.create(
         {
@@ -428,7 +570,7 @@ export const createOrganiserGuestCheckout = onCall(
               quantity: 1,
               price_data: {
                 currency: "gbp",
-                unit_amount: guest.priceMinor,
+                unit_amount: position.paymentRequiredMinor,
                 product_data: { name: "Event guest ticket" },
               },
             },
@@ -440,13 +582,24 @@ export const createOrganiserGuestCheckout = onCall(
         },
         { idempotencyKey: `organiser-guest:${guest.id}:${guest.checkoutKey}` },
       );
-      const attached = await db.attachOrganiserGuestCheckout({
-        id: guest.id,
-        checkoutKey: guest.checkoutKey,
-        tokenHash: guest.tokenHash,
-        sessionId: session.id,
-      });
-      if (attached.data.organiserGuest_updateMany !== 1) {
+      const attached = paymentId
+        ? await db.attachOrganiserGuestAdditionalCheckout({
+            id: paymentId,
+            guestId: guest.id,
+            checkoutKey: guest.checkoutKey,
+            sessionId: session.id,
+            amountMinor: position.paymentRequiredMinor,
+          })
+        : await db.attachOrganiserGuestCheckout({
+            id: guest.id,
+            checkoutKey: guest.checkoutKey,
+            tokenHash: guest.tokenHash,
+            sessionId: session.id,
+          });
+      const attachedCount = paymentId
+        ? attached.data.organiserGuest_updateMany
+        : attached.data.organiserGuest_updateMany;
+      if (attachedCount !== 1) {
         if (session.status === "open")
           await stripe.checkout.sessions.expire(session.id);
         throw new HttpsError(

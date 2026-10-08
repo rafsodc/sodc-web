@@ -82,7 +82,7 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
               booking,
               eventId: booking.event.id,
               ticketOrders,
-              adjustments: [],
+              adjustments: booking.adjustments ?? [],
             });
             const ticketRows = buildBookingTicketDisplayRows(booking);
             const sectionId = booking.event.section.id;

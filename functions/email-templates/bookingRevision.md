@@ -14,6 +14,7 @@ variables:
   - previousTotalFormatted
   - revisedTotalFormatted
   - paymentRemainingFormatted
+  - financialEffectSummary
 ---
 Hello ((firstName)),
 
@@ -40,6 +41,8 @@ Previous total: ((previousTotalFormatted))
 Revised total: ((revisedTotalFormatted))
 
 Payment remaining: ((paymentRemainingFormatted))
+
+((financialEffectSummary))
 
 ---
 

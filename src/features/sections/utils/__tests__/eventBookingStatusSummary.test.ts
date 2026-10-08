@@ -117,6 +117,16 @@ describe("summarizeEventBookingPayment", () => {
 describe("hasExpiredDraftHold", () => {
   it("requires cancelled bookings without any active booking", () => {
     expect(hasExpiredDraftHold([{ status: BookingStatus.CANCELLED }])).toBe(true);
+    expect(hasExpiredDraftHold([{ status: BookingStatus.CANCELLED, approvalStatus: "APPROVED" }])).toBe(false);
     expect(hasExpiredDraftHold([{ status: BookingStatus.CANCELLED }, { status: BookingStatus.SUBMITTED }])).toBe(false);
   });
+});
+
+
+it("keeps an amendment balance payable when its ticket type was paid before a refund", () => {
+  expect(summarizeEventBookingPayment({
+    booking: { status: "SUBMITTED", approvalStatus: "APPROVED", revisionNumber: 3, lines: [{ ticketType: { id: "type-a" } }] },
+    eventId: "event", ticketOrders: [{ status: "PAID", quantity: 1, event: { id: "event" }, ticketType: { id: "type-a" } }],
+    adjustments: [{ status: "PENDING_AUTO_CHARGE", deltaAmountMinor: 2000 }],
+  })).toMatchObject({ kind: "not_started", label: "Payment required—please pay as soon as possible", unpaidTicketTypeId: "type-a" });
 });

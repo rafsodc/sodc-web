@@ -20,7 +20,7 @@ mutation CreateCompleteBookingFromCallable(
   $createdBy: String!
   $updatedBy: String!
   $bookingPlaces: [BookingPlace_Data!]! @allow(fields: "id eventId bookerId createdBy updatedBy", maxCount: 100)
-  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
+  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId priceMinor guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
 ) @auth(level: NO_ACCESS) @transaction {
   booking_insert(data: {
     id: $bookingId
@@ -58,7 +58,7 @@ mutation CreateActiveBookingRevisionFromCallable(
   $createdBy: String!
   $updatedBy: String!
   $bookingPlaces: [BookingPlace_Data!]! @allow(fields: "id eventId bookerId createdBy updatedBy", maxCount: 100)
-  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
+  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId priceMinor guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
   $supersededBookingId: UUID!
   $deltaAmountMinor: Int!
   $adjustmentStatus: BookingPaymentAdjustmentStatus!
@@ -123,7 +123,7 @@ mutation CreatePendingBookingRevisionFromCallable(
   $createdBy: String!
   $updatedBy: String!
   $bookingPlaces: [BookingPlace_Data!]! @allow(fields: "id eventId bookerId createdBy updatedBy", maxCount: 100)
-  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
+  $bookingLines: [BookingLine_Data!]! @allow(fields: "id bookingPlaceId bookingId ticketTypeId priceMinor guestUserId guestDisplayName dietaryNote sortOrder createdBy updatedBy", maxCount: 100)
 ) @auth(level: NO_ACCESS) @transaction {
   booking_insert(data: {
     id: $bookingId

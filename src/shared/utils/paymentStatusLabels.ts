@@ -14,7 +14,8 @@ const TICKET_ORDER_STATUS_LABELS: Record<TicketOrderStatus, string> = {
 const BOOKING_PAYMENT_ADJUSTMENT_STATUS_LABELS: Record<BookingPaymentAdjustmentStatus, string> = {
   [BookingPaymentAdjustmentStatus.NOT_REQUIRED]: "No payment change",
   [BookingPaymentAdjustmentStatus.PENDING_AUTO_REFUND]: "Refund pending",
-  [BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE]: "Additional payment pending",
+  [BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE]: "Payment required—please pay as soon as possible",
+  [BookingPaymentAdjustmentStatus.REFUND_FAILED]: "Refund failed—contact the organiser",
   [BookingPaymentAdjustmentStatus.SETTLED]: "Payment change completed",
 };
 

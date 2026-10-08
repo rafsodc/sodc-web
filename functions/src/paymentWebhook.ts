@@ -5,9 +5,13 @@ import {
   createPaymentWebhookEvent,
   getPaymentWebhookEventByStripeEventId,
   getTicketOrderForWebhook,
-  updateBookingPlaceAllocationRefundFromCallable,
+  getBookingRevisionForApprovalFromCallable,
+  getBookingsForBookerAndEvent,
+  settleBookingPaymentAdjustmentsFromCallable,
+  updateBookingPlaceAllocationRefundStateFromCallable,
   upsertTicketOrderDisputeFromWebhook,
   PaymentWebhookEventOutcome,
+  BookingPaymentAdjustmentStatus,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { validateUUID } from "./helpers";
@@ -25,12 +29,39 @@ import {
   requireStripe,
   stripeSecret,
   stripeWebhookPaymentsSecret,
+  type StripeClient,
 } from "./paymentConfig";
 import {
   applyPaymentTransitionToOrders,
   paidContextFromCheckoutSessionObject,
   upsertReconciliationSnapshot,
 } from "./paymentReconciliationService";
+import { hydrateBookingsWithTicketOrders } from "./bookingQueryHydration";
+import { bookingIdsEqual, planBookingAllocationRefunds } from "./bookingCheckout";
+import { bookingSettlementTotals } from "./bookingPaymentAdjustments";
+
+async function settleRefundAdjustmentIfComplete(bookingId: string | undefined): Promise<void> {
+  if (!bookingId) return;
+  const bookingResult = await getBookingRevisionForApprovalFromCallable({
+    id: validateUUID(bookingId, "bookingId") as UUIDString,
+  });
+  const target = bookingResult.data?.booking;
+  if (!target) return;
+  const result = await getBookingsForBookerAndEvent({
+    bookerId: target.booker.id,
+    eventId: target.event.id as UUIDString,
+  });
+  const bookings = hydrateBookingsWithTicketOrders(result.data);
+  const booking = bookings.find((row) => bookingIdsEqual(row.id, bookingId));
+  if (!booking) return;
+  const history = bookings.filter((row) => bookingIdsEqual(row.revisionGroupId, booking.revisionGroupId));
+  const settlement = bookingSettlementTotals(history);
+  if (settlement.pendingRefundAmountMinor > 0 || planBookingAllocationRefunds(booking, history).length > 0) return;
+  await settleBookingPaymentAdjustmentsFromCallable({
+    revisionBookingId: booking.id as UUIDString,
+    status: BookingPaymentAdjustmentStatus.SETTLED,
+  });
+}
 
 function stripeObjectIdFromEvent(event: { data: { object: unknown } }): string | null {
   const obj = event.data.object as { id?: unknown };
@@ -42,6 +73,135 @@ function isoTimestampFromStripeEpochSeconds(value: unknown): string | null {
     return null;
   }
   return new Date(value * 1000).toISOString();
+}
+
+interface BookingRefundObject {
+  id?: string;
+  amount?: number;
+  status?: string | null;
+  failure_reason?: string | null;
+  payment_intent?: string | { id?: string } | null;
+  metadata?: {
+    allocationId?: string;
+    bookingId?: string;
+    refundAmountMinor?: string;
+    resultingRefundedAmountMinor?: string;
+  };
+}
+
+function refundPaymentIntentId(refund: BookingRefundObject): string | null {
+  if (typeof refund.payment_intent === "string") return refund.payment_intent;
+  return refund.payment_intent?.id ?? null;
+}
+
+function refundTargetAmount(refund: BookingRefundObject): number {
+  const amount = Number(refund.metadata?.resultingRefundedAmountMinor);
+  return Number.isSafeInteger(amount) && amount >= 0 ? amount : 0;
+}
+
+async function reconcileBookingAllocationRefund(
+  stripeClient: StripeClient,
+  eventRefund: BookingRefundObject,
+): Promise<{
+  bookingId?: string;
+  completedTarget: boolean;
+  failureReason: string | null;
+} | null> {
+  const allocationId = eventRefund.metadata?.allocationId;
+  const refundAmountMinor = Number(eventRefund.metadata?.refundAmountMinor);
+  const resultingRefundedAmountMinor = refundTargetAmount(eventRefund);
+  const paymentIntentId = refundPaymentIntentId(eventRefund);
+  if (
+    !allocationId ||
+    !paymentIntentId ||
+    !Number.isSafeInteger(refundAmountMinor) ||
+    refundAmountMinor <= 0 ||
+    eventRefund.amount !== refundAmountMinor ||
+    resultingRefundedAmountMinor < refundAmountMinor
+  ) {
+    return null;
+  }
+
+  const validatedAllocationId = validateUUID(
+    allocationId,
+    "allocationId",
+  ) as UUIDString;
+  const refunds: BookingRefundObject[] = [];
+  let startingAfter: string | undefined;
+  for (;;) {
+    const page = await stripeClient.refunds.list({
+      payment_intent: paymentIntentId,
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    const pageRefunds = page.data as BookingRefundObject[];
+    refunds.push(
+      ...pageRefunds.filter(
+        (refund) => refund.metadata?.allocationId === allocationId,
+      ),
+    );
+    if (!page.has_more || pageRefunds.length === 0) break;
+    startingAfter = pageRefunds.at(-1)?.id;
+    if (!startingAfter) break;
+  }
+
+  const succeeded = refunds.filter(
+    (refund) => !refund.status || refund.status === "succeeded",
+  );
+  const pending = refunds.filter(
+    (refund) =>
+      refund.status !== "succeeded" &&
+      refund.status !== "failed" &&
+      refund.status !== "canceled",
+  );
+  const failed = refunds.filter(
+    (refund) =>
+      refund.status === "failed" || refund.status === "canceled",
+  );
+  const amountFor = (refund: BookingRefundObject) =>
+    Number.isSafeInteger(refund.amount) && Number(refund.amount) > 0
+      ? Number(refund.amount)
+      : 0;
+  const refundedAmountMinor = succeeded.reduce(
+    (total, refund) => total + amountFor(refund),
+    0,
+  );
+  const refundPendingAmountMinor = pending.reduce(
+    (total, refund) => total + amountFor(refund),
+    0,
+  );
+  const targetAmountMinor = Math.max(
+    resultingRefundedAmountMinor,
+    ...refunds.map(refundTargetAmount),
+  );
+  const unresolvedFailure =
+    refundPendingAmountMinor === 0 && refundedAmountMinor < targetAmountMinor
+      ? failed[0]
+      : undefined;
+  const failureReason = unresolvedFailure
+    ? unresolvedFailure.failure_reason ?? "Stripe refund failed"
+    : null;
+  const latestRefund = refunds[0] ?? eventRefund;
+
+  await updateBookingPlaceAllocationRefundStateFromCallable({
+    id: validatedAllocationId,
+    refundedAmountMinor,
+    refundPendingAmountMinor,
+    stripeRefundId: latestRefund.id ?? null,
+    refundFailureReason: failureReason,
+  });
+
+  return {
+    bookingId:
+      unresolvedFailure?.metadata?.bookingId ??
+      latestRefund.metadata?.bookingId ??
+      eventRefund.metadata?.bookingId,
+    completedTarget:
+      refundPendingAmountMinor === 0 &&
+      !failureReason &&
+      refundedAmountMinor >= targetAmountMinor,
+    failureReason,
+  };
 }
 
 type PaymentTransitionEventContext = Pick<
@@ -158,6 +318,23 @@ async function handleStripeWebhookRequest(args: {
     }
     const stripeObjectId = stripeObjectIdFromEvent(event);
     const normalized = normalizeStripeEvent(event);
+    if (["refund.created", "refund.updated", "refund.failed"].includes(event.type)) {
+      const reconciliation = await reconcileBookingAllocationRefund(
+        stripeClient,
+        event.data.object as BookingRefundObject,
+      );
+      if (reconciliation?.failureReason && reconciliation.bookingId) {
+        await settleBookingPaymentAdjustmentsFromCallable({
+          revisionBookingId: validateUUID(
+            reconciliation.bookingId,
+            "bookingId",
+          ) as UUIDString,
+          status: BookingPaymentAdjustmentStatus.REFUND_FAILED,
+        });
+      } else if (reconciliation?.completedTarget) {
+        await settleRefundAdjustmentIfComplete(reconciliation.bookingId);
+      }
+    }
     const existingWebhookEvent = await getPaymentWebhookEventByStripeEventId({ stripeEventId: event.id });
     if ((existingWebhookEvent.data?.paymentWebhookEvents?.length ?? 0) > 0) {
       if (
@@ -180,6 +357,10 @@ async function handleStripeWebhookRequest(args: {
             event.type === "checkout.session.completed",
           recoverPostTransitionSideEffects: true,
         });
+        if (normalized.intent === "MARK_REFUNDED") {
+          const refundObject = event.data.object as { metadata?: { bookingId?: string } };
+          await settleRefundAdjustmentIfComplete(refundObject.metadata?.bookingId);
+        }
         logger.info(`${endpointName} duplicate delivery reconciliation`, {
           eventType: event.type,
           eventId: event.id,
@@ -246,46 +427,6 @@ async function handleStripeWebhookRequest(args: {
       });
       res.status(200).send("Order not found");
       return;
-    }
-
-    if (event.type === "refund.created") {
-      const refund = event.data.object as {
-        id?: string;
-        metadata?: {
-          allocationId?: string;
-          refundAmountMinor?: string;
-          resultingRefundedAmountMinor?: string;
-        };
-      };
-      const allocationId = refund.metadata?.allocationId;
-      const refundAmountMinor = Number(refund.metadata?.refundAmountMinor);
-      const resultingRefundedAmountMinor = Number(refund.metadata?.resultingRefundedAmountMinor);
-      if (
-        !allocationId ||
-        !Number.isInteger(refundAmountMinor) ||
-        refundAmountMinor <= 0 ||
-        (event.data.object as { amount?: number }).amount !== refundAmountMinor ||
-        !Number.isInteger(resultingRefundedAmountMinor) ||
-        resultingRefundedAmountMinor < 0 ||
-        !refund.id
-      ) {
-        await appendWebhookLedgerEvent({
-          stripeEventId: event.id,
-          eventType: event.type,
-          outcome: PaymentWebhookEventOutcome.IGNORED,
-          reason: "missing_allocation_refund_metadata",
-          ticketOrderId: canonicalOrderId,
-          stripeObjectId,
-          livemode: event.livemode,
-        });
-        res.status(200).send("Missing allocation refund metadata");
-        return;
-      }
-      await updateBookingPlaceAllocationRefundFromCallable({
-        id: validateUUID(allocationId, "allocationId") as UUIDString,
-        refundedAmountMinor: resultingRefundedAmountMinor,
-        stripeRefundId: refund.id,
-      });
     }
 
     if (normalized.kind === "dispute_side_state") {
@@ -380,6 +521,11 @@ async function handleStripeWebhookRequest(args: {
       recoverFailedCheckoutPayment: intent === "MARK_PAID" && event.type === "checkout.session.completed",
       recoverPostTransitionSideEffects: true,
     });
+
+    if (intent === "MARK_REFUNDED") {
+      const refundObject = event.data.object as { metadata?: { bookingId?: string } };
+      await settleRefundAdjustmentIfComplete(refundObject.metadata?.bookingId);
+    }
 
     if (reconciledOrderIds.length === 0) {
       await appendWebhookLedgerEvent({

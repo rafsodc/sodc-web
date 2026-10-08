@@ -261,9 +261,21 @@ mutation UpdateTicketType(
   $includesDinner: Boolean!
   $includesSymposium: Boolean!
   $sortOrder: Int!
-) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
-  ticketType_update(
-    id: $id
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") @transaction {
+  ticketType_updateMany(
+    where: {
+      _and: [
+        { id: { eq: $id } }
+        { _or: [
+          { price: { eq: $price } }
+          { _and: [
+            { bookingLines_on_ticketType: { count: { eq: 0 } } }
+            { ticketOrders_on_ticketType: { count: { eq: 0 } } }
+            { organiserGuests_on_standardTicketType: { count: { eq: 0 } } }
+          ] }
+        ] }
+      ]
+    }
     data: {
       userGroupId: $userGroupId
       audience: $audience
@@ -276,7 +288,7 @@ mutation UpdateTicketType(
       updatedAt_expr: "request.time"
       updatedBy_expr: "auth.uid"
     }
-  )
+  ) @check(expr: "this == 1", message: "TICKET_TYPE_PRICE_LOCKED")
 }
 
 mutation DeleteTicketType(

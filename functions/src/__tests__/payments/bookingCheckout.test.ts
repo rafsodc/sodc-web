@@ -117,6 +117,8 @@ describe("bookingCheckout", () => {
       stripePaymentIntentId: "pi_test",
       amountMinor: 1000,
       resultingRefundedAmountMinor: 1000,
+      resultingPendingAmountMinor: 1000,
+      previousStripeRefundId: null,
     }]);
   });
 
@@ -138,7 +140,35 @@ describe("bookingCheckout", () => {
       stripePaymentIntentId: "pi_test",
       amountMinor: 1000,
       resultingRefundedAmountMinor: 1000,
+      resultingPendingAmountMinor: 1000,
+      previousStripeRefundId: null,
     }]);
+  });
+
+  it("uses payment from a removed historical place as credit for a replacement", () => {
+    const historical = booking({
+      id: "old",
+      revisionNumber: 1,
+      supersededAt: "2026-08-02T10:00:00Z",
+      places: [{ id: "old-place", price: 50, statuses: [TicketOrderStatus.PAID] }],
+    });
+    const upgraded = booking({
+      id: "new",
+      revisionNumber: 2,
+      places: [{ id: "new-place", price: 70 }],
+    });
+
+    expect(computeUnpaidBookingCheckoutItems(upgraded, [historical, upgraded])).toEqual([
+      expect.objectContaining({ bookingPlaceId: "new-place", unitAmountMinor: 2_000 }),
+    ]);
+    const downgraded = booking({
+      id: "new-low",
+      revisionNumber: 2,
+      places: [{ id: "new-place", price: 30 }],
+    });
+    expect(planBookingAllocationRefunds(downgraded, [historical, downgraded])).toEqual([
+      expect.objectContaining({ allocationId: "allocation-0-0", amountMinor: 2_000 }),
+    ]);
   });
 
   it("reuses a pending order only when its exact allocations and price still match", () => {

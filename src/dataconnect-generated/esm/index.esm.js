@@ -11,6 +11,7 @@ export const BookingPaymentAdjustmentStatus = {
   NOT_REQUIRED: "NOT_REQUIRED",
   PENDING_AUTO_REFUND: "PENDING_AUTO_REFUND",
   PENDING_AUTO_CHARGE: "PENDING_AUTO_CHARGE",
+  REFUND_FAILED: "REFUND_FAILED",
   SETTLED: "SETTLED",
 }
 
@@ -947,6 +948,18 @@ updateBookingPlaceAllocationRefundFromCallableRef.operationName = 'UpdateBooking
 export function updateBookingPlaceAllocationRefundFromCallable(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(updateBookingPlaceAllocationRefundFromCallableRef(dcInstance, inputVars));
+}
+
+export const updateBookingPlaceAllocationRefundStateFromCallableRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateBookingPlaceAllocationRefundStateFromCallable', inputVars);
+}
+updateBookingPlaceAllocationRefundStateFromCallableRef.operationName = 'UpdateBookingPlaceAllocationRefundStateFromCallable';
+
+export function updateBookingPlaceAllocationRefundStateFromCallable(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateBookingPlaceAllocationRefundStateFromCallableRef(dcInstance, inputVars));
 }
 
 export const getTicketOrderForWebhookRef = (dcOrVars, vars) => {
@@ -1941,6 +1954,18 @@ export function updateOrganiserGuestDetails(dcOrVars, vars) {
   return executeMutation(updateOrganiserGuestDetailsRef(dcInstance, inputVars));
 }
 
+export const amendOrganiserGuestDetailsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AmendOrganiserGuestDetails', inputVars);
+}
+amendOrganiserGuestDetailsRef.operationName = 'AmendOrganiserGuestDetails';
+
+export function amendOrganiserGuestDetails(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(amendOrganiserGuestDetailsRef(dcInstance, inputVars));
+}
+
 export const updateOrganiserGuestDietaryRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -1975,6 +2000,18 @@ cancelOrganiserGuestRef.operationName = 'CancelOrganiserGuest';
 export function cancelOrganiserGuest(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(cancelOrganiserGuestRef(dcInstance, inputVars));
+}
+
+export const cancelOrganiserGuestWithAmendmentRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CancelOrganiserGuestWithAmendment', inputVars);
+}
+cancelOrganiserGuestWithAmendmentRef.operationName = 'CancelOrganiserGuestWithAmendment';
+
+export function cancelOrganiserGuestWithAmendment(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(cancelOrganiserGuestWithAmendmentRef(dcInstance, inputVars));
 }
 
 export const attachOrganiserGuestCheckoutRef = (dcOrVars, vars) => {
@@ -2035,6 +2072,105 @@ reassignOrganiserGuestTicketRef.operationName = 'ReassignOrganiserGuestTicket';
 export function reassignOrganiserGuestTicket(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(reassignOrganiserGuestTicketRef(dcInstance, inputVars));
+}
+
+export const amendOrganiserGuestTicketRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AmendOrganiserGuestTicket', inputVars);
+}
+amendOrganiserGuestTicketRef.operationName = 'AmendOrganiserGuestTicket';
+
+export function amendOrganiserGuestTicket(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(amendOrganiserGuestTicketRef(dcInstance, inputVars));
+}
+
+export const attachOrganiserGuestAdditionalCheckoutRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'AttachOrganiserGuestAdditionalCheckout', inputVars);
+}
+attachOrganiserGuestAdditionalCheckoutRef.operationName = 'AttachOrganiserGuestAdditionalCheckout';
+
+export function attachOrganiserGuestAdditionalCheckout(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(attachOrganiserGuestAdditionalCheckoutRef(dcInstance, inputVars));
+}
+
+export const markOrganiserGuestAdditionalPaymentPaidRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkOrganiserGuestAdditionalPaymentPaid', inputVars);
+}
+markOrganiserGuestAdditionalPaymentPaidRef.operationName = 'MarkOrganiserGuestAdditionalPaymentPaid';
+
+export function markOrganiserGuestAdditionalPaymentPaid(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(markOrganiserGuestAdditionalPaymentPaidRef(dcInstance, inputVars));
+}
+
+export const markOrganiserGuestAdditionalPaymentRefundedRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkOrganiserGuestAdditionalPaymentRefunded', inputVars);
+}
+markOrganiserGuestAdditionalPaymentRefundedRef.operationName = 'MarkOrganiserGuestAdditionalPaymentRefunded';
+
+export function markOrganiserGuestAdditionalPaymentRefunded(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(markOrganiserGuestAdditionalPaymentRefundedRef(dcInstance, inputVars));
+}
+
+export const getOrganiserGuestAmendmentRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetOrganiserGuestAmendment', inputVars);
+}
+getOrganiserGuestAmendmentRef.operationName = 'GetOrganiserGuestAmendment';
+
+export function getOrganiserGuestAmendment(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getOrganiserGuestAmendmentRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const getOrganiserGuestAmendmentByTokenRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetOrganiserGuestAmendmentByToken', inputVars);
+}
+getOrganiserGuestAmendmentByTokenRef.operationName = 'GetOrganiserGuestAmendmentByToken';
+
+export function getOrganiserGuestAmendmentByToken(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getOrganiserGuestAmendmentByTokenRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const listPendingOrganiserGuestAmendmentsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListPendingOrganiserGuestAmendments', inputVars);
+}
+listPendingOrganiserGuestAmendmentsRef.operationName = 'ListPendingOrganiserGuestAmendments';
+
+export function listPendingOrganiserGuestAmendments(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listPendingOrganiserGuestAmendmentsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const setOrganiserGuestAmendmentNotificationStatusRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'SetOrganiserGuestAmendmentNotificationStatus', inputVars);
+}
+setOrganiserGuestAmendmentNotificationStatusRef.operationName = 'SetOrganiserGuestAmendmentNotificationStatus';
+
+export function setOrganiserGuestAmendmentNotificationStatus(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(setOrganiserGuestAmendmentNotificationStatusRef(dcInstance, inputVars));
 }
 
 export const getCurrentUserRef = (dc) => {

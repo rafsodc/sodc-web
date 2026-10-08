@@ -9,7 +9,8 @@ import {
   executeDataConnectMutation,
   executeDataConnectQuery,
 } from "../../../shared/query/dataConnectExecution";
-import { reviewBookingRevision } from "../../../shared/utils/firebaseFunctions";
+import { reviewBookingRevision, retryOrganiserBookingRefund } from "../../../shared/utils/firebaseFunctions";
+import { getEventAdministrationData } from "../../../shared/utils/firebaseFunctions";
 import {
   useGetEventsForSection,
   useGetEventById,
@@ -51,9 +52,11 @@ import {
 } from "./SectionEventsManagerSurfaces";
 import SendAnnouncementPage from "./SendAnnouncementPage";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
+import BookingAmendmentDialog from "./BookingAmendmentDialog";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import "../../../shared/components/PageContainer.css";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
+import { idsEqual } from "../../../shared/utils/uuid";
 
 interface SectionEventsManagerProps {
   sectionId: string;
@@ -64,11 +67,11 @@ interface SectionEventsManagerProps {
 
 export default function SectionEventsManager({ sectionId, sectionName, initialEventId, onBack }: SectionEventsManagerProps) {
   const {
-    data: eventsData,
+    data: directEventsData,
     isLoading: loadingEvents,
     isError: errorEvents,
     error: eventsQueryError,
-    refetch: refetchEvents,
+    refetch: refetchEventsDirect,
   } = useGetEventsForSection(
     dataConnect,
     { sectionId: sectionId as UUIDString }
@@ -93,11 +96,11 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   // Ticket types: which event we're managing ticket types for
   const [ticketTypesEventId, setTicketTypesEventId] = useState<string | null>(initialEventId ?? null);
   const {
-    data: eventDetailData,
+    data: directEventDetailData,
     isLoading: loadingEventDetail,
     isError: eventDetailFailed,
     error: eventDetailError,
-    refetch: refetchEventDetail,
+    refetch: refetchEventDetailDirect,
   } = useGetEventById(
     dataConnect,
     { id: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
@@ -119,25 +122,27 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const [deletingTicketTypeId, setDeletingTicketTypeId] = useState<string | null>(null);
   const [approvalStatusFilter, setApprovalStatusFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING");
   const [reviewingBookingId, setReviewingBookingId] = useState<string | null>(null);
+  const [amendingBooking, setAmendingBooking] = useState<EventBookingAdminRow | null>(null);
+  const [retryingRefundBookingId, setRetryingRefundBookingId] = useState<string | null>(null);
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const [moderatorNoteDraft, setModeratorNoteDraft] = useState<Record<string, string>>({});
   const {
-    data: eventBookingsData,
+    data: directEventBookingsData,
     isLoading: loadingEventBookings,
     isError: eventBookingsFailed,
     error: eventBookingsError,
-    refetch: refetchEventBookings,
+    refetch: refetchEventBookingsDirect,
   } = useListEventBookingsForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
   );
   const {
-    data: ticketOrdersData,
+    data: directTicketOrdersData,
     isLoading: loadingTicketOrders,
     isError: ticketOrdersFailed,
     error: ticketOrdersError,
-    refetch: refetchTicketOrders,
+    refetch: refetchTicketOrdersDirect,
   } = useListTicketOrdersForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
@@ -145,10 +150,10 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   );
   const seatingPreferenceUserIds = useMemo(
     () => Array.from(new Set(
-      currentActiveBookings(eventBookingsData?.event?.bookings ?? [])
+      currentActiveBookings(directEventBookingsData?.event?.bookings ?? [])
         .flatMap((booking) => booking.sitNextToUserIds ?? [])
     )),
-    [eventBookingsData]
+    [directEventBookingsData]
   );
   const { data: seatingPreferenceUsersData } = useListUserNamesByIds(
     dataConnect,
@@ -156,28 +161,57 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     { enabled: !!ticketTypesEventId && seatingPreferenceUserIds.length > 0 }
   );
   const {
-    data: paymentAdjustmentsData,
+    data: directPaymentAdjustmentsData,
     isLoading: loadingPaymentAdjustments,
     isError: paymentAdjustmentsFailed,
     error: paymentAdjustmentsError,
-    refetch: refetchPaymentAdjustments,
+    refetch: refetchPaymentAdjustmentsDirect,
   } = useListBookingPaymentAdjustmentsForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
   );
+  const fallbackEvents = useQuery({
+    queryKey: ["event-administration", sectionId],
+    queryFn: () => getEventAdministrationData(sectionId),
+    enabled: errorEvents,
+  });
+  const directEventAdminFailed = eventDetailFailed || eventBookingsFailed || ticketOrdersFailed || paymentAdjustmentsFailed;
+  const fallbackEventAdmin = useQuery({
+    queryKey: ["event-administration", sectionId, ticketTypesEventId],
+    queryFn: () => getEventAdministrationData(sectionId, ticketTypesEventId),
+    enabled: Boolean(ticketTypesEventId && directEventAdminFailed),
+  });
+  const eventDetailData = directEventDetailData ?? (fallbackEventAdmin.data?.event ? { event: fallbackEventAdmin.data.event } : undefined);
+  const eventBookingsData = useMemo(
+    () => directEventBookingsData ?? (fallbackEventAdmin.data?.eventBookings ? { event: fallbackEventAdmin.data.eventBookings } : undefined),
+    [directEventBookingsData, fallbackEventAdmin.data?.eventBookings]
+  );
+  const ticketOrdersData = useMemo(
+    () => directTicketOrdersData ?? (fallbackEventAdmin.data?.ticketOrders ? { event: fallbackEventAdmin.data.ticketOrders } : undefined),
+    [directTicketOrdersData, fallbackEventAdmin.data?.ticketOrders]
+  );
+  const paymentAdjustmentsData = useMemo(
+    () => directPaymentAdjustmentsData ?? (fallbackEventAdmin.data?.paymentAdjustments ? { event: fallbackEventAdmin.data.paymentAdjustments } : undefined),
+    [directPaymentAdjustmentsData, fallbackEventAdmin.data?.paymentAdjustments]
+  );
+  const refetchEvents = async () => Promise.all([refetchEventsDirect(), ...(errorEvents ? [fallbackEvents.refetch()] : [])]);
+  const refetchEventDetail = async () => Promise.all([refetchEventDetailDirect(), ...(directEventAdminFailed ? [fallbackEventAdmin.refetch()] : [])]);
+  const refetchEventBookings = async () => Promise.all([refetchEventBookingsDirect(), ...(directEventAdminFailed ? [fallbackEventAdmin.refetch()] : [])]);
+  const refetchTicketOrders = async () => Promise.all([refetchTicketOrdersDirect(), ...(directEventAdminFailed ? [fallbackEventAdmin.refetch()] : [])]);
+  const refetchPaymentAdjustments = async () => Promise.all([refetchPaymentAdjustmentsDirect(), ...(directEventAdminFailed ? [fallbackEventAdmin.refetch()] : [])]);
 
   useEffect(() => {
-    if (!errorEvents) return;
-    reportError("admin.events.list", eventsQueryError, { sectionId });
-  }, [errorEvents, eventsQueryError, sectionId]);
+    if (!errorEvents || !fallbackEvents.isError) return;
+    reportError("admin.events.list", fallbackEvents.error ?? eventsQueryError, { sectionId });
+  }, [errorEvents, eventsQueryError, fallbackEvents.error, fallbackEvents.isError, sectionId]);
 
   useEffect(() => {
     const failures = [
-      { failed: eventDetailFailed, error: eventDetailError, operation: "detail", context: "events" as const },
-      { failed: eventBookingsFailed, error: eventBookingsError, operation: "bookings", context: "tickets" as const },
-      { failed: ticketOrdersFailed, error: ticketOrdersError, operation: "orders", context: "tickets" as const },
-      { failed: paymentAdjustmentsFailed, error: paymentAdjustmentsError, operation: "adjustments", context: "payment-reconciliation" as const },
+      { failed: eventDetailFailed && fallbackEventAdmin.isError, error: fallbackEventAdmin.error ?? eventDetailError, operation: "detail", context: "events" as const },
+      { failed: eventBookingsFailed && fallbackEventAdmin.isError, error: fallbackEventAdmin.error ?? eventBookingsError, operation: "bookings", context: "tickets" as const },
+      { failed: ticketOrdersFailed && fallbackEventAdmin.isError, error: fallbackEventAdmin.error ?? ticketOrdersError, operation: "orders", context: "tickets" as const },
+      { failed: paymentAdjustmentsFailed && fallbackEventAdmin.isError, error: fallbackEventAdmin.error ?? paymentAdjustmentsError, operation: "adjustments", context: "payment-reconciliation" as const },
     ].filter((failure) => failure.failed);
 
     if (failures.length === 0) return;
@@ -200,6 +234,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     ticketOrdersError,
     ticketOrdersFailed,
     ticketTypesEventId,
+    fallbackEventAdmin.error,
+    fallbackEventAdmin.isError,
   ]);
 
   const fetchUserGroups = useCallback(async () => {
@@ -409,7 +445,11 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       showSuccess(`Ticket type ${editingTicketType ? "updated" : "created"}`);
     } catch (err: unknown) {
       reportError("admin.tickets.save", err, { eventId: ticketTypesEventId, editing: Boolean(editingTicketType) });
-      setError(toAdminUserFacingError(err, "tickets").message);
+      setError(
+        String(err).includes("TICKET_TYPE_PRICE_LOCKED")
+          ? "The price cannot be changed because tickets already exist for this ticket type."
+          : toAdminUserFacingError(err, "tickets").message
+      );
     } finally {
       setSubmittingTicketType(false);
     }
@@ -436,7 +476,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     }
   };
 
-  const events: EventRow[] = eventsData?.section?.events ?? [];
+  const events: EventRow[] = directEventsData?.section?.events ?? fallbackEvents.data?.events ?? [];
   const eventBookings = useMemo<EventBookingAdminRow[]>(
     () => eventBookingsData?.event?.bookings ?? [],
     [eventBookingsData]
@@ -450,6 +490,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       )
       .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
   }, [approvalStatusFilter, eventBookings]);
+  const activeBookings = useMemo(() => currentActiveBookings(eventBookings), [eventBookings]);
   const ticketOrders = useMemo<TicketOrderAdminRow[]>(
     () => ticketOrdersData?.event?.ticketOrders ?? [],
     [ticketOrdersData]
@@ -466,6 +507,11 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     [seatingPreferenceUsersData]
   );
   const guestReport = useQuery({ queryKey: ["organiser-guests", ticketTypesEventId, auth.currentUser?.uid], queryFn: () => guestCall<GuestList>("getOrganiserGuestList", { eventId: ticketTypesEventId }), enabled: Boolean(ticketTypesEventId), gcTime: 0 });
+  const editingTicketTypePriceLocked = Boolean(editingTicketType && (
+    eventBookings.some((booking) => booking.lines.some((line) => idsEqual(line.ticketType.id, editingTicketType.id))) ||
+    ticketOrders.some((order) => idsEqual(order.ticketType.id, editingTicketType.id)) ||
+    (guestReport.data?.guests ?? []).some((guest) => idsEqual(guest.ticketTypeId, editingTicketType.id))
+  ));
   const attendeeTickets = useMemo(
     () => [...activeEventTicketRows(eventBookings, ticketOrdersById, seatingPreferenceUserNamesById), ...organiserGuestTicketRows(guestReport.data?.guests ?? [])],
     [eventBookings, seatingPreferenceUserNamesById, ticketOrdersById, guestReport.data]
@@ -498,6 +544,23 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       setError(toAdminUserFacingError(err, "booking-approval").message);
     } finally {
       setReviewingBookingId(null);
+    }
+  };
+
+  const handleRetryRefund = async (bookingId: string) => {
+    setRetryingRefundBookingId(bookingId);
+    setError(null);
+    try {
+      const result = await retryOrganiserBookingRefund(bookingId);
+      await Promise.all([refetchEventBookings(), refetchTicketOrders(), refetchPaymentAdjustments()]);
+      showSuccess((result.refund?.failedAmountMinor ?? 0) > 0
+        ? "The refund still needs attention. Its latest failure is shown below."
+        : "Refund retry submitted.");
+    } catch (err: unknown) {
+      reportError("admin.booking-refund.retry", err, { bookingId });
+      setError(toAdminUserFacingError(err, "payment-reconciliation").message);
+    } finally {
+      setRetryingRefundBookingId(null);
     }
   };
 
@@ -539,7 +602,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           onBack={() => setTicketTypesEventId(null)}
           onEditEvent={openEventDialog}
           onAddTicketType={() => openTicketTypeDialog()}
-          loadingEventDetail={loadingEventDetail}
+          loadingEventDetail={loadingEventDetail || (eventDetailFailed && fallbackEventAdmin.isPending)}
           ticketTypes={ticketTypes}
           deletingTicketTypeId={deletingTicketTypeId}
           onEditTicketType={openTicketTypeDialog}
@@ -557,15 +620,36 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           }
           reviewingBookingId={reviewingBookingId}
           onReviewBooking={(booking, decision) => void handleReviewBooking(booking, decision)}
+          activeBookings={activeBookings}
+          onAmendBooking={setAmendingBooking}
           loadingEventBookings={loadingEventBookings}
           eventBookings={eventBookings}
           loadingTicketOrders={loadingTicketOrders}
           ticketOrders={ticketOrders}
           loadingPaymentAdjustments={loadingPaymentAdjustments}
           bookingPaymentAdjustments={bookingPaymentAdjustments}
+          retryingRefundBookingId={retryingRefundBookingId}
+          onRetryRefund={(bookingId) => void handleRetryRefund(bookingId)}
         />
 
         <OrganiserGuestsManager key={ticketTypesEventId} eventId={ticketTypesEventId} />
+
+        <BookingAmendmentDialog
+          open={Boolean(amendingBooking)}
+          booking={amendingBooking}
+          ticketTypes={ticketTypes}
+          onClose={() => setAmendingBooking(null)}
+          onApplied={async (message) => {
+            await Promise.all([
+              refetchEventBookings(),
+              refetchEventDetail(),
+              refetchTicketOrders(),
+              refetchPaymentAdjustments(),
+              guestReport.refetch(),
+            ]);
+            showSuccess(message);
+          }}
+        />
 
         <TicketTypeDialogSurface
           open={ticketTypeDialogOpen}
@@ -573,6 +657,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           title={ttTitle}
           description={ttDescription}
           price={ttPrice}
+          priceLocked={editingTicketTypePriceLocked}
           sortOrder={ttSortOrder}
           audience={ttAudience}
           error={error}
@@ -636,8 +721,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         onDismissError={() => setError(null)}
         onAddEvent={() => openEventDialog()}
         onSendAnnouncement={() => setSendingAnnouncement(true)}
-        loadingEvents={loadingEvents}
-        errorEvents={errorEvents}
+        loadingEvents={loadingEvents || (errorEvents && fallbackEvents.isPending)}
+        errorEvents={errorEvents && fallbackEvents.isError}
         events={events}
         deletingEventId={deletingEventId}
         onManageEventAdmin={setTicketTypesEventId}

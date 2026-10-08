@@ -1,3 +1,4 @@
+import { guestAmendmentDeliveryKey, notifyOrganiserGuestAmendment, recoverPendingGuestAmendmentNotifications } from "./organiserGuestAmendmentNotifications";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 import {
@@ -67,6 +68,8 @@ export function notificationRecoveryIdentity(payload: NotificationRecoveryPayloa
   deliveryKey: string;
 } {
   switch (payload.kind) {
+    case "ORGANISER_GUEST_AMENDMENT":
+      return { notificationType: "ORGANISER_GUEST_AMENDMENT", deliveryKey: guestAmendmentDeliveryKey(payload.amendmentId) };
     case "BOOKING_CONFIRMATION":
       return {
         notificationType: "BOOKING_CONFIRMATION",
@@ -174,6 +177,7 @@ type PaymentLifecycleRecoveryPayload = Extract<
 >;
 
 export interface NotificationRecoveryDispatcherDependencies {
+  notifyGuestAmendment?: typeof notifyOrganiserGuestAmendment;
   notifyBookingConfirmation?: typeof notifyBookingConfirmationEmail;
   notifyBookingRevision?: typeof notifyBookingRevisionEmail;
   notifyBookingPending?: typeof notifyBookingPendingApprovalEmails;
@@ -237,6 +241,9 @@ export function createNotificationRecoveryDispatcher(
     }
 
     switch (payload.kind) {
+      case "ORGANISER_GUEST_AMENDMENT":
+        await (dependencies.notifyGuestAmendment ?? notifyOrganiserGuestAmendment)({ amendmentId: payload.amendmentId, deliveryMode: payload.deliveryMode });
+        return;
       case "BOOKING_CONFIRMATION":
         await (dependencies.notifyBookingConfirmation ?? notifyBookingConfirmationEmail)({
           bookingId: payload.bookingId,
@@ -250,6 +257,7 @@ export function createNotificationRecoveryDispatcher(
           bookingId: payload.bookingId,
           idempotencyKey: payload.idempotencyKey,
           paymentDelta: payload.paymentDelta,
+          refundOutcome: payload.refundOutcome,
           appBaseUrl,
           deliveryMode: payload.deliveryMode,
         });
@@ -379,6 +387,11 @@ export const recoverNotificationDeliveries = onSchedule(
       startedAt - DEFAULT_NOTIFICATION_DELIVERY_LEASE_MS
     ).toISOString();
 
+    try {
+      await recoverPendingGuestAmendmentNotifications(stalePendingBefore, NOTIFICATION_RECOVERY_BATCH_LIMIT);
+    } catch {
+      logger.error("Guest amendment outbox could not be read; other notification recovery will continue");
+    }
     const [failedResult, pendingResult] = await Promise.all([
       listFailedNotificationDeliveriesForRecovery({
         attemptedBefore: failedAttemptedBefore,
