@@ -1,3 +1,4 @@
+import { BookingApprovalStatus, TicketAudience } from "@dataconnect/generated";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TicketAttendanceDialog from "../TicketAttendanceDialog";
@@ -5,7 +6,13 @@ import { guestCall } from "../../../guests/api";
 import type { EventAttendeeTicketRow } from "../../utils/bookingApprovalsAdmin";
 import type { TicketTypeRow } from "../sectionEventsManagerTypes";
 vi.mock("../../../guests/api", () => ({ guestCall: vi.fn() }));
-const row = { key: "booking:line", ticketId: "line", ticketTypeId: "original", attendanceVersion: 2, attendeeName: "Alex Member", dietaryNote: "No nuts", audience: "MEMBER" } as EventAttendeeTicketRow;
+const row: EventAttendeeTicketRow = {
+  accommodationRequested: false, seatingPreferences: [], key: "booking:line", bookingId: "booking",
+  email: null, rank: null, membershipStatus: null, ticketType: "Dinner", includesDinner: true,
+  includesSymposium: false, approvalStatus: BookingApprovalStatus.APPROVED, paymentState: "PAID",
+  ticketId: "line", ticketTypeId: "original", attendanceVersion: 2, attendeeName: "Alex Member",
+  dietaryNote: "No nuts", audience: TicketAudience.MEMBER,
+};
 const ticketTypes = [{ id: "original", title: "Dinner", audience: "MEMBER" }, { id: "other", title: "Symposium", audience: "MEMBER" }, { id: "guest", title: "Guest", audience: "GUEST" }] as TicketTypeRow[];
 const close = vi.fn();
 const saved = vi.fn();
@@ -20,6 +27,26 @@ describe("ticket attendance dialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saved).toHaveBeenCalledOnce());
     expect(guestCall).toHaveBeenCalledWith("manageTicketAttendance", { eventId: "event", id: "line", version: 2, action: "edit", attendeeName: "Alex Updated", dietaryNote: "No nuts", ticketTypeId: "other" });
+  });
+  it("saves accommodation and seating changes for this ticket", async () => {
+    render(<TicketAttendanceDialog eventId="event" row={row} action="edit" ticketTypes={ticketTypes} onClose={close} onSaved={saved} />);
+    fireEvent.click(screen.getByLabelText("Request accommodation"));
+    fireEvent.change(screen.getByLabelText("Accommodation notes"), { target: { value: "Accessible room" } });
+    fireEvent.change(screen.getByLabelText("Seating preferences"), { target: { value: "Jamie Guest\nTaylor Member" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(saved).toHaveBeenCalledOnce());
+    expect(guestCall).toHaveBeenCalledWith("manageTicketAttendance", expect.objectContaining({ accommodationRequested: true, accommodationNote: "Accessible room", seatingPreferences: ["Jamie Guest", "Taylor Member"] }));
+  });
+  it("clears inherited preferences and edits an accompanying guest name", async () => {
+    const guest = { ...row, audience: TicketAudience.GUEST, ticketTypeId: "guest", attendeeName: "Old Guest", accommodationRequested: true, accommodationNote: "Old note", seatingPreferences: ["Original person"] };
+    render(<TicketAttendanceDialog eventId="event" row={guest} action="edit" ticketTypes={ticketTypes} onClose={close} onSaved={saved} />);
+    fireEvent.change(screen.getByLabelText("Attendee name"), { target: { value: "New Guest" } });
+    fireEvent.click(screen.getByLabelText("Request accommodation"));
+    fireEvent.change(screen.getByLabelText("Accommodation notes"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Seating preferences"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(saved).toHaveBeenCalledOnce());
+    expect(guestCall).toHaveBeenCalledWith("manageTicketAttendance", expect.objectContaining({ attendeeName: "New Guest", accommodationRequested: false, accommodationNote: "", seatingPreferences: [] }));
   });
   it("requires delete confirmation and supports cancelling without writes", async () => {
     const view = render(<TicketAttendanceDialog eventId="event" row={row} action="delete" ticketTypes={ticketTypes} onClose={close} onSaved={saved} />);

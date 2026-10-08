@@ -511,8 +511,8 @@ describe("SectionEventsManager", () => {
     expect(screen.getByRole("columnheader", { name: "Email" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Dinner" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Symposium" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Accommodation" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Seating preferences" })).toBeInTheDocument();
+    expect(screen.getAllByRole("columnheader", { name: "Accommodation" })).toHaveLength(2);
+    expect(screen.getAllByRole("columnheader", { name: "Seating preferences" })).toHaveLength(2);
     expect(screen.getByText("Taylor Member")).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Revision" })).not.toBeInTheDocument();
     expect(reactGenerated.useListUserNamesByIds).toHaveBeenCalledWith(

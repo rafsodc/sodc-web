@@ -18,8 +18,9 @@ export function organiserGuestTicketRows(
       ticketType: `${g.ticketTitle} (organiser guest)`,
       includesDinner: g.includesDinner,
       includesSymposium: g.includesSymposium,
-      accommodationRequested: false,
-      seatingPreferences: [],
+      accommodationRequested: g.accommodationRequested ?? false,
+      accommodationNote: g.accommodationNote ?? null,
+      seatingPreferences: g.seatingPreferences ?? [],
       dietaryNote: g.dietaryRequirements,
       approvalStatus: BookingApprovalStatus.NOT_REQUIRED,
       paymentState:

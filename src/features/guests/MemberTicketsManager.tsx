@@ -9,7 +9,7 @@ import type { EventBookingAdminRow, TicketTypeRow } from "../admin/components/se
 import { EventAttendeeTicketsSection } from "../admin/components/sectionEventsManagerSurfaces/TicketAdminSurface";
 import TicketAttendanceDialog from "../admin/components/TicketAttendanceDialog";
 
-type Tickets = { bookings: EventBookingAdminRow[]; orders: Array<{ id: string; status: TicketOrderStatus }>; ticketTypes: TicketTypeRow[] };
+type Tickets = { seatingUsers: Array<{ id: string; firstName: string; lastName: string }>; bookings: EventBookingAdminRow[]; orders: Array<{ id: string; status: TicketOrderStatus }>; ticketTypes: TicketTypeRow[] };
 
 export default function MemberTicketsManager({ eventId }: { eventId: string }) {
   const client = useQueryClient();
@@ -18,7 +18,8 @@ export default function MemberTicketsManager({ eventId }: { eventId: string }) {
     queryFn: () => guestCall<Tickets>("getManagedEventTickets", { eventId }), gcTime: 0,
   });
   const [editing, setEditing] = useState<{ row: EventAttendeeTicketRow; action: "edit" | "delete" } | null>(null);
-  const rows = activeEventTicketRows(data?.bookings ?? [], new Map(data?.orders.map((order) => [order.id, order])));
+  const rows = activeEventTicketRows(data?.bookings ?? [], new Map(data?.orders.map((order) => [order.id, order])),
+    new Map(data?.seatingUsers?.map((user) => [user.id, `${user.firstName} ${user.lastName}`.trim()])));
   return <Paper component="section" sx={{ p: 3, my: 3 }}>
     <Typography variant="h5" component="h2">Member and accompanying guest tickets</Typography>
     {isError ? <Alert severity="error" action={<Button onClick={() => void refetch()}>Retry</Button>}>Unable to load tickets.</Alert> :

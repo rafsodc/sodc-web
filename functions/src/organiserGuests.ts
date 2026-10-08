@@ -1,3 +1,4 @@
+import { ticketPreferences } from "./ticketPreferences";
 import { handleOrganiserGuestStripeEvent } from "./organiserGuestPayments";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
@@ -38,7 +39,10 @@ function details(data: Record<string, unknown>) {
   const email = text(data.email ?? "", "email", 254, false).toLowerCase();
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new HttpsError("invalid-argument", "Invalid email");
+  const preferences = ticketPreferences(data);
   return {
+    ...preferences,
+    accommodationRequested: preferences.accommodationRequested ?? false,
     firstName: text(data.firstName, "first name", 100),
     lastName: text(data.lastName, "last name", 100),
     email: email || null,
@@ -105,6 +109,9 @@ function project(guest: Omit<Guest, "tokenHash">) {
     lastName: guest.lastName,
     email: guest.email ?? null,
     dietaryRequirements: guest.dietaryRequirements,
+    accommodationRequested: guest.accommodationRequested,
+    accommodationNote: guest.accommodationNote ?? null,
+    seatingPreferences: guest.seatingPreferences ?? [],
     ticketTypeId: ticketType.id,
     ticketTitle: ticketType.title,
     includesSymposium: guest.includesSymposium,
@@ -259,7 +266,7 @@ export const manageOrganiserGuest = onCall(
         return { guest: project(guest), link: null };
       }
       if (request.data.action === "edit") {
-        const input = { id, version: expectedVersion, ...details(request.data), actor };
+        const input = { id, version: expectedVersion, ...details({ ...guest, ...request.data }), actor };
         const currentTicketType = guest.standardTicketType ?? guest.ticketType;
         const requestedTicketTypeId = request.data.ticketTypeId
           ? validateUUID(

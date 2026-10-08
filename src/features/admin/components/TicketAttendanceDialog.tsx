@@ -1,3 +1,5 @@
+import TicketPreferencesFields from "../../guests/TicketPreferencesFields";
+import { seatingPreferenceNames } from "../../guests/ticketPreferences";
 import { useState } from "react";
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { guestCall } from "../../guests/api";
@@ -15,6 +17,11 @@ export default function TicketAttendanceDialog({ eventId, row, action, ticketTyp
   const [attendeeName, setAttendeeName] = useState(row.attendeeName);
   const [dietaryNote, setDietaryNote] = useState(row.dietaryNote ?? "");
   const [ticketTypeId, setTicketTypeId] = useState(row.ticketTypeId ?? "");
+  const [preferences, setPreferences] = useState({
+    accommodationRequested: row.accommodationRequested,
+    accommodationNote: row.accommodationNote ?? "",
+    seatingPreferences: row.seatingPreferences.join("\n"),
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function save() {
@@ -24,6 +31,9 @@ export default function TicketAttendanceDialog({ eventId, row, action, ticketTyp
       await guestCall("manageTicketAttendance", {
         eventId, id: row.ticketId, version: row.attendanceVersion, action,
         attendeeName, dietaryNote, ticketTypeId,
+        ...(preferences.accommodationRequested !== row.accommodationRequested ? { accommodationRequested: preferences.accommodationRequested } : {}),
+        ...(preferences.accommodationNote !== (row.accommodationNote ?? "") ? { accommodationNote: preferences.accommodationNote } : {}),
+        ...(preferences.seatingPreferences !== row.seatingPreferences.join("\n") ? { seatingPreferences: seatingPreferenceNames(preferences.seatingPreferences) } : {}),
       });
       await onSaved();
     } catch (e) {
@@ -42,6 +52,7 @@ export default function TicketAttendanceDialog({ eventId, row, action, ticketTyp
           <TextField select label="Ticket type" value={ticketTypeId} onChange={(e) => setTicketTypeId(e.target.value)} disabled={busy}>
             {ticketTypes.filter((t) => t.audience === row.audience).map((t) => <MenuItem key={t.id} value={t.id}>{t.title}</MenuItem>)}
           </TextField>
+          <TicketPreferencesFields value={preferences} onChange={setPreferences} disabled={busy} />
           <TextField label="Dietary requirements" multiline value={dietaryNote} onChange={(e) => setDietaryNote(e.target.value)} disabled={busy} inputProps={{ maxLength: 2000 }} />
         </>}
         {error && <Alert severity="error">{error}</Alert>}

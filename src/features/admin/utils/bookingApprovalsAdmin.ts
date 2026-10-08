@@ -37,6 +37,7 @@ export interface EventAttendeeTicketRow {
   includesDinner: boolean;
   includesSymposium: boolean;
   accommodationRequested: boolean;
+  accommodationNote?: string | null;
   seatingPreferences: string[];
   dietaryNote: string | null;
   approvalStatus: BookingApprovalStatus;
@@ -228,8 +229,9 @@ export function activeEventTicketRows(
           ticketType: ticket.title,
           includesDinner: ticket.includesDinner,
           includesSymposium: ticket.includesSymposium,
-          accommodationRequested: booking.accommodationRequested,
-          seatingPreferences,
+          accommodationRequested: line.bookingPlace?.attendanceAccommodationRequested ?? booking.accommodationRequested,
+          accommodationNote: line.bookingPlace?.attendanceAccommodationNote ?? booking.accommodationNote ?? null,
+          seatingPreferences: line.bookingPlace?.attendanceSeatingPreferences ?? seatingPreferences,
           dietaryNote: line.bookingPlace?.attendanceDietaryNote ?? (line.dietaryNote?.trim() || null),
           approvalStatus: booking.approvalStatus,
           paymentState: attendeePaymentState(line, ticketOrdersById),
@@ -254,6 +256,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
     "Dinner",
     "Symposium",
     "Accommodation",
+    "Accommodation notes",
     "Seating preferences",
     "Dietary requirements",
     "Approval",
@@ -268,6 +271,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
     row.includesDinner ? "Yes" : "No",
     row.includesSymposium ? "Yes" : "No",
     row.accommodationRequested ? "Yes" : "No",
+    row.accommodationNote ?? "",
     row.seatingPreferences.join("; "),
     row.dietaryNote ?? "",
     row.approvalStatus,

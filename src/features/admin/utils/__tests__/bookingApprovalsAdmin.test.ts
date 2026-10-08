@@ -232,7 +232,7 @@ describe("booking approval admin model", () => {
       }),
     ]);
     expect(eventTicketRowsCsv(rows)).toContain(
-      "Jamie Guest,,,GUEST,Guest ticket,No,Yes,Yes,Taylor Member,No nuts,APPROVED,UNPAID"
+      "Jamie Guest,,,GUEST,Guest ticket,No,Yes,Yes,,Taylor Member,No nuts,APPROVED,UNPAID"
     );
     expect(eventTicketRowsCsv(rows)).not.toContain("Revision");
   });
@@ -254,6 +254,18 @@ describe("booking approval admin model", () => {
     expect(activeEventTicketRows([original], new Map())).toEqual([]);
   });
 
+  it("overrides preferences on one ticket while leaving its sibling on booking defaults", () => {
+    const ticket = { id: "type", title: "Guest", audience: TicketAudience.GUEST, price: 0, includesDinner: true, includesSymposium: false };
+    const place = { id: "place", attendanceVersion: 0, attendanceRemoved: false, paymentAllocations: [] };
+    const active = booking({ accommodationRequested: true, accommodationNote: "Original room", sitNextToUserIds: ["friend"], lines: [
+      { id: "edited", sortOrder: 0, ticketType: ticket, bookingPlace: { ...place, attendanceAccommodationRequested: false, attendanceAccommodationNote: "", attendanceSeatingPreferences: [] } },
+      { id: "sibling", sortOrder: 1, ticketType: ticket, bookingPlace: { ...place, id: "sibling-place" } },
+    ] });
+    const rows = activeEventTicketRows([active], new Map(), new Map([["friend", "Original friend"]]));
+    expect(rows[0]).toMatchObject({ accommodationRequested: false, accommodationNote: "", seatingPreferences: [] });
+    expect(rows[1]).toMatchObject({ accommodationRequested: true, accommodationNote: "Original room", seatingPreferences: ["Original friend"] });
+    expect(eventTicketRowsCsv(rows)).toContain("Yes,Original room,Original friend");
+  });
   it("uses each attendee's own rank, never the booker's rank for an unlinked guest", () => {
     const active = booking({
       booker: { id: "booker", firstName: "Alex", lastName: "Member", email: "alex@example.com", rank: "Wing Commander", membershipStatus: MembershipStatus.REGULAR },
@@ -385,9 +397,9 @@ describe("booking approval admin model", () => {
     ];
 
     expect(eventTicketRowsCsv(rows)).toBe([
-      "Attendee,Rank,Membership status,Audience,Ticket,Dinner,Symposium,Accommodation,Seating preferences,Dietary requirements,Approval,Payment",
-      "'=2+2,'=RANK(),Industry,GUEST,'+Guest ticket,Yes,No,Yes,'=Seating name,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID",
-      "\"'@SUM(1,1)\",,,GUEST,Guest ticket,No,Yes,No,,\"No nuts, please\",APPROVED,PAID",
+      "Attendee,Rank,Membership status,Audience,Ticket,Dinner,Symposium,Accommodation,Accommodation notes,Seating preferences,Dietary requirements,Approval,Payment",
+      "'=2+2,'=RANK(),Industry,GUEST,'+Guest ticket,Yes,No,Yes,,'=Seating name,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID",
+      "\"'@SUM(1,1)\",,,GUEST,Guest ticket,No,Yes,No,,,\"No nuts, please\",APPROVED,PAID",
     ].join("\n"));
     expect(eventTicketRowsCsv(rows)).not.toContain("private@example.com");
     expect(eventTicketRowsCsv(rows)).not.toContain("second@example.com");

@@ -1,5 +1,6 @@
+import { ticketPreferences } from "./ticketPreferences";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { getAttendeeEventSection, listEventBookingsForAdmin, getEventById, getTicketAttendanceForManagement, getAttendanceTicketType, updateTicketAttendance } from "@dataconnect/admin-generated";
+import { getAttendeeEventSection, listUserNamesByIds, listEventBookingsForAdmin, getEventById, getTicketAttendanceForManagement, getAttendanceTicketType, updateTicketAttendance } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireEnabled, requireString, validateUUID, handleFunctionError } from "./helpers";
 import { requireSectionModerator } from "./sectionAccess";
@@ -35,7 +36,14 @@ export const manageTicketAttendance = onCall({ region: FUNCTIONS_REGION }, async
     if (!ticket || validateUUID(ticket.event.id) !== eventId || ticket.audience !== line.ticketType.audience) {
       throw new HttpsError("invalid-argument", "Choose a ticket of the same audience for this event");
     }
+    const preferences = ticketPreferences({
+      accommodationRequested: line.bookingPlace.attendanceAccommodationRequested,
+      accommodationNote: line.bookingPlace.attendanceAccommodationNote,
+      seatingPreferences: line.bookingPlace.attendanceSeatingPreferences,
+      ...(action === "edit" ? request.data : {}),
+    });
     await updateTicketAttendance({
+      ...preferences,
       bookingId: line.booking.id, placeId: line.bookingPlace.id, version, ticketTypeId,
       name: text(request.data.attendeeName, "attendee name", 200, true),
       dietaryNote: text(request.data.dietaryNote ?? "", "dietary requirements", 2000),
@@ -63,7 +71,12 @@ export const getManagedEventTickets = onCall({ region: FUNCTIONS_REGION }, async
     const [bookings, detail] = await Promise.all([
       listEventBookingsForAdmin({ eventId }), getEventById({ id: eventId }),
     ]);
-    return { bookings: bookings.data.event?.bookings ?? [],
+    const seatingIds = Array.from(new Set((bookings.data.event?.bookings ?? []).flatMap((booking) => booking.sitNextToUserIds ?? [])));
+    const seatingUsers = [];
+    for (let offset = 0; offset < seatingIds.length; offset += 100) {
+      seatingUsers.push(...(await listUserNamesByIds({ ids: seatingIds.slice(offset, offset + 100) })).data.users);
+    }
+    return { seatingUsers, bookings: bookings.data.event?.bookings ?? [],
       orders: bookings.data.event?.bookingTicketOrders ?? [],
       ticketTypes: detail.data.event?.ticketTypes ?? [] };
   } catch (error) {

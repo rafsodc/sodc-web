@@ -229,6 +229,25 @@ describe("organiser management and reports", () => {
     expect(screen.queryByRole("button", { name: /add guest ticket type/i })).not.toBeInTheDocument();
     view.unmount();
   });
+  it("edits a paid organiser guest name, accommodation and seating without payment fields", async () => {
+    call.mockResolvedValue({ event: { id: "event" }, ticketTypes: [{ id: "type", title: "Guest dinner" }], guests: [{ ...guest, paymentStatus: "PAID" }] });
+    render(<OrganiserGuestsManager eventId="event" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit guest" }));
+    fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Jamie" } });
+    fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Updated" } });
+    fireEvent.click(screen.getByLabelText("Request accommodation"));
+    fireEvent.change(screen.getByLabelText("Accommodation notes"), { target: { value: "Twin room" } });
+    fireEvent.change(screen.getByLabelText("Seating preferences"), { target: { value: "Alex Member\nTaylor Guest" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save guest" }));
+    await waitFor(() => expect(call).toHaveBeenCalledWith("manageOrganiserGuest", expect.objectContaining({
+      action: "edit", id: "guest", version: 3, firstName: "Jamie", lastName: "Updated",
+      accommodationRequested: true, accommodationNote: "Twin room", seatingPreferences: ["Alex Member", "Taylor Guest"],
+    })));
+  });
+  it("includes organiser guest accommodation and seating in reports", () => {
+    const [row] = organiserGuestTicketRows([{ ...guest, accommodationRequested: true, accommodationNote: "Twin room", seatingPreferences: ["Alex"] }]);
+    expect(row).toMatchObject({ accommodationRequested: true, accommodationNote: "Twin room", seatingPreferences: ["Alex"] });
+  });
   it("keeps cancellation explicit and shows paid refund obligations", async () => {
     call.mockResolvedValue({
       event: { id: "event" },

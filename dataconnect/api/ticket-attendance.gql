@@ -3,7 +3,7 @@ query GetTicketAttendanceForManagement($id: UUID!) @auth(level: NO_ACCESS) {
   bookingLine(id: $id) {
     id
     ticketType { audience }
-    bookingPlace { id attendanceVersion attendanceRemoved }
+    bookingPlace { id attendanceVersion attendanceRemoved attendanceAccommodationRequested attendanceAccommodationNote attendanceSeatingPreferences }
     booking { id status approvalStatus supersededAt event { id section { id } } }
   }
 }
@@ -14,7 +14,8 @@ query GetAttendanceTicketType($id: UUID!) @auth(level: NO_ACCESS) {
 
 mutation UpdateTicketAttendance(
   $bookingId: UUID!, $placeId: UUID!, $version: Int!, $ticketTypeId: UUID!,
-  $name: String!, $dietaryNote: String!, $removed: Boolean!, $actor: String!
+  $name: String!, $dietaryNote: String!, $removed: Boolean!, $actor: String!,
+  $accommodationRequested: Boolean, $accommodationNote: String, $seatingPreferences: [String!]
 ) @auth(level: NO_ACCESS) @transaction {
   booking_updateMany(
     where: { id: { eq: $bookingId }, supersededAt: { isNull: true }, status: { in: [SUBMITTED, CONFIRMED] }, approvalStatus: { in: [NOT_REQUIRED, APPROVED] } }
@@ -25,6 +26,8 @@ mutation UpdateTicketAttendance(
     data: {
       attendanceTicketTypeId: $ticketTypeId, attendanceName: $name,
       attendanceDietaryNote: $dietaryNote, attendanceRemoved: $removed,
+      attendanceAccommodationRequested: $accommodationRequested, attendanceAccommodationNote: $accommodationNote,
+      attendanceSeatingPreferences: $seatingPreferences,
       attendanceVersion_update: { inc: 1 }, updatedAt_expr: "request.time", updatedBy: $actor
     }
   ) @check(expr: "this == 1", message: "ATTENDANCE_CONFLICT")
@@ -32,6 +35,7 @@ mutation UpdateTicketAttendance(
 
 mutation EditOrganiserGuestAttendance(
   $id: UUID!, $version: Int!, $ticketTypeId: UUID!, $firstName: String!, $lastName: String!,
+  $accommodationRequested: Boolean!, $accommodationNote: String, $seatingPreferences: [String!],
   $email: String, $dietaryRequirements: String!, $includesDinner: Boolean!, $includesSymposium: Boolean!, $actor: String!
 ) @auth(level: NO_ACCESS) @transaction {
   organiserGuest_updateMany(
@@ -39,6 +43,7 @@ mutation EditOrganiserGuestAttendance(
     data: {
       standardTicketTypeId: $ticketTypeId, firstName: $firstName, lastName: $lastName,
       email: $email, dietaryRequirements: $dietaryRequirements,
+      accommodationRequested: $accommodationRequested, accommodationNote: $accommodationNote, seatingPreferences: $seatingPreferences,
       includesDinner: $includesDinner, includesSymposium: $includesSymposium,
       version_update: { inc: 1 }, updatedAt_expr: "request.time", updatedBy: $actor
     }

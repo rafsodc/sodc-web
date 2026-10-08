@@ -27,7 +27,20 @@ describe("attendance-only ticket management", () => {
   it.each(["edit", "delete"])("%s changes only attendance and preserves the booking/place identity", async (action) => {
     expect(await manageTicketAttendance.run(request({ action }))).toEqual({ success: true });
     expect(requireSectionModerator).toHaveBeenCalledWith(id, "organiser", false);
-    expect(write).toHaveBeenCalledWith({ bookingId: id, placeId: id, version: 0, ticketTypeId: other, name: "Updated attendee", dietaryNote: "Vegetarian", removed: action === "delete", actor: "organiser" });
+    expect(write).toHaveBeenCalledWith({ accommodationRequested: null, accommodationNote: null, seatingPreferences: null, bookingId: id, placeId: id, version: 0, ticketTypeId: other, name: "Updated attendee", dietaryNote: "Vegetarian", removed: action === "delete", actor: "organiser" });
+  });
+  it("updates per-ticket preferences and preserves explicit clearing", async () => {
+    await manageTicketAttendance.run(request({ accommodationRequested: false, accommodationNote: "", seatingPreferences: [] }));
+    expect(write).toHaveBeenCalledWith(expect.objectContaining({ accommodationRequested: false, accommodationNote: "", seatingPreferences: [] }));
+  });
+  it("preserves preferences when an older client omits them or deletes a ticket", async () => {
+    const current = line();
+    Object.assign(current.bookingPlace, { attendanceAccommodationRequested: true, attendanceAccommodationNote: "Room", attendanceSeatingPreferences: ["Friend"] });
+    read.mockResolvedValue({ data: { bookingLine: current } } as never);
+    await manageTicketAttendance.run(request());
+    expect(write).toHaveBeenLastCalledWith(expect.objectContaining({ accommodationRequested: true, accommodationNote: "Room", seatingPreferences: ["Friend"] }));
+    await manageTicketAttendance.run(request({ action: "delete", accommodationRequested: false }));
+    expect(write).toHaveBeenLastCalledWith(expect.objectContaining({ accommodationRequested: true, removed: true }));
   });
   it("supports admins and compact UUIDs returned by Data Connect", async () => {
     const current = line(); current.booking.event.id = id.replaceAll("-", "");
@@ -79,9 +92,18 @@ describe("attendance-only ticket management", () => {
     vi.spyOn(db, "getAttendeeEventSection").mockResolvedValue({ data: { event: { section: { id } } } });
     list.mockResolvedValue({ data: { event: { bookings: [], bookingTicketOrders: [] } } } as never);
     vi.spyOn(db, "getEventById").mockResolvedValue({ data: { event: { ticketTypes: [] } } } as never);
-    expect(await getManagedEventTickets.run(request())).toEqual({ bookings: [], orders: [], ticketTypes: [] });
+    expect(await getManagedEventTickets.run(request())).toEqual({ seatingUsers: [], bookings: [], orders: [], ticketTypes: [] });
     expect(requireSectionModerator).toHaveBeenCalledWith(id, "organiser", false);
     expect(list).toHaveBeenCalledWith({ eventId: id });
+  });
+  it("resolves inherited seating names for the authorised moderator", async () => {
+    vi.spyOn(db, "getAttendeeEventSection").mockResolvedValue({ data: { event: { section: { id } } } });
+    list.mockResolvedValue({ data: { event: { bookings: [{ sitNextToUserIds: ["friend", "friend"] }], bookingTicketOrders: [] } } } as never);
+    vi.spyOn(db, "getEventById").mockResolvedValue({ data: { event: { ticketTypes: [] } } } as never);
+    const users = [{ id: "friend", firstName: "Alex", lastName: "Member" }];
+    const names = vi.spyOn(db, "listUserNamesByIds").mockResolvedValue({ data: { users } });
+    expect(await getManagedEventTickets.run(request())).toMatchObject({ seatingUsers: users });
+    expect(names).toHaveBeenCalledWith({ ids: ["friend"] });
   });
   it("does not load tickets for a missing event", async () => {
     vi.spyOn(db, "getAttendeeEventSection").mockResolvedValue({ data: {} });

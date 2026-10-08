@@ -654,6 +654,9 @@ export interface CreateOrganiserGuestVariables {
   lastName: string;
   email?: string | null;
   dietaryRequirements: string;
+  accommodationRequested: boolean;
+  accommodationNote?: string | null;
+  seatingPreferences?: string[] | null;
   priceMinor: number;
   includesSymposium: boolean;
   includesDinner: boolean;
@@ -860,6 +863,9 @@ export interface EditOrganiserGuestAttendanceVariables {
   ticketTypeId: UUIDString;
   firstName: string;
   lastName: string;
+  accommodationRequested: boolean;
+  accommodationNote?: string | null;
+  seatingPreferences?: string[] | null;
   email?: string | null;
   dietaryRequirements: string;
   includesDinner: boolean;
@@ -1985,6 +1991,9 @@ export interface GetOrganiserGuestByTokenData {
     lastName: string;
     email?: string | null;
     dietaryRequirements: string;
+    accommodationRequested: boolean;
+    accommodationNote?: string | null;
+    seatingPreferences?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -2029,6 +2038,9 @@ export interface GetOrganiserGuestData {
     lastName: string;
     email?: string | null;
     dietaryRequirements: string;
+    accommodationRequested: boolean;
+    accommodationNote?: string | null;
+    seatingPreferences?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -2376,6 +2388,9 @@ export interface GetTicketAttendanceForManagementData {
       id: UUIDString;
       attendanceVersion: number;
       attendanceRemoved: boolean;
+      attendanceAccommodationRequested?: boolean | null;
+      attendanceAccommodationNote?: string | null;
+      attendanceSeatingPreferences?: string[] | null;
     } & BookingPlace_Key;
     booking: {
       id: UUIDString;
@@ -2836,6 +2851,9 @@ export interface ListEventBookingsForAdminData {
           attendanceRemoved: boolean;
           attendanceName?: string | null;
           attendanceDietaryNote?: string | null;
+          attendanceAccommodationRequested?: boolean | null;
+          attendanceAccommodationNote?: string | null;
+          attendanceSeatingPreferences?: string[] | null;
           attendanceTicketType?: {
             id: UUIDString;
             title: string;
@@ -3066,6 +3084,9 @@ export interface ListOrganiserGuestsData {
     lastName: string;
     email?: string | null;
     dietaryRequirements: string;
+    accommodationRequested: boolean;
+    accommodationNote?: string | null;
+    seatingPreferences?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -3974,6 +3995,9 @@ export interface UpdateOrganiserGuestDetailsVariables {
   lastName: string;
   email?: string | null;
   dietaryRequirements: string;
+  accommodationRequested: boolean;
+  accommodationNote?: string | null;
+  seatingPreferences?: string[] | null;
   actor: string;
 }
 
@@ -4013,6 +4037,9 @@ export interface UpdateTicketAttendanceVariables {
   dietaryNote: string;
   removed: boolean;
   actor: string;
+  accommodationRequested?: boolean | null;
+  accommodationNote?: string | null;
+  seatingPreferences?: string[] | null;
 }
 
 export interface UpdateTicketTypeData {

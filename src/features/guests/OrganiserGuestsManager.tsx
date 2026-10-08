@@ -1,3 +1,5 @@
+import TicketPreferencesFields from "./TicketPreferencesFields";
+import { seatingPreferenceNames } from "./ticketPreferences";
 import { organiserGuestTicketRows } from "./reporting";
 import { eventTicketRowsCsv } from "../admin/utils/bookingApprovalsAdmin";
 import { useState } from "react";
@@ -68,6 +70,7 @@ export default function OrganiserGuestsManager({
     gcTime: 0,
   });
   const [guest, setGuest] = useState<Partial<Guest> | null>(null);
+  const [seatingText, setSeatingText] = useState("");
   const [cancel, setCancel] = useState<Guest | null>(null);
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
@@ -170,7 +173,8 @@ export default function OrganiserGuestsManager({
             sx={{ my: 2 }}
             variant="contained"
             disabled={busy || data.ticketTypes.length === 0}
-            onClick={() =>
+            onClick={() => {
+              setSeatingText("");
               setGuest({
                 id: crypto.randomUUID(),
                 firstName: "",
@@ -178,8 +182,11 @@ export default function OrganiserGuestsManager({
                 email: "",
                 dietaryRequirements: "",
                 ticketTypeId: data.ticketTypes[0]?.id,
-              })
-            }
+                accommodationRequested: false,
+                accommodationNote: "",
+                seatingPreferences: [],
+              });
+            }}
           >
             Add guest
           </Button>
@@ -218,6 +225,8 @@ export default function OrganiserGuestsManager({
                     "Guest",
                     "Ticket",
                     "Dietary requirements",
+                    "Accommodation",
+                    "Seating preferences",
                     "Status",
                     "Actions",
                   ].map((h) => (
@@ -244,6 +253,10 @@ export default function OrganiserGuestsManager({
                     <TableCell>
                       {g.dietaryRequirements || "None entered"}
                     </TableCell>
+                    <TableCell>{g.accommodationRequested ? "Requested" : "Not requested"}
+                      {g.accommodationNote && <Typography variant="body2">{g.accommodationNote}</Typography>}
+                    </TableCell>
+                    <TableCell>{g.seatingPreferences?.join(", ") || "None"}</TableCell>
                     <TableCell>
                       {g.cancelled ? "Cancelled" : "Reserved"} ·{" "}
                       {paymentLabel(g.paymentStatus)}
@@ -251,7 +264,7 @@ export default function OrganiserGuestsManager({
                     <TableCell>
                       <Button
                         disabled={busy || g.cancelled}
-                        onClick={() => setGuest(g)}
+                        onClick={() => { setGuest(g); setSeatingText((g.seatingPreferences ?? []).join("\n")); }}
                       >
                         Edit guest
                       </Button>
@@ -344,6 +357,15 @@ export default function OrganiserGuestsManager({
                 onChange={(e) => setGuest({ ...guest, [key]: e.target.value })}
               />
             ))}
+            <TicketPreferencesFields value={{
+              accommodationRequested: guest?.accommodationRequested ?? false,
+              accommodationNote: guest?.accommodationNote ?? "",
+              seatingPreferences: seatingText,
+            }} disabled={busy} onChange={(value) => {
+              setSeatingText(value.seatingPreferences);
+              setGuest({ ...guest, accommodationRequested: value.accommodationRequested,
+                accommodationNote: value.accommodationNote, seatingPreferences: seatingPreferenceNames(value.seatingPreferences) });
+            }} />
             {guest?.version && <Alert severity="info">Transactions stay unchanged. Handle any payment or refund adjustment manually.</Alert>}
             <TextField select label="Guest ticket" value={guest?.ticketTypeId ?? ""}
               onChange={(e) => setGuest({ ...guest, ticketTypeId: e.target.value })}>

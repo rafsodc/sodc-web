@@ -668,7 +668,7 @@ export function EventAttendeeTicketsSection({
               <TableCell>{row.ticketType}</TableCell>
               <TableCell>{row.includesDinner ? "Yes" : "No"}</TableCell>
               <TableCell>{row.includesSymposium ? "Yes" : "No"}</TableCell>
-              <TableCell>{row.accommodationRequested ? "Yes" : "No"}</TableCell>
+              <TableCell>{row.accommodationRequested ? "Yes" : "No"}{row.accommodationNote && <Typography variant="caption" display="block">{row.accommodationNote}</Typography>}</TableCell>
               <TableCell>{row.seatingPreferences.join(", ") || "—"}</TableCell>
               <TableCell>{row.dietaryNote ?? "—"}</TableCell>
               <TableCell><Chip size="small" label={row.approvalStatus.replaceAll("_", " ")} color={approvalStatusColor(row.approvalStatus)} /></TableCell>

@@ -357,6 +357,17 @@ describe("organiser ticket reassignment", () => {
     expect(stripe.checkout.sessions.expire).not.toHaveBeenCalled();
     expect(cancel).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled();
   });
+  it.each([id, other])("edits guest preferences and name alongside unchanged or replaced ticket %s", async (ticketTypeId) => {
+    const update = vi.spyOn(db, "updateOrganiserGuestDetails").mockResolvedValue({} as never);
+    const edit = vi.spyOn(db, "editOrganiserGuestAttendance").mockResolvedValue({} as never);
+    Object.assign(guest, { paidAt: "2026-01-01", stripeSessionId: "cs_existing" });
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId, action: "edit", firstName: "Updated", accommodationRequested: true, accommodationNote: "Twin room", seatingPreferences: ["Alex"] }, true));
+    const written = (ticketTypeId === id ? update : edit).mock.calls[0][0];
+    expect(written).toMatchObject({ firstName: "Updated", accommodationRequested: true, accommodationNote: "Twin room", seatingPreferences: ["Alex"] });
+    expect(written).not.toHaveProperty("priceMinor");
+    expect(written).not.toHaveProperty("stripeSessionId");
+    expect(stripe.checkout.sessions.retrieve).not.toHaveBeenCalled();
+  });
   it("deletes an unpaid reservation without changing an existing checkout", async () => {
     Object.assign(guest, { stripeSessionId: "cs_existing" });
     await manageOrganiserGuest.run(request({ id, eventId: id, version: 1, action: "cancel" }, true));
