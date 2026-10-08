@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { getCookie, removeCookie, setCookie } from "../utils/cookies";
 import {
+  ATTENDEE_EMAIL_SEPARATOR_COOKIE,
   COLOR_MODE_COOKIE,
   COOKIE_DECISION_COOKIE,
   COOKIE_DECISION_MAX_AGE_SECONDS,
@@ -43,8 +44,9 @@ export function CookiePreferencesProvider({ children }: { children: ReactNode })
     persistDecision("rejected");
     try {
       removeCookie(COLOR_MODE_COOKIE);
+      removeCookie(ATTENDEE_EMAIL_SEPARATOR_COOKIE);
     } catch {
-      // ColorModeProvider also resets its in-memory preference.
+      // Preference owners also reset their in-memory values.
     }
   }, [persistDecision]);
 

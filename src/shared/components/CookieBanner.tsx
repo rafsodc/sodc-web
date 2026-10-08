@@ -32,8 +32,9 @@ export default function CookieBanner() {
         </Typography>
         <Typography variant="body2" sx={{ mt: 0.5, maxWidth: 850 }}>
           We use essential browser storage to keep accounts secure. With your
-          permission, we also use one cookie to remember your Light or Dark
-          appearance choice. We do not use analytics or advertising cookies.
+          permission, we also use preference cookies to remember choices such
+          as Light or Dark appearance and organiser email formatting. We do not
+          use analytics or advertising cookies.
         </Typography>
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -41,10 +42,10 @@ export default function CookieBanner() {
           sx={{ mt: 2, alignItems: { xs: "stretch", sm: "center" } }}
         >
           <Button variant="contained" onClick={acceptPreferenceCookies}>
-            Allow appearance cookie
+            Allow preference cookies
           </Button>
           <Button variant="outlined" onClick={rejectPreferenceCookies}>
-            Decline appearance cookie
+            Decline preference cookies
           </Button>
           <Button color="inherit" onClick={openSettings}>
             View cookie settings

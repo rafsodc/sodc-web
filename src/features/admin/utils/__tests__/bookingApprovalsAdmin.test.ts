@@ -11,11 +11,14 @@ import {
   activeEventTicketRows,
   attendeePaymentState,
   currentActiveBookings,
+  emptyEventAttendeeTicketFilters,
   eventTicketRowsCsv,
+  filterEventAttendeeTicketRows,
   type EventAttendeeTicketRow,
   pendingBookingRevisions,
   previousActiveBooking,
   type TicketOrdersById,
+  uniqueEventAttendeeEmails,
 } from "../bookingApprovalsAdmin";
 
 function ticketOrdersById(orders: Array<{ id: string; status: TicketOrderStatus }>): TicketOrdersById {
@@ -44,7 +47,102 @@ function booking(overrides: Partial<EventBookingAdminRow> = {}): EventBookingAdm
   } as EventBookingAdminRow;
 }
 
+function attendeeRow(overrides: Partial<EventAttendeeTicketRow> = {}): EventAttendeeTicketRow {
+  return {
+    key: "booking-1:line-1",
+    bookingId: "booking-1",
+    attendeeName: "Alex Member",
+    email: "alex@example.com",
+    rank: "Wing Commander",
+    membershipStatus: MembershipStatus.REGULAR,
+    audience: TicketAudience.MEMBER,
+    ticketType: "Full event",
+    includesDinner: true,
+    includesSymposium: true,
+    accommodationRequested: false,
+    seatingPreferences: [],
+    dietaryNote: null,
+    approvalStatus: BookingApprovalStatus.APPROVED,
+    paymentState: "PAID",
+    ...overrides,
+  };
+}
+
 describe("booking approval admin model", () => {
+  it("keeps more than 100 attendees in both the organiser roster and CSV", () => {
+    const bookings = Array.from({ length: 101 }, (_, index) => booking({
+      id: `booking-${index}`,
+      revisionGroupId: `group-${index}`,
+      booker: {
+        id: `user-${index}`,
+        firstName: "Attendee",
+        lastName: String(index),
+        email: `attendee-${index}@example.com`,
+        membershipStatus: MembershipStatus.REGULAR,
+      },
+      lines: [{
+        id: `line-${index}`,
+        sortOrder: 0,
+        dietaryNote: null,
+        guestDisplayName: null,
+        bookingPlace: { id: `place-${index}`, paymentAllocations: [] },
+        ticketType: {
+          id: "member",
+          title: "Member ticket",
+          audience: TicketAudience.MEMBER,
+          price: 0,
+          includesDinner: true,
+          includesSymposium: true,
+        },
+      }],
+    }));
+
+    const rows = activeEventTicketRows(bookings, ticketOrdersById([]));
+
+    expect(rows).toHaveLength(101);
+    expect(eventTicketRowsCsv(rows).split("\n")).toHaveLength(102);
+  });
+
+  it("combines attendee ticket filters and returns an empty set when nothing matches", () => {
+    const rows = [
+      attendeeRow(),
+      attendeeRow({
+        key: "booking-2:line-1",
+        attendeeName: "Jamie Guest",
+        email: "jamie@example.com",
+        rank: "Squadron Leader",
+        membershipStatus: MembershipStatus.RESERVE,
+        audience: TicketAudience.GUEST,
+        includesDinner: false,
+        paymentState: "UNPAID",
+      }),
+    ];
+
+    expect(filterEventAttendeeTicketRows(rows, {
+      ...emptyEventAttendeeTicketFilters,
+      attendeeName: "alex",
+      includesDinner: "YES",
+      paymentState: "PAID",
+    })).toEqual([rows[0]]);
+    expect(filterEventAttendeeTicketRows(rows, {
+      ...emptyEventAttendeeTicketFilters,
+      attendeeName: "alex",
+      paymentState: "UNPAID",
+    })).toEqual([]);
+  });
+
+  it("returns unique non-empty attendee emails without changing their original spelling", () => {
+    const rows = [
+      attendeeRow({ email: " Alex@Example.com " }),
+      attendeeRow({ key: "duplicate", email: "alex@example.com" }),
+      attendeeRow({ key: "missing", email: null }),
+      attendeeRow({ key: "blank", email: "  " }),
+      attendeeRow({ key: "second", email: "jamie@example.com" }),
+    ];
+
+    expect(uniqueEventAttendeeEmails(rows)).toEqual(["Alex@Example.com", "jamie@example.com"]);
+  });
+
   it("keeps an approved active revision while listing its pending amendment separately", () => {
     const active = booking();
     const pending = booking({
