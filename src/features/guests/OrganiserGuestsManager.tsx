@@ -271,7 +271,7 @@ export default function OrganiserGuestsManager({
                         disabled={busy || g.cancelled}
                         onClick={() => setCancel(g)}
                       >
-                        Cancel guest
+                        Delete ticket
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -344,30 +344,13 @@ export default function OrganiserGuestsManager({
                 onChange={(e) => setGuest({ ...guest, [key]: e.target.value })}
               />
             ))}
-            {guest?.version &&
-              !["UNPAID", "FREE"].includes(guest.paymentStatus ?? "") && (
-                <Typography variant="body2">
-                  To change a paid ticket, cancel this reservation and add a new
-                  one. Existing payment and refund history will be retained.
-                </Typography>
-              )}
-            {(!guest?.version ||
-              ["UNPAID", "FREE"].includes(guest.paymentStatus ?? "")) && (
-              <TextField
-                select
-                label="Guest ticket"
-                value={guest?.ticketTypeId ?? ""}
-                onChange={(e) =>
-                  setGuest({ ...guest, ticketTypeId: e.target.value })
-                }
-              >
-                {data?.ticketTypes.map((t) => (
-                    <MenuItem key={t.id} value={t.id}>
-                      {t.title} · {money(t.priceMinor)}
-                    </MenuItem>
-                  ))}
-              </TextField>
-            )}
+            {guest?.version && <Alert severity="info">Transactions stay unchanged. Handle any payment or refund adjustment manually.</Alert>}
+            <TextField select label="Guest ticket" value={guest?.ticketTypeId ?? ""}
+              onChange={(e) => setGuest({ ...guest, ticketTypeId: e.target.value })}>
+              {guest?.ticketTypeId && !data?.ticketTypes.some((t) => t.id === guest.ticketTypeId) &&
+                <MenuItem value={guest.ticketTypeId}>{guest.ticketTitle}</MenuItem>}
+              {data?.ticketTypes.map((t) => <MenuItem key={t.id} value={t.id}>{t.title}</MenuItem>)}
+            </TextField>
             {error && <Alert severity="error">{error}</Alert>}
           </Stack>
         </DialogContent>
@@ -393,11 +376,11 @@ export default function OrganiserGuestsManager({
         </DialogActions>
       </Dialog>
       <Dialog open={Boolean(cancel)} onClose={() => !busy && setCancel(null)}>
-        <DialogTitle>Cancel this guest?</DialogTitle>
+        <DialogTitle>Delete this guest ticket?</DialogTitle>
         <DialogContent>
           This releases {cancel?.firstName} {cancel?.lastName}'s place and stops
-          further payment. Any existing payment remains recorded; cancellation
-          does not issue an automatic refund.
+          new checkout requests. Transactions stay unchanged. Handle any payment
+          or refund adjustment manually.
           {error && <Alert severity="error">{error}</Alert>}
         </DialogContent>
         <DialogActions>
@@ -414,7 +397,7 @@ export default function OrganiserGuestsManager({
               })
             }
           >
-            Confirm cancellation
+            Delete ticket
           </Button>
         </DialogActions>
       </Dialog>

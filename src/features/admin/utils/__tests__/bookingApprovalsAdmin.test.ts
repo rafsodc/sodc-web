@@ -85,7 +85,7 @@ describe("booking approval admin model", () => {
         sortOrder: 0,
         dietaryNote: null,
         guestDisplayName: null,
-        bookingPlace: { id: `place-${index}`, paymentAllocations: [] },
+        bookingPlace: { id: `place-${index}`, attendanceVersion: 0, attendanceRemoved: false, paymentAllocations: [] },
         ticketType: {
           id: "member",
           title: "Member ticket",
@@ -199,7 +199,7 @@ describe("booking approval admin model", () => {
             includesDinner: false,
             includesSymposium: true,
           },
-          bookingPlace: { id: "place-guest", paymentAllocations: [] },
+          bookingPlace: { id: "place-guest", attendanceVersion: 0, attendanceRemoved: false, paymentAllocations: [] },
         },
       ] as EventBookingAdminRow["lines"],
     });
@@ -235,6 +235,23 @@ describe("booking approval admin model", () => {
       "Jamie Guest,,,GUEST,Guest ticket,No,Yes,Yes,Taylor Member,No nuts,APPROVED,UNPAID"
     );
     expect(eventTicketRowsCsv(rows)).not.toContain("Revision");
+  });
+
+  it("changes attendance while keeping payment status tied to the original purchase", () => {
+    const original = booking({ lines: [{
+      id: "line", sortOrder: 0,
+      ticketType: { id: "original", title: "Original", audience: TicketAudience.MEMBER, price: 20, includesDinner: false, includesSymposium: false },
+      bookingPlace: { id: "place", attendanceVersion: 1, attendanceRemoved: false, attendanceName: "Corrected name", attendanceDietaryNote: "Vegetarian",
+        attendanceTicketType: { id: "replacement", title: "Replacement", audience: TicketAudience.MEMBER, includesDinner: true, includesSymposium: true },
+        paymentAllocations: [{ id: "allocation", ticketOrderId: "paid", allocatedAmountMinor: 2000, refundedAmountMinor: 0 }] },
+    }] });
+    const before = structuredClone(original);
+    const rows = activeEventTicketRows([original], new Map([["paid", { id: "paid", status: TicketOrderStatus.PAID }]]));
+    expect(rows[0]).toMatchObject({ attendeeName: "Corrected name", ticketType: "Replacement", dietaryNote: "Vegetarian", includesDinner: true, paymentState: "PAID" });
+    expect(eventTicketRowsCsv(rows)).toContain("Corrected name");
+    expect(original).toEqual(before);
+    original.lines[0].bookingPlace.attendanceRemoved = true;
+    expect(activeEventTicketRows([original], new Map())).toEqual([]);
   });
 
   it("uses each attendee's own rank, never the booker's rank for an unlinked guest", () => {
@@ -393,7 +410,7 @@ describe("booking approval admin model", () => {
           includesDinner: false,
           includesSymposium: false,
         },
-        bookingPlace: { id: "place-member", paymentAllocations: [] },
+        bookingPlace: { id: "place-member", attendanceVersion: 0, attendanceRemoved: false, paymentAllocations: [] },
       }] as EventBookingAdminRow["lines"],
     });
 

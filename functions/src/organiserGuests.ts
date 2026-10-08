@@ -256,7 +256,6 @@ export const manageOrganiserGuest = onCall(
         throw new HttpsError("not-found", "Guest not found");
       const expectedVersion = version(request.data.version);
       if (request.data.action === "cancel" && guest.cancelledAt) {
-        await expireOpenCheckout(guest);
         return { guest: project(guest), link: null };
       }
       if (request.data.action === "edit") {
@@ -267,16 +266,11 @@ export const manageOrganiserGuest = onCall(
               requireString(request.data.ticketTypeId, "ticketTypeId"),
             )
           : null;
-        if (
-          requestedTicketTypeId &&
-          requestedTicketTypeId !==
-            (currentTicketType ? validateUUID(currentTicketType.id) : null)
-        ) {
-          if (guest.paidAt) throw new HttpsError("failed-precondition", "Paid tickets cannot be reassigned. Cancel and create a new reservation so payment history is retained.");
-          const ticketTypeId = requestedTicketTypeId;
-          const ticket = await organiserTicketType(ticketTypeId, eventId);
-          await expireOpenCheckout(guest);
-          await db.reassignOrganiserGuestTicket({ ...input, ticketTypeId, priceMinor: ticket.priceMinor, includesSymposium: ticket.includesSymposium, includesDinner: ticket.includesDinner, checkoutKey: randomUUID() });
+        if (requestedTicketTypeId && requestedTicketTypeId !== (currentTicketType ? validateUUID(currentTicketType.id) : null)) {
+          const ticket = await organiserTicketType(requestedTicketTypeId, eventId);
+          // Change attendance only. Keep the original agreed price and all payment references.
+          await db.editOrganiserGuestAttendance({ ...input, ticketTypeId: requestedTicketTypeId,
+            includesSymposium: ticket.includesSymposium, includesDinner: ticket.includesDinner });
         } else await db.updateOrganiserGuestDetails(input);
       } else if (request.data.action === "replace-link") {
         const token = randomBytes(32).toString("hex");
@@ -291,7 +285,6 @@ export const manageOrganiserGuest = onCall(
         return { guest: project(await guestById(id)), link: link(token) };
       } else if (request.data.action === "cancel") {
         await db.cancelOrganiserGuest({ id, version: expectedVersion, actor });
-        await expireOpenCheckout(guest);
       } else throw new HttpsError("invalid-argument", "Unknown guest action");
       return { guest: project(await guestById(id)), link: null };
     } catch (error) {

@@ -115,6 +115,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ListOpenPaymentReconciliationExceptions*](#listopenpaymentreconciliationexceptions)
   - [*GetSectionAnnouncementOptOut*](#getsectionannouncementoptout)
   - [*GetMyAnnouncementPreferences*](#getmyannouncementpreferences)
+  - [*GetTicketAttendanceForManagement*](#getticketattendanceformanagement)
+  - [*GetAttendanceTicketType*](#getattendancetickettype)
 - [**Mutations**](#mutations)
   - [*CreateGovNotifyDeliveryConfiguration*](#creategovnotifydeliveryconfiguration)
   - [*ChangeGovNotifyDeliveryMode*](#changegovnotifydeliverymode)
@@ -199,6 +201,8 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*MarkOrganiserGuestPaid*](#markorganiserguestpaid)
   - [*MarkOrganiserGuestRefunded*](#markorganiserguestrefunded)
   - [*ReassignOrganiserGuestTicket*](#reassignorganiserguestticket)
+  - [*UpdateTicketAttendance*](#updateticketattendance)
+  - [*EditOrganiserGuestAttendance*](#editorganiserguestattendance)
   - [*CreateSection*](#createsection)
   - [*CreateUserGroup*](#createusergroup)
   - [*AddUserToUserGroup*](#addusertousergroup)
@@ -6020,6 +6024,15 @@ export interface GetEventAttendeeNamesData {
       lastName: string;
     };
     lines: ({
+      bookingPlace: {
+        attendanceRemoved: boolean;
+        attendanceName?: string | null;
+        attendanceTicketType?: {
+          audience: TicketAudience;
+          includesSymposium: boolean;
+          includesDinner: boolean;
+        };
+      };
       guestDisplayName?: string | null;
       guestUser?: {
         firstName: string;
@@ -8710,6 +8723,12 @@ export interface GetMyBookingsForEventData {
         id: UUIDString;
         bookingPlace: {
           id: UUIDString;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+          } & TicketType_Key;
           paymentAllocations: ({
             id: UUIDString;
             ticketOrderId: UUIDString;
@@ -8832,6 +8851,12 @@ export interface GetMyBookingsData {
         id: UUIDString;
         bookingPlace: {
           id: UUIDString;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+          } & TicketType_Key;
         } & BookingPlace_Key;
         ticketType: {
           id: UUIDString;
@@ -9249,6 +9274,17 @@ export interface ListEventBookingsForAdminData {
         dietaryNote?: string | null;
         bookingPlace: {
           id: UUIDString;
+          attendanceVersion: number;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceDietaryNote?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+            audience: TicketAudience;
+            includesDinner: boolean;
+            includesSymposium: boolean;
+          } & TicketType_Key;
           paymentAllocations: ({
             id: UUIDString;
             allocatedAmountMinor: number;
@@ -9830,6 +9866,198 @@ export default function GetMyAnnouncementPreferencesComponent() {
   if (query.isSuccess) {
     console.log(query.data.user);
     console.log(query.data.allUserGroups);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetTicketAttendanceForManagement
+You can execute the `GetTicketAttendanceForManagement` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetTicketAttendanceForManagement(dc: DataConnect, vars: GetTicketAttendanceForManagementVariables, options?: useDataConnectQueryOptions<GetTicketAttendanceForManagementData>): UseDataConnectQueryResult<GetTicketAttendanceForManagementData, GetTicketAttendanceForManagementVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetTicketAttendanceForManagement(vars: GetTicketAttendanceForManagementVariables, options?: useDataConnectQueryOptions<GetTicketAttendanceForManagementData>): UseDataConnectQueryResult<GetTicketAttendanceForManagementData, GetTicketAttendanceForManagementVariables>;
+```
+
+### Variables
+The `GetTicketAttendanceForManagement` Query requires an argument of type `GetTicketAttendanceForManagementVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetTicketAttendanceForManagementVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetTicketAttendanceForManagement` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetTicketAttendanceForManagement` Query is of type `GetTicketAttendanceForManagementData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetTicketAttendanceForManagementData {
+  bookingLine?: {
+    id: UUIDString;
+    ticketType: {
+      audience: TicketAudience;
+    };
+    bookingPlace: {
+      id: UUIDString;
+      attendanceVersion: number;
+      attendanceRemoved: boolean;
+    } & BookingPlace_Key;
+    booking: {
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      supersededAt?: TimestampString | null;
+      event: {
+        id: UUIDString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+    } & Booking_Key;
+  } & BookingLine_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetTicketAttendanceForManagement`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetTicketAttendanceForManagementVariables } from '@dataconnect/generated';
+import { useGetTicketAttendanceForManagement } from '@dataconnect/generated/react'
+
+export default function GetTicketAttendanceForManagementComponent() {
+  // The `useGetTicketAttendanceForManagement` Query hook requires an argument of type `GetTicketAttendanceForManagementVariables`:
+  const getTicketAttendanceForManagementVars: GetTicketAttendanceForManagementVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetTicketAttendanceForManagement(getTicketAttendanceForManagementVars);
+  // Variables can be defined inline as well.
+  const query = useGetTicketAttendanceForManagement({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetTicketAttendanceForManagement(dataConnect, getTicketAttendanceForManagementVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetTicketAttendanceForManagement(getTicketAttendanceForManagementVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetTicketAttendanceForManagement(dataConnect, getTicketAttendanceForManagementVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.bookingLine);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetAttendanceTicketType
+You can execute the `GetAttendanceTicketType` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetAttendanceTicketType(dc: DataConnect, vars: GetAttendanceTicketTypeVariables, options?: useDataConnectQueryOptions<GetAttendanceTicketTypeData>): UseDataConnectQueryResult<GetAttendanceTicketTypeData, GetAttendanceTicketTypeVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetAttendanceTicketType(vars: GetAttendanceTicketTypeVariables, options?: useDataConnectQueryOptions<GetAttendanceTicketTypeData>): UseDataConnectQueryResult<GetAttendanceTicketTypeData, GetAttendanceTicketTypeVariables>;
+```
+
+### Variables
+The `GetAttendanceTicketType` Query requires an argument of type `GetAttendanceTicketTypeVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetAttendanceTicketTypeVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetAttendanceTicketType` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetAttendanceTicketType` Query is of type `GetAttendanceTicketTypeData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetAttendanceTicketTypeData {
+  ticketType?: {
+    id: UUIDString;
+    audience: TicketAudience;
+    event: {
+      id: UUIDString;
+    } & Event_Key;
+  } & TicketType_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetAttendanceTicketType`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetAttendanceTicketTypeVariables } from '@dataconnect/generated';
+import { useGetAttendanceTicketType } from '@dataconnect/generated/react'
+
+export default function GetAttendanceTicketTypeComponent() {
+  // The `useGetAttendanceTicketType` Query hook requires an argument of type `GetAttendanceTicketTypeVariables`:
+  const getAttendanceTicketTypeVars: GetAttendanceTicketTypeVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetAttendanceTicketType(getAttendanceTicketTypeVars);
+  // Variables can be defined inline as well.
+  const query = useGetAttendanceTicketType({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetAttendanceTicketType(dataConnect, getAttendanceTicketTypeVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAttendanceTicketType(getAttendanceTicketTypeVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetAttendanceTicketType(dataConnect, getAttendanceTicketTypeVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.ticketType);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -18451,6 +18679,230 @@ export default function ReassignOrganiserGuestTicketComponent() {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
   mutation.mutate(reassignOrganiserGuestTicketVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.organiserGuest_updateMany);
+    console.log(mutation.data.organiserGuestAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## UpdateTicketAttendance
+You can execute the `UpdateTicketAttendance` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useUpdateTicketAttendance(options?: useDataConnectMutationOptions<UpdateTicketAttendanceData, FirebaseError, UpdateTicketAttendanceVariables>): UseDataConnectMutationResult<UpdateTicketAttendanceData, UpdateTicketAttendanceVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useUpdateTicketAttendance(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateTicketAttendanceData, FirebaseError, UpdateTicketAttendanceVariables>): UseDataConnectMutationResult<UpdateTicketAttendanceData, UpdateTicketAttendanceVariables>;
+```
+
+### Variables
+The `UpdateTicketAttendance` Mutation requires an argument of type `UpdateTicketAttendanceVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface UpdateTicketAttendanceVariables {
+  bookingId: UUIDString;
+  placeId: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  name: string;
+  dietaryNote: string;
+  removed: boolean;
+  actor: string;
+}
+```
+### Return Type
+Recall that calling the `UpdateTicketAttendance` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `UpdateTicketAttendance` Mutation is of type `UpdateTicketAttendanceData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface UpdateTicketAttendanceData {
+  booking_updateMany: number;
+  bookingPlace_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `UpdateTicketAttendance`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, UpdateTicketAttendanceVariables } from '@dataconnect/generated';
+import { useUpdateTicketAttendance } from '@dataconnect/generated/react'
+
+export default function UpdateTicketAttendanceComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useUpdateTicketAttendance();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useUpdateTicketAttendance(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateTicketAttendance(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useUpdateTicketAttendance(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useUpdateTicketAttendance` Mutation requires an argument of type `UpdateTicketAttendanceVariables`:
+  const updateTicketAttendanceVars: UpdateTicketAttendanceVariables = {
+    bookingId: ..., 
+    placeId: ..., 
+    version: ..., 
+    ticketTypeId: ..., 
+    name: ..., 
+    dietaryNote: ..., 
+    removed: ..., 
+    actor: ..., 
+  };
+  mutation.mutate(updateTicketAttendanceVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(updateTicketAttendanceVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.booking_updateMany);
+    console.log(mutation.data.bookingPlace_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## EditOrganiserGuestAttendance
+You can execute the `EditOrganiserGuestAttendance` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useEditOrganiserGuestAttendance(options?: useDataConnectMutationOptions<EditOrganiserGuestAttendanceData, FirebaseError, EditOrganiserGuestAttendanceVariables>): UseDataConnectMutationResult<EditOrganiserGuestAttendanceData, EditOrganiserGuestAttendanceVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useEditOrganiserGuestAttendance(dc: DataConnect, options?: useDataConnectMutationOptions<EditOrganiserGuestAttendanceData, FirebaseError, EditOrganiserGuestAttendanceVariables>): UseDataConnectMutationResult<EditOrganiserGuestAttendanceData, EditOrganiserGuestAttendanceVariables>;
+```
+
+### Variables
+The `EditOrganiserGuestAttendance` Mutation requires an argument of type `EditOrganiserGuestAttendanceVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface EditOrganiserGuestAttendanceVariables {
+  id: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  includesDinner: boolean;
+  includesSymposium: boolean;
+  actor: string;
+}
+```
+### Return Type
+Recall that calling the `EditOrganiserGuestAttendance` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `EditOrganiserGuestAttendance` Mutation is of type `EditOrganiserGuestAttendanceData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface EditOrganiserGuestAttendanceData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `EditOrganiserGuestAttendance`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, EditOrganiserGuestAttendanceVariables } from '@dataconnect/generated';
+import { useEditOrganiserGuestAttendance } from '@dataconnect/generated/react'
+
+export default function EditOrganiserGuestAttendanceComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useEditOrganiserGuestAttendance();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useEditOrganiserGuestAttendance(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useEditOrganiserGuestAttendance(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useEditOrganiserGuestAttendance(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useEditOrganiserGuestAttendance` Mutation requires an argument of type `EditOrganiserGuestAttendanceVariables`:
+  const editOrganiserGuestAttendanceVars: EditOrganiserGuestAttendanceVariables = {
+    id: ..., 
+    version: ..., 
+    ticketTypeId: ..., 
+    firstName: ..., 
+    lastName: ..., 
+    email: ..., // optional
+    dietaryRequirements: ..., 
+    includesDinner: ..., 
+    includesSymposium: ..., 
+    actor: ..., 
+  };
+  mutation.mutate(editOrganiserGuestAttendanceVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., includesDinner: ..., includesSymposium: ..., actor: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(editOrganiserGuestAttendanceVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {

@@ -435,6 +435,10 @@ query GetMyBookingsForEvent($eventId: UUID!) @auth(expr: "auth.token.enabled == 
         id
         bookingPlace {
           id
+          attendanceRemoved
+          attendanceName
+          attendanceTicketType { id title }
+
           paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
             id
             ticketOrderId
@@ -489,6 +493,10 @@ query GetMyBookings @auth(expr: "auth.token.enabled == true") {
         id
         bookingPlace {
           id
+          attendanceRemoved
+          attendanceName
+          attendanceTicketType { id title }
+
         }
         ticketType {
           id
@@ -636,6 +644,12 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
         dietaryNote
         bookingPlace {
           id
+          attendanceVersion
+          attendanceRemoved
+          attendanceName
+          attendanceDietaryNote
+          attendanceTicketType { id title audience includesDinner includesSymposium }
+
           # Keep order status as a sibling selection (see ListTicketOrdersForAdmin,
           # fetched alongside this query). Nesting TicketOrder below
           # Booking -> BookingLine -> BookingPlace -> BookingPlacePaymentAllocation

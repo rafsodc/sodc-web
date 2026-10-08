@@ -1,0 +1,47 @@
+# Attendance edits deliberately cannot write any price, order, allocation or adjustment.
+query GetTicketAttendanceForManagement($id: UUID!) @auth(level: NO_ACCESS) {
+  bookingLine(id: $id) {
+    id
+    ticketType { audience }
+    bookingPlace { id attendanceVersion attendanceRemoved }
+    booking { id status approvalStatus supersededAt event { id section { id } } }
+  }
+}
+
+query GetAttendanceTicketType($id: UUID!) @auth(level: NO_ACCESS) {
+  ticketType(id: $id) { id audience event { id } }
+}
+
+mutation UpdateTicketAttendance(
+  $bookingId: UUID!, $placeId: UUID!, $version: Int!, $ticketTypeId: UUID!,
+  $name: String!, $dietaryNote: String!, $removed: Boolean!, $actor: String!
+) @auth(level: NO_ACCESS) @transaction {
+  booking_updateMany(
+    where: { id: { eq: $bookingId }, supersededAt: { isNull: true }, status: { in: [SUBMITTED, CONFIRMED] }, approvalStatus: { in: [NOT_REQUIRED, APPROVED] } }
+    data: { updatedAt_expr: "request.time", updatedBy: $actor }
+  ) @check(expr: "this == 1", message: "ATTENDANCE_CONFLICT")
+  bookingPlace_updateMany(
+    where: { id: { eq: $placeId }, attendanceVersion: { eq: $version }, attendanceRemoved: { eq: false } }
+    data: {
+      attendanceTicketTypeId: $ticketTypeId, attendanceName: $name,
+      attendanceDietaryNote: $dietaryNote, attendanceRemoved: $removed,
+      attendanceVersion_update: { inc: 1 }, updatedAt_expr: "request.time", updatedBy: $actor
+    }
+  ) @check(expr: "this == 1", message: "ATTENDANCE_CONFLICT")
+}
+
+mutation EditOrganiserGuestAttendance(
+  $id: UUID!, $version: Int!, $ticketTypeId: UUID!, $firstName: String!, $lastName: String!,
+  $email: String, $dietaryRequirements: String!, $includesDinner: Boolean!, $includesSymposium: Boolean!, $actor: String!
+) @auth(level: NO_ACCESS) @transaction {
+  organiserGuest_updateMany(
+    where: { id: { eq: $id }, version: { eq: $version }, cancelledAt: { isNull: true } }
+    data: {
+      standardTicketTypeId: $ticketTypeId, firstName: $firstName, lastName: $lastName,
+      email: $email, dietaryRequirements: $dietaryRequirements,
+      includesDinner: $includesDinner, includesSymposium: $includesSymposium,
+      version_update: { inc: 1 }, updatedAt_expr: "request.time", updatedBy: $actor
+    }
+  ) @check(expr: "this == 1", message: "GUEST_CONFLICT")
+  organiserGuestAudit_insert(data: { guestId: $id, action: "ATTENDANCE_EDITED", actor: $actor })
+}

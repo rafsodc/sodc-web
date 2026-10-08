@@ -25,6 +25,9 @@ export type AttendeePaymentState =
 export interface EventAttendeeTicketRow {
   key: string;
   bookingId: string;
+  ticketId?: string;
+  ticketTypeId?: string;
+  attendanceVersion?: number;
   attendeeName: string;
   email: string | null;
   rank: string | null;
@@ -191,8 +194,10 @@ export function activeEventTicketRows(
 ): EventAttendeeTicketRow[] {
   return currentActiveBookings(bookings).flatMap((booking) =>
     [...booking.lines]
+      .filter((line) => !line.bookingPlace?.attendanceRemoved)
       .sort((left, right) => left.sortOrder - right.sortOrder)
       .map((line) => {
+        const ticket = line.bookingPlace?.attendanceTicketType ?? line.ticketType;
         const linkedName = line.guestUser
           ? `${line.guestUser.firstName} ${line.guestUser.lastName}`.trim()
           : "";
@@ -206,7 +211,10 @@ export function activeEventTicketRows(
         return {
           key: `${booking.id}:${line.id}`,
           bookingId: booking.id,
-          attendeeName,
+          ticketId: line.id,
+          ticketTypeId: ticket.id,
+          attendanceVersion: line.bookingPlace?.attendanceVersion ?? 0,
+          attendeeName: line.bookingPlace?.attendanceName ?? attendeeName,
           email:
             line.ticketType.audience === TicketAudience.MEMBER
               ? booking.booker.email.trim() || null
@@ -217,12 +225,12 @@ export function activeEventTicketRows(
               ? booking.booker.membershipStatus
               : line.guestUser?.membershipStatus ?? null,
           audience: line.ticketType.audience,
-          ticketType: line.ticketType.title,
-          includesDinner: line.ticketType.includesDinner,
-          includesSymposium: line.ticketType.includesSymposium,
+          ticketType: ticket.title,
+          includesDinner: ticket.includesDinner,
+          includesSymposium: ticket.includesSymposium,
           accommodationRequested: booking.accommodationRequested,
           seatingPreferences,
-          dietaryNote: line.dietaryNote?.trim() || null,
+          dietaryNote: line.bookingPlace?.attendanceDietaryNote ?? (line.dietaryNote?.trim() || null),
           approvalStatus: booking.approvalStatus,
           paymentState: attendeePaymentState(line, ticketOrdersById),
         };

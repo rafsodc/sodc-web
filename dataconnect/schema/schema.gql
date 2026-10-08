@@ -511,6 +511,12 @@ type BookingPlace @table {
   id: UUID! @default(expr: "uuidV4()")
   event: Event!
   booker: User!
+  # Attendance-only organiser corrections. Purchased lines and payment allocations stay intact.
+  attendanceTicketType: TicketType
+  attendanceName: String
+  attendanceDietaryNote: String
+  attendanceRemoved: Boolean! @default(value: false)
+  attendanceVersion: Int! @default(value: 0)
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")

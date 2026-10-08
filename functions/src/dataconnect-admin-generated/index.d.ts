@@ -827,6 +827,24 @@ export interface DisableDefaultNotifyReplyToAddressVariables {
   previousValue: string;
 }
 
+export interface EditOrganiserGuestAttendanceData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface EditOrganiserGuestAttendanceVariables {
+  id: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  includesDinner: boolean;
+  includesSymposium: boolean;
+  actor: string;
+}
+
 export interface EnsureCallableRateLimitBucketData {
   callableRateLimitBucket_upsert: CallableRateLimitBucket_Key;
 }
@@ -1146,6 +1164,20 @@ export interface GetAnnouncementStatusMembersPagedVariables {
   offset: number;
 }
 
+export interface GetAttendanceTicketTypeData {
+  ticketType?: {
+    id: UUIDString;
+    audience: TicketAudience;
+    event: {
+      id: UUIDString;
+    } & Event_Key;
+  } & TicketType_Key;
+}
+
+export interface GetAttendanceTicketTypeVariables {
+  id: UUIDString;
+}
+
 export interface GetAttendeeEventSectionData {
   event?: {
     section: {
@@ -1404,6 +1436,15 @@ export interface GetEventAttendeeNamesData {
       lastName: string;
     };
     lines: ({
+      bookingPlace: {
+        attendanceRemoved: boolean;
+        attendanceName?: string | null;
+        attendanceTicketType?: {
+          audience: TicketAudience;
+          includesSymposium: boolean;
+          includesDinner: boolean;
+        };
+      };
       guestDisplayName?: string | null;
       guestUser?: {
         firstName: string;
@@ -1648,6 +1689,12 @@ export interface GetMyBookingsData {
         id: UUIDString;
         bookingPlace: {
           id: UUIDString;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+          } & TicketType_Key;
         } & BookingPlace_Key;
         ticketType: {
           id: UUIDString;
@@ -1685,6 +1732,12 @@ export interface GetMyBookingsForEventData {
         id: UUIDString;
         bookingPlace: {
           id: UUIDString;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+          } & TicketType_Key;
           paymentAllocations: ({
             id: UUIDString;
             ticketOrderId: UUIDString;
@@ -2291,6 +2344,36 @@ export interface GetSectionsForUserData {
   } & UserGroup_Key)[];
 }
 
+export interface GetTicketAttendanceForManagementData {
+  bookingLine?: {
+    id: UUIDString;
+    ticketType: {
+      audience: TicketAudience;
+    };
+    bookingPlace: {
+      id: UUIDString;
+      attendanceVersion: number;
+      attendanceRemoved: boolean;
+    } & BookingPlace_Key;
+    booking: {
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      supersededAt?: TimestampString | null;
+      event: {
+        id: UUIDString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+    } & Booking_Key;
+  } & BookingLine_Key;
+}
+
+export interface GetTicketAttendanceForManagementVariables {
+  id: UUIDString;
+}
+
 export interface GetTicketOrderForWebhookData {
   ticketOrder?: {
     id: UUIDString;
@@ -2727,6 +2810,17 @@ export interface ListEventBookingsForAdminData {
         dietaryNote?: string | null;
         bookingPlace: {
           id: UUIDString;
+          attendanceVersion: number;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceDietaryNote?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+            audience: TicketAudience;
+            includesDinner: boolean;
+            includesSymposium: boolean;
+          } & TicketType_Key;
           paymentAllocations: ({
             id: UUIDString;
             allocatedAmountMinor: number;
@@ -3883,6 +3977,22 @@ export interface UpdateSectionVariables {
   description?: string | null;
 }
 
+export interface UpdateTicketAttendanceData {
+  booking_updateMany: number;
+  bookingPlace_updateMany: number;
+}
+
+export interface UpdateTicketAttendanceVariables {
+  bookingId: UUIDString;
+  placeId: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  name: string;
+  dietaryNote: string;
+  removed: boolean;
+  actor: string;
+}
+
 export interface UpdateTicketTypeData {
   ticketType_update?: TicketType_Key | null;
 }
@@ -4953,6 +5063,26 @@ export function getSectionAnnouncementOptOut(vars: GetSectionAnnouncementOptOutV
 export function getMyAnnouncementPreferences(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyAnnouncementPreferencesData>>;
 /** Generated Node Admin SDK operation action function for the 'GetMyAnnouncementPreferences' Query. Allow users to pass in custom DataConnect instances. */
 export function getMyAnnouncementPreferences(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyAnnouncementPreferencesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetTicketAttendanceForManagement' Query. Allow users to execute without passing in DataConnect. */
+export function getTicketAttendanceForManagement(dc: DataConnect, vars: GetTicketAttendanceForManagementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketAttendanceForManagementData>>;
+/** Generated Node Admin SDK operation action function for the 'GetTicketAttendanceForManagement' Query. Allow users to pass in custom DataConnect instances. */
+export function getTicketAttendanceForManagement(vars: GetTicketAttendanceForManagementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketAttendanceForManagementData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAttendanceTicketType' Query. Allow users to execute without passing in DataConnect. */
+export function getAttendanceTicketType(dc: DataConnect, vars: GetAttendanceTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAttendanceTicketTypeData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAttendanceTicketType' Query. Allow users to pass in custom DataConnect instances. */
+export function getAttendanceTicketType(vars: GetAttendanceTicketTypeVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAttendanceTicketTypeData>>;
+
+/** Generated Node Admin SDK operation action function for the 'UpdateTicketAttendance' Mutation. Allow users to execute without passing in DataConnect. */
+export function updateTicketAttendance(dc: DataConnect, vars: UpdateTicketAttendanceVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateTicketAttendanceData>>;
+/** Generated Node Admin SDK operation action function for the 'UpdateTicketAttendance' Mutation. Allow users to pass in custom DataConnect instances. */
+export function updateTicketAttendance(vars: UpdateTicketAttendanceVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateTicketAttendanceData>>;
+
+/** Generated Node Admin SDK operation action function for the 'EditOrganiserGuestAttendance' Mutation. Allow users to execute without passing in DataConnect. */
+export function editOrganiserGuestAttendance(dc: DataConnect, vars: EditOrganiserGuestAttendanceVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<EditOrganiserGuestAttendanceData>>;
+/** Generated Node Admin SDK operation action function for the 'EditOrganiserGuestAttendance' Mutation. Allow users to pass in custom DataConnect instances. */
+export function editOrganiserGuestAttendance(vars: EditOrganiserGuestAttendanceVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<EditOrganiserGuestAttendanceData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreateSection' Mutation. Allow users to execute without passing in DataConnect. */
 export function createSection(dc: DataConnect, vars: CreateSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateSectionData>>;

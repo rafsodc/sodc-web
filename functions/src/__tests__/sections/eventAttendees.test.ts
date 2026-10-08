@@ -133,6 +133,14 @@ describe("minimal event attendees", () => {
     expect(namesQuery).toHaveBeenNthCalledWith(1, { eventId, limit: 500, offset: 0 });
     expect(namesQuery).toHaveBeenNthCalledWith(2, { eventId, limit: 500, offset: 500 });
   });
+  it("shows corrected attendance and removes deleted places without changing the purchased ticket", async () => {
+    names([{ ...booking, lines: [
+      { ...line, bookingPlace: { attendanceRemoved: true } },
+      { ...line, bookingPlace: { attendanceName: "Corrected name", attendanceRemoved: false,
+        attendanceTicketType: { audience: "MEMBER", includesDinner: true, includesSymposium: false } } },
+    ] }]);
+    expect(await getEventAttendees.run(request())).toEqual({ attendees: [{ displayName: "Corrected name", audience: "MEMBER", includesDinner: true, includesSymposium: false }] });
+  });
   it("returns empty attendance and handles query failures", async () => {
     names([]);
     expect(await getEventAttendees.run(request())).toEqual({ attendees: [] });

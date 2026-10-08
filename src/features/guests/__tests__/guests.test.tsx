@@ -237,17 +237,17 @@ describe("organiser management and reports", () => {
     });
     render(<OrganiserGuestsManager eventId="event" />);
     fireEvent.click(
-      await screen.findByRole("button", { name: "Cancel guest" }),
+      await screen.findByRole("button", { name: "Delete ticket" }),
     );
     expect(
-      screen.getByText(/does not issue an automatic refund/),
+      screen.getByText(/Handle any payment/),
     ).toBeInTheDocument();
     expect(call).not.toHaveBeenCalledWith(
       "manageOrganiserGuest",
       expect.anything(),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Confirm cancellation" }),
+      screen.getByRole("button", { name: "Delete ticket" }),
     );
     await waitFor(() =>
       expect(call).toHaveBeenCalledWith("manageOrganiserGuest", {

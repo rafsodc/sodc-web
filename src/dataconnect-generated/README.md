@@ -108,6 +108,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*ListOpenPaymentReconciliationExceptions*](#listopenpaymentreconciliationexceptions)
   - [*GetSectionAnnouncementOptOut*](#getsectionannouncementoptout)
   - [*GetMyAnnouncementPreferences*](#getmyannouncementpreferences)
+  - [*GetTicketAttendanceForManagement*](#getticketattendanceformanagement)
+  - [*GetAttendanceTicketType*](#getattendancetickettype)
 - [**Mutations**](#mutations)
   - [*CreateGovNotifyDeliveryConfiguration*](#creategovnotifydeliveryconfiguration)
   - [*ChangeGovNotifyDeliveryMode*](#changegovnotifydeliverymode)
@@ -192,6 +194,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*MarkOrganiserGuestPaid*](#markorganiserguestpaid)
   - [*MarkOrganiserGuestRefunded*](#markorganiserguestrefunded)
   - [*ReassignOrganiserGuestTicket*](#reassignorganiserguestticket)
+  - [*UpdateTicketAttendance*](#updateticketattendance)
+  - [*EditOrganiserGuestAttendance*](#editorganiserguestattendance)
   - [*CreateSection*](#createsection)
   - [*CreateUserGroup*](#createusergroup)
   - [*AddUserToUserGroup*](#addusertousergroup)
@@ -7628,6 +7632,15 @@ export interface GetEventAttendeeNamesData {
       lastName: string;
     };
     lines: ({
+      bookingPlace: {
+        attendanceRemoved: boolean;
+        attendanceName?: string | null;
+        attendanceTicketType?: {
+          audience: TicketAudience;
+          includesSymposium: boolean;
+          includesDinner: boolean;
+        };
+      };
       guestDisplayName?: string | null;
       guestUser?: {
         firstName: string;
@@ -11044,6 +11057,12 @@ export interface GetMyBookingsForEventData {
         id: UUIDString;
         bookingPlace: {
           id: UUIDString;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+          } & TicketType_Key;
           paymentAllocations: ({
             id: UUIDString;
             ticketOrderId: UUIDString;
@@ -11193,6 +11212,12 @@ export interface GetMyBookingsData {
         id: UUIDString;
         bookingPlace: {
           id: UUIDString;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+          } & TicketType_Key;
         } & BookingPlace_Key;
         ticketType: {
           id: UUIDString;
@@ -11703,6 +11728,17 @@ export interface ListEventBookingsForAdminData {
         dietaryNote?: string | null;
         bookingPlace: {
           id: UUIDString;
+          attendanceVersion: number;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceDietaryNote?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+            audience: TicketAudience;
+            includesDinner: boolean;
+            includesSymposium: boolean;
+          } & TicketType_Key;
           paymentAllocations: ({
             id: UUIDString;
             allocatedAmountMinor: number;
@@ -12425,6 +12461,252 @@ executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.user);
   console.log(data.allUserGroups);
+});
+```
+
+## GetTicketAttendanceForManagement
+You can execute the `GetTicketAttendanceForManagement` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getTicketAttendanceForManagement(vars: GetTicketAttendanceForManagementVariables, options?: ExecuteQueryOptions): QueryPromise<GetTicketAttendanceForManagementData, GetTicketAttendanceForManagementVariables>;
+
+interface GetTicketAttendanceForManagementRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetTicketAttendanceForManagementVariables): QueryRef<GetTicketAttendanceForManagementData, GetTicketAttendanceForManagementVariables>;
+}
+export const getTicketAttendanceForManagementRef: GetTicketAttendanceForManagementRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getTicketAttendanceForManagement(dc: DataConnect, vars: GetTicketAttendanceForManagementVariables, options?: ExecuteQueryOptions): QueryPromise<GetTicketAttendanceForManagementData, GetTicketAttendanceForManagementVariables>;
+
+interface GetTicketAttendanceForManagementRef {
+  ...
+  (dc: DataConnect, vars: GetTicketAttendanceForManagementVariables): QueryRef<GetTicketAttendanceForManagementData, GetTicketAttendanceForManagementVariables>;
+}
+export const getTicketAttendanceForManagementRef: GetTicketAttendanceForManagementRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getTicketAttendanceForManagementRef:
+```typescript
+const name = getTicketAttendanceForManagementRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetTicketAttendanceForManagement` query requires an argument of type `GetTicketAttendanceForManagementVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetTicketAttendanceForManagementVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetTicketAttendanceForManagement` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetTicketAttendanceForManagementData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetTicketAttendanceForManagementData {
+  bookingLine?: {
+    id: UUIDString;
+    ticketType: {
+      audience: TicketAudience;
+    };
+    bookingPlace: {
+      id: UUIDString;
+      attendanceVersion: number;
+      attendanceRemoved: boolean;
+    } & BookingPlace_Key;
+    booking: {
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      supersededAt?: TimestampString | null;
+      event: {
+        id: UUIDString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+    } & Booking_Key;
+  } & BookingLine_Key;
+}
+```
+### Using `GetTicketAttendanceForManagement`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getTicketAttendanceForManagement, GetTicketAttendanceForManagementVariables } from '@dataconnect/generated';
+
+// The `GetTicketAttendanceForManagement` query requires an argument of type `GetTicketAttendanceForManagementVariables`:
+const getTicketAttendanceForManagementVars: GetTicketAttendanceForManagementVariables = {
+  id: ..., 
+};
+
+// Call the `getTicketAttendanceForManagement()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getTicketAttendanceForManagement(getTicketAttendanceForManagementVars);
+// Variables can be defined inline as well.
+const { data } = await getTicketAttendanceForManagement({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getTicketAttendanceForManagement(dataConnect, getTicketAttendanceForManagementVars);
+
+console.log(data.bookingLine);
+
+// Or, you can use the `Promise` API.
+getTicketAttendanceForManagement(getTicketAttendanceForManagementVars).then((response) => {
+  const data = response.data;
+  console.log(data.bookingLine);
+});
+```
+
+### Using `GetTicketAttendanceForManagement`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getTicketAttendanceForManagementRef, GetTicketAttendanceForManagementVariables } from '@dataconnect/generated';
+
+// The `GetTicketAttendanceForManagement` query requires an argument of type `GetTicketAttendanceForManagementVariables`:
+const getTicketAttendanceForManagementVars: GetTicketAttendanceForManagementVariables = {
+  id: ..., 
+};
+
+// Call the `getTicketAttendanceForManagementRef()` function to get a reference to the query.
+const ref = getTicketAttendanceForManagementRef(getTicketAttendanceForManagementVars);
+// Variables can be defined inline as well.
+const ref = getTicketAttendanceForManagementRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getTicketAttendanceForManagementRef(dataConnect, getTicketAttendanceForManagementVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.bookingLine);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.bookingLine);
+});
+```
+
+## GetAttendanceTicketType
+You can execute the `GetAttendanceTicketType` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAttendanceTicketType(vars: GetAttendanceTicketTypeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceTicketTypeData, GetAttendanceTicketTypeVariables>;
+
+interface GetAttendanceTicketTypeRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAttendanceTicketTypeVariables): QueryRef<GetAttendanceTicketTypeData, GetAttendanceTicketTypeVariables>;
+}
+export const getAttendanceTicketTypeRef: GetAttendanceTicketTypeRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAttendanceTicketType(dc: DataConnect, vars: GetAttendanceTicketTypeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceTicketTypeData, GetAttendanceTicketTypeVariables>;
+
+interface GetAttendanceTicketTypeRef {
+  ...
+  (dc: DataConnect, vars: GetAttendanceTicketTypeVariables): QueryRef<GetAttendanceTicketTypeData, GetAttendanceTicketTypeVariables>;
+}
+export const getAttendanceTicketTypeRef: GetAttendanceTicketTypeRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAttendanceTicketTypeRef:
+```typescript
+const name = getAttendanceTicketTypeRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAttendanceTicketType` query requires an argument of type `GetAttendanceTicketTypeVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAttendanceTicketTypeVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetAttendanceTicketType` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAttendanceTicketTypeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAttendanceTicketTypeData {
+  ticketType?: {
+    id: UUIDString;
+    audience: TicketAudience;
+    event: {
+      id: UUIDString;
+    } & Event_Key;
+  } & TicketType_Key;
+}
+```
+### Using `GetAttendanceTicketType`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAttendanceTicketType, GetAttendanceTicketTypeVariables } from '@dataconnect/generated';
+
+// The `GetAttendanceTicketType` query requires an argument of type `GetAttendanceTicketTypeVariables`:
+const getAttendanceTicketTypeVars: GetAttendanceTicketTypeVariables = {
+  id: ..., 
+};
+
+// Call the `getAttendanceTicketType()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAttendanceTicketType(getAttendanceTicketTypeVars);
+// Variables can be defined inline as well.
+const { data } = await getAttendanceTicketType({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAttendanceTicketType(dataConnect, getAttendanceTicketTypeVars);
+
+console.log(data.ticketType);
+
+// Or, you can use the `Promise` API.
+getAttendanceTicketType(getAttendanceTicketTypeVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketType);
+});
+```
+
+### Using `GetAttendanceTicketType`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAttendanceTicketTypeRef, GetAttendanceTicketTypeVariables } from '@dataconnect/generated';
+
+// The `GetAttendanceTicketType` query requires an argument of type `GetAttendanceTicketTypeVariables`:
+const getAttendanceTicketTypeVars: GetAttendanceTicketTypeVariables = {
+  id: ..., 
+};
+
+// Call the `getAttendanceTicketTypeRef()` function to get a reference to the query.
+const ref = getAttendanceTicketTypeRef(getAttendanceTicketTypeVars);
+// Variables can be defined inline as well.
+const ref = getAttendanceTicketTypeRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAttendanceTicketTypeRef(dataConnect, getAttendanceTicketTypeVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.ticketType);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketType);
 });
 ```
 
@@ -22729,6 +23011,282 @@ const ref = reassignOrganiserGuestTicketRef({ id: ..., version: ..., ticketTypeI
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = reassignOrganiserGuestTicketRef(dataConnect, reassignOrganiserGuestTicketVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.organiserGuest_updateMany);
+console.log(data.organiserGuestAudit_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuest_updateMany);
+  console.log(data.organiserGuestAudit_insert);
+});
+```
+
+## UpdateTicketAttendance
+You can execute the `UpdateTicketAttendance` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateTicketAttendance(vars: UpdateTicketAttendanceVariables): MutationPromise<UpdateTicketAttendanceData, UpdateTicketAttendanceVariables>;
+
+interface UpdateTicketAttendanceRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateTicketAttendanceVariables): MutationRef<UpdateTicketAttendanceData, UpdateTicketAttendanceVariables>;
+}
+export const updateTicketAttendanceRef: UpdateTicketAttendanceRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateTicketAttendance(dc: DataConnect, vars: UpdateTicketAttendanceVariables): MutationPromise<UpdateTicketAttendanceData, UpdateTicketAttendanceVariables>;
+
+interface UpdateTicketAttendanceRef {
+  ...
+  (dc: DataConnect, vars: UpdateTicketAttendanceVariables): MutationRef<UpdateTicketAttendanceData, UpdateTicketAttendanceVariables>;
+}
+export const updateTicketAttendanceRef: UpdateTicketAttendanceRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateTicketAttendanceRef:
+```typescript
+const name = updateTicketAttendanceRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateTicketAttendance` mutation requires an argument of type `UpdateTicketAttendanceVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateTicketAttendanceVariables {
+  bookingId: UUIDString;
+  placeId: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  name: string;
+  dietaryNote: string;
+  removed: boolean;
+  actor: string;
+}
+```
+### Return Type
+Recall that executing the `UpdateTicketAttendance` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateTicketAttendanceData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateTicketAttendanceData {
+  booking_updateMany: number;
+  bookingPlace_updateMany: number;
+}
+```
+### Using `UpdateTicketAttendance`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateTicketAttendance, UpdateTicketAttendanceVariables } from '@dataconnect/generated';
+
+// The `UpdateTicketAttendance` mutation requires an argument of type `UpdateTicketAttendanceVariables`:
+const updateTicketAttendanceVars: UpdateTicketAttendanceVariables = {
+  bookingId: ..., 
+  placeId: ..., 
+  version: ..., 
+  ticketTypeId: ..., 
+  name: ..., 
+  dietaryNote: ..., 
+  removed: ..., 
+  actor: ..., 
+};
+
+// Call the `updateTicketAttendance()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateTicketAttendance(updateTicketAttendanceVars);
+// Variables can be defined inline as well.
+const { data } = await updateTicketAttendance({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateTicketAttendance(dataConnect, updateTicketAttendanceVars);
+
+console.log(data.booking_updateMany);
+console.log(data.bookingPlace_updateMany);
+
+// Or, you can use the `Promise` API.
+updateTicketAttendance(updateTicketAttendanceVars).then((response) => {
+  const data = response.data;
+  console.log(data.booking_updateMany);
+  console.log(data.bookingPlace_updateMany);
+});
+```
+
+### Using `UpdateTicketAttendance`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateTicketAttendanceRef, UpdateTicketAttendanceVariables } from '@dataconnect/generated';
+
+// The `UpdateTicketAttendance` mutation requires an argument of type `UpdateTicketAttendanceVariables`:
+const updateTicketAttendanceVars: UpdateTicketAttendanceVariables = {
+  bookingId: ..., 
+  placeId: ..., 
+  version: ..., 
+  ticketTypeId: ..., 
+  name: ..., 
+  dietaryNote: ..., 
+  removed: ..., 
+  actor: ..., 
+};
+
+// Call the `updateTicketAttendanceRef()` function to get a reference to the mutation.
+const ref = updateTicketAttendanceRef(updateTicketAttendanceVars);
+// Variables can be defined inline as well.
+const ref = updateTicketAttendanceRef({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateTicketAttendanceRef(dataConnect, updateTicketAttendanceVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.booking_updateMany);
+console.log(data.bookingPlace_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.booking_updateMany);
+  console.log(data.bookingPlace_updateMany);
+});
+```
+
+## EditOrganiserGuestAttendance
+You can execute the `EditOrganiserGuestAttendance` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+editOrganiserGuestAttendance(vars: EditOrganiserGuestAttendanceVariables): MutationPromise<EditOrganiserGuestAttendanceData, EditOrganiserGuestAttendanceVariables>;
+
+interface EditOrganiserGuestAttendanceRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: EditOrganiserGuestAttendanceVariables): MutationRef<EditOrganiserGuestAttendanceData, EditOrganiserGuestAttendanceVariables>;
+}
+export const editOrganiserGuestAttendanceRef: EditOrganiserGuestAttendanceRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+editOrganiserGuestAttendance(dc: DataConnect, vars: EditOrganiserGuestAttendanceVariables): MutationPromise<EditOrganiserGuestAttendanceData, EditOrganiserGuestAttendanceVariables>;
+
+interface EditOrganiserGuestAttendanceRef {
+  ...
+  (dc: DataConnect, vars: EditOrganiserGuestAttendanceVariables): MutationRef<EditOrganiserGuestAttendanceData, EditOrganiserGuestAttendanceVariables>;
+}
+export const editOrganiserGuestAttendanceRef: EditOrganiserGuestAttendanceRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the editOrganiserGuestAttendanceRef:
+```typescript
+const name = editOrganiserGuestAttendanceRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `EditOrganiserGuestAttendance` mutation requires an argument of type `EditOrganiserGuestAttendanceVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface EditOrganiserGuestAttendanceVariables {
+  id: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  includesDinner: boolean;
+  includesSymposium: boolean;
+  actor: string;
+}
+```
+### Return Type
+Recall that executing the `EditOrganiserGuestAttendance` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `EditOrganiserGuestAttendanceData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface EditOrganiserGuestAttendanceData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+```
+### Using `EditOrganiserGuestAttendance`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, editOrganiserGuestAttendance, EditOrganiserGuestAttendanceVariables } from '@dataconnect/generated';
+
+// The `EditOrganiserGuestAttendance` mutation requires an argument of type `EditOrganiserGuestAttendanceVariables`:
+const editOrganiserGuestAttendanceVars: EditOrganiserGuestAttendanceVariables = {
+  id: ..., 
+  version: ..., 
+  ticketTypeId: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., // optional
+  dietaryRequirements: ..., 
+  includesDinner: ..., 
+  includesSymposium: ..., 
+  actor: ..., 
+};
+
+// Call the `editOrganiserGuestAttendance()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await editOrganiserGuestAttendance(editOrganiserGuestAttendanceVars);
+// Variables can be defined inline as well.
+const { data } = await editOrganiserGuestAttendance({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., includesDinner: ..., includesSymposium: ..., actor: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await editOrganiserGuestAttendance(dataConnect, editOrganiserGuestAttendanceVars);
+
+console.log(data.organiserGuest_updateMany);
+console.log(data.organiserGuestAudit_insert);
+
+// Or, you can use the `Promise` API.
+editOrganiserGuestAttendance(editOrganiserGuestAttendanceVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuest_updateMany);
+  console.log(data.organiserGuestAudit_insert);
+});
+```
+
+### Using `EditOrganiserGuestAttendance`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, editOrganiserGuestAttendanceRef, EditOrganiserGuestAttendanceVariables } from '@dataconnect/generated';
+
+// The `EditOrganiserGuestAttendance` mutation requires an argument of type `EditOrganiserGuestAttendanceVariables`:
+const editOrganiserGuestAttendanceVars: EditOrganiserGuestAttendanceVariables = {
+  id: ..., 
+  version: ..., 
+  ticketTypeId: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., // optional
+  dietaryRequirements: ..., 
+  includesDinner: ..., 
+  includesSymposium: ..., 
+  actor: ..., 
+};
+
+// Call the `editOrganiserGuestAttendanceRef()` function to get a reference to the mutation.
+const ref = editOrganiserGuestAttendanceRef(editOrganiserGuestAttendanceVars);
+// Variables can be defined inline as well.
+const ref = editOrganiserGuestAttendanceRef({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., includesDinner: ..., includesSymposium: ..., actor: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = editOrganiserGuestAttendanceRef(dataConnect, editOrganiserGuestAttendanceVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.

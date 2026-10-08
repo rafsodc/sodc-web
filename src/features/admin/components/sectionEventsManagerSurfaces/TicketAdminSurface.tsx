@@ -76,6 +76,7 @@ interface TicketAdminSurfaceProps {
   ticketOrdersById: TicketOrdersById;
   attendeeTickets: EventAttendeeTicketRow[];
   attendeeGuestsUnavailable?: boolean;
+  onManageTicket?: (row: EventAttendeeTicketRow, action: "edit" | "delete") => void;
   moderatorNoteDraft: Record<string, string>;
   onModeratorNoteChange: (bookingId: string, value: string) => void;
   reviewingBookingId: string | null;
@@ -110,6 +111,7 @@ export function TicketAdminSurface({
   ticketOrdersById,
   attendeeTickets,
   attendeeGuestsUnavailable,
+  onManageTicket,
   moderatorNoteDraft,
   onModeratorNoteChange,
   reviewingBookingId,
@@ -159,7 +161,7 @@ export function TicketAdminSurface({
         />
       </AdminAccordion>
       <AdminAccordion title="Current attendee tickets">
-        {attendeeGuestsUnavailable ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert> : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} />}
+        {attendeeGuestsUnavailable ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert> : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} onManageTicket={onManageTicket} />}
       </AdminAccordion>
       <AdminAccordion title="Booking audit activity">
         <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />
@@ -499,10 +501,12 @@ export function EventAttendeeTicketsSection({
   eventTitle,
   loading,
   rows,
+  onManageTicket,
 }: {
   eventTitle: string;
   loading: boolean;
   rows: EventAttendeeTicketRow[];
+  onManageTicket?: (row: EventAttendeeTicketRow, action: "edit" | "delete") => void;
 }) {
   const { decision: cookieDecision, acceptPreferenceCookies } = useCookiePreferences();
   const emailSeparatorLabelId = useId();
@@ -618,6 +622,7 @@ export function EventAttendeeTicketsSection({
             <TableCell>Dietary requirements</TableCell>
             <TableCell>Approval</TableCell>
             <TableCell>Payment</TableCell>
+            {onManageTicket && <TableCell>Actions</TableCell>}
           </TableRow>
           <TableRow>
             <TableCell component="td" sx={attendeeFilterCellSx}>
@@ -647,11 +652,12 @@ export function EventAttendeeTicketsSection({
             <TableCell component="td" sx={attendeeFilterCellSx}>
               <CompactFilterSelect label="Payment" value={filters.paymentState} onChange={(value) => setFilter("paymentState", value)} options={uniqueOptions(rows, (row) => row.paymentState, titleCaseStatus)} />
             </TableCell>
+            {onManageTicket && <TableCell component="td" />}
           </TableRow>
         </TableHead>
         <TableBody>
           {filteredRows.length === 0 ? (
-            <TableRow><TableCell colSpan={13}><Alert severity="info">No attendees match the current filters.</Alert></TableCell></TableRow>
+            <TableRow><TableCell colSpan={onManageTicket ? 14 : 13}><Alert severity="info">No attendees match the current filters.</Alert></TableCell></TableRow>
           ) : filteredRows.map((row) => (
             <TableRow key={row.key}>
               <TableCell>{row.attendeeName}</TableCell>
@@ -667,6 +673,11 @@ export function EventAttendeeTicketsSection({
               <TableCell>{row.dietaryNote ?? "—"}</TableCell>
               <TableCell><Chip size="small" label={row.approvalStatus.replaceAll("_", " ")} color={approvalStatusColor(row.approvalStatus)} /></TableCell>
               <TableCell><Chip size="small" variant="outlined" label={row.paymentState.replaceAll("_", " ")} /></TableCell>
+              {onManageTicket && <TableCell>{row.ticketId && <>
+                <Button onClick={() => onManageTicket(row, "edit")} aria-label={`Edit ticket for ${row.attendeeName}`}>Edit</Button>
+                <Button color="error" onClick={() => onManageTicket(row, "delete")} aria-label={`Delete ticket for ${row.attendeeName}`}>Delete</Button>
+              </>}</TableCell>}
+
             </TableRow>
           ))}
         </TableBody>
