@@ -69,6 +69,40 @@ function attendeeRow(overrides: Partial<EventAttendeeTicketRow> = {}): EventAtte
 }
 
 describe("booking approval admin model", () => {
+  it("keeps more than 100 attendees in both the organiser roster and CSV", () => {
+    const bookings = Array.from({ length: 101 }, (_, index) => booking({
+      id: `booking-${index}`,
+      revisionGroupId: `group-${index}`,
+      booker: {
+        id: `user-${index}`,
+        firstName: "Attendee",
+        lastName: String(index),
+        email: `attendee-${index}@example.com`,
+        membershipStatus: MembershipStatus.REGULAR,
+      },
+      lines: [{
+        id: `line-${index}`,
+        sortOrder: 0,
+        dietaryNote: null,
+        guestDisplayName: null,
+        bookingPlace: { id: `place-${index}`, paymentAllocations: [] },
+        ticketType: {
+          id: "member",
+          title: "Member ticket",
+          audience: TicketAudience.MEMBER,
+          price: 0,
+          includesDinner: true,
+          includesSymposium: true,
+        },
+      }],
+    }));
+
+    const rows = activeEventTicketRows(bookings, ticketOrdersById([]));
+
+    expect(rows).toHaveLength(101);
+    expect(eventTicketRowsCsv(rows).split("\n")).toHaveLength(102);
+  });
+
   it("combines attendee ticket filters and returns an empty set when nothing matches", () => {
     const rows = [
       attendeeRow(),
