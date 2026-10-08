@@ -258,7 +258,7 @@ describe("booking approval admin model", () => {
     const ticket = { id: "type", title: "Guest", audience: TicketAudience.GUEST, price: 0, includesDinner: true, includesSymposium: false };
     const place = { id: "place", attendanceVersion: 0, attendanceRemoved: false, paymentAllocations: [] };
     const active = booking({ accommodationRequested: true, accommodationNote: "Original room", sitNextToUserIds: ["friend"], lines: [
-      { id: "edited", sortOrder: 0, ticketType: ticket, bookingPlace: { ...place, attendanceAccommodationRequested: false, attendanceAccommodationNote: "", attendanceSeatingPreferences: [] } },
+      { id: "edited", sortOrder: 0, ticketType: ticket, bookingPlace: { ...place, attendanceAccommodationRequested: false, attendanceAccommodationNote: "", attendanceSitNextToUserIds: [] } },
       { id: "sibling", sortOrder: 1, ticketType: ticket, bookingPlace: { ...place, id: "sibling-place" } },
     ] });
     const rows = activeEventTicketRows([active], new Map(), new Map([["friend", "Original friend"]]));

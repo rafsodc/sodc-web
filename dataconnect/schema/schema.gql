@@ -516,7 +516,7 @@ type BookingPlace @table {
   attendanceName: String
   attendanceAccommodationRequested: Boolean
   attendanceAccommodationNote: String
-  attendanceSeatingPreferences: [String!]
+  attendanceSitNextToUserIds: [String!]
   attendanceDietaryNote: String
   attendanceRemoved: Boolean! @default(value: false)
   attendanceVersion: Int! @default(value: 0)
@@ -851,7 +851,7 @@ type OrganiserGuest @table {
   dietaryRequirements: String!
   accommodationRequested: Boolean! @default(value: false)
   accommodationNote: String
-  seatingPreferences: [String!]
+  sitNextToUserIds: [String!]
   # Allocation price and inclusions are captured so type edits cannot alter sold tickets.
   priceMinor: Int!
   includesSymposium: Boolean!

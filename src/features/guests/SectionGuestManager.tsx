@@ -32,8 +32,8 @@ export default function SectionGuestManager({
       </TextField>
       {eventId && (
         <>
-          <MemberTicketsManager key={`members:${eventId}`} eventId={eventId} />
-          <OrganiserGuestsManager key={eventId} eventId={eventId} />
+          <MemberTicketsManager sectionId={sectionId} key={`members:${eventId}`} eventId={eventId} />
+          <OrganiserGuestsManager sectionId={sectionId} key={eventId} eventId={eventId} />
         </>
       )}
     </Box>

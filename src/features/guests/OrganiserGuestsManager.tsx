@@ -1,5 +1,4 @@
 import TicketPreferencesFields from "./TicketPreferencesFields";
-import { seatingPreferenceNames } from "./ticketPreferences";
 import { organiserGuestTicketRows } from "./reporting";
 import { eventTicketRowsCsv } from "../admin/utils/bookingApprovalsAdmin";
 import { useState } from "react";
@@ -60,8 +59,10 @@ function startClipboardWrite(
 
 export default function OrganiserGuestsManager({
   eventId,
+  sectionId,
 }: {
   eventId: string;
+  sectionId: string;
 }) {
   const client = useQueryClient();
   const { data, isPending, isError, refetch } = useQuery({
@@ -70,7 +71,6 @@ export default function OrganiserGuestsManager({
     gcTime: 0,
   });
   const [guest, setGuest] = useState<Partial<Guest> | null>(null);
-  const [seatingText, setSeatingText] = useState("");
   const [cancel, setCancel] = useState<Guest | null>(null);
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
@@ -174,7 +174,6 @@ export default function OrganiserGuestsManager({
             variant="contained"
             disabled={busy || data.ticketTypes.length === 0}
             onClick={() => {
-              setSeatingText("");
               setGuest({
                 id: crypto.randomUUID(),
                 firstName: "",
@@ -184,7 +183,7 @@ export default function OrganiserGuestsManager({
                 ticketTypeId: data.ticketTypes[0]?.id,
                 accommodationRequested: false,
                 accommodationNote: "",
-                seatingPreferences: [],
+                sitNextToUserIds: [],
               });
             }}
           >
@@ -264,7 +263,7 @@ export default function OrganiserGuestsManager({
                     <TableCell>
                       <Button
                         disabled={busy || g.cancelled}
-                        onClick={() => { setGuest(g); setSeatingText((g.seatingPreferences ?? []).join("\n")); }}
+                        onClick={() => setGuest(g)}
                       >
                         Edit guest
                       </Button>
@@ -357,14 +356,13 @@ export default function OrganiserGuestsManager({
                 onChange={(e) => setGuest({ ...guest, [key]: e.target.value })}
               />
             ))}
-            <TicketPreferencesFields value={{
+            <TicketPreferencesFields sectionId={sectionId} value={{
               accommodationRequested: guest?.accommodationRequested ?? false,
               accommodationNote: guest?.accommodationNote ?? "",
-              seatingPreferences: seatingText,
+              sitNextToUserIds: guest?.sitNextToUserIds ?? [],
             }} disabled={busy} onChange={(value) => {
-              setSeatingText(value.seatingPreferences);
               setGuest({ ...guest, accommodationRequested: value.accommodationRequested,
-                accommodationNote: value.accommodationNote, seatingPreferences: seatingPreferenceNames(value.seatingPreferences) });
+                accommodationNote: value.accommodationNote, sitNextToUserIds: value.sitNextToUserIds });
             }} />
             {guest?.version && <Alert severity="info">Transactions stay unchanged. Handle any payment or refund adjustment manually.</Alert>}
             <TextField select label="Guest ticket" value={guest?.ticketTypeId ?? ""}

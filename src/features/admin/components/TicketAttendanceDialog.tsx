@@ -1,12 +1,12 @@
 import TicketPreferencesFields from "../../guests/TicketPreferencesFields";
-import { seatingPreferenceNames } from "../../guests/ticketPreferences";
 import { useState } from "react";
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { guestCall } from "../../guests/api";
 import type { EventAttendeeTicketRow } from "../utils/bookingApprovalsAdmin";
 import type { TicketTypeRow } from "./sectionEventsManagerTypes";
 
-export default function TicketAttendanceDialog({ eventId, row, action, ticketTypes, onClose, onSaved }: {
+export default function TicketAttendanceDialog({ sectionId, eventId, row, action, ticketTypes, onClose, onSaved }: {
+  sectionId: string;
   eventId: string;
   row: EventAttendeeTicketRow;
   action: "edit" | "delete";
@@ -20,7 +20,7 @@ export default function TicketAttendanceDialog({ eventId, row, action, ticketTyp
   const [preferences, setPreferences] = useState({
     accommodationRequested: row.accommodationRequested,
     accommodationNote: row.accommodationNote ?? "",
-    seatingPreferences: row.seatingPreferences.join("\n"),
+    sitNextToUserIds: row.sitNextToUserIds ?? [],
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -33,7 +33,7 @@ export default function TicketAttendanceDialog({ eventId, row, action, ticketTyp
         attendeeName, dietaryNote, ticketTypeId,
         ...(preferences.accommodationRequested !== row.accommodationRequested ? { accommodationRequested: preferences.accommodationRequested } : {}),
         ...(preferences.accommodationNote !== (row.accommodationNote ?? "") ? { accommodationNote: preferences.accommodationNote } : {}),
-        ...(preferences.seatingPreferences !== row.seatingPreferences.join("\n") ? { seatingPreferences: seatingPreferenceNames(preferences.seatingPreferences) } : {}),
+        ...(JSON.stringify(preferences.sitNextToUserIds) !== JSON.stringify(row.sitNextToUserIds ?? []) ? { sitNextToUserIds: preferences.sitNextToUserIds } : {}),
       });
       await onSaved();
     } catch (e) {
@@ -52,7 +52,7 @@ export default function TicketAttendanceDialog({ eventId, row, action, ticketTyp
           <TextField select label="Ticket type" value={ticketTypeId} onChange={(e) => setTicketTypeId(e.target.value)} disabled={busy}>
             {ticketTypes.filter((t) => t.audience === row.audience).map((t) => <MenuItem key={t.id} value={t.id}>{t.title}</MenuItem>)}
           </TextField>
-          <TicketPreferencesFields value={preferences} onChange={setPreferences} disabled={busy} />
+          <TicketPreferencesFields sectionId={sectionId} value={preferences} onChange={setPreferences} disabled={busy} />
           <TextField label="Dietary requirements" multiline value={dietaryNote} onChange={(e) => setDietaryNote(e.target.value)} disabled={busy} inputProps={{ maxLength: 2000 }} />
         </>}
         {error && <Alert severity="error">{error}</Alert>}

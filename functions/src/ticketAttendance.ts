@@ -39,7 +39,7 @@ export const manageTicketAttendance = onCall({ region: FUNCTIONS_REGION }, async
     const preferences = ticketPreferences({
       accommodationRequested: line.bookingPlace.attendanceAccommodationRequested,
       accommodationNote: line.bookingPlace.attendanceAccommodationNote,
-      seatingPreferences: line.bookingPlace.attendanceSeatingPreferences,
+      sitNextToUserIds: line.bookingPlace.attendanceSitNextToUserIds,
       ...(action === "edit" ? request.data : {}),
     });
     await updateTicketAttendance({
@@ -71,7 +71,7 @@ export const getManagedEventTickets = onCall({ region: FUNCTIONS_REGION }, async
     const [bookings, detail] = await Promise.all([
       listEventBookingsForAdmin({ eventId }), getEventById({ id: eventId }),
     ]);
-    const seatingIds = Array.from(new Set((bookings.data.event?.bookings ?? []).flatMap((booking) => booking.sitNextToUserIds ?? [])));
+    const seatingIds = Array.from(new Set((bookings.data.event?.bookings ?? []).flatMap((booking) => [...(booking.sitNextToUserIds ?? []), ...booking.lines.flatMap((line) => line.bookingPlace.attendanceSitNextToUserIds ?? [])])));
     const seatingUsers = [];
     for (let offset = 0; offset < seatingIds.length; offset += 100) {
       seatingUsers.push(...(await listUserNamesByIds({ ids: seatingIds.slice(offset, offset + 100) })).data.users);

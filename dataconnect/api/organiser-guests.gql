@@ -60,7 +60,7 @@ query ListOrganiserGuests($eventId: UUID!, $offset: Int!)
     dietaryRequirements
     accommodationRequested
     accommodationNote
-    seatingPreferences
+    sitNextToUserIds
     priceMinor
     includesSymposium
     includesDinner
@@ -101,7 +101,7 @@ query GetOrganiserGuest($id: UUID!) @auth(level: NO_ACCESS) {
     dietaryRequirements
     accommodationRequested
     accommodationNote
-    seatingPreferences
+    sitNextToUserIds
     priceMinor
     includesSymposium
     includesDinner
@@ -143,7 +143,7 @@ query GetOrganiserGuestByToken($tokenHash: String!) @auth(level: NO_ACCESS) {
     dietaryRequirements
     accommodationRequested
     accommodationNote
-    seatingPreferences
+    sitNextToUserIds
     priceMinor
     includesSymposium
     includesDinner
@@ -200,7 +200,7 @@ mutation CreateOrganiserGuest(
   $dietaryRequirements: String!
   $accommodationRequested: Boolean!
   $accommodationNote: String
-  $seatingPreferences: [String!]
+  $sitNextToUserIds: [String!]
   $priceMinor: Int!
   $includesSymposium: Boolean!
   $includesDinner: Boolean!
@@ -219,7 +219,7 @@ mutation CreateOrganiserGuest(
       dietaryRequirements: $dietaryRequirements
       accommodationRequested: $accommodationRequested
       accommodationNote: $accommodationNote
-      seatingPreferences: $seatingPreferences
+      sitNextToUserIds: $sitNextToUserIds
       priceMinor: $priceMinor
       includesSymposium: $includesSymposium
       includesDinner: $includesDinner
@@ -242,7 +242,7 @@ mutation UpdateOrganiserGuestDetails(
   $dietaryRequirements: String!
   $accommodationRequested: Boolean!
   $accommodationNote: String
-  $seatingPreferences: [String!]
+  $sitNextToUserIds: [String!]
   $actor: String!
 ) @auth(level: NO_ACCESS) @transaction {
   organiserGuest_updateMany(
@@ -258,7 +258,7 @@ mutation UpdateOrganiserGuestDetails(
       dietaryRequirements: $dietaryRequirements
       accommodationRequested: $accommodationRequested
       accommodationNote: $accommodationNote
-      seatingPreferences: $seatingPreferences
+      sitNextToUserIds: $sitNextToUserIds
       version_update: { inc: 1 }
       updatedAt_expr: "request.time"
       updatedBy: $actor

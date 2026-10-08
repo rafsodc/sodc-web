@@ -6604,7 +6604,7 @@ export interface ListOrganiserGuestsData {
     dietaryRequirements: string;
     accommodationRequested: boolean;
     accommodationNote?: string | null;
-    seatingPreferences?: string[] | null;
+    sitNextToUserIds?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -6725,7 +6725,7 @@ export interface GetOrganiserGuestData {
     dietaryRequirements: string;
     accommodationRequested: boolean;
     accommodationNote?: string | null;
-    seatingPreferences?: string[] | null;
+    sitNextToUserIds?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -6846,7 +6846,7 @@ export interface GetOrganiserGuestByTokenData {
     dietaryRequirements: string;
     accommodationRequested: boolean;
     accommodationNote?: string | null;
-    seatingPreferences?: string[] | null;
+    sitNextToUserIds?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -9289,7 +9289,7 @@ export interface ListEventBookingsForAdminData {
           attendanceDietaryNote?: string | null;
           attendanceAccommodationRequested?: boolean | null;
           attendanceAccommodationNote?: string | null;
-          attendanceSeatingPreferences?: string[] | null;
+          attendanceSitNextToUserIds?: string[] | null;
           attendanceTicketType?: {
             id: UUIDString;
             title: string;
@@ -9921,7 +9921,7 @@ export interface GetTicketAttendanceForManagementData {
       attendanceRemoved: boolean;
       attendanceAccommodationRequested?: boolean | null;
       attendanceAccommodationNote?: string | null;
-      attendanceSeatingPreferences?: string[] | null;
+      attendanceSitNextToUserIds?: string[] | null;
     } & BookingPlace_Key;
     booking: {
       id: UUIDString;
@@ -17683,7 +17683,7 @@ export interface CreateOrganiserGuestVariables {
   dietaryRequirements: string;
   accommodationRequested: boolean;
   accommodationNote?: string | null;
-  seatingPreferences?: string[] | null;
+  sitNextToUserIds?: string[] | null;
   priceMinor: number;
   includesSymposium: boolean;
   includesDinner: boolean;
@@ -17749,7 +17749,7 @@ export default function CreateOrganiserGuestComponent() {
     dietaryRequirements: ..., 
     accommodationRequested: ..., 
     accommodationNote: ..., // optional
-    seatingPreferences: ..., // optional
+    sitNextToUserIds: ..., // optional
     priceMinor: ..., 
     includesSymposium: ..., 
     includesDinner: ..., 
@@ -17759,7 +17759,7 @@ export default function CreateOrganiserGuestComponent() {
   };
   mutation.mutate(createOrganiserGuestVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., eventId: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., tokenHash: ..., checkoutKey: ..., actor: ..., });
+  mutation.mutate({ id: ..., eventId: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., tokenHash: ..., checkoutKey: ..., actor: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -17808,7 +17808,7 @@ export interface UpdateOrganiserGuestDetailsVariables {
   dietaryRequirements: string;
   accommodationRequested: boolean;
   accommodationNote?: string | null;
-  seatingPreferences?: string[] | null;
+  sitNextToUserIds?: string[] | null;
   actor: string;
 }
 ```
@@ -17868,12 +17868,12 @@ export default function UpdateOrganiserGuestDetailsComponent() {
     dietaryRequirements: ..., 
     accommodationRequested: ..., 
     accommodationNote: ..., // optional
-    seatingPreferences: ..., // optional
+    sitNextToUserIds: ..., // optional
     actor: ..., 
   };
   mutation.mutate(updateOrganiserGuestDetailsVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., version: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., actor: ..., });
+  mutation.mutate({ id: ..., version: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., actor: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -18750,7 +18750,7 @@ export interface UpdateTicketAttendanceVariables {
   actor: string;
   accommodationRequested?: boolean | null;
   accommodationNote?: string | null;
-  seatingPreferences?: string[] | null;
+  sitNextToUserIds?: string[] | null;
 }
 ```
 ### Return Type
@@ -18811,11 +18811,11 @@ export default function UpdateTicketAttendanceComponent() {
     actor: ..., 
     accommodationRequested: ..., // optional
     accommodationNote: ..., // optional
-    seatingPreferences: ..., // optional
+    sitNextToUserIds: ..., // optional
   };
   mutation.mutate(updateTicketAttendanceVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., });
+  mutation.mutate({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -18863,7 +18863,7 @@ export interface EditOrganiserGuestAttendanceVariables {
   lastName: string;
   accommodationRequested: boolean;
   accommodationNote?: string | null;
-  seatingPreferences?: string[] | null;
+  sitNextToUserIds?: string[] | null;
   email?: string | null;
   dietaryRequirements: string;
   includesDinner: boolean;
@@ -18926,7 +18926,7 @@ export default function EditOrganiserGuestAttendanceComponent() {
     lastName: ..., 
     accommodationRequested: ..., 
     accommodationNote: ..., // optional
-    seatingPreferences: ..., // optional
+    sitNextToUserIds: ..., // optional
     email: ..., // optional
     dietaryRequirements: ..., 
     includesDinner: ..., 
@@ -18935,7 +18935,7 @@ export default function EditOrganiserGuestAttendanceComponent() {
   };
   mutation.mutate(editOrganiserGuestAttendanceVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., email: ..., dietaryRequirements: ..., includesDinner: ..., includesSymposium: ..., actor: ..., });
+  mutation.mutate({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., email: ..., dietaryRequirements: ..., includesDinner: ..., includesSymposium: ..., actor: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

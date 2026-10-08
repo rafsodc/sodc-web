@@ -39,6 +39,7 @@ export interface EventAttendeeTicketRow {
   accommodationRequested: boolean;
   accommodationNote?: string | null;
   seatingPreferences: string[];
+  sitNextToUserIds?: string[];
   dietaryNote: string | null;
   approvalStatus: BookingApprovalStatus;
   paymentState: AttendeePaymentState;
@@ -206,7 +207,7 @@ export function activeEventTicketRows(
           line.ticketType.audience === TicketAudience.MEMBER
             ? `${booking.booker.firstName} ${booking.booker.lastName}`.trim()
             : line.guestDisplayName?.trim() || linkedName || "Guest";
-        const seatingPreferences = (booking.sitNextToUserIds ?? []).map(
+        const seatingPreferences = (line.bookingPlace?.attendanceSitNextToUserIds ?? booking.sitNextToUserIds ?? []).map(
           (userId) => userNamesById.get(userId) ?? "Unavailable member"
         );
         return {
@@ -231,7 +232,8 @@ export function activeEventTicketRows(
           includesSymposium: ticket.includesSymposium,
           accommodationRequested: line.bookingPlace?.attendanceAccommodationRequested ?? booking.accommodationRequested,
           accommodationNote: line.bookingPlace?.attendanceAccommodationNote ?? booking.accommodationNote ?? null,
-          seatingPreferences: line.bookingPlace?.attendanceSeatingPreferences ?? seatingPreferences,
+          seatingPreferences,
+          sitNextToUserIds: line.bookingPlace?.attendanceSitNextToUserIds ?? booking.sitNextToUserIds ?? [],
           dietaryNote: line.bookingPlace?.attendanceDietaryNote ?? (line.dietaryNote?.trim() || null),
           approvalStatus: booking.approvalStatus,
           paymentState: attendeePaymentState(line, ticketOrdersById),

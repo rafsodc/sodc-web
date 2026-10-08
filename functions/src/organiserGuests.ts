@@ -111,7 +111,7 @@ function project(guest: Omit<Guest, "tokenHash">) {
     dietaryRequirements: guest.dietaryRequirements,
     accommodationRequested: guest.accommodationRequested,
     accommodationNote: guest.accommodationNote ?? null,
-    seatingPreferences: guest.seatingPreferences ?? [],
+    sitNextToUserIds: guest.sitNextToUserIds ?? [],
     ticketTypeId: ticketType.id,
     ticketTitle: ticketType.title,
     includesSymposium: guest.includesSymposium,
@@ -198,6 +198,12 @@ export const getOrganiserGuestList = onCall(
         guests.push(...data.organiserGuests.map(project));
         if (data.organiserGuests.length < 500) break;
       }
+      const ids = Array.from(new Set(guests.flatMap((guest) => guest.sitNextToUserIds)));
+      const names = new Map<string, string>();
+      for (let offset = 0; offset < ids.length; offset += 100) {
+        const { data } = await db.listUserNamesByIds({ ids: ids.slice(offset, offset + 100) });
+        for (const user of data.users) names.set(user.id, `${user.firstName} ${user.lastName}`.trim());
+      }
       return {
         event: {
           id: event.id,
@@ -205,7 +211,7 @@ export const getOrganiserGuestList = onCall(
           bookingEndDateTime: event.bookingEndDateTime,
         },
         ticketTypes,
-        guests,
+        guests: guests.map((guest) => ({ ...guest, seatingPreferences: guest.sitNextToUserIds.map((id) => names.get(id) ?? "Unavailable member") })),
       };
     } catch (error) {
       failure(error);

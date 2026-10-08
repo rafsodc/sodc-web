@@ -8379,7 +8379,7 @@ export interface ListOrganiserGuestsData {
     dietaryRequirements: string;
     accommodationRequested: boolean;
     accommodationNote?: string | null;
-    seatingPreferences?: string[] | null;
+    sitNextToUserIds?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -8528,7 +8528,7 @@ export interface GetOrganiserGuestData {
     dietaryRequirements: string;
     accommodationRequested: boolean;
     accommodationNote?: string | null;
-    seatingPreferences?: string[] | null;
+    sitNextToUserIds?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -8676,7 +8676,7 @@ export interface GetOrganiserGuestByTokenData {
     dietaryRequirements: string;
     accommodationRequested: boolean;
     accommodationNote?: string | null;
-    seatingPreferences?: string[] | null;
+    sitNextToUserIds?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -11743,7 +11743,7 @@ export interface ListEventBookingsForAdminData {
           attendanceDietaryNote?: string | null;
           attendanceAccommodationRequested?: boolean | null;
           attendanceAccommodationNote?: string | null;
-          attendanceSeatingPreferences?: string[] | null;
+          attendanceSitNextToUserIds?: string[] | null;
           attendanceTicketType?: {
             id: UUIDString;
             title: string;
@@ -12530,7 +12530,7 @@ export interface GetTicketAttendanceForManagementData {
       attendanceRemoved: boolean;
       attendanceAccommodationRequested?: boolean | null;
       attendanceAccommodationNote?: string | null;
-      attendanceSeatingPreferences?: string[] | null;
+      attendanceSitNextToUserIds?: string[] | null;
     } & BookingPlace_Key;
     booking: {
       id: UUIDString;
@@ -21808,7 +21808,7 @@ export interface CreateOrganiserGuestVariables {
   dietaryRequirements: string;
   accommodationRequested: boolean;
   accommodationNote?: string | null;
-  seatingPreferences?: string[] | null;
+  sitNextToUserIds?: string[] | null;
   priceMinor: number;
   includesSymposium: boolean;
   includesDinner: boolean;
@@ -21844,7 +21844,7 @@ const createOrganiserGuestVars: CreateOrganiserGuestVariables = {
   dietaryRequirements: ..., 
   accommodationRequested: ..., 
   accommodationNote: ..., // optional
-  seatingPreferences: ..., // optional
+  sitNextToUserIds: ..., // optional
   priceMinor: ..., 
   includesSymposium: ..., 
   includesDinner: ..., 
@@ -21857,7 +21857,7 @@ const createOrganiserGuestVars: CreateOrganiserGuestVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createOrganiserGuest(createOrganiserGuestVars);
 // Variables can be defined inline as well.
-const { data } = await createOrganiserGuest({ id: ..., eventId: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., tokenHash: ..., checkoutKey: ..., actor: ..., });
+const { data } = await createOrganiserGuest({ id: ..., eventId: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., tokenHash: ..., checkoutKey: ..., actor: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -21891,7 +21891,7 @@ const createOrganiserGuestVars: CreateOrganiserGuestVariables = {
   dietaryRequirements: ..., 
   accommodationRequested: ..., 
   accommodationNote: ..., // optional
-  seatingPreferences: ..., // optional
+  sitNextToUserIds: ..., // optional
   priceMinor: ..., 
   includesSymposium: ..., 
   includesDinner: ..., 
@@ -21903,7 +21903,7 @@ const createOrganiserGuestVars: CreateOrganiserGuestVariables = {
 // Call the `createOrganiserGuestRef()` function to get a reference to the mutation.
 const ref = createOrganiserGuestRef(createOrganiserGuestVars);
 // Variables can be defined inline as well.
-const ref = createOrganiserGuestRef({ id: ..., eventId: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., tokenHash: ..., checkoutKey: ..., actor: ..., });
+const ref = createOrganiserGuestRef({ id: ..., eventId: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., priceMinor: ..., includesSymposium: ..., includesDinner: ..., tokenHash: ..., checkoutKey: ..., actor: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -21966,7 +21966,7 @@ export interface UpdateOrganiserGuestDetailsVariables {
   dietaryRequirements: string;
   accommodationRequested: boolean;
   accommodationNote?: string | null;
-  seatingPreferences?: string[] | null;
+  sitNextToUserIds?: string[] | null;
   actor: string;
 }
 ```
@@ -21996,7 +21996,7 @@ const updateOrganiserGuestDetailsVars: UpdateOrganiserGuestDetailsVariables = {
   dietaryRequirements: ..., 
   accommodationRequested: ..., 
   accommodationNote: ..., // optional
-  seatingPreferences: ..., // optional
+  sitNextToUserIds: ..., // optional
   actor: ..., 
 };
 
@@ -22004,7 +22004,7 @@ const updateOrganiserGuestDetailsVars: UpdateOrganiserGuestDetailsVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateOrganiserGuestDetails(updateOrganiserGuestDetailsVars);
 // Variables can be defined inline as well.
-const { data } = await updateOrganiserGuestDetails({ id: ..., version: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., actor: ..., });
+const { data } = await updateOrganiserGuestDetails({ id: ..., version: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., actor: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -22037,14 +22037,14 @@ const updateOrganiserGuestDetailsVars: UpdateOrganiserGuestDetailsVariables = {
   dietaryRequirements: ..., 
   accommodationRequested: ..., 
   accommodationNote: ..., // optional
-  seatingPreferences: ..., // optional
+  sitNextToUserIds: ..., // optional
   actor: ..., 
 };
 
 // Call the `updateOrganiserGuestDetailsRef()` function to get a reference to the mutation.
 const ref = updateOrganiserGuestDetailsRef(updateOrganiserGuestDetailsVars);
 // Variables can be defined inline as well.
-const ref = updateOrganiserGuestDetailsRef({ id: ..., version: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., actor: ..., });
+const ref = updateOrganiserGuestDetailsRef({ id: ..., version: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., actor: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -23104,7 +23104,7 @@ export interface UpdateTicketAttendanceVariables {
   actor: string;
   accommodationRequested?: boolean | null;
   accommodationNote?: string | null;
-  seatingPreferences?: string[] | null;
+  sitNextToUserIds?: string[] | null;
 }
 ```
 ### Return Type
@@ -23135,14 +23135,14 @@ const updateTicketAttendanceVars: UpdateTicketAttendanceVariables = {
   actor: ..., 
   accommodationRequested: ..., // optional
   accommodationNote: ..., // optional
-  seatingPreferences: ..., // optional
+  sitNextToUserIds: ..., // optional
 };
 
 // Call the `updateTicketAttendance()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateTicketAttendance(updateTicketAttendanceVars);
 // Variables can be defined inline as well.
-const { data } = await updateTicketAttendance({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., });
+const { data } = await updateTicketAttendance({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -23177,13 +23177,13 @@ const updateTicketAttendanceVars: UpdateTicketAttendanceVariables = {
   actor: ..., 
   accommodationRequested: ..., // optional
   accommodationNote: ..., // optional
-  seatingPreferences: ..., // optional
+  sitNextToUserIds: ..., // optional
 };
 
 // Call the `updateTicketAttendanceRef()` function to get a reference to the mutation.
 const ref = updateTicketAttendanceRef(updateTicketAttendanceVars);
 // Variables can be defined inline as well.
-const ref = updateTicketAttendanceRef({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., });
+const ref = updateTicketAttendanceRef({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -23245,7 +23245,7 @@ export interface EditOrganiserGuestAttendanceVariables {
   lastName: string;
   accommodationRequested: boolean;
   accommodationNote?: string | null;
-  seatingPreferences?: string[] | null;
+  sitNextToUserIds?: string[] | null;
   email?: string | null;
   dietaryRequirements: string;
   includesDinner: boolean;
@@ -23278,7 +23278,7 @@ const editOrganiserGuestAttendanceVars: EditOrganiserGuestAttendanceVariables = 
   lastName: ..., 
   accommodationRequested: ..., 
   accommodationNote: ..., // optional
-  seatingPreferences: ..., // optional
+  sitNextToUserIds: ..., // optional
   email: ..., // optional
   dietaryRequirements: ..., 
   includesDinner: ..., 
@@ -23290,7 +23290,7 @@ const editOrganiserGuestAttendanceVars: EditOrganiserGuestAttendanceVariables = 
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await editOrganiserGuestAttendance(editOrganiserGuestAttendanceVars);
 // Variables can be defined inline as well.
-const { data } = await editOrganiserGuestAttendance({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., email: ..., dietaryRequirements: ..., includesDinner: ..., includesSymposium: ..., actor: ..., });
+const { data } = await editOrganiserGuestAttendance({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., email: ..., dietaryRequirements: ..., includesDinner: ..., includesSymposium: ..., actor: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -23322,7 +23322,7 @@ const editOrganiserGuestAttendanceVars: EditOrganiserGuestAttendanceVariables = 
   lastName: ..., 
   accommodationRequested: ..., 
   accommodationNote: ..., // optional
-  seatingPreferences: ..., // optional
+  sitNextToUserIds: ..., // optional
   email: ..., // optional
   dietaryRequirements: ..., 
   includesDinner: ..., 
@@ -23333,7 +23333,7 @@ const editOrganiserGuestAttendanceVars: EditOrganiserGuestAttendanceVariables = 
 // Call the `editOrganiserGuestAttendanceRef()` function to get a reference to the mutation.
 const ref = editOrganiserGuestAttendanceRef(editOrganiserGuestAttendanceVars);
 // Variables can be defined inline as well.
-const ref = editOrganiserGuestAttendanceRef({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., accommodationRequested: ..., accommodationNote: ..., seatingPreferences: ..., email: ..., dietaryRequirements: ..., includesDinner: ..., includesSymposium: ..., actor: ..., });
+const ref = editOrganiserGuestAttendanceRef({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., email: ..., dietaryRequirements: ..., includesDinner: ..., includesSymposium: ..., actor: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

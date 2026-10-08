@@ -1,3 +1,4 @@
+import { searchSectionMembers } from "../../../shared/utils/firebaseFunctions";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { render, screen, fireEvent, waitFor } from "../../../test-utils";
@@ -9,6 +10,7 @@ vi.mock("../api", async (original) => ({
   ...(await original<typeof import("../api")>()),
   guestCall: vi.fn(),
 }));
+vi.mock("../../../shared/utils/firebaseFunctions", () => ({ searchSectionMembers: vi.fn() }));
 const call = vi.mocked(guestCall);
 const writeText = vi.fn();
 const write = vi.fn();
@@ -36,6 +38,7 @@ const guest: Guest = {
 };
 beforeEach(() => {
   call.mockReset();
+  vi.mocked(searchSectionMembers).mockResolvedValue({ members: [{ id: "user-alex", firstName: "Alex", lastName: "Member" }, { id: "user-taylor", firstName: "Taylor", lastName: "Guest" }], hasMore: false });
   writeText.mockReset();
   write.mockReset();
   Object.defineProperty(globalThis, "ClipboardItem", {
@@ -129,7 +132,7 @@ describe("organiser management and reports", () => {
       .mockResolvedValueOnce({ link: "https://example.test/guest-ticket#new" })
       .mockResolvedValueOnce(list);
     write.mockResolvedValue(undefined);
-    render(<OrganiserGuestsManager eventId="event" />);
+    render(<OrganiserGuestsManager sectionId="section" eventId="event" />);
     fireEvent.click(await screen.findByRole("button", { name: "Copy link" }));
     await waitFor(() =>
       expect(call).toHaveBeenCalledWith("manageOrganiserGuest", {
@@ -165,7 +168,7 @@ describe("organiser management and reports", () => {
       .mockResolvedValueOnce(list);
     write.mockRejectedValue(new DOMException("Not allowed", "NotAllowedError"));
     writeText.mockResolvedValue(undefined);
-    render(<OrganiserGuestsManager eventId="event" />);
+    render(<OrganiserGuestsManager sectionId="section" eventId="event" />);
     fireEvent.click(await screen.findByRole("button", { name: "Copy link" }));
     const dialog = await screen.findByRole("dialog", {
       name: "Copy guest link",
@@ -199,7 +202,7 @@ describe("organiser management and reports", () => {
       ],
       guests: [],
     });
-    render(<OrganiserGuestsManager eventId="event" />);
+    render(<OrganiserGuestsManager sectionId="section" eventId="event" />);
     fireEvent.click(await screen.findByRole("button", { name: "Add guest" }));
     fireEvent.change(screen.getByLabelText("First name"), {
       target: { value: "Alex" },
@@ -224,24 +227,27 @@ describe("organiser management and reports", () => {
   });
   it("keeps the guest list focused on people and reuses the shared ticket editor for moderators", async () => {
     call.mockResolvedValue({ event: {}, ticketTypes: [], guests: [] });
-    const view = render(<OrganiserGuestsManager eventId="event" />);
+    const view = render(<OrganiserGuestsManager sectionId="section" eventId="event" />);
     await screen.findByText(/Create an organiser\/club guest ticket in Ticket types/);
     expect(screen.queryByRole("button", { name: /add guest ticket type/i })).not.toBeInTheDocument();
     view.unmount();
   });
   it("edits a paid organiser guest name, accommodation and seating without payment fields", async () => {
     call.mockResolvedValue({ event: { id: "event" }, ticketTypes: [{ id: "type", title: "Guest dinner" }], guests: [{ ...guest, paymentStatus: "PAID" }] });
-    render(<OrganiserGuestsManager eventId="event" />);
+    render(<OrganiserGuestsManager sectionId="section" eventId="event" />);
     fireEvent.click(await screen.findByRole("button", { name: "Edit guest" }));
     fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Jamie" } });
     fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Updated" } });
     fireEvent.click(screen.getByLabelText("Request accommodation"));
     fireEvent.change(screen.getByLabelText("Accommodation notes"), { target: { value: "Twin room" } });
-    fireEvent.change(screen.getByLabelText("Seating preferences"), { target: { value: "Alex Member\nTaylor Guest" } });
+    fireEvent.change(screen.getByLabelText("Sit next to (optional)"), { target: { value: "Alex" } });
+    fireEvent.click(await screen.findByRole("option", { name: "Alex Member" }));
+    fireEvent.change(screen.getByLabelText("Sit next to (optional)"), { target: { value: "Taylor" } });
+    fireEvent.click(await screen.findByRole("option", { name: "Taylor Guest" }));
     fireEvent.click(screen.getByRole("button", { name: "Save guest" }));
     await waitFor(() => expect(call).toHaveBeenCalledWith("manageOrganiserGuest", expect.objectContaining({
       action: "edit", id: "guest", version: 3, firstName: "Jamie", lastName: "Updated",
-      accommodationRequested: true, accommodationNote: "Twin room", seatingPreferences: ["Alex Member", "Taylor Guest"],
+      accommodationRequested: true, accommodationNote: "Twin room", sitNextToUserIds: ["user-alex", "user-taylor"],
     })));
   });
   it("includes organiser guest accommodation and seating in reports", () => {
@@ -254,7 +260,7 @@ describe("organiser management and reports", () => {
       ticketTypes: [],
       guests: [guest],
     });
-    render(<OrganiserGuestsManager eventId="event" />);
+    render(<OrganiserGuestsManager sectionId="section" eventId="event" />);
     fireEvent.click(
       await screen.findByRole("button", { name: "Delete ticket" }),
     );

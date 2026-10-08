@@ -96,8 +96,8 @@ export function useSectionMemberSeatingSearch(
     const byId = new Map<string, SectionMemberSeatingOption>();
     for (const option of searchResults) byId.set(option.id, option);
     for (const id of selectedIds) {
-      if (!byId.has(id) && selectedLabels.has(id)) {
-        byId.set(id, { id, label: selectedLabels.get(id)! });
+      if (!byId.has(id)) {
+        byId.set(id, { id, label: selectedLabels.get(id) ?? "Unavailable member" });
       }
     }
     return Array.from(byId.values());

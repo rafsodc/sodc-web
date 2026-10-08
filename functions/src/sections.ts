@@ -221,7 +221,8 @@ interface SectionMemberSearchScope {
  */
 async function loadSectionMemberSearchScope(
   sectionId: string,
-  callerUid: string
+  callerUid: string,
+  callerIsAdmin = false
 ): Promise<SectionMemberSearchScope> {
   const [sectionResult, callerGroupsResult, userStatusResult] = await Promise.all([
     getSectionById({ id: sectionId }),
@@ -249,7 +250,7 @@ async function loadSectionMemberSearchScope(
       callerGroupIds.has(link.userGroup.id) ||
       Boolean(callerStatus && link.userGroup.membershipStatuses?.includes(callerStatus))
   );
-  if (!canAccess) {
+  if (!callerIsAdmin && !canAccess) {
     throw new HttpsError("permission-denied", "You do not have permission to view this section");
   }
 
@@ -298,7 +299,7 @@ export const searchSectionMembers = onCall(
     const callerUid = request.auth!.uid;
 
     try {
-      const scope = await loadSectionMemberSearchScope(sectionId, callerUid);
+      const scope = await loadSectionMemberSearchScope(sectionId, callerUid, request.auth!.token.admin === true);
       if (!searchTerm && includeIds.size === 0) {
         return { members: [], hasMore: false };
       }

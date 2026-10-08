@@ -27,18 +27,18 @@ describe("attendance-only ticket management", () => {
   it.each(["edit", "delete"])("%s changes only attendance and preserves the booking/place identity", async (action) => {
     expect(await manageTicketAttendance.run(request({ action }))).toEqual({ success: true });
     expect(requireSectionModerator).toHaveBeenCalledWith(id, "organiser", false);
-    expect(write).toHaveBeenCalledWith({ accommodationRequested: null, accommodationNote: null, seatingPreferences: null, bookingId: id, placeId: id, version: 0, ticketTypeId: other, name: "Updated attendee", dietaryNote: "Vegetarian", removed: action === "delete", actor: "organiser" });
+    expect(write).toHaveBeenCalledWith({ accommodationRequested: null, accommodationNote: null, sitNextToUserIds: null, bookingId: id, placeId: id, version: 0, ticketTypeId: other, name: "Updated attendee", dietaryNote: "Vegetarian", removed: action === "delete", actor: "organiser" });
   });
   it("updates per-ticket preferences and preserves explicit clearing", async () => {
-    await manageTicketAttendance.run(request({ accommodationRequested: false, accommodationNote: "", seatingPreferences: [] }));
-    expect(write).toHaveBeenCalledWith(expect.objectContaining({ accommodationRequested: false, accommodationNote: "", seatingPreferences: [] }));
+    await manageTicketAttendance.run(request({ accommodationRequested: false, accommodationNote: "", sitNextToUserIds: [] }));
+    expect(write).toHaveBeenCalledWith(expect.objectContaining({ accommodationRequested: false, accommodationNote: "", sitNextToUserIds: [] }));
   });
   it("preserves preferences when an older client omits them or deletes a ticket", async () => {
     const current = line();
-    Object.assign(current.bookingPlace, { attendanceAccommodationRequested: true, attendanceAccommodationNote: "Room", attendanceSeatingPreferences: ["Friend"] });
+    Object.assign(current.bookingPlace, { attendanceAccommodationRequested: true, attendanceAccommodationNote: "Room", attendanceSitNextToUserIds: ["Friend"] });
     read.mockResolvedValue({ data: { bookingLine: current } } as never);
     await manageTicketAttendance.run(request());
-    expect(write).toHaveBeenLastCalledWith(expect.objectContaining({ accommodationRequested: true, accommodationNote: "Room", seatingPreferences: ["Friend"] }));
+    expect(write).toHaveBeenLastCalledWith(expect.objectContaining({ accommodationRequested: true, accommodationNote: "Room", sitNextToUserIds: ["Friend"] }));
     await manageTicketAttendance.run(request({ action: "delete", accommodationRequested: false }));
     expect(write).toHaveBeenLastCalledWith(expect.objectContaining({ accommodationRequested: true, removed: true }));
   });
@@ -98,7 +98,7 @@ describe("attendance-only ticket management", () => {
   });
   it("resolves inherited seating names for the authorised moderator", async () => {
     vi.spyOn(db, "getAttendeeEventSection").mockResolvedValue({ data: { event: { section: { id } } } });
-    list.mockResolvedValue({ data: { event: { bookings: [{ sitNextToUserIds: ["friend", "friend"] }], bookingTicketOrders: [] } } } as never);
+    list.mockResolvedValue({ data: { event: { bookings: [{ lines: [], sitNextToUserIds: ["friend", "friend"] }], bookingTicketOrders: [] } } } as never);
     vi.spyOn(db, "getEventById").mockResolvedValue({ data: { event: { ticketTypes: [] } } } as never);
     const users = [{ id: "friend", firstName: "Alex", lastName: "Member" }];
     const names = vi.spyOn(db, "listUserNamesByIds").mockResolvedValue({ data: { users } });

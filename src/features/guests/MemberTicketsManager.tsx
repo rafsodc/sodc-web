@@ -11,7 +11,7 @@ import TicketAttendanceDialog from "../admin/components/TicketAttendanceDialog";
 
 type Tickets = { seatingUsers: Array<{ id: string; firstName: string; lastName: string }>; bookings: EventBookingAdminRow[]; orders: Array<{ id: string; status: TicketOrderStatus }>; ticketTypes: TicketTypeRow[] };
 
-export default function MemberTicketsManager({ eventId }: { eventId: string }) {
+export default function MemberTicketsManager({ eventId, sectionId }: { eventId: string; sectionId: string }) {
   const client = useQueryClient();
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["managed-event-tickets", eventId, auth.currentUser?.uid],
@@ -24,7 +24,7 @@ export default function MemberTicketsManager({ eventId }: { eventId: string }) {
     <Typography variant="h5" component="h2">Member and accompanying guest tickets</Typography>
     {isError ? <Alert severity="error" action={<Button onClick={() => void refetch()}>Retry</Button>}>Unable to load tickets.</Alert> :
       <EventAttendeeTicketsSection eventTitle="Member tickets" loading={isPending} rows={rows} onManageTicket={(row, action) => setEditing({ row, action })} />}
-    {editing && <TicketAttendanceDialog key={editing.row.key} eventId={eventId} {...editing} ticketTypes={data?.ticketTypes ?? []}
+    {editing && <TicketAttendanceDialog sectionId={sectionId} key={editing.row.key} eventId={eventId} {...editing} ticketTypes={data?.ticketTypes ?? []}
       onClose={() => setEditing(null)} onSaved={async () => {
         await Promise.all([refetch(), client.invalidateQueries({ queryKey: ["eventAttendees", eventId] })]);
         setEditing(null);

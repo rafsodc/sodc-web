@@ -150,7 +150,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const seatingPreferenceUserIds = useMemo(
     () => Array.from(new Set(
       currentActiveBookings(eventBookingsData?.event?.bookings ?? [])
-        .flatMap((booking) => booking.sitNextToUserIds ?? [])
+        .flatMap((booking) => [...(booking.sitNextToUserIds ?? []), ...booking.lines.flatMap((line) => line.bookingPlace?.attendanceSitNextToUserIds ?? [])])
     )),
     [eventBookingsData]
   );
@@ -572,6 +572,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
 
         {ticketEdit && <TicketAttendanceDialog
           key={ticketEdit.row.key}
+          sectionId={sectionId}
           eventId={ticketTypesEventId}
           row={ticketEdit.row}
           action={ticketEdit.action}
@@ -584,7 +585,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
             showSuccess(ticketEdit.action === "delete" ? "Ticket deleted. Transactions unchanged." : "Ticket saved. Transactions unchanged.");
           }}
         />}
-        <OrganiserGuestsManager key={ticketTypesEventId} eventId={ticketTypesEventId} />
+        <OrganiserGuestsManager sectionId={sectionId} key={ticketTypesEventId} eventId={ticketTypesEventId} />
 
         <TicketTypeDialogSurface
           open={ticketTypeDialogOpen}

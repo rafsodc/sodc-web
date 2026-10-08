@@ -650,7 +650,7 @@ query ListEventBookingsForAdmin($eventId: UUID!) @auth(expr: "auth.token.admin =
           attendanceDietaryNote
           attendanceAccommodationRequested
           attendanceAccommodationNote
-          attendanceSeatingPreferences
+          attendanceSitNextToUserIds
           attendanceTicketType { id title audience includesDinner includesSymposium }
 
           # Keep order status as a sibling selection (see ListTicketOrdersForAdmin,

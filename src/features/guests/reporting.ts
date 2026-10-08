@@ -21,6 +21,7 @@ export function organiserGuestTicketRows(
       accommodationRequested: g.accommodationRequested ?? false,
       accommodationNote: g.accommodationNote ?? null,
       seatingPreferences: g.seatingPreferences ?? [],
+      sitNextToUserIds: g.sitNextToUserIds ?? [],
       dietaryNote: g.dietaryRequirements,
       approvalStatus: BookingApprovalStatus.NOT_REQUIRED,
       paymentState:
