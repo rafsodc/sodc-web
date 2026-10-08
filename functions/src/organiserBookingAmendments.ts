@@ -145,6 +145,17 @@ export const amendEventBookingAsOrganiser = onCall(
     const group = allBookings.filter((row) => bookingIdsEqual(row.revisionGroupId, target.revisionGroupId));
     const replay = group.find((row) => row.clientSubmissionKey === idempotencyKey);
     if (replay && confirm) {
+      // A historical request must never reconcile money against a successor's
+      // payments. Return the original revision without repeating side effects.
+      if (replay.supersededAt != null || group.some((row) => row.revisionNumber > replay.revisionNumber)) {
+        return {
+          applied: true,
+          idempotentReplay: true,
+          bookingId: replay.id,
+          revisionNumber: replay.revisionNumber,
+          status: replay.status,
+        };
+      }
       const replayPrevious = replay.supersedesBooking
         ? group.find((row) => bookingIdsEqual(row.id, replay.supersedesBooking!.id))
         : undefined;
@@ -395,12 +406,16 @@ export const retryOrganiserBookingRefund = onCall(
     const booking = bookings.find((row) => bookingIdsEqual(row.id, bookingId));
     if (!booking) throw new HttpsError("not-found", "Booking not found");
     const history = bookings.filter((row) => bookingIdsEqual(row.revisionGroupId, booking.revisionGroupId));
+    if (booking.supersededAt != null || history.some((row) => row.revisionNumber > booking.revisionNumber)) {
+      throw new HttpsError("aborted", "This booking has been superseded. Refresh and retry the current booking's refund.");
+    }
     const refund = await initiateBookingAllocationRefunds({
       booking,
       financialHistory: history,
       stripeClient: requireStripe(stripeSecret.value()),
     });
-    if (refund.failedAmountMinor === 0 && refund.pendingAmountMinor === 0) {
+    if (refund.failedAmountMinor === 0 && refund.pendingAmountMinor === 0 &&
+      computeBookingPaymentDelta(null, booking, { financialHistory: history, includeUnpaidBalance: true }).paymentRemainingMinor === 0) {
       await settleBookingPaymentAdjustmentsFromCallable({
         revisionBookingId: booking.id as UUIDString,
         status: BookingPaymentAdjustmentStatus.SETTLED,

@@ -79,6 +79,9 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetOrganiserGuest*](#getorganiserguest)
   - [*GetOrganiserGuestByToken*](#getorganiserguestbytoken)
   - [*GetPublicOrganiserGuestAttendance*](#getpublicorganiserguestattendance)
+  - [*GetOrganiserGuestAmendment*](#getorganiserguestamendment)
+  - [*GetOrganiserGuestAmendmentByToken*](#getorganiserguestamendmentbytoken)
+  - [*ListPendingOrganiserGuestAmendments*](#listpendingorganiserguestamendments)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
@@ -185,17 +188,21 @@ This README will guide you through the process of using the generated JavaScript
   - [*ConfirmPotentialLost*](#confirmpotentiallost)
   - [*CreateOrganiserGuest*](#createorganiserguest)
   - [*UpdateOrganiserGuestDetails*](#updateorganiserguestdetails)
+  - [*AmendOrganiserGuestDetails*](#amendorganiserguestdetails)
   - [*UpdateOrganiserGuestDietary*](#updateorganiserguestdietary)
   - [*RotateOrganiserGuestLink*](#rotateorganiserguestlink)
   - [*CancelOrganiserGuest*](#cancelorganiserguest)
+  - [*CancelOrganiserGuestWithAmendment*](#cancelorganiserguestwithamendment)
   - [*AttachOrganiserGuestCheckout*](#attachorganiserguestcheckout)
   - [*ResetOrganiserGuestCheckout*](#resetorganiserguestcheckout)
   - [*MarkOrganiserGuestPaid*](#markorganiserguestpaid)
   - [*MarkOrganiserGuestRefunded*](#markorganiserguestrefunded)
   - [*ReassignOrganiserGuestTicket*](#reassignorganiserguestticket)
+  - [*AmendOrganiserGuestTicket*](#amendorganiserguestticket)
   - [*AttachOrganiserGuestAdditionalCheckout*](#attachorganiserguestadditionalcheckout)
   - [*MarkOrganiserGuestAdditionalPaymentPaid*](#markorganiserguestadditionalpaymentpaid)
   - [*MarkOrganiserGuestAdditionalPaymentRefunded*](#markorganiserguestadditionalpaymentrefunded)
+  - [*SetOrganiserGuestAmendmentNotificationStatus*](#setorganiserguestamendmentnotificationstatus)
   - [*CreateSection*](#createsection)
   - [*CreateUserGroup*](#createusergroup)
   - [*AddUserToUserGroup*](#addusertousergroup)
@@ -8013,6 +8020,9 @@ export interface GetOrganiserGuestEventData {
     id: UUIDString;
     title: string;
     bookingEndDateTime: TimestampString;
+    startDateTime: TimestampString;
+    endDateTime: TimestampString;
+    location?: string | null;
     section: {
       id: UUIDString;
     } & Section_Key;
@@ -8396,6 +8406,10 @@ export interface ListOrganiserGuestsData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
     payments: ({
       id: UUIDString;
       amountMinor: number;
@@ -8559,6 +8573,10 @@ export interface GetOrganiserGuestData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
     payments: ({
       id: UUIDString;
       amountMinor: number;
@@ -8721,6 +8739,10 @@ export interface GetOrganiserGuestByTokenData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
     payments: ({
       id: UUIDString;
       amountMinor: number;
@@ -8932,6 +8954,348 @@ console.log(data.organiserGuests);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.organiserGuests);
+});
+```
+
+## GetOrganiserGuestAmendment
+You can execute the `GetOrganiserGuestAmendment` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getOrganiserGuestAmendment(vars: GetOrganiserGuestAmendmentVariables, options?: ExecuteQueryOptions): QueryPromise<GetOrganiserGuestAmendmentData, GetOrganiserGuestAmendmentVariables>;
+
+interface GetOrganiserGuestAmendmentRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetOrganiserGuestAmendmentVariables): QueryRef<GetOrganiserGuestAmendmentData, GetOrganiserGuestAmendmentVariables>;
+}
+export const getOrganiserGuestAmendmentRef: GetOrganiserGuestAmendmentRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getOrganiserGuestAmendment(dc: DataConnect, vars: GetOrganiserGuestAmendmentVariables, options?: ExecuteQueryOptions): QueryPromise<GetOrganiserGuestAmendmentData, GetOrganiserGuestAmendmentVariables>;
+
+interface GetOrganiserGuestAmendmentRef {
+  ...
+  (dc: DataConnect, vars: GetOrganiserGuestAmendmentVariables): QueryRef<GetOrganiserGuestAmendmentData, GetOrganiserGuestAmendmentVariables>;
+}
+export const getOrganiserGuestAmendmentRef: GetOrganiserGuestAmendmentRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getOrganiserGuestAmendmentRef:
+```typescript
+const name = getOrganiserGuestAmendmentRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetOrganiserGuestAmendment` query requires an argument of type `GetOrganiserGuestAmendmentVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetOrganiserGuestAmendmentVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetOrganiserGuestAmendment` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetOrganiserGuestAmendmentData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetOrganiserGuestAmendmentData {
+  organiserGuestAmendment?: {
+    id: UUIDString;
+    guestId: UUIDString;
+    requestHash: string;
+    payload: string;
+    tokenHash?: string | null;
+    notificationStatus: string;
+    createdBy: string;
+  } & OrganiserGuestAmendment_Key;
+}
+```
+### Using `GetOrganiserGuestAmendment`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getOrganiserGuestAmendment, GetOrganiserGuestAmendmentVariables } from '@dataconnect/generated';
+
+// The `GetOrganiserGuestAmendment` query requires an argument of type `GetOrganiserGuestAmendmentVariables`:
+const getOrganiserGuestAmendmentVars: GetOrganiserGuestAmendmentVariables = {
+  id: ..., 
+};
+
+// Call the `getOrganiserGuestAmendment()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getOrganiserGuestAmendment(getOrganiserGuestAmendmentVars);
+// Variables can be defined inline as well.
+const { data } = await getOrganiserGuestAmendment({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getOrganiserGuestAmendment(dataConnect, getOrganiserGuestAmendmentVars);
+
+console.log(data.organiserGuestAmendment);
+
+// Or, you can use the `Promise` API.
+getOrganiserGuestAmendment(getOrganiserGuestAmendmentVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestAmendment);
+});
+```
+
+### Using `GetOrganiserGuestAmendment`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getOrganiserGuestAmendmentRef, GetOrganiserGuestAmendmentVariables } from '@dataconnect/generated';
+
+// The `GetOrganiserGuestAmendment` query requires an argument of type `GetOrganiserGuestAmendmentVariables`:
+const getOrganiserGuestAmendmentVars: GetOrganiserGuestAmendmentVariables = {
+  id: ..., 
+};
+
+// Call the `getOrganiserGuestAmendmentRef()` function to get a reference to the query.
+const ref = getOrganiserGuestAmendmentRef(getOrganiserGuestAmendmentVars);
+// Variables can be defined inline as well.
+const ref = getOrganiserGuestAmendmentRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getOrganiserGuestAmendmentRef(dataConnect, getOrganiserGuestAmendmentVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.organiserGuestAmendment);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestAmendment);
+});
+```
+
+## GetOrganiserGuestAmendmentByToken
+You can execute the `GetOrganiserGuestAmendmentByToken` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getOrganiserGuestAmendmentByToken(vars: GetOrganiserGuestAmendmentByTokenVariables, options?: ExecuteQueryOptions): QueryPromise<GetOrganiserGuestAmendmentByTokenData, GetOrganiserGuestAmendmentByTokenVariables>;
+
+interface GetOrganiserGuestAmendmentByTokenRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetOrganiserGuestAmendmentByTokenVariables): QueryRef<GetOrganiserGuestAmendmentByTokenData, GetOrganiserGuestAmendmentByTokenVariables>;
+}
+export const getOrganiserGuestAmendmentByTokenRef: GetOrganiserGuestAmendmentByTokenRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getOrganiserGuestAmendmentByToken(dc: DataConnect, vars: GetOrganiserGuestAmendmentByTokenVariables, options?: ExecuteQueryOptions): QueryPromise<GetOrganiserGuestAmendmentByTokenData, GetOrganiserGuestAmendmentByTokenVariables>;
+
+interface GetOrganiserGuestAmendmentByTokenRef {
+  ...
+  (dc: DataConnect, vars: GetOrganiserGuestAmendmentByTokenVariables): QueryRef<GetOrganiserGuestAmendmentByTokenData, GetOrganiserGuestAmendmentByTokenVariables>;
+}
+export const getOrganiserGuestAmendmentByTokenRef: GetOrganiserGuestAmendmentByTokenRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getOrganiserGuestAmendmentByTokenRef:
+```typescript
+const name = getOrganiserGuestAmendmentByTokenRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetOrganiserGuestAmendmentByToken` query requires an argument of type `GetOrganiserGuestAmendmentByTokenVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetOrganiserGuestAmendmentByTokenVariables {
+  tokenHash: string;
+}
+```
+### Return Type
+Recall that executing the `GetOrganiserGuestAmendmentByToken` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetOrganiserGuestAmendmentByTokenData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetOrganiserGuestAmendmentByTokenData {
+  organiserGuestAmendments: ({
+    guestId: UUIDString;
+  })[];
+}
+```
+### Using `GetOrganiserGuestAmendmentByToken`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getOrganiserGuestAmendmentByToken, GetOrganiserGuestAmendmentByTokenVariables } from '@dataconnect/generated';
+
+// The `GetOrganiserGuestAmendmentByToken` query requires an argument of type `GetOrganiserGuestAmendmentByTokenVariables`:
+const getOrganiserGuestAmendmentByTokenVars: GetOrganiserGuestAmendmentByTokenVariables = {
+  tokenHash: ..., 
+};
+
+// Call the `getOrganiserGuestAmendmentByToken()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getOrganiserGuestAmendmentByToken(getOrganiserGuestAmendmentByTokenVars);
+// Variables can be defined inline as well.
+const { data } = await getOrganiserGuestAmendmentByToken({ tokenHash: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getOrganiserGuestAmendmentByToken(dataConnect, getOrganiserGuestAmendmentByTokenVars);
+
+console.log(data.organiserGuestAmendments);
+
+// Or, you can use the `Promise` API.
+getOrganiserGuestAmendmentByToken(getOrganiserGuestAmendmentByTokenVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestAmendments);
+});
+```
+
+### Using `GetOrganiserGuestAmendmentByToken`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getOrganiserGuestAmendmentByTokenRef, GetOrganiserGuestAmendmentByTokenVariables } from '@dataconnect/generated';
+
+// The `GetOrganiserGuestAmendmentByToken` query requires an argument of type `GetOrganiserGuestAmendmentByTokenVariables`:
+const getOrganiserGuestAmendmentByTokenVars: GetOrganiserGuestAmendmentByTokenVariables = {
+  tokenHash: ..., 
+};
+
+// Call the `getOrganiserGuestAmendmentByTokenRef()` function to get a reference to the query.
+const ref = getOrganiserGuestAmendmentByTokenRef(getOrganiserGuestAmendmentByTokenVars);
+// Variables can be defined inline as well.
+const ref = getOrganiserGuestAmendmentByTokenRef({ tokenHash: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getOrganiserGuestAmendmentByTokenRef(dataConnect, getOrganiserGuestAmendmentByTokenVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.organiserGuestAmendments);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestAmendments);
+});
+```
+
+## ListPendingOrganiserGuestAmendments
+You can execute the `ListPendingOrganiserGuestAmendments` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listPendingOrganiserGuestAmendments(vars: ListPendingOrganiserGuestAmendmentsVariables, options?: ExecuteQueryOptions): QueryPromise<ListPendingOrganiserGuestAmendmentsData, ListPendingOrganiserGuestAmendmentsVariables>;
+
+interface ListPendingOrganiserGuestAmendmentsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListPendingOrganiserGuestAmendmentsVariables): QueryRef<ListPendingOrganiserGuestAmendmentsData, ListPendingOrganiserGuestAmendmentsVariables>;
+}
+export const listPendingOrganiserGuestAmendmentsRef: ListPendingOrganiserGuestAmendmentsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listPendingOrganiserGuestAmendments(dc: DataConnect, vars: ListPendingOrganiserGuestAmendmentsVariables, options?: ExecuteQueryOptions): QueryPromise<ListPendingOrganiserGuestAmendmentsData, ListPendingOrganiserGuestAmendmentsVariables>;
+
+interface ListPendingOrganiserGuestAmendmentsRef {
+  ...
+  (dc: DataConnect, vars: ListPendingOrganiserGuestAmendmentsVariables): QueryRef<ListPendingOrganiserGuestAmendmentsData, ListPendingOrganiserGuestAmendmentsVariables>;
+}
+export const listPendingOrganiserGuestAmendmentsRef: ListPendingOrganiserGuestAmendmentsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listPendingOrganiserGuestAmendmentsRef:
+```typescript
+const name = listPendingOrganiserGuestAmendmentsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListPendingOrganiserGuestAmendments` query requires an argument of type `ListPendingOrganiserGuestAmendmentsVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListPendingOrganiserGuestAmendmentsVariables {
+  before: TimestampString;
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListPendingOrganiserGuestAmendments` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListPendingOrganiserGuestAmendmentsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListPendingOrganiserGuestAmendmentsData {
+  organiserGuestAmendments: ({
+    id: UUIDString;
+  } & OrganiserGuestAmendment_Key)[];
+}
+```
+### Using `ListPendingOrganiserGuestAmendments`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listPendingOrganiserGuestAmendments, ListPendingOrganiserGuestAmendmentsVariables } from '@dataconnect/generated';
+
+// The `ListPendingOrganiserGuestAmendments` query requires an argument of type `ListPendingOrganiserGuestAmendmentsVariables`:
+const listPendingOrganiserGuestAmendmentsVars: ListPendingOrganiserGuestAmendmentsVariables = {
+  before: ..., 
+  limit: ..., 
+};
+
+// Call the `listPendingOrganiserGuestAmendments()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listPendingOrganiserGuestAmendments(listPendingOrganiserGuestAmendmentsVars);
+// Variables can be defined inline as well.
+const { data } = await listPendingOrganiserGuestAmendments({ before: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listPendingOrganiserGuestAmendments(dataConnect, listPendingOrganiserGuestAmendmentsVars);
+
+console.log(data.organiserGuestAmendments);
+
+// Or, you can use the `Promise` API.
+listPendingOrganiserGuestAmendments(listPendingOrganiserGuestAmendmentsVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestAmendments);
+});
+```
+
+### Using `ListPendingOrganiserGuestAmendments`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listPendingOrganiserGuestAmendmentsRef, ListPendingOrganiserGuestAmendmentsVariables } from '@dataconnect/generated';
+
+// The `ListPendingOrganiserGuestAmendments` query requires an argument of type `ListPendingOrganiserGuestAmendmentsVariables`:
+const listPendingOrganiserGuestAmendmentsVars: ListPendingOrganiserGuestAmendmentsVariables = {
+  before: ..., 
+  limit: ..., 
+};
+
+// Call the `listPendingOrganiserGuestAmendmentsRef()` function to get a reference to the query.
+const ref = listPendingOrganiserGuestAmendmentsRef(listPendingOrganiserGuestAmendmentsVars);
+// Variables can be defined inline as well.
+const ref = listPendingOrganiserGuestAmendmentsRef({ before: ..., limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listPendingOrganiserGuestAmendmentsRef(dataConnect, listPendingOrganiserGuestAmendmentsVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.organiserGuestAmendments);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestAmendments);
 });
 ```
 
@@ -21947,6 +22311,158 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## AmendOrganiserGuestDetails
+You can execute the `AmendOrganiserGuestDetails` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+amendOrganiserGuestDetails(vars: AmendOrganiserGuestDetailsVariables): MutationPromise<AmendOrganiserGuestDetailsData, AmendOrganiserGuestDetailsVariables>;
+
+interface AmendOrganiserGuestDetailsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AmendOrganiserGuestDetailsVariables): MutationRef<AmendOrganiserGuestDetailsData, AmendOrganiserGuestDetailsVariables>;
+}
+export const amendOrganiserGuestDetailsRef: AmendOrganiserGuestDetailsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+amendOrganiserGuestDetails(dc: DataConnect, vars: AmendOrganiserGuestDetailsVariables): MutationPromise<AmendOrganiserGuestDetailsData, AmendOrganiserGuestDetailsVariables>;
+
+interface AmendOrganiserGuestDetailsRef {
+  ...
+  (dc: DataConnect, vars: AmendOrganiserGuestDetailsVariables): MutationRef<AmendOrganiserGuestDetailsData, AmendOrganiserGuestDetailsVariables>;
+}
+export const amendOrganiserGuestDetailsRef: AmendOrganiserGuestDetailsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the amendOrganiserGuestDetailsRef:
+```typescript
+const name = amendOrganiserGuestDetailsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `AmendOrganiserGuestDetails` mutation requires an argument of type `AmendOrganiserGuestDetailsVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface AmendOrganiserGuestDetailsVariables {
+  id: UUIDString;
+  version: number;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
+}
+```
+### Return Type
+Recall that executing the `AmendOrganiserGuestDetails` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `AmendOrganiserGuestDetailsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface AmendOrganiserGuestDetailsData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+```
+### Using `AmendOrganiserGuestDetails`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, amendOrganiserGuestDetails, AmendOrganiserGuestDetailsVariables } from '@dataconnect/generated';
+
+// The `AmendOrganiserGuestDetails` mutation requires an argument of type `AmendOrganiserGuestDetailsVariables`:
+const amendOrganiserGuestDetailsVars: AmendOrganiserGuestDetailsVariables = {
+  id: ..., 
+  version: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., // optional
+  dietaryRequirements: ..., 
+  actor: ..., 
+  amendmentId: ..., 
+  amendmentRequestHash: ..., 
+  amendmentPayload: ..., 
+  amendmentTokenHash: ..., // optional
+  amendmentNotificationStatus: ..., 
+};
+
+// Call the `amendOrganiserGuestDetails()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await amendOrganiserGuestDetails(amendOrganiserGuestDetailsVars);
+// Variables can be defined inline as well.
+const { data } = await amendOrganiserGuestDetails({ id: ..., version: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., actor: ..., amendmentId: ..., amendmentRequestHash: ..., amendmentPayload: ..., amendmentTokenHash: ..., amendmentNotificationStatus: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await amendOrganiserGuestDetails(dataConnect, amendOrganiserGuestDetailsVars);
+
+console.log(data.organiserGuest_updateMany);
+console.log(data.organiserGuestAudit_insert);
+console.log(data.organiserGuestAmendment_insert);
+
+// Or, you can use the `Promise` API.
+amendOrganiserGuestDetails(amendOrganiserGuestDetailsVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuest_updateMany);
+  console.log(data.organiserGuestAudit_insert);
+  console.log(data.organiserGuestAmendment_insert);
+});
+```
+
+### Using `AmendOrganiserGuestDetails`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, amendOrganiserGuestDetailsRef, AmendOrganiserGuestDetailsVariables } from '@dataconnect/generated';
+
+// The `AmendOrganiserGuestDetails` mutation requires an argument of type `AmendOrganiserGuestDetailsVariables`:
+const amendOrganiserGuestDetailsVars: AmendOrganiserGuestDetailsVariables = {
+  id: ..., 
+  version: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., // optional
+  dietaryRequirements: ..., 
+  actor: ..., 
+  amendmentId: ..., 
+  amendmentRequestHash: ..., 
+  amendmentPayload: ..., 
+  amendmentTokenHash: ..., // optional
+  amendmentNotificationStatus: ..., 
+};
+
+// Call the `amendOrganiserGuestDetailsRef()` function to get a reference to the mutation.
+const ref = amendOrganiserGuestDetailsRef(amendOrganiserGuestDetailsVars);
+// Variables can be defined inline as well.
+const ref = amendOrganiserGuestDetailsRef({ id: ..., version: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., actor: ..., amendmentId: ..., amendmentRequestHash: ..., amendmentPayload: ..., amendmentTokenHash: ..., amendmentNotificationStatus: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = amendOrganiserGuestDetailsRef(dataConnect, amendOrganiserGuestDetailsVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.organiserGuest_updateMany);
+console.log(data.organiserGuestAudit_insert);
+console.log(data.organiserGuestAmendment_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuest_updateMany);
+  console.log(data.organiserGuestAudit_insert);
+  console.log(data.organiserGuestAmendment_insert);
+});
+```
+
 ## UpdateOrganiserGuestDietary
 You can execute the `UpdateOrganiserGuestDietary` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -22119,6 +22635,7 @@ The `data` property is an object of type `RotateOrganiserGuestLinkData`, which i
 export interface RotateOrganiserGuestLinkData {
   organiserGuest_updateMany: number;
   organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_updateMany: number;
 }
 ```
 ### Using `RotateOrganiserGuestLink`'s action shortcut function
@@ -22148,12 +22665,14 @@ const { data } = await rotateOrganiserGuestLink(dataConnect, rotateOrganiserGues
 
 console.log(data.organiserGuest_updateMany);
 console.log(data.organiserGuestAudit_insert);
+console.log(data.organiserGuestAmendment_updateMany);
 
 // Or, you can use the `Promise` API.
 rotateOrganiserGuestLink(rotateOrganiserGuestLinkVars).then((response) => {
   const data = response.data;
   console.log(data.organiserGuest_updateMany);
   console.log(data.organiserGuestAudit_insert);
+  console.log(data.organiserGuestAmendment_updateMany);
 });
 ```
 
@@ -22187,12 +22706,14 @@ const { data } = await executeMutation(ref);
 
 console.log(data.organiserGuest_updateMany);
 console.log(data.organiserGuestAudit_insert);
+console.log(data.organiserGuestAmendment_updateMany);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.organiserGuest_updateMany);
   console.log(data.organiserGuestAudit_insert);
+  console.log(data.organiserGuestAmendment_updateMany);
 });
 ```
 
@@ -22313,6 +22834,146 @@ executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.organiserGuest_updateMany);
   console.log(data.organiserGuestAudit_insert);
+});
+```
+
+## CancelOrganiserGuestWithAmendment
+You can execute the `CancelOrganiserGuestWithAmendment` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+cancelOrganiserGuestWithAmendment(vars: CancelOrganiserGuestWithAmendmentVariables): MutationPromise<CancelOrganiserGuestWithAmendmentData, CancelOrganiserGuestWithAmendmentVariables>;
+
+interface CancelOrganiserGuestWithAmendmentRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CancelOrganiserGuestWithAmendmentVariables): MutationRef<CancelOrganiserGuestWithAmendmentData, CancelOrganiserGuestWithAmendmentVariables>;
+}
+export const cancelOrganiserGuestWithAmendmentRef: CancelOrganiserGuestWithAmendmentRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+cancelOrganiserGuestWithAmendment(dc: DataConnect, vars: CancelOrganiserGuestWithAmendmentVariables): MutationPromise<CancelOrganiserGuestWithAmendmentData, CancelOrganiserGuestWithAmendmentVariables>;
+
+interface CancelOrganiserGuestWithAmendmentRef {
+  ...
+  (dc: DataConnect, vars: CancelOrganiserGuestWithAmendmentVariables): MutationRef<CancelOrganiserGuestWithAmendmentData, CancelOrganiserGuestWithAmendmentVariables>;
+}
+export const cancelOrganiserGuestWithAmendmentRef: CancelOrganiserGuestWithAmendmentRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the cancelOrganiserGuestWithAmendmentRef:
+```typescript
+const name = cancelOrganiserGuestWithAmendmentRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CancelOrganiserGuestWithAmendment` mutation requires an argument of type `CancelOrganiserGuestWithAmendmentVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CancelOrganiserGuestWithAmendmentVariables {
+  id: UUIDString;
+  version: number;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
+}
+```
+### Return Type
+Recall that executing the `CancelOrganiserGuestWithAmendment` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CancelOrganiserGuestWithAmendmentData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CancelOrganiserGuestWithAmendmentData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+```
+### Using `CancelOrganiserGuestWithAmendment`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, cancelOrganiserGuestWithAmendment, CancelOrganiserGuestWithAmendmentVariables } from '@dataconnect/generated';
+
+// The `CancelOrganiserGuestWithAmendment` mutation requires an argument of type `CancelOrganiserGuestWithAmendmentVariables`:
+const cancelOrganiserGuestWithAmendmentVars: CancelOrganiserGuestWithAmendmentVariables = {
+  id: ..., 
+  version: ..., 
+  actor: ..., 
+  amendmentId: ..., 
+  amendmentRequestHash: ..., 
+  amendmentPayload: ..., 
+  amendmentTokenHash: ..., // optional
+  amendmentNotificationStatus: ..., 
+};
+
+// Call the `cancelOrganiserGuestWithAmendment()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await cancelOrganiserGuestWithAmendment(cancelOrganiserGuestWithAmendmentVars);
+// Variables can be defined inline as well.
+const { data } = await cancelOrganiserGuestWithAmendment({ id: ..., version: ..., actor: ..., amendmentId: ..., amendmentRequestHash: ..., amendmentPayload: ..., amendmentTokenHash: ..., amendmentNotificationStatus: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await cancelOrganiserGuestWithAmendment(dataConnect, cancelOrganiserGuestWithAmendmentVars);
+
+console.log(data.organiserGuest_updateMany);
+console.log(data.organiserGuestAudit_insert);
+console.log(data.organiserGuestAmendment_insert);
+
+// Or, you can use the `Promise` API.
+cancelOrganiserGuestWithAmendment(cancelOrganiserGuestWithAmendmentVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuest_updateMany);
+  console.log(data.organiserGuestAudit_insert);
+  console.log(data.organiserGuestAmendment_insert);
+});
+```
+
+### Using `CancelOrganiserGuestWithAmendment`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, cancelOrganiserGuestWithAmendmentRef, CancelOrganiserGuestWithAmendmentVariables } from '@dataconnect/generated';
+
+// The `CancelOrganiserGuestWithAmendment` mutation requires an argument of type `CancelOrganiserGuestWithAmendmentVariables`:
+const cancelOrganiserGuestWithAmendmentVars: CancelOrganiserGuestWithAmendmentVariables = {
+  id: ..., 
+  version: ..., 
+  actor: ..., 
+  amendmentId: ..., 
+  amendmentRequestHash: ..., 
+  amendmentPayload: ..., 
+  amendmentTokenHash: ..., // optional
+  amendmentNotificationStatus: ..., 
+};
+
+// Call the `cancelOrganiserGuestWithAmendmentRef()` function to get a reference to the mutation.
+const ref = cancelOrganiserGuestWithAmendmentRef(cancelOrganiserGuestWithAmendmentVars);
+// Variables can be defined inline as well.
+const ref = cancelOrganiserGuestWithAmendmentRef({ id: ..., version: ..., actor: ..., amendmentId: ..., amendmentRequestHash: ..., amendmentPayload: ..., amendmentTokenHash: ..., amendmentNotificationStatus: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = cancelOrganiserGuestWithAmendmentRef(dataConnect, cancelOrganiserGuestWithAmendmentVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.organiserGuest_updateMany);
+console.log(data.organiserGuestAudit_insert);
+console.log(data.organiserGuestAmendment_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuest_updateMany);
+  console.log(data.organiserGuestAudit_insert);
+  console.log(data.organiserGuestAmendment_insert);
 });
 ```
 
@@ -22954,6 +23615,176 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## AmendOrganiserGuestTicket
+You can execute the `AmendOrganiserGuestTicket` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+amendOrganiserGuestTicket(vars: AmendOrganiserGuestTicketVariables): MutationPromise<AmendOrganiserGuestTicketData, AmendOrganiserGuestTicketVariables>;
+
+interface AmendOrganiserGuestTicketRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: AmendOrganiserGuestTicketVariables): MutationRef<AmendOrganiserGuestTicketData, AmendOrganiserGuestTicketVariables>;
+}
+export const amendOrganiserGuestTicketRef: AmendOrganiserGuestTicketRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+amendOrganiserGuestTicket(dc: DataConnect, vars: AmendOrganiserGuestTicketVariables): MutationPromise<AmendOrganiserGuestTicketData, AmendOrganiserGuestTicketVariables>;
+
+interface AmendOrganiserGuestTicketRef {
+  ...
+  (dc: DataConnect, vars: AmendOrganiserGuestTicketVariables): MutationRef<AmendOrganiserGuestTicketData, AmendOrganiserGuestTicketVariables>;
+}
+export const amendOrganiserGuestTicketRef: AmendOrganiserGuestTicketRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the amendOrganiserGuestTicketRef:
+```typescript
+const name = amendOrganiserGuestTicketRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `AmendOrganiserGuestTicket` mutation requires an argument of type `AmendOrganiserGuestTicketVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface AmendOrganiserGuestTicketVariables {
+  id: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  priceMinor: number;
+  paidAmountMinor?: number | null;
+  includesSymposium: boolean;
+  includesDinner: boolean;
+  checkoutKey: string;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
+}
+```
+### Return Type
+Recall that executing the `AmendOrganiserGuestTicket` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `AmendOrganiserGuestTicketData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface AmendOrganiserGuestTicketData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+```
+### Using `AmendOrganiserGuestTicket`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, amendOrganiserGuestTicket, AmendOrganiserGuestTicketVariables } from '@dataconnect/generated';
+
+// The `AmendOrganiserGuestTicket` mutation requires an argument of type `AmendOrganiserGuestTicketVariables`:
+const amendOrganiserGuestTicketVars: AmendOrganiserGuestTicketVariables = {
+  id: ..., 
+  version: ..., 
+  ticketTypeId: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., // optional
+  dietaryRequirements: ..., 
+  priceMinor: ..., 
+  paidAmountMinor: ..., // optional
+  includesSymposium: ..., 
+  includesDinner: ..., 
+  checkoutKey: ..., 
+  actor: ..., 
+  amendmentId: ..., 
+  amendmentRequestHash: ..., 
+  amendmentPayload: ..., 
+  amendmentTokenHash: ..., // optional
+  amendmentNotificationStatus: ..., 
+};
+
+// Call the `amendOrganiserGuestTicket()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await amendOrganiserGuestTicket(amendOrganiserGuestTicketVars);
+// Variables can be defined inline as well.
+const { data } = await amendOrganiserGuestTicket({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., priceMinor: ..., paidAmountMinor: ..., includesSymposium: ..., includesDinner: ..., checkoutKey: ..., actor: ..., amendmentId: ..., amendmentRequestHash: ..., amendmentPayload: ..., amendmentTokenHash: ..., amendmentNotificationStatus: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await amendOrganiserGuestTicket(dataConnect, amendOrganiserGuestTicketVars);
+
+console.log(data.organiserGuest_updateMany);
+console.log(data.organiserGuestAudit_insert);
+console.log(data.organiserGuestAmendment_insert);
+
+// Or, you can use the `Promise` API.
+amendOrganiserGuestTicket(amendOrganiserGuestTicketVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuest_updateMany);
+  console.log(data.organiserGuestAudit_insert);
+  console.log(data.organiserGuestAmendment_insert);
+});
+```
+
+### Using `AmendOrganiserGuestTicket`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, amendOrganiserGuestTicketRef, AmendOrganiserGuestTicketVariables } from '@dataconnect/generated';
+
+// The `AmendOrganiserGuestTicket` mutation requires an argument of type `AmendOrganiserGuestTicketVariables`:
+const amendOrganiserGuestTicketVars: AmendOrganiserGuestTicketVariables = {
+  id: ..., 
+  version: ..., 
+  ticketTypeId: ..., 
+  firstName: ..., 
+  lastName: ..., 
+  email: ..., // optional
+  dietaryRequirements: ..., 
+  priceMinor: ..., 
+  paidAmountMinor: ..., // optional
+  includesSymposium: ..., 
+  includesDinner: ..., 
+  checkoutKey: ..., 
+  actor: ..., 
+  amendmentId: ..., 
+  amendmentRequestHash: ..., 
+  amendmentPayload: ..., 
+  amendmentTokenHash: ..., // optional
+  amendmentNotificationStatus: ..., 
+};
+
+// Call the `amendOrganiserGuestTicketRef()` function to get a reference to the mutation.
+const ref = amendOrganiserGuestTicketRef(amendOrganiserGuestTicketVars);
+// Variables can be defined inline as well.
+const ref = amendOrganiserGuestTicketRef({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., priceMinor: ..., paidAmountMinor: ..., includesSymposium: ..., includesDinner: ..., checkoutKey: ..., actor: ..., amendmentId: ..., amendmentRequestHash: ..., amendmentPayload: ..., amendmentTokenHash: ..., amendmentNotificationStatus: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = amendOrganiserGuestTicketRef(dataConnect, amendOrganiserGuestTicketVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.organiserGuest_updateMany);
+console.log(data.organiserGuestAudit_insert);
+console.log(data.organiserGuestAmendment_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuest_updateMany);
+  console.log(data.organiserGuestAudit_insert);
+  console.log(data.organiserGuestAmendment_insert);
+});
+```
+
 ## AttachOrganiserGuestAdditionalCheckout
 You can execute the `AttachOrganiserGuestAdditionalCheckout` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -23329,6 +24160,118 @@ console.log(data.organiserGuestPayment_updateMany);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.organiserGuestPayment_updateMany);
+});
+```
+
+## SetOrganiserGuestAmendmentNotificationStatus
+You can execute the `SetOrganiserGuestAmendmentNotificationStatus` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+setOrganiserGuestAmendmentNotificationStatus(vars: SetOrganiserGuestAmendmentNotificationStatusVariables): MutationPromise<SetOrganiserGuestAmendmentNotificationStatusData, SetOrganiserGuestAmendmentNotificationStatusVariables>;
+
+interface SetOrganiserGuestAmendmentNotificationStatusRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SetOrganiserGuestAmendmentNotificationStatusVariables): MutationRef<SetOrganiserGuestAmendmentNotificationStatusData, SetOrganiserGuestAmendmentNotificationStatusVariables>;
+}
+export const setOrganiserGuestAmendmentNotificationStatusRef: SetOrganiserGuestAmendmentNotificationStatusRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+setOrganiserGuestAmendmentNotificationStatus(dc: DataConnect, vars: SetOrganiserGuestAmendmentNotificationStatusVariables): MutationPromise<SetOrganiserGuestAmendmentNotificationStatusData, SetOrganiserGuestAmendmentNotificationStatusVariables>;
+
+interface SetOrganiserGuestAmendmentNotificationStatusRef {
+  ...
+  (dc: DataConnect, vars: SetOrganiserGuestAmendmentNotificationStatusVariables): MutationRef<SetOrganiserGuestAmendmentNotificationStatusData, SetOrganiserGuestAmendmentNotificationStatusVariables>;
+}
+export const setOrganiserGuestAmendmentNotificationStatusRef: SetOrganiserGuestAmendmentNotificationStatusRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the setOrganiserGuestAmendmentNotificationStatusRef:
+```typescript
+const name = setOrganiserGuestAmendmentNotificationStatusRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `SetOrganiserGuestAmendmentNotificationStatus` mutation requires an argument of type `SetOrganiserGuestAmendmentNotificationStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface SetOrganiserGuestAmendmentNotificationStatusVariables {
+  id: UUIDString;
+  status: string;
+}
+```
+### Return Type
+Recall that executing the `SetOrganiserGuestAmendmentNotificationStatus` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `SetOrganiserGuestAmendmentNotificationStatusData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface SetOrganiserGuestAmendmentNotificationStatusData {
+  organiserGuestAmendment_updateMany: number;
+}
+```
+### Using `SetOrganiserGuestAmendmentNotificationStatus`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, setOrganiserGuestAmendmentNotificationStatus, SetOrganiserGuestAmendmentNotificationStatusVariables } from '@dataconnect/generated';
+
+// The `SetOrganiserGuestAmendmentNotificationStatus` mutation requires an argument of type `SetOrganiserGuestAmendmentNotificationStatusVariables`:
+const setOrganiserGuestAmendmentNotificationStatusVars: SetOrganiserGuestAmendmentNotificationStatusVariables = {
+  id: ..., 
+  status: ..., 
+};
+
+// Call the `setOrganiserGuestAmendmentNotificationStatus()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await setOrganiserGuestAmendmentNotificationStatus(setOrganiserGuestAmendmentNotificationStatusVars);
+// Variables can be defined inline as well.
+const { data } = await setOrganiserGuestAmendmentNotificationStatus({ id: ..., status: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await setOrganiserGuestAmendmentNotificationStatus(dataConnect, setOrganiserGuestAmendmentNotificationStatusVars);
+
+console.log(data.organiserGuestAmendment_updateMany);
+
+// Or, you can use the `Promise` API.
+setOrganiserGuestAmendmentNotificationStatus(setOrganiserGuestAmendmentNotificationStatusVars).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestAmendment_updateMany);
+});
+```
+
+### Using `SetOrganiserGuestAmendmentNotificationStatus`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, setOrganiserGuestAmendmentNotificationStatusRef, SetOrganiserGuestAmendmentNotificationStatusVariables } from '@dataconnect/generated';
+
+// The `SetOrganiserGuestAmendmentNotificationStatus` mutation requires an argument of type `SetOrganiserGuestAmendmentNotificationStatusVariables`:
+const setOrganiserGuestAmendmentNotificationStatusVars: SetOrganiserGuestAmendmentNotificationStatusVariables = {
+  id: ..., 
+  status: ..., 
+};
+
+// Call the `setOrganiserGuestAmendmentNotificationStatusRef()` function to get a reference to the mutation.
+const ref = setOrganiserGuestAmendmentNotificationStatusRef(setOrganiserGuestAmendmentNotificationStatusVars);
+// Variables can be defined inline as well.
+const ref = setOrganiserGuestAmendmentNotificationStatusRef({ id: ..., status: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = setOrganiserGuestAmendmentNotificationStatusRef(dataConnect, setOrganiserGuestAmendmentNotificationStatusVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.organiserGuestAmendment_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.organiserGuestAmendment_updateMany);
 });
 ```
 

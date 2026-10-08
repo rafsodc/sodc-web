@@ -3,6 +3,7 @@ import {
   updateBookingPlaceAllocationRefundStateFromCallable,
 } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
+import { bookingSettlementTotals } from "./bookingPaymentAdjustments";
 import { validateUUID } from "./helpers";
 import {
   planBookingAllocationRefunds,
@@ -31,7 +32,9 @@ export async function initiateBookingAllocationRefunds(args: {
   const result: BookingRefundResult = {
     requestedAmountMinor: 0,
     completedAmountMinor: 0,
-    pendingAmountMinor: 0,
+    // Existing pending refunds are part of the outcome even when this retry
+    // creates no new Stripe refund. They must prevent premature settlement.
+    pendingAmountMinor: bookingSettlementTotals(args.financialHistory).pendingRefundAmountMinor,
     failedAmountMinor: 0,
   };
   for (const refund of refunds) {
@@ -52,7 +55,7 @@ async function initiateOneRefund(
     await updateBookingPlaceAllocationRefundStateFromCallable({
       id: validateUUID(refund.allocationId) as UUIDString,
       refundedAmountMinor: refund.resultingRefundedAmountMinor - refund.amountMinor,
-      refundPendingAmountMinor: 0,
+      refundPendingAmountMinor: refund.resultingPendingAmountMinor - refund.amountMinor,
       stripeRefundId: null,
       refundFailureReason: "Paid allocation is missing its Stripe payment reference",
     });
@@ -84,7 +87,9 @@ async function initiateOneRefund(
       refundedAmountMinor: succeeded
         ? refund.resultingRefundedAmountMinor
         : refund.resultingRefundedAmountMinor - refund.amountMinor,
-      refundPendingAmountMinor: succeeded || failed ? 0 : refund.resultingPendingAmountMinor,
+      refundPendingAmountMinor: succeeded || failed
+        ? refund.resultingPendingAmountMinor - refund.amountMinor
+        : refund.resultingPendingAmountMinor,
       stripeRefundId: stripeRefund.id,
       refundFailureReason: failed
         ? stripeRefund.failure_reason ?? `Stripe refund ${stripeRefund.status}`
@@ -98,7 +103,7 @@ async function initiateOneRefund(
     await updateBookingPlaceAllocationRefundStateFromCallable({
       id: validateUUID(refund.allocationId) as UUIDString,
       refundedAmountMinor: refund.resultingRefundedAmountMinor - refund.amountMinor,
-      refundPendingAmountMinor: 0,
+      refundPendingAmountMinor: refund.resultingPendingAmountMinor - refund.amountMinor,
       stripeRefundId: null,
       refundFailureReason: error instanceof Error ? error.message.slice(0, 500) : "Stripe refund request failed",
     });

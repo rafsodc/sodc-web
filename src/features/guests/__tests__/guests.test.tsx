@@ -261,6 +261,7 @@ describe("organiser management and reports", () => {
         id: "guest",
         version: 3,
         action: "cancel",
+        amendmentId: expect.any(String),
       }),
     );
   });
@@ -279,4 +280,16 @@ describe("organiser management and reports", () => {
     });
     expect(rows[1].paymentState).toBe("FREE");
   });
+});
+
+
+it("offers independent refund and email recovery for an active guest", async () => {
+  call.mockResolvedValue({ event: { id: "event" }, ticketTypes: [], guests: [{ ...guest, paymentStatus: "REFUND_FAILED", latestAmendmentId: "amendment", notificationStatus: "FAILED" }] });
+  render(<OrganiserGuestsManager eventId="event" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Retry refund" }));
+  await waitFor(() => expect(call).toHaveBeenCalledWith("manageOrganiserGuest", { eventId: "event", id: "guest", version: 3, action: "retry-refund" }));
+  const retryEmail = await screen.findByRole("button", { name: "Retry email" });
+  await waitFor(() => expect(retryEmail).toBeEnabled());
+  fireEvent.click(retryEmail);
+  await waitFor(() => expect(call).toHaveBeenCalledWith("manageOrganiserGuest", { eventId: "event", id: "guest", version: 3, action: "retry-notification", amendmentId: "amendment" }));
 });

@@ -27,6 +27,8 @@ export interface Guest {
   refundedAmountMinor: number;
   refundPendingMinor: number;
   refundFailureReason: string | null;
+  latestAmendmentId?: string | null;
+  notificationStatus?: string | null;
 }
 export interface GuestList {
   event: { id: string; title: string; bookingEndDateTime: string };

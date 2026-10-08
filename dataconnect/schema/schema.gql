@@ -901,3 +901,16 @@ type OrganiserGuestAudit @table {
   actor: String!
   occurredAt: Timestamp! @default(expr: "request.time")
 }
+
+# Immutable organiser amendment and durable notification outbox. Capability
+# tokens are accepted only through server callables and are revoked explicitly.
+type OrganiserGuestAmendment @table {
+  id: UUID!
+  guest: OrganiserGuest!
+  requestHash: String!
+  payload: String!
+  tokenHash: String @unique
+  notificationStatus: String! @default(value: "PENDING")
+  createdBy: String!
+  createdAt: Timestamp! @default(expr: "request.time")
+}

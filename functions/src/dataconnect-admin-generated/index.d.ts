@@ -210,6 +210,54 @@ export interface AdminOptOutSectionAnnouncementVariables {
   sectionId: UUIDString;
 }
 
+export interface AmendOrganiserGuestDetailsData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+
+export interface AmendOrganiserGuestDetailsVariables {
+  id: UUIDString;
+  version: number;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
+}
+
+export interface AmendOrganiserGuestTicketData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+
+export interface AmendOrganiserGuestTicketVariables {
+  id: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  priceMinor: number;
+  paidAmountMinor?: number | null;
+  includesSymposium: boolean;
+  includesDinner: boolean;
+  checkoutKey: string;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
+}
+
 export interface AnnouncementRecipient_Key {
   id: UUIDString;
   __typename?: 'AnnouncementRecipient_Key';
@@ -314,6 +362,23 @@ export interface CancelOrganiserGuestVariables {
   id: UUIDString;
   version: number;
   actor: string;
+}
+
+export interface CancelOrganiserGuestWithAmendmentData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+
+export interface CancelOrganiserGuestWithAmendmentVariables {
+  id: UUIDString;
+  version: number;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
 }
 
 export interface ChangeGovNotifyDeliveryModeData {
@@ -1936,6 +2001,32 @@ export interface GetNotifyTemplateBindingsData {
   } & NotifyTemplateBinding_Key)[];
 }
 
+export interface GetOrganiserGuestAmendmentByTokenData {
+  organiserGuestAmendments: ({
+    guestId: UUIDString;
+  })[];
+}
+
+export interface GetOrganiserGuestAmendmentByTokenVariables {
+  tokenHash: string;
+}
+
+export interface GetOrganiserGuestAmendmentData {
+  organiserGuestAmendment?: {
+    id: UUIDString;
+    guestId: UUIDString;
+    requestHash: string;
+    payload: string;
+    tokenHash?: string | null;
+    notificationStatus: string;
+    createdBy: string;
+  } & OrganiserGuestAmendment_Key;
+}
+
+export interface GetOrganiserGuestAmendmentVariables {
+  id: UUIDString;
+}
+
 export interface GetOrganiserGuestByTokenData {
   organiserGuests: ({
     id: UUIDString;
@@ -1959,6 +2050,10 @@ export interface GetOrganiserGuestByTokenData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
     payments: ({
       id: UUIDString;
       amountMinor: number;
@@ -2020,6 +2115,10 @@ export interface GetOrganiserGuestData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
     payments: ({
       id: UUIDString;
       amountMinor: number;
@@ -2059,6 +2158,9 @@ export interface GetOrganiserGuestEventData {
     id: UUIDString;
     title: string;
     bookingEndDateTime: TimestampString;
+    startDateTime: TimestampString;
+    endDateTime: TimestampString;
+    location?: string | null;
     section: {
       id: UUIDString;
     } & Section_Key;
@@ -3035,6 +3137,10 @@ export interface ListOrganiserGuestsData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
     payments: ({
       id: UUIDString;
       amountMinor: number;
@@ -3071,6 +3177,17 @@ export interface ListOrganiserGuestsData {
 export interface ListOrganiserGuestsVariables {
   eventId: UUIDString;
   offset: number;
+}
+
+export interface ListPendingOrganiserGuestAmendmentsData {
+  organiserGuestAmendments: ({
+    id: UUIDString;
+  } & OrganiserGuestAmendment_Key)[];
+}
+
+export interface ListPendingOrganiserGuestAmendmentsVariables {
+  before: TimestampString;
+  limit: number;
 }
 
 export interface ListPotentialLostProfilesData {
@@ -3506,6 +3623,11 @@ export interface OptOutSectionAnnouncementVariables {
   sectionId: UUIDString;
 }
 
+export interface OrganiserGuestAmendment_Key {
+  id: UUIDString;
+  __typename?: 'OrganiserGuestAmendment_Key';
+}
+
 export interface OrganiserGuestAudit_Key {
   id: UUIDString;
   __typename?: 'OrganiserGuestAudit_Key';
@@ -3681,6 +3803,7 @@ export interface RevokeUserGroupFromSectionForPurposeVariables {
 export interface RotateOrganiserGuestLinkData {
   organiserGuest_updateMany: number;
   organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_updateMany: number;
 }
 
 export interface RotateOrganiserGuestLinkVariables {
@@ -3765,6 +3888,15 @@ export interface SetNotifyTemplateReplyToOverrideVariables {
   reason?: string | null;
   previousValue?: string | null;
   newValue: string;
+}
+
+export interface SetOrganiserGuestAmendmentNotificationStatusData {
+  organiserGuestAmendment_updateMany: number;
+}
+
+export interface SetOrganiserGuestAmendmentNotificationStatusVariables {
+  id: UUIDString;
+  status: string;
 }
 
 export interface SettleBookingPaymentAdjustmentsFromCallableData {
@@ -4907,6 +5039,11 @@ export function updateOrganiserGuestDetails(dc: DataConnect, vars: UpdateOrganis
 /** Generated Node Admin SDK operation action function for the 'UpdateOrganiserGuestDetails' Mutation. Allow users to pass in custom DataConnect instances. */
 export function updateOrganiserGuestDetails(vars: UpdateOrganiserGuestDetailsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateOrganiserGuestDetailsData>>;
 
+/** Generated Node Admin SDK operation action function for the 'AmendOrganiserGuestDetails' Mutation. Allow users to execute without passing in DataConnect. */
+export function amendOrganiserGuestDetails(dc: DataConnect, vars: AmendOrganiserGuestDetailsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AmendOrganiserGuestDetailsData>>;
+/** Generated Node Admin SDK operation action function for the 'AmendOrganiserGuestDetails' Mutation. Allow users to pass in custom DataConnect instances. */
+export function amendOrganiserGuestDetails(vars: AmendOrganiserGuestDetailsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AmendOrganiserGuestDetailsData>>;
+
 /** Generated Node Admin SDK operation action function for the 'UpdateOrganiserGuestDietary' Mutation. Allow users to execute without passing in DataConnect. */
 export function updateOrganiserGuestDietary(dc: DataConnect, vars: UpdateOrganiserGuestDietaryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateOrganiserGuestDietaryData>>;
 /** Generated Node Admin SDK operation action function for the 'UpdateOrganiserGuestDietary' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -4921,6 +5058,11 @@ export function rotateOrganiserGuestLink(vars: RotateOrganiserGuestLinkVariables
 export function cancelOrganiserGuest(dc: DataConnect, vars: CancelOrganiserGuestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CancelOrganiserGuestData>>;
 /** Generated Node Admin SDK operation action function for the 'CancelOrganiserGuest' Mutation. Allow users to pass in custom DataConnect instances. */
 export function cancelOrganiserGuest(vars: CancelOrganiserGuestVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CancelOrganiserGuestData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CancelOrganiserGuestWithAmendment' Mutation. Allow users to execute without passing in DataConnect. */
+export function cancelOrganiserGuestWithAmendment(dc: DataConnect, vars: CancelOrganiserGuestWithAmendmentVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CancelOrganiserGuestWithAmendmentData>>;
+/** Generated Node Admin SDK operation action function for the 'CancelOrganiserGuestWithAmendment' Mutation. Allow users to pass in custom DataConnect instances. */
+export function cancelOrganiserGuestWithAmendment(vars: CancelOrganiserGuestWithAmendmentVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CancelOrganiserGuestWithAmendmentData>>;
 
 /** Generated Node Admin SDK operation action function for the 'AttachOrganiserGuestCheckout' Mutation. Allow users to execute without passing in DataConnect. */
 export function attachOrganiserGuestCheckout(dc: DataConnect, vars: AttachOrganiserGuestCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AttachOrganiserGuestCheckoutData>>;
@@ -4947,6 +5089,11 @@ export function reassignOrganiserGuestTicket(dc: DataConnect, vars: ReassignOrga
 /** Generated Node Admin SDK operation action function for the 'ReassignOrganiserGuestTicket' Mutation. Allow users to pass in custom DataConnect instances. */
 export function reassignOrganiserGuestTicket(vars: ReassignOrganiserGuestTicketVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReassignOrganiserGuestTicketData>>;
 
+/** Generated Node Admin SDK operation action function for the 'AmendOrganiserGuestTicket' Mutation. Allow users to execute without passing in DataConnect. */
+export function amendOrganiserGuestTicket(dc: DataConnect, vars: AmendOrganiserGuestTicketVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AmendOrganiserGuestTicketData>>;
+/** Generated Node Admin SDK operation action function for the 'AmendOrganiserGuestTicket' Mutation. Allow users to pass in custom DataConnect instances. */
+export function amendOrganiserGuestTicket(vars: AmendOrganiserGuestTicketVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AmendOrganiserGuestTicketData>>;
+
 /** Generated Node Admin SDK operation action function for the 'AttachOrganiserGuestAdditionalCheckout' Mutation. Allow users to execute without passing in DataConnect. */
 export function attachOrganiserGuestAdditionalCheckout(dc: DataConnect, vars: AttachOrganiserGuestAdditionalCheckoutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AttachOrganiserGuestAdditionalCheckoutData>>;
 /** Generated Node Admin SDK operation action function for the 'AttachOrganiserGuestAdditionalCheckout' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -4961,6 +5108,26 @@ export function markOrganiserGuestAdditionalPaymentPaid(vars: MarkOrganiserGuest
 export function markOrganiserGuestAdditionalPaymentRefunded(dc: DataConnect, vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkOrganiserGuestAdditionalPaymentRefundedData>>;
 /** Generated Node Admin SDK operation action function for the 'MarkOrganiserGuestAdditionalPaymentRefunded' Mutation. Allow users to pass in custom DataConnect instances. */
 export function markOrganiserGuestAdditionalPaymentRefunded(vars: MarkOrganiserGuestAdditionalPaymentRefundedVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkOrganiserGuestAdditionalPaymentRefundedData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestAmendment' Query. Allow users to execute without passing in DataConnect. */
+export function getOrganiserGuestAmendment(dc: DataConnect, vars: GetOrganiserGuestAmendmentVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestAmendmentData>>;
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestAmendment' Query. Allow users to pass in custom DataConnect instances. */
+export function getOrganiserGuestAmendment(vars: GetOrganiserGuestAmendmentVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestAmendmentData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestAmendmentByToken' Query. Allow users to execute without passing in DataConnect. */
+export function getOrganiserGuestAmendmentByToken(dc: DataConnect, vars: GetOrganiserGuestAmendmentByTokenVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestAmendmentByTokenData>>;
+/** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestAmendmentByToken' Query. Allow users to pass in custom DataConnect instances. */
+export function getOrganiserGuestAmendmentByToken(vars: GetOrganiserGuestAmendmentByTokenVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestAmendmentByTokenData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListPendingOrganiserGuestAmendments' Query. Allow users to execute without passing in DataConnect. */
+export function listPendingOrganiserGuestAmendments(dc: DataConnect, vars: ListPendingOrganiserGuestAmendmentsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListPendingOrganiserGuestAmendmentsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListPendingOrganiserGuestAmendments' Query. Allow users to pass in custom DataConnect instances. */
+export function listPendingOrganiserGuestAmendments(vars: ListPendingOrganiserGuestAmendmentsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListPendingOrganiserGuestAmendmentsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'SetOrganiserGuestAmendmentNotificationStatus' Mutation. Allow users to execute without passing in DataConnect. */
+export function setOrganiserGuestAmendmentNotificationStatus(dc: DataConnect, vars: SetOrganiserGuestAmendmentNotificationStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SetOrganiserGuestAmendmentNotificationStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'SetOrganiserGuestAmendmentNotificationStatus' Mutation. Allow users to pass in custom DataConnect instances. */
+export function setOrganiserGuestAmendmentNotificationStatus(vars: SetOrganiserGuestAmendmentNotificationStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SetOrganiserGuestAmendmentNotificationStatusData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetCurrentUser' Query. Allow users to execute without passing in DataConnect. */
 export function getCurrentUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetCurrentUserData>>;

@@ -1016,6 +1016,12 @@ export function updateOrganiserGuestDetails(dcOrVarsOrOptions, varsOrOptions, op
   return dcInstance.executeMutation('UpdateOrganiserGuestDetails', inputVars, inputOpts);
 }
 
+export function amendOrganiserGuestDetails(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AmendOrganiserGuestDetails', inputVars, inputOpts);
+}
+
 export function updateOrganiserGuestDietary(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -1032,6 +1038,12 @@ export function cancelOrganiserGuest(dcOrVarsOrOptions, varsOrOptions, options) 
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('CancelOrganiserGuest', inputVars, inputOpts);
+}
+
+export function cancelOrganiserGuestWithAmendment(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CancelOrganiserGuestWithAmendment', inputVars, inputOpts);
 }
 
 export function attachOrganiserGuestCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
@@ -1064,6 +1076,12 @@ export function reassignOrganiserGuestTicket(dcOrVarsOrOptions, varsOrOptions, o
   return dcInstance.executeMutation('ReassignOrganiserGuestTicket', inputVars, inputOpts);
 }
 
+export function amendOrganiserGuestTicket(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('AmendOrganiserGuestTicket', inputVars, inputOpts);
+}
+
 export function attachOrganiserGuestAdditionalCheckout(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -1080,6 +1098,30 @@ export function markOrganiserGuestAdditionalPaymentRefunded(dcOrVarsOrOptions, v
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('MarkOrganiserGuestAdditionalPaymentRefunded', inputVars, inputOpts);
+}
+
+export function getOrganiserGuestAmendment(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetOrganiserGuestAmendment', inputVars, inputOpts);
+}
+
+export function getOrganiserGuestAmendmentByToken(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetOrganiserGuestAmendmentByToken', inputVars, inputOpts);
+}
+
+export function listPendingOrganiserGuestAmendments(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListPendingOrganiserGuestAmendments', inputVars, inputOpts);
+}
+
+export function setOrganiserGuestAmendmentNotificationStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('SetOrganiserGuestAmendmentNotificationStatus', inputVars, inputOpts);
 }
 
 export function getCurrentUser(dcOrOptions, options) {

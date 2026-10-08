@@ -26,6 +26,7 @@ export interface EventBookingPaymentOrderInput {
 
 export interface EventBookingPaymentAdjustmentInput {
   status: BookingPaymentAdjustmentStatus | string;
+  deltaAmountMinor?: number;
 }
 
 export type EventBookingPaymentSummaryKind =
@@ -258,6 +259,18 @@ export function summarizeEventBookingPayment(params: {
   adjustments: EventBookingPaymentAdjustmentInput[];
 }): EventBookingPaymentSummary {
   const { booking, eventId, ticketOrders, adjustments } = params;
+  // Historic paid ticket counts cannot settle a new amendment balance.
+  // In particular, switching back to a previously refunded type still owes money.
+  if (adjustments.some((adjustment) => adjustment.status === BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE)) {
+    return {
+      kind: "not_started",
+      label: "Payment required—please pay as soon as possible",
+      severity: "warning",
+      unpaidTicketTypeId: Array.from(requiredTicketTypeCounts(booking).values()).find(({ count, ticketTypeId }) =>
+        (ticketTypeOrderCounts(ticketOrders, eventId, TicketOrderStatus.PAID).get(normalizeTicketTypeKey(ticketTypeId)) ?? 0) < count
+      )?.ticketTypeId ?? ticketTypeIdsFromBooking(booking)[0] ?? null,
+    };
+  }
   const failedRefund = adjustments.find(
     (adjustment) => adjustment.status === BookingPaymentAdjustmentStatus.REFUND_FAILED
   );

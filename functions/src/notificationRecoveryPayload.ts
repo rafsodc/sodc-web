@@ -24,6 +24,10 @@ interface VersionedRecoveryPayload {
 
 export type NotificationRecoveryPayload =
   | (VersionedRecoveryPayload & {
+      kind: "ORGANISER_GUEST_AMENDMENT";
+      amendmentId: UUIDString;
+    })
+  | (VersionedRecoveryPayload & {
       kind: "BOOKING_CONFIRMATION";
       bookingId: UUIDString;
       idempotencyKey: string;
@@ -215,6 +219,8 @@ export function parseNotificationRecoveryPayload(
   const kind = string(payload.kind, "kind");
 
   switch (kind) {
+    case "ORGANISER_GUEST_AMENDMENT":
+      return { ...base, kind, amendmentId: string(payload.amendmentId, "amendmentId") as UUIDString };
     case "BOOKING_CONFIRMATION":
       return {
         ...base,

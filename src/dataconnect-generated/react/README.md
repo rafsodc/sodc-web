@@ -86,6 +86,9 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetOrganiserGuest*](#getorganiserguest)
   - [*GetOrganiserGuestByToken*](#getorganiserguestbytoken)
   - [*GetPublicOrganiserGuestAttendance*](#getpublicorganiserguestattendance)
+  - [*GetOrganiserGuestAmendment*](#getorganiserguestamendment)
+  - [*GetOrganiserGuestAmendmentByToken*](#getorganiserguestamendmentbytoken)
+  - [*ListPendingOrganiserGuestAmendments*](#listpendingorganiserguestamendments)
   - [*GetCurrentUser*](#getcurrentuser)
   - [*GetUserById*](#getuserbyid)
   - [*ListUsers*](#listusers)
@@ -192,17 +195,21 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ConfirmPotentialLost*](#confirmpotentiallost)
   - [*CreateOrganiserGuest*](#createorganiserguest)
   - [*UpdateOrganiserGuestDetails*](#updateorganiserguestdetails)
+  - [*AmendOrganiserGuestDetails*](#amendorganiserguestdetails)
   - [*UpdateOrganiserGuestDietary*](#updateorganiserguestdietary)
   - [*RotateOrganiserGuestLink*](#rotateorganiserguestlink)
   - [*CancelOrganiserGuest*](#cancelorganiserguest)
+  - [*CancelOrganiserGuestWithAmendment*](#cancelorganiserguestwithamendment)
   - [*AttachOrganiserGuestCheckout*](#attachorganiserguestcheckout)
   - [*ResetOrganiserGuestCheckout*](#resetorganiserguestcheckout)
   - [*MarkOrganiserGuestPaid*](#markorganiserguestpaid)
   - [*MarkOrganiserGuestRefunded*](#markorganiserguestrefunded)
   - [*ReassignOrganiserGuestTicket*](#reassignorganiserguestticket)
+  - [*AmendOrganiserGuestTicket*](#amendorganiserguestticket)
   - [*AttachOrganiserGuestAdditionalCheckout*](#attachorganiserguestadditionalcheckout)
   - [*MarkOrganiserGuestAdditionalPaymentPaid*](#markorganiserguestadditionalpaymentpaid)
   - [*MarkOrganiserGuestAdditionalPaymentRefunded*](#markorganiserguestadditionalpaymentrefunded)
+  - [*SetOrganiserGuestAmendmentNotificationStatus*](#setorganiserguestamendmentnotificationstatus)
   - [*CreateSection*](#createsection)
   - [*CreateUserGroup*](#createusergroup)
   - [*AddUserToUserGroup*](#addusertousergroup)
@@ -6321,6 +6328,9 @@ export interface GetOrganiserGuestEventData {
     id: UUIDString;
     title: string;
     bookingEndDateTime: TimestampString;
+    startDateTime: TimestampString;
+    endDateTime: TimestampString;
+    location?: string | null;
     section: {
       id: UUIDString;
     } & Section_Key;
@@ -6621,6 +6631,10 @@ export interface ListOrganiserGuestsData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
     payments: ({
       id: UUIDString;
       amountMinor: number;
@@ -6756,6 +6770,10 @@ export interface GetOrganiserGuestData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
     payments: ({
       id: UUIDString;
       amountMinor: number;
@@ -6891,6 +6909,10 @@ export interface GetOrganiserGuestByTokenData {
     cancelledAt?: TimestampString | null;
     createdBy: string;
     updatedAt: TimestampString;
+    amendments: ({
+      id: UUIDString;
+      notificationStatus: string;
+    } & OrganiserGuestAmendment_Key)[];
     payments: ({
       id: UUIDString;
       amountMinor: number;
@@ -7061,6 +7083,266 @@ export default function GetPublicOrganiserGuestAttendanceComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.organiserGuests);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetOrganiserGuestAmendment
+You can execute the `GetOrganiserGuestAmendment` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetOrganiserGuestAmendment(dc: DataConnect, vars: GetOrganiserGuestAmendmentVariables, options?: useDataConnectQueryOptions<GetOrganiserGuestAmendmentData>): UseDataConnectQueryResult<GetOrganiserGuestAmendmentData, GetOrganiserGuestAmendmentVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetOrganiserGuestAmendment(vars: GetOrganiserGuestAmendmentVariables, options?: useDataConnectQueryOptions<GetOrganiserGuestAmendmentData>): UseDataConnectQueryResult<GetOrganiserGuestAmendmentData, GetOrganiserGuestAmendmentVariables>;
+```
+
+### Variables
+The `GetOrganiserGuestAmendment` Query requires an argument of type `GetOrganiserGuestAmendmentVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetOrganiserGuestAmendmentVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetOrganiserGuestAmendment` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetOrganiserGuestAmendment` Query is of type `GetOrganiserGuestAmendmentData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetOrganiserGuestAmendmentData {
+  organiserGuestAmendment?: {
+    id: UUIDString;
+    guestId: UUIDString;
+    requestHash: string;
+    payload: string;
+    tokenHash?: string | null;
+    notificationStatus: string;
+    createdBy: string;
+  } & OrganiserGuestAmendment_Key;
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetOrganiserGuestAmendment`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetOrganiserGuestAmendmentVariables } from '@dataconnect/generated';
+import { useGetOrganiserGuestAmendment } from '@dataconnect/generated/react'
+
+export default function GetOrganiserGuestAmendmentComponent() {
+  // The `useGetOrganiserGuestAmendment` Query hook requires an argument of type `GetOrganiserGuestAmendmentVariables`:
+  const getOrganiserGuestAmendmentVars: GetOrganiserGuestAmendmentVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetOrganiserGuestAmendment(getOrganiserGuestAmendmentVars);
+  // Variables can be defined inline as well.
+  const query = useGetOrganiserGuestAmendment({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetOrganiserGuestAmendment(dataConnect, getOrganiserGuestAmendmentVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetOrganiserGuestAmendment(getOrganiserGuestAmendmentVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetOrganiserGuestAmendment(dataConnect, getOrganiserGuestAmendmentVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.organiserGuestAmendment);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetOrganiserGuestAmendmentByToken
+You can execute the `GetOrganiserGuestAmendmentByToken` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetOrganiserGuestAmendmentByToken(dc: DataConnect, vars: GetOrganiserGuestAmendmentByTokenVariables, options?: useDataConnectQueryOptions<GetOrganiserGuestAmendmentByTokenData>): UseDataConnectQueryResult<GetOrganiserGuestAmendmentByTokenData, GetOrganiserGuestAmendmentByTokenVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetOrganiserGuestAmendmentByToken(vars: GetOrganiserGuestAmendmentByTokenVariables, options?: useDataConnectQueryOptions<GetOrganiserGuestAmendmentByTokenData>): UseDataConnectQueryResult<GetOrganiserGuestAmendmentByTokenData, GetOrganiserGuestAmendmentByTokenVariables>;
+```
+
+### Variables
+The `GetOrganiserGuestAmendmentByToken` Query requires an argument of type `GetOrganiserGuestAmendmentByTokenVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetOrganiserGuestAmendmentByTokenVariables {
+  tokenHash: string;
+}
+```
+### Return Type
+Recall that calling the `GetOrganiserGuestAmendmentByToken` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetOrganiserGuestAmendmentByToken` Query is of type `GetOrganiserGuestAmendmentByTokenData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetOrganiserGuestAmendmentByTokenData {
+  organiserGuestAmendments: ({
+    guestId: UUIDString;
+  })[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetOrganiserGuestAmendmentByToken`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetOrganiserGuestAmendmentByTokenVariables } from '@dataconnect/generated';
+import { useGetOrganiserGuestAmendmentByToken } from '@dataconnect/generated/react'
+
+export default function GetOrganiserGuestAmendmentByTokenComponent() {
+  // The `useGetOrganiserGuestAmendmentByToken` Query hook requires an argument of type `GetOrganiserGuestAmendmentByTokenVariables`:
+  const getOrganiserGuestAmendmentByTokenVars: GetOrganiserGuestAmendmentByTokenVariables = {
+    tokenHash: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetOrganiserGuestAmendmentByToken(getOrganiserGuestAmendmentByTokenVars);
+  // Variables can be defined inline as well.
+  const query = useGetOrganiserGuestAmendmentByToken({ tokenHash: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetOrganiserGuestAmendmentByToken(dataConnect, getOrganiserGuestAmendmentByTokenVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetOrganiserGuestAmendmentByToken(getOrganiserGuestAmendmentByTokenVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetOrganiserGuestAmendmentByToken(dataConnect, getOrganiserGuestAmendmentByTokenVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.organiserGuestAmendments);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListPendingOrganiserGuestAmendments
+You can execute the `ListPendingOrganiserGuestAmendments` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListPendingOrganiserGuestAmendments(dc: DataConnect, vars: ListPendingOrganiserGuestAmendmentsVariables, options?: useDataConnectQueryOptions<ListPendingOrganiserGuestAmendmentsData>): UseDataConnectQueryResult<ListPendingOrganiserGuestAmendmentsData, ListPendingOrganiserGuestAmendmentsVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListPendingOrganiserGuestAmendments(vars: ListPendingOrganiserGuestAmendmentsVariables, options?: useDataConnectQueryOptions<ListPendingOrganiserGuestAmendmentsData>): UseDataConnectQueryResult<ListPendingOrganiserGuestAmendmentsData, ListPendingOrganiserGuestAmendmentsVariables>;
+```
+
+### Variables
+The `ListPendingOrganiserGuestAmendments` Query requires an argument of type `ListPendingOrganiserGuestAmendmentsVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListPendingOrganiserGuestAmendmentsVariables {
+  before: TimestampString;
+  limit: number;
+}
+```
+### Return Type
+Recall that calling the `ListPendingOrganiserGuestAmendments` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListPendingOrganiserGuestAmendments` Query is of type `ListPendingOrganiserGuestAmendmentsData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListPendingOrganiserGuestAmendmentsData {
+  organiserGuestAmendments: ({
+    id: UUIDString;
+  } & OrganiserGuestAmendment_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListPendingOrganiserGuestAmendments`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListPendingOrganiserGuestAmendmentsVariables } from '@dataconnect/generated';
+import { useListPendingOrganiserGuestAmendments } from '@dataconnect/generated/react'
+
+export default function ListPendingOrganiserGuestAmendmentsComponent() {
+  // The `useListPendingOrganiserGuestAmendments` Query hook requires an argument of type `ListPendingOrganiserGuestAmendmentsVariables`:
+  const listPendingOrganiserGuestAmendmentsVars: ListPendingOrganiserGuestAmendmentsVariables = {
+    before: ..., 
+    limit: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListPendingOrganiserGuestAmendments(listPendingOrganiserGuestAmendmentsVars);
+  // Variables can be defined inline as well.
+  const query = useListPendingOrganiserGuestAmendments({ before: ..., limit: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListPendingOrganiserGuestAmendments(dataConnect, listPendingOrganiserGuestAmendmentsVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListPendingOrganiserGuestAmendments(listPendingOrganiserGuestAmendmentsVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListPendingOrganiserGuestAmendments(dataConnect, listPendingOrganiserGuestAmendmentsVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.organiserGuestAmendments);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -17822,6 +18104,126 @@ export default function UpdateOrganiserGuestDetailsComponent() {
 }
 ```
 
+## AmendOrganiserGuestDetails
+You can execute the `AmendOrganiserGuestDetails` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useAmendOrganiserGuestDetails(options?: useDataConnectMutationOptions<AmendOrganiserGuestDetailsData, FirebaseError, AmendOrganiserGuestDetailsVariables>): UseDataConnectMutationResult<AmendOrganiserGuestDetailsData, AmendOrganiserGuestDetailsVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useAmendOrganiserGuestDetails(dc: DataConnect, options?: useDataConnectMutationOptions<AmendOrganiserGuestDetailsData, FirebaseError, AmendOrganiserGuestDetailsVariables>): UseDataConnectMutationResult<AmendOrganiserGuestDetailsData, AmendOrganiserGuestDetailsVariables>;
+```
+
+### Variables
+The `AmendOrganiserGuestDetails` Mutation requires an argument of type `AmendOrganiserGuestDetailsVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface AmendOrganiserGuestDetailsVariables {
+  id: UUIDString;
+  version: number;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
+}
+```
+### Return Type
+Recall that calling the `AmendOrganiserGuestDetails` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AmendOrganiserGuestDetails` Mutation is of type `AmendOrganiserGuestDetailsData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface AmendOrganiserGuestDetailsData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `AmendOrganiserGuestDetails`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, AmendOrganiserGuestDetailsVariables } from '@dataconnect/generated';
+import { useAmendOrganiserGuestDetails } from '@dataconnect/generated/react'
+
+export default function AmendOrganiserGuestDetailsComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useAmendOrganiserGuestDetails();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useAmendOrganiserGuestDetails(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAmendOrganiserGuestDetails(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAmendOrganiserGuestDetails(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useAmendOrganiserGuestDetails` Mutation requires an argument of type `AmendOrganiserGuestDetailsVariables`:
+  const amendOrganiserGuestDetailsVars: AmendOrganiserGuestDetailsVariables = {
+    id: ..., 
+    version: ..., 
+    firstName: ..., 
+    lastName: ..., 
+    email: ..., // optional
+    dietaryRequirements: ..., 
+    actor: ..., 
+    amendmentId: ..., 
+    amendmentRequestHash: ..., 
+    amendmentPayload: ..., 
+    amendmentTokenHash: ..., // optional
+    amendmentNotificationStatus: ..., 
+  };
+  mutation.mutate(amendOrganiserGuestDetailsVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., version: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., actor: ..., amendmentId: ..., amendmentRequestHash: ..., amendmentPayload: ..., amendmentTokenHash: ..., amendmentNotificationStatus: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(amendOrganiserGuestDetailsVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.organiserGuest_updateMany);
+    console.log(mutation.data.organiserGuestAudit_insert);
+    console.log(mutation.data.organiserGuestAmendment_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## UpdateOrganiserGuestDietary
 You can execute the `UpdateOrganiserGuestDietary` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -17958,6 +18360,7 @@ To access the data returned by a Mutation, use the `UseMutationResult.data` fiel
 export interface RotateOrganiserGuestLinkData {
   organiserGuest_updateMany: number;
   organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_updateMany: number;
 }
 ```
 
@@ -18023,6 +18426,7 @@ export default function RotateOrganiserGuestLinkComponent() {
   if (mutation.isSuccess) {
     console.log(mutation.data.organiserGuest_updateMany);
     console.log(mutation.data.organiserGuestAudit_insert);
+    console.log(mutation.data.organiserGuestAmendment_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -18123,6 +18527,118 @@ export default function CancelOrganiserGuestComponent() {
   if (mutation.isSuccess) {
     console.log(mutation.data.organiserGuest_updateMany);
     console.log(mutation.data.organiserGuestAudit_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## CancelOrganiserGuestWithAmendment
+You can execute the `CancelOrganiserGuestWithAmendment` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useCancelOrganiserGuestWithAmendment(options?: useDataConnectMutationOptions<CancelOrganiserGuestWithAmendmentData, FirebaseError, CancelOrganiserGuestWithAmendmentVariables>): UseDataConnectMutationResult<CancelOrganiserGuestWithAmendmentData, CancelOrganiserGuestWithAmendmentVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useCancelOrganiserGuestWithAmendment(dc: DataConnect, options?: useDataConnectMutationOptions<CancelOrganiserGuestWithAmendmentData, FirebaseError, CancelOrganiserGuestWithAmendmentVariables>): UseDataConnectMutationResult<CancelOrganiserGuestWithAmendmentData, CancelOrganiserGuestWithAmendmentVariables>;
+```
+
+### Variables
+The `CancelOrganiserGuestWithAmendment` Mutation requires an argument of type `CancelOrganiserGuestWithAmendmentVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface CancelOrganiserGuestWithAmendmentVariables {
+  id: UUIDString;
+  version: number;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
+}
+```
+### Return Type
+Recall that calling the `CancelOrganiserGuestWithAmendment` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CancelOrganiserGuestWithAmendment` Mutation is of type `CancelOrganiserGuestWithAmendmentData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface CancelOrganiserGuestWithAmendmentData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `CancelOrganiserGuestWithAmendment`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, CancelOrganiserGuestWithAmendmentVariables } from '@dataconnect/generated';
+import { useCancelOrganiserGuestWithAmendment } from '@dataconnect/generated/react'
+
+export default function CancelOrganiserGuestWithAmendmentComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useCancelOrganiserGuestWithAmendment();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useCancelOrganiserGuestWithAmendment(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCancelOrganiserGuestWithAmendment(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useCancelOrganiserGuestWithAmendment(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useCancelOrganiserGuestWithAmendment` Mutation requires an argument of type `CancelOrganiserGuestWithAmendmentVariables`:
+  const cancelOrganiserGuestWithAmendmentVars: CancelOrganiserGuestWithAmendmentVariables = {
+    id: ..., 
+    version: ..., 
+    actor: ..., 
+    amendmentId: ..., 
+    amendmentRequestHash: ..., 
+    amendmentPayload: ..., 
+    amendmentTokenHash: ..., // optional
+    amendmentNotificationStatus: ..., 
+  };
+  mutation.mutate(cancelOrganiserGuestWithAmendmentVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., version: ..., actor: ..., amendmentId: ..., amendmentRequestHash: ..., amendmentPayload: ..., amendmentTokenHash: ..., amendmentNotificationStatus: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(cancelOrganiserGuestWithAmendmentVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.organiserGuest_updateMany);
+    console.log(mutation.data.organiserGuestAudit_insert);
+    console.log(mutation.data.organiserGuestAmendment_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -18656,6 +19172,138 @@ export default function ReassignOrganiserGuestTicketComponent() {
 }
 ```
 
+## AmendOrganiserGuestTicket
+You can execute the `AmendOrganiserGuestTicket` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useAmendOrganiserGuestTicket(options?: useDataConnectMutationOptions<AmendOrganiserGuestTicketData, FirebaseError, AmendOrganiserGuestTicketVariables>): UseDataConnectMutationResult<AmendOrganiserGuestTicketData, AmendOrganiserGuestTicketVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useAmendOrganiserGuestTicket(dc: DataConnect, options?: useDataConnectMutationOptions<AmendOrganiserGuestTicketData, FirebaseError, AmendOrganiserGuestTicketVariables>): UseDataConnectMutationResult<AmendOrganiserGuestTicketData, AmendOrganiserGuestTicketVariables>;
+```
+
+### Variables
+The `AmendOrganiserGuestTicket` Mutation requires an argument of type `AmendOrganiserGuestTicketVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface AmendOrganiserGuestTicketVariables {
+  id: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  dietaryRequirements: string;
+  priceMinor: number;
+  paidAmountMinor?: number | null;
+  includesSymposium: boolean;
+  includesDinner: boolean;
+  checkoutKey: string;
+  actor: string;
+  amendmentId: UUIDString;
+  amendmentRequestHash: string;
+  amendmentPayload: string;
+  amendmentTokenHash?: string | null;
+  amendmentNotificationStatus: string;
+}
+```
+### Return Type
+Recall that calling the `AmendOrganiserGuestTicket` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `AmendOrganiserGuestTicket` Mutation is of type `AmendOrganiserGuestTicketData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface AmendOrganiserGuestTicketData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+  organiserGuestAmendment_insert: OrganiserGuestAmendment_Key;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `AmendOrganiserGuestTicket`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, AmendOrganiserGuestTicketVariables } from '@dataconnect/generated';
+import { useAmendOrganiserGuestTicket } from '@dataconnect/generated/react'
+
+export default function AmendOrganiserGuestTicketComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useAmendOrganiserGuestTicket();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useAmendOrganiserGuestTicket(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAmendOrganiserGuestTicket(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useAmendOrganiserGuestTicket(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useAmendOrganiserGuestTicket` Mutation requires an argument of type `AmendOrganiserGuestTicketVariables`:
+  const amendOrganiserGuestTicketVars: AmendOrganiserGuestTicketVariables = {
+    id: ..., 
+    version: ..., 
+    ticketTypeId: ..., 
+    firstName: ..., 
+    lastName: ..., 
+    email: ..., // optional
+    dietaryRequirements: ..., 
+    priceMinor: ..., 
+    paidAmountMinor: ..., // optional
+    includesSymposium: ..., 
+    includesDinner: ..., 
+    checkoutKey: ..., 
+    actor: ..., 
+    amendmentId: ..., 
+    amendmentRequestHash: ..., 
+    amendmentPayload: ..., 
+    amendmentTokenHash: ..., // optional
+    amendmentNotificationStatus: ..., 
+  };
+  mutation.mutate(amendOrganiserGuestTicketVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., version: ..., ticketTypeId: ..., firstName: ..., lastName: ..., email: ..., dietaryRequirements: ..., priceMinor: ..., paidAmountMinor: ..., includesSymposium: ..., includesDinner: ..., checkoutKey: ..., actor: ..., amendmentId: ..., amendmentRequestHash: ..., amendmentPayload: ..., amendmentTokenHash: ..., amendmentNotificationStatus: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(amendOrganiserGuestTicketVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.organiserGuest_updateMany);
+    console.log(mutation.data.organiserGuestAudit_insert);
+    console.log(mutation.data.organiserGuestAmendment_insert);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## AttachOrganiserGuestAdditionalCheckout
 You can execute the `AttachOrganiserGuestAdditionalCheckout` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
 ```javascript
@@ -18963,6 +19611,102 @@ export default function MarkOrganiserGuestAdditionalPaymentRefundedComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.organiserGuestPayment_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## SetOrganiserGuestAmendmentNotificationStatus
+You can execute the `SetOrganiserGuestAmendmentNotificationStatus` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useSetOrganiserGuestAmendmentNotificationStatus(options?: useDataConnectMutationOptions<SetOrganiserGuestAmendmentNotificationStatusData, FirebaseError, SetOrganiserGuestAmendmentNotificationStatusVariables>): UseDataConnectMutationResult<SetOrganiserGuestAmendmentNotificationStatusData, SetOrganiserGuestAmendmentNotificationStatusVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useSetOrganiserGuestAmendmentNotificationStatus(dc: DataConnect, options?: useDataConnectMutationOptions<SetOrganiserGuestAmendmentNotificationStatusData, FirebaseError, SetOrganiserGuestAmendmentNotificationStatusVariables>): UseDataConnectMutationResult<SetOrganiserGuestAmendmentNotificationStatusData, SetOrganiserGuestAmendmentNotificationStatusVariables>;
+```
+
+### Variables
+The `SetOrganiserGuestAmendmentNotificationStatus` Mutation requires an argument of type `SetOrganiserGuestAmendmentNotificationStatusVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface SetOrganiserGuestAmendmentNotificationStatusVariables {
+  id: UUIDString;
+  status: string;
+}
+```
+### Return Type
+Recall that calling the `SetOrganiserGuestAmendmentNotificationStatus` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `SetOrganiserGuestAmendmentNotificationStatus` Mutation is of type `SetOrganiserGuestAmendmentNotificationStatusData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface SetOrganiserGuestAmendmentNotificationStatusData {
+  organiserGuestAmendment_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `SetOrganiserGuestAmendmentNotificationStatus`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, SetOrganiserGuestAmendmentNotificationStatusVariables } from '@dataconnect/generated';
+import { useSetOrganiserGuestAmendmentNotificationStatus } from '@dataconnect/generated/react'
+
+export default function SetOrganiserGuestAmendmentNotificationStatusComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useSetOrganiserGuestAmendmentNotificationStatus();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useSetOrganiserGuestAmendmentNotificationStatus(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useSetOrganiserGuestAmendmentNotificationStatus(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useSetOrganiserGuestAmendmentNotificationStatus(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useSetOrganiserGuestAmendmentNotificationStatus` Mutation requires an argument of type `SetOrganiserGuestAmendmentNotificationStatusVariables`:
+  const setOrganiserGuestAmendmentNotificationStatusVars: SetOrganiserGuestAmendmentNotificationStatusVariables = {
+    id: ..., 
+    status: ..., 
+  };
+  mutation.mutate(setOrganiserGuestAmendmentNotificationStatusVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., status: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(setOrganiserGuestAmendmentNotificationStatusVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.organiserGuestAmendment_updateMany);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
