@@ -654,6 +654,9 @@ export interface CreateOrganiserGuestVariables {
   lastName: string;
   email?: string | null;
   dietaryRequirements: string;
+  accommodationRequested: boolean;
+  accommodationNote?: string | null;
+  sitNextToUserIds?: string[] | null;
   priceMinor: number;
   includesSymposium: boolean;
   includesDinner: boolean;
@@ -847,6 +850,27 @@ export interface DisableDefaultNotifyReplyToAddressVariables {
   changedBy: string;
   reason?: string | null;
   previousValue: string;
+}
+
+export interface EditOrganiserGuestAttendanceData {
+  organiserGuest_updateMany: number;
+  organiserGuestAudit_insert: OrganiserGuestAudit_Key;
+}
+
+export interface EditOrganiserGuestAttendanceVariables {
+  id: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  firstName: string;
+  lastName: string;
+  accommodationRequested: boolean;
+  accommodationNote?: string | null;
+  sitNextToUserIds?: string[] | null;
+  email?: string | null;
+  dietaryRequirements: string;
+  includesDinner: boolean;
+  includesSymposium: boolean;
+  actor: string;
 }
 
 export interface EnsureCallableRateLimitBucketData {
@@ -1168,6 +1192,20 @@ export interface GetAnnouncementStatusMembersPagedVariables {
   offset: number;
 }
 
+export interface GetAttendanceTicketTypeData {
+  ticketType?: {
+    id: UUIDString;
+    audience: TicketAudience;
+    event: {
+      id: UUIDString;
+    } & Event_Key;
+  } & TicketType_Key;
+}
+
+export interface GetAttendanceTicketTypeVariables {
+  id: UUIDString;
+}
+
 export interface GetAttendeeEventSectionData {
   event?: {
     section: {
@@ -1426,6 +1464,15 @@ export interface GetEventAttendeeNamesData {
       lastName: string;
     };
     lines: ({
+      bookingPlace: {
+        attendanceRemoved: boolean;
+        attendanceName?: string | null;
+        attendanceTicketType?: {
+          audience: TicketAudience;
+          includesSymposium: boolean;
+          includesDinner: boolean;
+        };
+      };
       guestDisplayName?: string | null;
       guestUser?: {
         firstName: string;
@@ -1670,6 +1717,12 @@ export interface GetMyBookingsData {
         id: UUIDString;
         bookingPlace: {
           id: UUIDString;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+          } & TicketType_Key;
         } & BookingPlace_Key;
         ticketType: {
           id: UUIDString;
@@ -1707,6 +1760,12 @@ export interface GetMyBookingsForEventData {
         id: UUIDString;
         bookingPlace: {
           id: UUIDString;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+          } & TicketType_Key;
           paymentAllocations: ({
             id: UUIDString;
             ticketOrderId: UUIDString;
@@ -1932,6 +1991,9 @@ export interface GetOrganiserGuestByTokenData {
     lastName: string;
     email?: string | null;
     dietaryRequirements: string;
+    accommodationRequested: boolean;
+    accommodationNote?: string | null;
+    sitNextToUserIds?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -1976,6 +2038,9 @@ export interface GetOrganiserGuestData {
     lastName: string;
     email?: string | null;
     dietaryRequirements: string;
+    accommodationRequested: boolean;
+    accommodationNote?: string | null;
+    sitNextToUserIds?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -2311,6 +2376,39 @@ export interface GetSectionsForUserData {
       } & Section_Key;
     })[];
   } & UserGroup_Key)[];
+}
+
+export interface GetTicketAttendanceForManagementData {
+  bookingLine?: {
+    id: UUIDString;
+    ticketType: {
+      audience: TicketAudience;
+    };
+    bookingPlace: {
+      id: UUIDString;
+      attendanceVersion: number;
+      attendanceRemoved: boolean;
+      attendanceAccommodationRequested?: boolean | null;
+      attendanceAccommodationNote?: string | null;
+      attendanceSitNextToUserIds?: string[] | null;
+    } & BookingPlace_Key;
+    booking: {
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      supersededAt?: TimestampString | null;
+      event: {
+        id: UUIDString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+    } & Booking_Key;
+  } & BookingLine_Key;
+}
+
+export interface GetTicketAttendanceForManagementVariables {
+  id: UUIDString;
 }
 
 export interface GetTicketOrderForWebhookData {
@@ -2749,6 +2847,20 @@ export interface ListEventBookingsForAdminData {
         dietaryNote?: string | null;
         bookingPlace: {
           id: UUIDString;
+          attendanceVersion: number;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceDietaryNote?: string | null;
+          attendanceAccommodationRequested?: boolean | null;
+          attendanceAccommodationNote?: string | null;
+          attendanceSitNextToUserIds?: string[] | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+            audience: TicketAudience;
+            includesDinner: boolean;
+            includesSymposium: boolean;
+          } & TicketType_Key;
           paymentAllocations: ({
             id: UUIDString;
             allocatedAmountMinor: number;
@@ -2972,6 +3084,9 @@ export interface ListOrganiserGuestsData {
     lastName: string;
     email?: string | null;
     dietaryRequirements: string;
+    accommodationRequested: boolean;
+    accommodationNote?: string | null;
+    sitNextToUserIds?: string[] | null;
     priceMinor: number;
     includesSymposium: boolean;
     includesDinner: boolean;
@@ -3880,6 +3995,9 @@ export interface UpdateOrganiserGuestDetailsVariables {
   lastName: string;
   email?: string | null;
   dietaryRequirements: string;
+  accommodationRequested: boolean;
+  accommodationNote?: string | null;
+  sitNextToUserIds?: string[] | null;
   actor: string;
 }
 
@@ -3903,6 +4021,25 @@ export interface UpdateSectionVariables {
   id: UUIDString;
   name: string;
   description?: string | null;
+}
+
+export interface UpdateTicketAttendanceData {
+  booking_updateMany: number;
+  bookingPlace_updateMany: number;
+}
+
+export interface UpdateTicketAttendanceVariables {
+  bookingId: UUIDString;
+  placeId: UUIDString;
+  version: number;
+  ticketTypeId: UUIDString;
+  name: string;
+  dietaryNote: string;
+  removed: boolean;
+  actor: string;
+  accommodationRequested?: boolean | null;
+  accommodationNote?: string | null;
+  sitNextToUserIds?: string[] | null;
 }
 
 export interface UpdateTicketTypeData {
@@ -6242,6 +6379,54 @@ export const getMyAnnouncementPreferencesRef: GetMyAnnouncementPreferencesRef;
 
 export function getMyAnnouncementPreferences(options?: ExecuteQueryOptions): QueryPromise<GetMyAnnouncementPreferencesData, undefined>;
 export function getMyAnnouncementPreferences(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetMyAnnouncementPreferencesData, undefined>;
+
+interface GetTicketAttendanceForManagementRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetTicketAttendanceForManagementVariables): QueryRef<GetTicketAttendanceForManagementData, GetTicketAttendanceForManagementVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetTicketAttendanceForManagementVariables): QueryRef<GetTicketAttendanceForManagementData, GetTicketAttendanceForManagementVariables>;
+  operationName: string;
+}
+export const getTicketAttendanceForManagementRef: GetTicketAttendanceForManagementRef;
+
+export function getTicketAttendanceForManagement(vars: GetTicketAttendanceForManagementVariables, options?: ExecuteQueryOptions): QueryPromise<GetTicketAttendanceForManagementData, GetTicketAttendanceForManagementVariables>;
+export function getTicketAttendanceForManagement(dc: DataConnect, vars: GetTicketAttendanceForManagementVariables, options?: ExecuteQueryOptions): QueryPromise<GetTicketAttendanceForManagementData, GetTicketAttendanceForManagementVariables>;
+
+interface GetAttendanceTicketTypeRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAttendanceTicketTypeVariables): QueryRef<GetAttendanceTicketTypeData, GetAttendanceTicketTypeVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAttendanceTicketTypeVariables): QueryRef<GetAttendanceTicketTypeData, GetAttendanceTicketTypeVariables>;
+  operationName: string;
+}
+export const getAttendanceTicketTypeRef: GetAttendanceTicketTypeRef;
+
+export function getAttendanceTicketType(vars: GetAttendanceTicketTypeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceTicketTypeData, GetAttendanceTicketTypeVariables>;
+export function getAttendanceTicketType(dc: DataConnect, vars: GetAttendanceTicketTypeVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceTicketTypeData, GetAttendanceTicketTypeVariables>;
+
+interface UpdateTicketAttendanceRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateTicketAttendanceVariables): MutationRef<UpdateTicketAttendanceData, UpdateTicketAttendanceVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateTicketAttendanceVariables): MutationRef<UpdateTicketAttendanceData, UpdateTicketAttendanceVariables>;
+  operationName: string;
+}
+export const updateTicketAttendanceRef: UpdateTicketAttendanceRef;
+
+export function updateTicketAttendance(vars: UpdateTicketAttendanceVariables): MutationPromise<UpdateTicketAttendanceData, UpdateTicketAttendanceVariables>;
+export function updateTicketAttendance(dc: DataConnect, vars: UpdateTicketAttendanceVariables): MutationPromise<UpdateTicketAttendanceData, UpdateTicketAttendanceVariables>;
+
+interface EditOrganiserGuestAttendanceRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: EditOrganiserGuestAttendanceVariables): MutationRef<EditOrganiserGuestAttendanceData, EditOrganiserGuestAttendanceVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: EditOrganiserGuestAttendanceVariables): MutationRef<EditOrganiserGuestAttendanceData, EditOrganiserGuestAttendanceVariables>;
+  operationName: string;
+}
+export const editOrganiserGuestAttendanceRef: EditOrganiserGuestAttendanceRef;
+
+export function editOrganiserGuestAttendance(vars: EditOrganiserGuestAttendanceVariables): MutationPromise<EditOrganiserGuestAttendanceData, EditOrganiserGuestAttendanceVariables>;
+export function editOrganiserGuestAttendance(dc: DataConnect, vars: EditOrganiserGuestAttendanceVariables): MutationPromise<EditOrganiserGuestAttendanceData, EditOrganiserGuestAttendanceVariables>;
 
 interface CreateSectionRef {
   /* Allow users to create refs without passing in DataConnect */

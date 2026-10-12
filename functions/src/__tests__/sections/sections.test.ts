@@ -672,6 +672,13 @@ describe("searchSectionMembers", () => {
     }));
   });
 
+  it("lets an administrator use the same section-filtered search without membership", async () => {
+    mockGetUserAccessGroupsById.mockResolvedValue({ data: { user: { userGroups: [] } } } as never);
+    mockGetUserMembershipStatus.mockResolvedValue({ data: { user: { membershipStatus: null } } } as never);
+    mockCandidates({});
+    await callAs(searchSectionMembers, "administrator", true, { sectionId, searchTerm: "grace" });
+    expect(mockSearchSectionMemberCandidates).toHaveBeenCalledWith(expect.objectContaining({ userGroupIds: [accessGroupId], searchPattern: "(?i).*grace.*" }));
+  });
   it("rejects a caller with no access to the section", async () => {
     mockGetUserAccessGroupsById.mockResolvedValue({
       data: { user: { id: "stranger-1", userGroups: [] } },

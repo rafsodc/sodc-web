@@ -1,3 +1,4 @@
+import MemberTicketsManager from "./MemberTicketsManager";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Box, MenuItem, TextField } from "@mui/material";
@@ -30,7 +31,10 @@ export default function SectionGuestManager({
         ))}
       </TextField>
       {eventId && (
-        <OrganiserGuestsManager key={eventId} eventId={eventId} />
+        <>
+          <MemberTicketsManager sectionId={sectionId} key={`members:${eventId}`} eventId={eventId} />
+          <OrganiserGuestsManager sectionId={sectionId} key={eventId} eventId={eventId} />
+        </>
       )}
     </Box>
   );

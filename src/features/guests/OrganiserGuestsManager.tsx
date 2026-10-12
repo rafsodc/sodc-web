@@ -1,3 +1,4 @@
+import TicketPreferencesFields from "./TicketPreferencesFields";
 import { organiserGuestTicketRows } from "./reporting";
 import { eventTicketRowsCsv } from "../admin/utils/bookingApprovalsAdmin";
 import { useState } from "react";
@@ -58,8 +59,10 @@ function startClipboardWrite(
 
 export default function OrganiserGuestsManager({
   eventId,
+  sectionId,
 }: {
   eventId: string;
+  sectionId: string;
 }) {
   const client = useQueryClient();
   const { data, isPending, isError, refetch } = useQuery({
@@ -170,7 +173,7 @@ export default function OrganiserGuestsManager({
             sx={{ my: 2 }}
             variant="contained"
             disabled={busy || data.ticketTypes.length === 0}
-            onClick={() =>
+            onClick={() => {
               setGuest({
                 id: crypto.randomUUID(),
                 firstName: "",
@@ -178,8 +181,11 @@ export default function OrganiserGuestsManager({
                 email: "",
                 dietaryRequirements: "",
                 ticketTypeId: data.ticketTypes[0]?.id,
-              })
-            }
+                accommodationRequested: false,
+                accommodationNote: "",
+                sitNextToUserIds: [],
+              });
+            }}
           >
             Add guest
           </Button>
@@ -218,6 +224,8 @@ export default function OrganiserGuestsManager({
                     "Guest",
                     "Ticket",
                     "Dietary requirements",
+                    "Accommodation",
+                    "Seating preferences",
                     "Status",
                     "Actions",
                   ].map((h) => (
@@ -244,6 +252,10 @@ export default function OrganiserGuestsManager({
                     <TableCell>
                       {g.dietaryRequirements || "None entered"}
                     </TableCell>
+                    <TableCell>{g.accommodationRequested ? "Requested" : "Not requested"}
+                      {g.accommodationNote && <Typography variant="body2">{g.accommodationNote}</Typography>}
+                    </TableCell>
+                    <TableCell>{g.seatingPreferences?.join(", ") || "None"}</TableCell>
                     <TableCell>
                       {g.cancelled ? "Cancelled" : "Reserved"} ·{" "}
                       {paymentLabel(g.paymentStatus)}
@@ -271,7 +283,7 @@ export default function OrganiserGuestsManager({
                         disabled={busy || g.cancelled}
                         onClick={() => setCancel(g)}
                       >
-                        Cancel guest
+                        Delete ticket
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -344,30 +356,21 @@ export default function OrganiserGuestsManager({
                 onChange={(e) => setGuest({ ...guest, [key]: e.target.value })}
               />
             ))}
-            {guest?.version &&
-              !["UNPAID", "FREE"].includes(guest.paymentStatus ?? "") && (
-                <Typography variant="body2">
-                  To change a paid ticket, cancel this reservation and add a new
-                  one. Existing payment and refund history will be retained.
-                </Typography>
-              )}
-            {(!guest?.version ||
-              ["UNPAID", "FREE"].includes(guest.paymentStatus ?? "")) && (
-              <TextField
-                select
-                label="Guest ticket"
-                value={guest?.ticketTypeId ?? ""}
-                onChange={(e) =>
-                  setGuest({ ...guest, ticketTypeId: e.target.value })
-                }
-              >
-                {data?.ticketTypes.map((t) => (
-                    <MenuItem key={t.id} value={t.id}>
-                      {t.title} · {money(t.priceMinor)}
-                    </MenuItem>
-                  ))}
-              </TextField>
-            )}
+            <TicketPreferencesFields sectionId={sectionId} value={{
+              accommodationRequested: guest?.accommodationRequested ?? false,
+              accommodationNote: guest?.accommodationNote ?? "",
+              sitNextToUserIds: guest?.sitNextToUserIds ?? [],
+            }} disabled={busy} onChange={(value) => {
+              setGuest({ ...guest, accommodationRequested: value.accommodationRequested,
+                accommodationNote: value.accommodationNote, sitNextToUserIds: value.sitNextToUserIds });
+            }} />
+            {guest?.version && <Alert severity="info">Transactions stay unchanged. Handle any payment or refund adjustment manually.</Alert>}
+            <TextField select label="Guest ticket" value={guest?.ticketTypeId ?? ""}
+              onChange={(e) => setGuest({ ...guest, ticketTypeId: e.target.value })}>
+              {guest?.ticketTypeId && !data?.ticketTypes.some((t) => t.id === guest.ticketTypeId) &&
+                <MenuItem value={guest.ticketTypeId}>{guest.ticketTitle}</MenuItem>}
+              {data?.ticketTypes.map((t) => <MenuItem key={t.id} value={t.id}>{t.title}</MenuItem>)}
+            </TextField>
             {error && <Alert severity="error">{error}</Alert>}
           </Stack>
         </DialogContent>
@@ -393,11 +396,11 @@ export default function OrganiserGuestsManager({
         </DialogActions>
       </Dialog>
       <Dialog open={Boolean(cancel)} onClose={() => !busy && setCancel(null)}>
-        <DialogTitle>Cancel this guest?</DialogTitle>
+        <DialogTitle>Delete this guest ticket?</DialogTitle>
         <DialogContent>
           This releases {cancel?.firstName} {cancel?.lastName}'s place and stops
-          further payment. Any existing payment remains recorded; cancellation
-          does not issue an automatic refund.
+          new checkout requests. Transactions stay unchanged. Handle any payment
+          or refund adjustment manually.
           {error && <Alert severity="error">{error}</Alert>}
         </DialogContent>
         <DialogActions>
@@ -414,7 +417,7 @@ export default function OrganiserGuestsManager({
               })
             }
           >
-            Confirm cancellation
+            Delete ticket
           </Button>
         </DialogActions>
       </Dialog>

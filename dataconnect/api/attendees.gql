@@ -22,6 +22,7 @@ query GetEventAttendeeNames($eventId: UUID!, $limit: Int!, $offset: Int!) @auth(
     supersededAt
     booker { firstName lastName }
     lines: bookingLines_on_booking {
+      bookingPlace { attendanceRemoved attendanceName attendanceTicketType { audience includesSymposium includesDinner } }
       guestDisplayName
       guestUser { firstName lastName }
       ticketType { audience includesSymposium includesDinner }

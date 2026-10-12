@@ -25,6 +25,9 @@ export type AttendeePaymentState =
 export interface EventAttendeeTicketRow {
   key: string;
   bookingId: string;
+  ticketId?: string;
+  ticketTypeId?: string;
+  attendanceVersion?: number;
   attendeeName: string;
   email: string | null;
   rank: string | null;
@@ -34,7 +37,9 @@ export interface EventAttendeeTicketRow {
   includesDinner: boolean;
   includesSymposium: boolean;
   accommodationRequested: boolean;
+  accommodationNote?: string | null;
   seatingPreferences: string[];
+  sitNextToUserIds?: string[];
   dietaryNote: string | null;
   approvalStatus: BookingApprovalStatus;
   paymentState: AttendeePaymentState;
@@ -191,8 +196,10 @@ export function activeEventTicketRows(
 ): EventAttendeeTicketRow[] {
   return currentActiveBookings(bookings).flatMap((booking) =>
     [...booking.lines]
+      .filter((line) => !line.bookingPlace?.attendanceRemoved)
       .sort((left, right) => left.sortOrder - right.sortOrder)
       .map((line) => {
+        const ticket = line.bookingPlace?.attendanceTicketType ?? line.ticketType;
         const linkedName = line.guestUser
           ? `${line.guestUser.firstName} ${line.guestUser.lastName}`.trim()
           : "";
@@ -200,13 +207,16 @@ export function activeEventTicketRows(
           line.ticketType.audience === TicketAudience.MEMBER
             ? `${booking.booker.firstName} ${booking.booker.lastName}`.trim()
             : line.guestDisplayName?.trim() || linkedName || "Guest";
-        const seatingPreferences = (booking.sitNextToUserIds ?? []).map(
+        const seatingPreferences = (line.bookingPlace?.attendanceSitNextToUserIds ?? booking.sitNextToUserIds ?? []).map(
           (userId) => userNamesById.get(userId) ?? "Unavailable member"
         );
         return {
           key: `${booking.id}:${line.id}`,
           bookingId: booking.id,
-          attendeeName,
+          ticketId: line.id,
+          ticketTypeId: ticket.id,
+          attendanceVersion: line.bookingPlace?.attendanceVersion ?? 0,
+          attendeeName: line.bookingPlace?.attendanceName ?? attendeeName,
           email:
             line.ticketType.audience === TicketAudience.MEMBER
               ? booking.booker.email.trim() || null
@@ -217,12 +227,14 @@ export function activeEventTicketRows(
               ? booking.booker.membershipStatus
               : line.guestUser?.membershipStatus ?? null,
           audience: line.ticketType.audience,
-          ticketType: line.ticketType.title,
-          includesDinner: line.ticketType.includesDinner,
-          includesSymposium: line.ticketType.includesSymposium,
-          accommodationRequested: booking.accommodationRequested,
+          ticketType: ticket.title,
+          includesDinner: ticket.includesDinner,
+          includesSymposium: ticket.includesSymposium,
+          accommodationRequested: line.bookingPlace?.attendanceAccommodationRequested ?? booking.accommodationRequested,
+          accommodationNote: line.bookingPlace?.attendanceAccommodationNote ?? booking.accommodationNote ?? null,
           seatingPreferences,
-          dietaryNote: line.dietaryNote?.trim() || null,
+          sitNextToUserIds: line.bookingPlace?.attendanceSitNextToUserIds ?? booking.sitNextToUserIds ?? [],
+          dietaryNote: line.bookingPlace?.attendanceDietaryNote ?? (line.dietaryNote?.trim() || null),
           approvalStatus: booking.approvalStatus,
           paymentState: attendeePaymentState(line, ticketOrdersById),
         };
@@ -246,6 +258,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
     "Dinner",
     "Symposium",
     "Accommodation",
+    "Accommodation notes",
     "Seating preferences",
     "Dietary requirements",
     "Approval",
@@ -260,6 +273,7 @@ export function eventTicketRowsCsv(rows: readonly EventAttendeeTicketRow[]): str
     row.includesDinner ? "Yes" : "No",
     row.includesSymposium ? "Yes" : "No",
     row.accommodationRequested ? "Yes" : "No",
+    row.accommodationNote ?? "",
     row.seatingPreferences.join("; "),
     row.dietaryNote ?? "",
     row.approvalStatus,

@@ -85,7 +85,7 @@ describe("booking approval admin model", () => {
         sortOrder: 0,
         dietaryNote: null,
         guestDisplayName: null,
-        bookingPlace: { id: `place-${index}`, paymentAllocations: [] },
+        bookingPlace: { id: `place-${index}`, attendanceVersion: 0, attendanceRemoved: false, paymentAllocations: [] },
         ticketType: {
           id: "member",
           title: "Member ticket",
@@ -199,7 +199,7 @@ describe("booking approval admin model", () => {
             includesDinner: false,
             includesSymposium: true,
           },
-          bookingPlace: { id: "place-guest", paymentAllocations: [] },
+          bookingPlace: { id: "place-guest", attendanceVersion: 0, attendanceRemoved: false, paymentAllocations: [] },
         },
       ] as EventBookingAdminRow["lines"],
     });
@@ -232,11 +232,40 @@ describe("booking approval admin model", () => {
       }),
     ]);
     expect(eventTicketRowsCsv(rows)).toContain(
-      "Jamie Guest,,,GUEST,Guest ticket,No,Yes,Yes,Taylor Member,No nuts,APPROVED,UNPAID"
+      "Jamie Guest,,,GUEST,Guest ticket,No,Yes,Yes,,Taylor Member,No nuts,APPROVED,UNPAID"
     );
     expect(eventTicketRowsCsv(rows)).not.toContain("Revision");
   });
 
+  it("changes attendance while keeping payment status tied to the original purchase", () => {
+    const original = booking({ lines: [{
+      id: "line", sortOrder: 0,
+      ticketType: { id: "original", title: "Original", audience: TicketAudience.MEMBER, price: 20, includesDinner: false, includesSymposium: false },
+      bookingPlace: { id: "place", attendanceVersion: 1, attendanceRemoved: false, attendanceName: "Corrected name", attendanceDietaryNote: "Vegetarian",
+        attendanceTicketType: { id: "replacement", title: "Replacement", audience: TicketAudience.MEMBER, includesDinner: true, includesSymposium: true },
+        paymentAllocations: [{ id: "allocation", ticketOrderId: "paid", allocatedAmountMinor: 2000, refundedAmountMinor: 0 }] },
+    }] });
+    const before = structuredClone(original);
+    const rows = activeEventTicketRows([original], new Map([["paid", { id: "paid", status: TicketOrderStatus.PAID }]]));
+    expect(rows[0]).toMatchObject({ attendeeName: "Corrected name", ticketType: "Replacement", dietaryNote: "Vegetarian", includesDinner: true, paymentState: "PAID" });
+    expect(eventTicketRowsCsv(rows)).toContain("Corrected name");
+    expect(original).toEqual(before);
+    original.lines[0].bookingPlace.attendanceRemoved = true;
+    expect(activeEventTicketRows([original], new Map())).toEqual([]);
+  });
+
+  it("overrides preferences on one ticket while leaving its sibling on booking defaults", () => {
+    const ticket = { id: "type", title: "Guest", audience: TicketAudience.GUEST, price: 0, includesDinner: true, includesSymposium: false };
+    const place = { id: "place", attendanceVersion: 0, attendanceRemoved: false, paymentAllocations: [] };
+    const active = booking({ accommodationRequested: true, accommodationNote: "Original room", sitNextToUserIds: ["friend"], lines: [
+      { id: "edited", sortOrder: 0, ticketType: ticket, bookingPlace: { ...place, attendanceAccommodationRequested: false, attendanceAccommodationNote: "", attendanceSitNextToUserIds: [] } },
+      { id: "sibling", sortOrder: 1, ticketType: ticket, bookingPlace: { ...place, id: "sibling-place" } },
+    ] });
+    const rows = activeEventTicketRows([active], new Map(), new Map([["friend", "Original friend"]]));
+    expect(rows[0]).toMatchObject({ accommodationRequested: false, accommodationNote: "", seatingPreferences: [] });
+    expect(rows[1]).toMatchObject({ accommodationRequested: true, accommodationNote: "Original room", seatingPreferences: ["Original friend"] });
+    expect(eventTicketRowsCsv(rows)).toContain("Yes,Original room,Original friend");
+  });
   it("uses each attendee's own rank, never the booker's rank for an unlinked guest", () => {
     const active = booking({
       booker: { id: "booker", firstName: "Alex", lastName: "Member", email: "alex@example.com", rank: "Wing Commander", membershipStatus: MembershipStatus.REGULAR },
@@ -368,9 +397,9 @@ describe("booking approval admin model", () => {
     ];
 
     expect(eventTicketRowsCsv(rows)).toBe([
-      "Attendee,Rank,Membership status,Audience,Ticket,Dinner,Symposium,Accommodation,Seating preferences,Dietary requirements,Approval,Payment",
-      "'=2+2,'=RANK(),Industry,GUEST,'+Guest ticket,Yes,No,Yes,'=Seating name,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID",
-      "\"'@SUM(1,1)\",,,GUEST,Guest ticket,No,Yes,No,,\"No nuts, please\",APPROVED,PAID",
+      "Attendee,Rank,Membership status,Audience,Ticket,Dinner,Symposium,Accommodation,Accommodation notes,Seating preferences,Dietary requirements,Approval,Payment",
+      "'=2+2,'=RANK(),Industry,GUEST,'+Guest ticket,Yes,No,Yes,,'=Seating name,\"'-HYPERLINK(\"\"https://example.com\"\",\"\"click\"\")\",APPROVED,UNPAID",
+      "\"'@SUM(1,1)\",,,GUEST,Guest ticket,No,Yes,No,,,\"No nuts, please\",APPROVED,PAID",
     ].join("\n"));
     expect(eventTicketRowsCsv(rows)).not.toContain("private@example.com");
     expect(eventTicketRowsCsv(rows)).not.toContain("second@example.com");
@@ -393,7 +422,7 @@ describe("booking approval admin model", () => {
           includesDinner: false,
           includesSymposium: false,
         },
-        bookingPlace: { id: "place-member", paymentAllocations: [] },
+        bookingPlace: { id: "place-member", attendanceVersion: 0, attendanceRemoved: false, paymentAllocations: [] },
       }] as EventBookingAdminRow["lines"],
     });
 

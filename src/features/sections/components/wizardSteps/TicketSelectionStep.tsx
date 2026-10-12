@@ -1,8 +1,7 @@
+import SeatingPreferencePicker from "../SeatingPreferencePicker";
 import {
-  Autocomplete,
   Box,
   Checkbox,
-  CircularProgress,
   FormControl,
   FormControlLabel,
   Radio,
@@ -92,45 +91,13 @@ export default function TicketSelectionStep({
         onChange={(e) => onMemberDietaryNoteChange(e.target.value)}
         sx={{ mt: 2 }}
       />
-      <Autocomplete
-        multiple
-        filterOptions={(x) => x}
-        options={seatingOptions}
-        value={seatingOptions.filter((o) => sitNextToUserIds.includes(o.id))}
-        onChange={(_, next) => {
-          onSitNextToUserIdsChange(next.map((n) => n.id));
-          onSeatingSearchInputValueChange("");
-        }}
-        inputValue={seatingSearchInputValue}
-        onInputChange={(_, next, reason) => {
-          if (reason === "input") onSeatingSearchInputValueChange(next);
-        }}
-        loading={seatingOptionsLoading}
-        getOptionLabel={(o) => o.label}
-        isOptionEqualToValue={(a, b) => a.id === b.id}
-        noOptionsText={
-          seatingSearchInputValue.trim() ? "No matching members" : "Type a name to search"
-        }
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label="Sit next to (optional)"
-            helperText="We'll do our best to seat you together."
-            size="small"
-            sx={{ mt: 2 }}
-            slotProps={{
-              input: {
-                ...params.InputProps,
-                endAdornment: (
-                  <>
-                    {seatingOptionsLoading ? <CircularProgress color="inherit" size={16} /> : null}
-                    {params.InputProps.endAdornment}
-                  </>
-                ),
-              },
-            }}
-          />
-        )}
+      <SeatingPreferencePicker
+        seatingOptions={seatingOptions}
+        seatingSearchInputValue={seatingSearchInputValue}
+        onSeatingSearchInputValueChange={onSeatingSearchInputValueChange}
+        seatingOptionsLoading={seatingOptionsLoading}
+        sitNextToUserIds={sitNextToUserIds}
+        onSitNextToUserIdsChange={onSitNextToUserIdsChange}
       />
       <FormControlLabel
         sx={{ mt: 1 }}

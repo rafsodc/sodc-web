@@ -1433,6 +1433,34 @@ function getMyAnnouncementPreferences(dcOrOptions, options) {
 }
 exports.getMyAnnouncementPreferences = getMyAnnouncementPreferences;
 
+function getTicketAttendanceForManagement(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetTicketAttendanceForManagement', inputVars, inputOpts);
+}
+exports.getTicketAttendanceForManagement = getTicketAttendanceForManagement;
+
+function getAttendanceTicketType(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAttendanceTicketType', inputVars, inputOpts);
+}
+exports.getAttendanceTicketType = getAttendanceTicketType;
+
+function updateTicketAttendance(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('UpdateTicketAttendance', inputVars, inputOpts);
+}
+exports.updateTicketAttendance = updateTicketAttendance;
+
+function editOrganiserGuestAttendance(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('EditOrganiserGuestAttendance', inputVars, inputOpts);
+}
+exports.editOrganiserGuestAttendance = editOrganiserGuestAttendance;
+
 function createSection(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

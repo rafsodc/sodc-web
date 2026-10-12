@@ -310,6 +310,13 @@ describe("organiser guest capability and permissions", () => {
     expect(create).not.toHaveBeenCalled();
     expect(cancel).not.toHaveBeenCalled();
   });
+  it("resolves selected seating user IDs to current names in organiser reports", async () => {
+    vi.spyOn(db, "listOrganiserGuests").mockResolvedValue({ data: { organiserGuests: [{ ...base, sitNextToUserIds: ["user-alex", "missing-user"] }] } } as never);
+    const names = vi.spyOn(db, "listUserNamesByIds").mockResolvedValue({ data: { users: [{ id: "user-alex", firstName: "Alex", lastName: "Member" }] } });
+    const result = await getOrganiserGuestList.run(request({ eventId: id }, true));
+    expect(result.guests[0]).toMatchObject({ sitNextToUserIds: ["user-alex", "missing-user"], seatingPreferences: ["Alex Member", "Unavailable member"] });
+    expect(names).toHaveBeenCalledWith({ ids: ["user-alex", "missing-user"] });
+  });
   it("edits a guest when Data Connect returns compact UUIDs", async () => {
     guest.event.id = id.replaceAll("-", "");
     guest.ticketType.id = id.replaceAll("-", "");
@@ -346,18 +353,34 @@ describe("organiser guest capability and permissions", () => {
   });
 });
 describe("organiser ticket reassignment", () => {
-  it("reassigns an unpaid guest atomically while preserving their link and reservation identity", async () => {
-    const reassign = vi.spyOn(db, "reassignOrganiserGuestTicket").mockResolvedValue({} as never);
+  it.each([null, "2026-01-01"])("changes attendance without changing finances (paidAt=%s)", async (paidAt) => {
+    Object.assign(guest, { paidAt, stripeSessionId: "cs_existing" });
+    const edit = vi.spyOn(db, "editOrganiserGuestAttendance").mockResolvedValue({} as never);
     await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, action: "edit" }, true));
-    expect(reassign).toHaveBeenCalledWith(expect.objectContaining({ id, version: 1, ticketTypeId: other, priceMinor: 1000, checkoutKey: expect.any(String) }));
-    expect(reassign.mock.calls[0][0]).not.toHaveProperty("tokenHash");
+    expect(edit).toHaveBeenCalledWith(expect.objectContaining({ id, version: 1, ticketTypeId: other, includesDinner: true }));
+    expect(edit.mock.calls[0][0]).not.toHaveProperty("priceMinor");
+    expect(edit.mock.calls[0][0]).not.toHaveProperty("checkoutKey");
+    expect(stripe.checkout.sessions.retrieve).not.toHaveBeenCalled();
+    expect(stripe.checkout.sessions.expire).not.toHaveBeenCalled();
     expect(cancel).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled();
   });
-  it("rejects reassignment once a ticket is paid", async () => {
-    Object.assign(guest, { paidAt: "2026-01-01", stripePaymentIntentId: "pi_guest" });
-    const reassign = vi.spyOn(db, "reassignOrganiserGuestTicket");
-    await expect(manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId: other, action: "edit" }, true))).rejects.toMatchObject({ code: "failed-precondition" });
-    expect(reassign).not.toHaveBeenCalled();
+  it.each([id, other])("edits guest preferences and name alongside unchanged or replaced ticket %s", async (ticketTypeId) => {
+    const update = vi.spyOn(db, "updateOrganiserGuestDetails").mockResolvedValue({} as never);
+    const edit = vi.spyOn(db, "editOrganiserGuestAttendance").mockResolvedValue({} as never);
+    Object.assign(guest, { paidAt: "2026-01-01", stripeSessionId: "cs_existing" });
+    await manageOrganiserGuest.run(request({ ...base, eventId: id, ticketTypeId, action: "edit", firstName: "Updated", accommodationRequested: true, accommodationNote: "Twin room", sitNextToUserIds: ["Alex"] }, true));
+    const written = (ticketTypeId === id ? update : edit).mock.calls[0][0];
+    expect(written).toMatchObject({ firstName: "Updated", accommodationRequested: true, accommodationNote: "Twin room", sitNextToUserIds: ["Alex"] });
+    expect(written).not.toHaveProperty("priceMinor");
+    expect(written).not.toHaveProperty("stripeSessionId");
+    expect(stripe.checkout.sessions.retrieve).not.toHaveBeenCalled();
+  });
+  it("deletes an unpaid reservation without changing an existing checkout", async () => {
+    Object.assign(guest, { stripeSessionId: "cs_existing" });
+    await manageOrganiserGuest.run(request({ id, eventId: id, version: 1, action: "cancel" }, true));
+    expect(cancel).toHaveBeenCalledWith({ id, version: 1, actor: "organiser" });
+    expect(stripe.checkout.sessions.retrieve).not.toHaveBeenCalled();
+    expect(stripe.checkout.sessions.expire).not.toHaveBeenCalled();
   });
 });
 describe("guest payments and cancellation", () => {

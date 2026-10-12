@@ -132,17 +132,19 @@ export function buildBookingTicketDisplayRows(booking: {
   lines?: Array<{
     id: string;
     guestDisplayName?: string | null;
+    bookingPlace?: { attendanceRemoved?: boolean; attendanceName?: string | null; attendanceTicketType?: { title: string } | null };
     ticketType?: { id?: string; title?: string; price?: number | null } | null;
   }> | null;
 }): BookingTicketDisplayRow[] {
   const rows: BookingTicketDisplayRow[] = [];
 
   for (const line of booking.lines ?? []) {
+    if (line.bookingPlace?.attendanceRemoved) continue;
     rows.push({
       id: line.id,
       ticketTypeId: line.ticketType?.id ?? null,
-      ticketTitle: line.ticketType?.title ?? "Ticket",
-      guestName: line.guestDisplayName ?? null,
+      ticketTitle: line.bookingPlace?.attendanceTicketType?.title ?? line.ticketType?.title ?? "Ticket",
+      guestName: line.bookingPlace?.attendanceName ?? line.guestDisplayName ?? null,
       price: line.ticketType?.price ?? null,
       source: "line",
     });

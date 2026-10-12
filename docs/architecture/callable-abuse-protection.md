@@ -154,3 +154,10 @@ Per-user limits remain necessary after Firebase App Check is enabled under #345.
 | `createOrganiserGuestCheckout` | Stripe checkout | Token; 20/hour per guest; allocated price; Stripe idempotency and conditional session attachment |
 
 Guest tokens have no automatic expiry. Link replacement revokes the previous token. Tokens are carried in URL fragments and must not be logged or stored in analytics. Invalid tokens receive a neutral unavailable response.
+
+## Attendance-only ticket management
+
+| Callable | Risk | Protection |
+| --- | --- | --- |
+| `getManagedEventTickets` | Private member ticket and attendee details | Enabled section moderator/admin checked before loading bookings; 60/5 minutes |
+| `manageTicketAttendance` | Changes to attendance and reservation counts | Enabled section moderator/admin; 120/hour; event/audience validation and atomic attendance-version checks; no financial writes |

@@ -511,6 +511,15 @@ type BookingPlace @table {
   id: UUID! @default(expr: "uuidV4()")
   event: Event!
   booker: User!
+  # Attendance-only organiser corrections. Purchased lines and payment allocations stay intact.
+  attendanceTicketType: TicketType
+  attendanceName: String
+  attendanceAccommodationRequested: Boolean
+  attendanceAccommodationNote: String
+  attendanceSitNextToUserIds: [String!]
+  attendanceDietaryNote: String
+  attendanceRemoved: Boolean! @default(value: false)
+  attendanceVersion: Int! @default(value: 0)
   # HasAudit fields
   createdAt: Timestamp! @default(expr: "request.time")
   updatedAt: Timestamp! @default(expr: "request.time")
@@ -840,6 +849,9 @@ type OrganiserGuest @table {
   lastName: String!
   email: String
   dietaryRequirements: String!
+  accommodationRequested: Boolean! @default(value: false)
+  accommodationNote: String
+  sitNextToUserIds: [String!]
   # Allocation price and inclusions are captured so type edits cannot alter sold tickets.
   priceMinor: Int!
   includesSymposium: Boolean!

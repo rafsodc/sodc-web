@@ -58,6 +58,9 @@ query ListOrganiserGuests($eventId: UUID!, $offset: Int!)
     lastName
     email
     dietaryRequirements
+    accommodationRequested
+    accommodationNote
+    sitNextToUserIds
     priceMinor
     includesSymposium
     includesDinner
@@ -96,6 +99,9 @@ query GetOrganiserGuest($id: UUID!) @auth(level: NO_ACCESS) {
     lastName
     email
     dietaryRequirements
+    accommodationRequested
+    accommodationNote
+    sitNextToUserIds
     priceMinor
     includesSymposium
     includesDinner
@@ -135,6 +141,9 @@ query GetOrganiserGuestByToken($tokenHash: String!) @auth(level: NO_ACCESS) {
     lastName
     email
     dietaryRequirements
+    accommodationRequested
+    accommodationNote
+    sitNextToUserIds
     priceMinor
     includesSymposium
     includesDinner
@@ -189,6 +198,9 @@ mutation CreateOrganiserGuest(
   $lastName: String!
   $email: String
   $dietaryRequirements: String!
+  $accommodationRequested: Boolean!
+  $accommodationNote: String
+  $sitNextToUserIds: [String!]
   $priceMinor: Int!
   $includesSymposium: Boolean!
   $includesDinner: Boolean!
@@ -205,6 +217,9 @@ mutation CreateOrganiserGuest(
       lastName: $lastName
       email: $email
       dietaryRequirements: $dietaryRequirements
+      accommodationRequested: $accommodationRequested
+      accommodationNote: $accommodationNote
+      sitNextToUserIds: $sitNextToUserIds
       priceMinor: $priceMinor
       includesSymposium: $includesSymposium
       includesDinner: $includesDinner
@@ -225,6 +240,9 @@ mutation UpdateOrganiserGuestDetails(
   $lastName: String!
   $email: String
   $dietaryRequirements: String!
+  $accommodationRequested: Boolean!
+  $accommodationNote: String
+  $sitNextToUserIds: [String!]
   $actor: String!
 ) @auth(level: NO_ACCESS) @transaction {
   organiserGuest_updateMany(
@@ -238,6 +256,9 @@ mutation UpdateOrganiserGuestDetails(
       lastName: $lastName
       email: $email
       dietaryRequirements: $dietaryRequirements
+      accommodationRequested: $accommodationRequested
+      accommodationNote: $accommodationNote
+      sitNextToUserIds: $sitNextToUserIds
       version_update: { inc: 1 }
       updatedAt_expr: "request.time"
       updatedBy: $actor

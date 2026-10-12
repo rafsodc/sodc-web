@@ -99,7 +99,7 @@ export default function SectionAdminPage() {
     );
   }
 
-  if (view === "guests") return <Box className="page-container"><PageHeader title={`Organiser guests — ${sectionName}`} onBack={handleBack} /><SectionGuestManager sectionId={sectionId} /></Box>;
+  if (view === "guests") return <Box className="page-container"><PageHeader title={`Tickets and guests — ${sectionName}`} onBack={handleBack} /><SectionGuestManager sectionId={sectionId} /></Box>;
 
   if (view === "files") {
     return (
@@ -138,7 +138,7 @@ export default function SectionAdminPage() {
           />
         </Box>
 
-        {isEvents && <Box sx={{ flex: "1 1 280px" }}><ActionCard icon={<Event fontSize="large" />} title="Organiser guests" description="Reserve guest tickets and copy personal payment links." onClick={() => setView("guests")} /></Box>}
+        {isEvents && <Box sx={{ flex: "1 1 280px" }}><ActionCard icon={<Event fontSize="large" />} title="Tickets and guests" description="Edit or delete attendee tickets, reserve guest places and copy guest links." onClick={() => setView("guests")} /></Box>}
 
         {isEvents && (
           <Box sx={{ flex: "1 1 280px" }}>
