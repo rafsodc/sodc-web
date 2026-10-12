@@ -3,6 +3,7 @@ import type { GetEventByIdData, GetSectionByIdData } from "@dataconnect/generate
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
 import FailureState from "../../../shared/components/FailureState";
 import { useBookingWizardState } from "../hooks/useBookingWizardState";
+import { getBookingWindowState } from "../utils/bookingEligibility";
 import EventBookingStatusSummary from "./EventBookingStatusSummary";
 import TicketSelectionStep from "./wizardSteps/TicketSelectionStep";
 import GuestDetailsStep from "./wizardSteps/GuestDetailsStep";
@@ -52,21 +53,29 @@ export default function EventBookingWizard({
   if (!wizard.membershipStatus) {
     return <Alert severity="warning" sx={{ mt: 2 }}>Complete your membership profile before booking events.</Alert>;
   }
-  if (wizard.gate.ok !== true) {
+  // Closing bookings stops creation and edits, but existing bookings can still be paid.
+  const showClosedBooking = wizard.gate.ok !== true &&
+    "code" in wizard.gate && wizard.gate.code === "OUTSIDE_BOOKING_WINDOW" &&
+    getBookingWindowState(event.bookingStartDateTime, event.bookingEndDateTime) === "AFTER" &&
+    Boolean(wizard.existingTerminalBooking);
+  if (wizard.gate.ok !== true && !showClosedBooking) {
     return <Alert severity="info" sx={{ mt: 2 }}>{wizard.gate.message}</Alert>;
   }
-  if (!wizard.memberTicketTypes.length) {
+  if (!wizard.memberTicketTypes.length && !showClosedBooking) {
     return (
       <Alert severity="warning" sx={{ mt: 2 }}>
         There are no member ticket types you are eligible for. If you believe this is wrong, contact an organiser.
       </Alert>
     );
   }
-  if (!wizard.showWizard && !wizard.showBookingSummary && !wizard.lastSubmission) return null;
+  if (!showClosedBooking && !wizard.showWizard && !wizard.showBookingSummary && !wizard.lastSubmission) return null;
 
   return (
     <Box sx={{ mt: 1 }}>
-      {wizard.gate.moderatorWindowOverride ? (
+      {showClosedBooking ? (
+        <Alert severity="info" sx={{ mb: 2 }}>Bookings for this event are closed.</Alert>
+      ) : null}
+      {wizard.gate.ok === true && wizard.gate.moderatorWindowOverride ? (
         <Alert severity="info" sx={{ mb: 2 }}>
           {wizard.gate.moderatorWindowOverride === "BEFORE"
             ? "Bookings are not yet open to members."
@@ -74,7 +83,7 @@ export default function EventBookingWizard({
           As a moderator for this section, you can create or amend your own booking.
         </Alert>
       ) : null}
-      {wizard.showBookingSummary && wizard.existingTerminalBooking ? (
+      {(showClosedBooking || wizard.showBookingSummary) && wizard.existingTerminalBooking ? (
         <>
           <EventBookingStatusSummary
             booking={wizard.existingTerminalBooking}
@@ -83,9 +92,9 @@ export default function EventBookingWizard({
             eventTitle={event.title}
             ticketOrders={wizard.ticketOrdersData?.user?.ticketOrders ?? []}
             paymentAdjustments={wizard.bookingPaymentAdjustments}
-            onEditBooking={wizard.beginEditingBooking}
+            onEditBooking={showClosedBooking ? undefined : wizard.beginEditingBooking}
             onPayNow={() => void wizard.handlePayAllTickets()}
-            payingTicketTypeId={wizard.payingAllTickets ? "all" : null}
+            payingTicketTypeId={wizard.payingAllTickets ? wizard.paymentSummaryForBooking?.unpaidTicketTypeId : null}
           />
           {wizard.submitError ? (
             <Alert severity="error" sx={{ mt: 2 }} onClose={() => wizard.setSubmitError(null)}>
@@ -115,7 +124,7 @@ export default function EventBookingWizard({
         </Alert>
       ) : null}
 
-      {wizard.showWizard ? (
+      {wizard.showWizard && !showClosedBooking ? (
         <>
           <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
             {wizard.editingExistingBooking ? "Edit your booking" : "Book this event"}

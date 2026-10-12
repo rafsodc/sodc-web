@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
-import { render, screen, waitFor } from "../../../../test-utils";
+import { act, render, screen, waitFor } from "../../../../test-utils";
 import { BookingStatus, TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
 import * as reactGenerated from "@dataconnect/generated/react";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
@@ -62,7 +62,13 @@ const event = {
       userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
     },
   ],
-} as never;
+};
+
+const closedEvent = {
+  ...event,
+  bookingStartDateTime: "2019-01-01T00:00:00Z",
+  bookingEndDateTime: "2020-01-01T00:00:00Z",
+};
 
 const refetchMyBookings = vi.fn().mockResolvedValue({ data: { user: { bookings: [] } } });
 
@@ -231,6 +237,130 @@ describe("EventBookingWizard", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("Bookings for this event are closed.");
     expect(screen.queryByText(/as a moderator for this section/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Your details")).not.toBeInTheDocument();
+  });
+
+  it.each(["NOT_REQUIRED", "APPROVED"])("allows payment after closing for a %s booking without enabling edits", async (approvalStatus) => {
+    const checkoutResult = { url: null, orderIds: [], confirmed: true };
+    let finishCheckout!: (result: typeof checkoutResult) => void;
+    vi.mocked(firebaseFunctions.createEventBookingCheckoutSession).mockImplementationOnce(
+      () => new Promise((resolve) => { finishCheckout = resolve; }),
+    );
+    const user = userEvent.setup();
+    renderWizard({
+      bookings: [{ ...bookingWithGuest(false), approvalStatus }],
+      eventOverride: closedEvent,
+      wizardOpen: false,
+    });
+
+    expect(screen.getByText("Bookings for this event are closed.")).toBeInTheDocument();
+    expect(screen.getByText("Alex Guest")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit booking" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Your details")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pay for all tickets" }));
+    expect(firebaseFunctions.createEventBookingCheckoutSession).toHaveBeenCalledWith({ eventId: "event-1" });
+    expect(screen.getByRole("button", { name: "Starting checkout…" })).toBeDisabled();
+
+    await act(async () => finishCheckout(checkoutResult));
+    expect(bookingInvalidation.refreshMyBookingsFromServer).toHaveBeenCalledWith(expect.anything(), "event-1");
+    expect(firebaseFunctions.submitEventBooking).not.toHaveBeenCalled();
+  });
+
+  it.each(["PENDING", "REJECTED"])("does not offer payment or edits after closing for a %s booking", (approvalStatus) => {
+    renderWizard({ bookings: [{ ...bookingWithGuest(false), approvalStatus }], eventOverride: closedEvent });
+
+    expect(screen.getByText("Bookings for this event are closed.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pay for all tickets" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit booking" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Your details")).not.toBeInTheDocument();
+  });
+
+  it("keeps an approved revision payable after closing while changes await approval", () => {
+    renderWizard({
+      bookings: [bookingWithGuest(false), {
+        ...bookingWithGuest(false), id: "pending-booking", revisionNumber: 2, approvalStatus: "PENDING",
+      }],
+      eventOverride: closedEvent,
+    });
+
+    expect(screen.getByRole("heading", { name: "Awaiting approval" })).toBeInTheDocument();
+    expect(screen.getByText("Current active booking")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit booking" })).not.toBeInTheDocument();
+  });
+
+  it("shows a paid booking after closing without offering payment again", () => {
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue({
+      data: { user: { ticketOrders: ["ticket-member", "ticket-guest"].map((id) => ({
+        status: TicketOrderStatus.PAID, quantity: 1, event: { id: "event-1" }, ticketType: { id },
+      })) } },
+      isLoading: false,
+    } as never);
+    renderWizard({ bookings: [bookingWithGuest(false)], eventOverride: closedEvent });
+
+    expect(screen.getByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pay for all tickets" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit booking" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/you can edit unpaid guest details/i)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["before opening", "2099-01-01T00:00:00Z", "2100-01-01T00:00:00Z"],
+    ["with invalid dates", "invalid", "2020-01-01T00:00:00Z"],
+    ["with reversed dates", "2021-01-01T00:00:00Z", "2020-01-01T00:00:00Z"],
+  ])("keeps an existing booking blocked %s", (_label, bookingStartDateTime, bookingEndDateTime) => {
+    renderWizard({
+      bookings: [bookingWithGuest(false)],
+      eventOverride: { ...event, bookingStartDateTime, bookingEndDateTime },
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Booking is only open during the published booking window.");
+    expect(screen.queryByRole("button", { name: "Pay for all tickets" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Alex Guest")).not.toBeInTheDocument();
+  });
+
+  it.each(["ACCESS", "BOOKER"])("does not bypass missing %s permission after closing", (purpose) => {
+    renderWizard({
+      bookings: [bookingWithGuest(false)],
+      eventOverride: closedEvent,
+      sectionOverride: { purposeLinks: [{
+        purposes: [purpose === "ACCESS" ? "BOOKER" : "ACCESS"],
+        userGroup: { id: "group-1", membershipStatuses: ["REGULAR"] },
+      }] },
+    });
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pay for all tickets" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Alex Guest")).not.toBeInTheDocument();
+  });
+
+  it("displays checkout eligibility errors after closing", async () => {
+    vi.mocked(firebaseFunctions.createEventBookingCheckoutSession).mockRejectedValueOnce({
+      code: "functions/permission-denied", details: { code: "INELIGIBLE_TICKET_TYPE" },
+    });
+    const user = userEvent.setup();
+    renderWizard({ bookings: [bookingWithGuest(false)], eventOverride: closedEvent });
+
+    await user.click(screen.getByRole("button", { name: "Pay for all tickets" }));
+
+    expect(await screen.findByText("You are not eligible for one of the selected ticket types.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeEnabled();
+  });
+
+  it("replaces an open edit form with the payable summary when the event closes", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderWizard({ bookings: [bookingWithGuest(false)] });
+    await user.click(screen.getByRole("button", { name: "Edit booking" }));
+    expect(screen.getByText("Your details")).toBeInTheDocument();
+
+    rerender(
+      <MemoryRouter>
+        <EventBookingWizard section={section} event={closedEvent as never} wizardOpen />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit booking" })).not.toBeInTheDocument();
     expect(screen.queryByText("Your details")).not.toBeInTheDocument();
   });
 

@@ -34,7 +34,7 @@ export interface EventBookingStatusSummaryProps {
   eventTitle: string;
   ticketOrders: EventBookingPaymentOrderInput[];
   paymentAdjustments: EventBookingPaymentAdjustmentInput[];
-  onEditBooking: () => void;
+  onEditBooking?: () => void;
   onPayNow?: (ticketTypeId: string) => void;
   payingTicketTypeId?: string | null;
 }
@@ -42,7 +42,8 @@ export interface EventBookingStatusSummaryProps {
 function bookingStatusCard(
   booking: TerminalBooking,
   paymentSummary: EventBookingPaymentSummary,
-  hasSeparatePaymentBooking: boolean
+  hasSeparatePaymentBooking: boolean,
+  canEdit: boolean
 ) {
   if (booking.approvalStatus === "PENDING") {
     return {
@@ -73,7 +74,9 @@ function bookingStatusCard(
     return {
       heading: "Confirmed",
       severity: "success" as const,
-      message: "Your booking is confirmed. You can edit unpaid guest details while the booking window remains open.",
+      message: canEdit
+        ? "Your booking is confirmed. You can edit unpaid guest details while the booking window remains open."
+        : "Your booking is confirmed.",
     };
   }
   if (paymentSummary.kind === "failed") {
@@ -120,7 +123,7 @@ export default function EventBookingStatusSummary({
     eventId,
     ticketOrders,
   });
-  const statusCard = bookingStatusCard(booking, paymentSummary, hasSeparatePaymentBooking);
+  const statusCard = bookingStatusCard(booking, paymentSummary, hasSeparatePaymentBooking, Boolean(onEditBooking));
   const showPayNow =
     Boolean(onPayNow) &&
     effectivePaymentBooking != null &&
@@ -191,9 +194,11 @@ export default function EventBookingStatusSummary({
             {payingTicketTypeId === paymentSummary.unpaidTicketTypeId ? "Starting checkout…" : "Pay for all tickets"}
           </Button>
         ) : null}
-        <Button variant={booking.approvalStatus === "REJECTED" ? "contained" : "outlined"} onClick={onEditBooking}>
-          Edit booking
-        </Button>
+        {onEditBooking ? (
+          <Button variant={booking.approvalStatus === "REJECTED" ? "contained" : "outlined"} onClick={onEditBooking}>
+            Edit booking
+          </Button>
+        ) : null}
         {booking.approvalStatus !== "REJECTED" ? (
           <Button component={RouterLink} to={ROUTES.MY_BOOKINGS} variant="text">
             View in My Bookings
