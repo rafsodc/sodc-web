@@ -7,6 +7,7 @@ export * from "./membershipStatus";
 export * from "./sections";
 export * from "./eventAttendees";
 export * from "./bookings";
+export { getManagedBookingContext } from "./organiserBookings";
 export * from "./bookingApprovals";
 export * from "./payments";
 export * from "./stagedExpiry";

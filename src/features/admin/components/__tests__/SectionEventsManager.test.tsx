@@ -135,6 +135,14 @@ describe("SectionEventsManager", () => {
     });
   });
 
+  it("opens the user-ticket form from event administration", async () => {
+    const user = userEvent.setup();
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} initialEventId="ev-1" onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: /^current attendee tickets$/i }));
+    await user.click(screen.getByRole("button", { name: /^add ticket$/i }));
+    expect(screen.getByRole("dialog", { name: "Add ticket for a user" })).toBeInTheDocument();
+  });
+
   it("creates an organiser/club guest type through the existing three-category editor", async () => {
     const user = userEvent.setup();
     vi.mocked(firebaseDataConnect.executeQuery).mockResolvedValueOnce({

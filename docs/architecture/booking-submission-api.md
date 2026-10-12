@@ -19,6 +19,7 @@ For payment lifecycle transitions and webhook semantics, see
 |--------|------|------------|-------------|
 | `idempotencyKey` | string (UUID) | yes | **Per submit attempt** — generate a new UUID (v4) when the user commits; **reuse the same value** on retries after network errors so the server returns the same booking instead of creating another |
 | `eventId` | string (UUID) | yes | Event being booked |
+| `bookerId` | string (Firebase UID) | no | Organiser-only target user; omitted for ordinary self-booking. See organiser-created tickets below. |
 | `lines` | array | yes | Complete list of 1–`MAX_ATOMIC_BOOKING_LINES` (100) attendee line items (see below); exactly one member line and every guest line must be present |
 | `baseBookingId` | string (UUID) | no | Required for mutable-booking revision updates once a terminal revision exists |
 | `baseRevisionNumber` | integer | no | Required with `baseBookingId`; optimistic concurrency guard |
@@ -116,3 +117,13 @@ See [`docs/operations/transactional-email-workflows.md`](../operations/transacti
 - Email: `functions/src/bookingEmailDispatcher.ts`
 
 The server-only `booking-service` connector exists because Firebase Data Connect supports `_Data` batch variables in deployed operations but its JavaScript SDK generator does not currently generate wrappers for them. Functions invokes the named, schema-validated operations using explicit TypeScript variable interfaces. It does not use the Admin SDK generic `insertMany` API.
+
+## Organiser-created tickets (#637)
+
+`submitEventBooking` accepts an optional `bookerId` for an organiser creating tickets on behalf of a user. The caller must be enabled and be a moderator of the event's section or an admin. This check runs before looking up another user's completed submission. Rate limits remain charged to the acting organiser.
+
+The selected user's section access, BOOKER permission and ticket-group eligibility are enforced. The organiser can create tickets before or after the booking window; invalid windows remain blocked. Existing guest approval thresholds still apply. The new booking, lines and places record the organiser in `createdBy`/`updatedBy`, while `bookerId` retains the selected user's ownership.
+
+For an existing booking, submit its latest revision ID/number and unchanged lines/preferences followed by new guest lines. The server rejects removal or modification of existing details through this action, and the revision engine rejects stale submissions. Stable places and payment allocations are retained. New tickets use normal member checkout and no payment is initiated by the organiser's save action. Retries use the same submission key.
+
+`getManagedBookingContext` provides an authorised organiser with the selected user's current revision, preferences and eligible ticket types. `searchSectionMembers` with `forBooking: true` also requires section moderation permission, includes the caller, and returns identifying email addresses; ordinary seating searches retain their existing name-only results. The shared seating picker excludes the selected booker when creating their booking.

@@ -1,4 +1,5 @@
 import TicketAttendanceDialog from "./TicketAttendanceDialog";
+import AddUserTicketDialog from "./AddUserTicketDialog";
 import type { EventAttendeeTicketRow } from "../utils/bookingApprovalsAdmin";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { guestCall, type GuestList } from "../../guests/api";
@@ -67,6 +68,7 @@ interface SectionEventsManagerProps {
 export default function SectionEventsManager({ sectionId, sectionName, initialEventId, onBack }: SectionEventsManagerProps) {
   const queryClient = useQueryClient();
   const [ticketEdit, setTicketEdit] = useState<{ row: EventAttendeeTicketRow; action: "edit" | "delete" } | null>(null);
+  const [addingUserTicket, setAddingUserTicket] = useState(false);
   const {
     data: eventsData,
     isLoading: loadingEvents,
@@ -555,6 +557,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           ticketOrdersById={ticketOrdersById}
           attendeeTickets={attendeeTickets}
           onManageTicket={(row, action) => setTicketEdit({ row, action })}
+          onAddUserTicket={() => setAddingUserTicket(true)}
           attendeeGuestsUnavailable={guestReport.isPending || guestReport.isError}
           moderatorNoteDraft={moderatorNoteDraft}
           onModeratorNoteChange={(bookingId, value) =>
@@ -570,6 +573,13 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           bookingPaymentAdjustments={bookingPaymentAdjustments}
         />
 
+        {addingUserTicket && <AddUserTicketDialog sectionId={sectionId} eventId={ticketTypesEventId}
+          onClose={() => setAddingUserTicket(false)} onSaved={async () => {
+            await Promise.all([refetchEventBookings(), refetchPaymentAdjustments(),
+              queryClient.invalidateQueries({ queryKey: ["eventAttendees", ticketTypesEventId] })]);
+            setAddingUserTicket(false);
+            showSuccess("Ticket added. The user can pay through their booking once approved.");
+          }} />}
         {ticketEdit && <TicketAttendanceDialog
           key={ticketEdit.row.key}
           sectionId={sectionId}

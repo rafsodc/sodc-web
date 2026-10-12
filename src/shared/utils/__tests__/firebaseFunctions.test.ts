@@ -350,6 +350,13 @@ const TICKET_UUID = "22222222-2222-2222-2222-222222222222";
 const EVENT_UUID = "33333333-3333-3333-3333-333333333333";
 
 describe("submitEventBooking", () => {
+  it("preserves the selected booker for an organiser submission", async () => {
+    const callable = makeCallable({ data: { bookingId: "b1", status: "SUBMITTED" } });
+    await submitEventBooking({ bookerId: "selected-user", idempotencyKey: BOOKING_UUID, eventId: EVENT_UUID,
+      lines: [{ ticketTypeId: TICKET_UUID, sortOrder: 0 }] });
+    expect(callable.mock.calls[0][0]).toMatchObject({ bookerId: "selected-user" });
+  });
+
   it("calls submitEventBooking with normalized payload", async () => {
     const callable = makeCallable({ data: { bookingId: "b1", status: "CONFIRMED" } });
 

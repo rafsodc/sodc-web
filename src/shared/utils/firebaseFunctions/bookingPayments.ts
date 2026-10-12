@@ -11,6 +11,8 @@ export interface SubmitEventBookingLine {
 }
 
 export interface SubmitEventBookingRequest {
+  /** Organiser-only: create/add tickets owned by this user. */
+  bookerId?: string;
   idempotencyKey: string;
   eventId: string;
   baseBookingId?: string;
@@ -88,6 +90,7 @@ export async function submitEventBooking(
     "submitEventBooking"
   );
   const normalized: SubmitEventBookingRequest = {
+    ...(payload.bookerId !== undefined ? { bookerId: payload.bookerId } : {}),
     idempotencyKey: toCanonicalUuid(payload.idempotencyKey),
     eventId: toCanonicalUuid(payload.eventId),
     baseBookingId: payload.baseBookingId ? toCanonicalUuid(payload.baseBookingId) : undefined,

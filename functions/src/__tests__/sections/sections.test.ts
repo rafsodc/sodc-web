@@ -599,6 +599,21 @@ describe("searchSectionMembers", () => {
     expect(result.members).toEqual([{ id: "user-2", firstName: "Selma", lastName: "Case" }]);
   });
 
+  it("lets an admin search booking users including themselves with identifying email", async () => {
+    mockCandidates({ explicit: [eventsUser("member-1", "Self", "Caller")] });
+    mockGetUserMembershipStatus.mockResolvedValue({ data: { user: {
+      membershipStatus: MembershipStatus.REGULAR, email: "self@example.com",
+    } } } as never);
+    const result = await callAs(searchSectionMembers, "member-1", true, { sectionId, searchTerm: "self", forBooking: true });
+    expect(result.members).toEqual([{ id: "member-1", firstName: "Self", lastName: "Caller", email: "self@example.com" }]);
+  });
+
+  it("restricts booking-user search to organisers even when the caller can view the section", async () => {
+    mockCandidates({ explicit: [eventsUser("user-2", "Other", "Member")] });
+    await expect(callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "other", forBooking: true })).rejects.toThrow(/not found/i);
+    expect(mockSearchSectionMemberCandidates).not.toHaveBeenCalled();
+  });
+
   it("returns no matches for a blank search term with no includeIds", async () => {
     const result = await callAs(searchSectionMembers, "member-1", false, { sectionId, searchTerm: "" });
 

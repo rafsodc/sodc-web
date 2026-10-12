@@ -93,7 +93,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `updateMembershipStatus` | High | None | Firebase Auth, GOV.UK Notify | High | Enabled; ownership/transition checks; 20/hour |
 | `resignMembership` | Medium | None | Firebase Auth, GOV.UK Notify | Medium | Enabled; terminal transition; 3/hour |
 | `getSectionMembersMerged` | High | High | None | High | Enabled + section access; 60/5 minutes |
-| `searchSectionMembers` | Medium | Medium | None | Low | Enabled + section access; 60/5 minutes; name-match only, capped result set |
+| `searchSectionMembers` | Medium | Medium | None | Low | Enabled + section access; 60/5 minutes; name-match only, capped result set. Booking mode additionally requires section moderation and returns identifying email. |
 | `getSectionForUser` | Low | Low | None | Low | Enabled + section access; bounded lookup |
 | `getSectionEventsForUser` | Low | Medium | None | Medium | Enabled + section access; bounded section query |
 | `getEventForUser` | Low | Low | None | Low | Enabled + section access; single-event query |
@@ -155,9 +155,10 @@ Per-user limits remain necessary after Firebase App Check is enabled under #345.
 
 Guest tokens have no automatic expiry. Link replacement revokes the previous token. Tokens are carried in URL fragments and must not be logged or stored in analytics. Invalid tokens receive a neutral unavailable response.
 
-## Attendance-only ticket management
+## Organiser ticket management
 
 | Callable | Risk | Protection |
 | --- | --- | --- |
 | `getManagedEventTickets` | Private member ticket and attendee details | Enabled section moderator/admin checked before loading bookings; 60/5 minutes |
+| `getManagedBookingContext` | Private user booking, email and ticket eligibility | Enabled section moderator/admin checked before reading the selected user; 60/5 minutes |
 | `manageTicketAttendance` | Changes to attendance and reservation counts | Enabled section moderator/admin; 120/hour; event/audience validation and atomic attendance-version checks; no financial writes |

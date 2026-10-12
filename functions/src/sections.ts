@@ -19,7 +19,7 @@ import {
   type MembershipStatus,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
-import { linkHasPurpose, resolveSectionAccess } from "./sectionAccess";
+import { linkHasPurpose, resolveSectionAccess, requireSectionModerator } from "./sectionAccess";
 import { caseInsensitiveContainsPattern } from "./dataConnectSearch";
 
 export interface SectionMemberResponse {
@@ -300,6 +300,8 @@ export const searchSectionMembers = onCall(
 
     try {
       const scope = await loadSectionMemberSearchScope(sectionId, callerUid, request.auth!.token.admin === true);
+      const forBooking = request.data?.forBooking === true;
+      if (forBooking) await requireSectionModerator(sectionId, callerUid, request.auth!.token.admin === true);
       if (!searchTerm && includeIds.size === 0) {
         return { members: [], hasMore: false };
       }
@@ -328,22 +330,22 @@ export const searchSectionMembers = onCall(
       const selectedMembers: SectionMemberSearchResult[] = [];
       const searchMembers: SectionMemberSearchResult[] = [];
       for (const member of included) {
-        if (member.id === callerUid || seen.has(member.id)) continue;
+        if ((!forBooking && member.id === callerUid) || seen.has(member.id)) continue;
         seen.add(member.id);
         selectedMembers.push({ id: member.id, firstName: member.firstName, lastName: member.lastName });
       }
       if (searchTerm) {
         for (const member of searched) {
-          if (member.id === callerUid || seen.has(member.id)) continue;
+          if ((!forBooking && member.id === callerUid) || seen.has(member.id)) continue;
           seen.add(member.id);
           searchMembers.push({ id: member.id, firstName: member.firstName, lastName: member.lastName });
         }
       }
       const hasMore = searchMembers.length > SEARCH_SECTION_MEMBERS_MAX_RESULTS;
-      return {
-        members: [...selectedMembers, ...searchMembers.slice(0, SEARCH_SECTION_MEMBERS_MAX_RESULTS)],
-        hasMore,
-      };
+      const members = [...selectedMembers, ...searchMembers.slice(0, SEARCH_SECTION_MEMBERS_MAX_RESULTS)];
+      return { members: forBooking ? await Promise.all(members.map(async (member) => ({
+        ...member, email: (await getUserMembershipStatus({ id: member.id })).data.user?.email ?? null,
+      }))) : members, hasMore };
     } catch (e: unknown) {
       if (e instanceof HttpsError) throw e;
       handleFunctionError(e as Error, "searchSectionMembers");

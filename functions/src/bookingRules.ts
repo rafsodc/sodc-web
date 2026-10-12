@@ -309,6 +309,8 @@ export function evaluateBookingGatekeeping(args: {
   bookingStartDateTime: string;
   bookingEndDateTime: string;
   nowMs?: number;
+  /** Set only after verifying the acting organiser's section permission. */
+  organiserBooking?: boolean;
 }): BookingGatekeepingResult {
   if (!userHasSectionAccess(args.purposeLinks, args.explicitGroupIds, args.membershipStatus)) {
     return fail(BOOKING_RULE_ERROR_CODES.NO_SECTION_ACCESS, "You do not have permission to access this section");
@@ -326,7 +328,7 @@ export function evaluateBookingGatekeeping(args: {
   );
   const moderatorWindowOverride =
     (bookingWindowState === "BEFORE" || bookingWindowState === "AFTER") &&
-    userHasModeratorPurpose(args.purposeLinks, args.explicitGroupIds, args.membershipStatus);
+    (args.organiserBooking === true || userHasModeratorPurpose(args.purposeLinks, args.explicitGroupIds, args.membershipStatus));
   if (bookingWindowState !== "OPEN" && !moderatorWindowOverride) {
     return fail(BOOKING_RULE_ERROR_CODES.OUTSIDE_BOOKING_WINDOW, "Booking is only allowed during the published booking window");
   }
