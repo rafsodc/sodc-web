@@ -49,6 +49,7 @@ import {
   type SubmissionLine,
 } from "./bookingSubmissionPersistence";
 import { hydrateBookingsWithTicketOrders } from "./bookingQueryHydration";
+import { managedBookerId, requireManagedBookingEvent } from "./organiserBookings";
 
 const APP_BASE_URL = (() => {
   const url = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -294,7 +295,9 @@ function bookingSubmissionOutcome(approvalStatus: BookingApprovalStatus) {
  */
 export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] }, async (request) => {
   requireEnabled(request);
-  const uid = request.auth!.uid;
+  const actorId = request.auth!.uid;
+  const organiserBooking = request.data?.bookerId !== undefined;
+  const uid = organiserBooking ? managedBookerId(request.data.bookerId) : actorId;
 
   const parsedRequest = (() => {
     try {
@@ -315,9 +318,12 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
     accommodationNote,
   } = parsedRequest;
 
-  // A separate low-cost bucket keeps the recovery read bounded without making
-  // a safe replay depend on remaining weighted write allowance.
-  await enforceRateLimit("submitEventBookingReplayLookup", uid);
+  // Replays use a separate read budget so exhausted write allowance cannot block recovery.
+  await enforceRateLimit("submitEventBookingReplayLookup", actorId);
+  // Authorise before reading another user's replay.
+  if (organiserBooking) {
+    await requireManagedBookingEvent(eventId, actorId, request.auth!.token.admin === true);
+  }
   const replayLookup = await getBookingReplayForBookerEventKey({
     bookerId: uid,
     eventId,
@@ -329,7 +335,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
     return replayResult(completedReplay);
   }
 
-  await enforceRateLimit("submitEventBooking", uid, submitEventBookingRateLimitCost(request.data?.lines));
+  await enforceRateLimit("submitEventBooking", actorId, submitEventBookingRateLimitCost(request.data?.lines));
 
   try {
     const [eventResult, userStatusResult, userGroupsResult, initialBookings] = await Promise.all([
@@ -386,6 +392,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
       explicitGroupIds,
       bookingStartDateTime: event.bookingStartDateTime,
       bookingEndDateTime: event.bookingEndDateTime,
+      organiserBooking,
     });
     if (!gate.ok) {
       throw bookingRulesToHttps(gate);
@@ -460,6 +467,18 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
       });
     }
 
+    // This organiser action only adds tickets. Existing details and payment
+    // entitlements must not be replaced through the on-behalf-of endpoint.
+    if (organiserBooking && baseBooking) {
+      const previousCount = baseBooking.lines.length;
+      const sortedLines = [...lines].sort((a, b) => a.sortOrder - b.sortOrder);
+      if (lines.length <= previousCount || !bookingReplayMatchesRequest(baseBooking, {
+        ...parsedRequest, lines: sortedLines.slice(0, previousCount),
+      })) {
+        throw new HttpsError("failed-precondition", "Only new tickets can be added. Existing booking details must stay unchanged.");
+      }
+    }
+
     const submissionLines: SubmissionLine[] = lines.map((line) => ({
       ticketTypeId: line.ticketTypeId as UUIDString,
       audience: ticketTypesById.get(line.ticketTypeId)!.audience,
@@ -508,6 +527,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
       bookingId,
       eventId,
       bookerId: uid,
+      actorId: organiserBooking ? actorId : undefined,
       idempotencyKey: idempotencyKey as UUIDString,
       revisionGroupId: revisionPlan.revisionGroupId,
       revisionNumber: revisionPlan.revisionNumber,
@@ -585,7 +605,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
       });
     }
 
-    logger.info(`submitEventBooking: uid=${uid} eventId=${eventId} bookingId=${bookingId} key=${idempotencyKey}`);
+    logger.info("submitEventBooking", { actorId, bookerId: uid, eventId, bookingId, idempotencyKey });
     return {
       bookingId,
       status: BookingStatus.SUBMITTED,

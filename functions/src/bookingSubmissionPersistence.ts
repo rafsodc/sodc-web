@@ -133,6 +133,7 @@ interface CompleteBookingVariables {
 }
 
 export interface CompleteBookingPersistenceInput {
+  actorId?: string;
   bookingId: UUIDString;
   eventId: UUIDString;
   bookerId: string;
@@ -161,14 +162,14 @@ function completeVariables(input: CompleteBookingPersistenceInput): CompleteBook
     sitNextToUserIds: input.sitNextToUserIds,
     accommodationRequested: input.accommodationRequested,
     accommodationNote: input.accommodationRequested ? input.accommodationNote ?? null : null,
-    createdBy: "system",
-    updatedBy: "system",
+    createdBy: input.actorId ?? "system",
+    updatedBy: input.actorId ?? "system",
     bookingPlaces: input.placePlan.newBookingPlaceIds.map((id) => ({
       id,
       eventId: input.eventId,
       bookerId: input.bookerId,
-      createdBy: "system",
-      updatedBy: "system",
+      createdBy: input.actorId ?? "system",
+      updatedBy: input.actorId ?? "system",
     })),
     bookingLines: input.placePlan.lines.map((line) => ({
       id: line.id,
@@ -179,8 +180,8 @@ function completeVariables(input: CompleteBookingPersistenceInput): CompleteBook
       guestDisplayName: line.guestDisplayName?.trim() || null,
       dietaryNote: line.dietaryNote?.trim() || null,
       sortOrder: line.sortOrder,
-      createdBy: "system",
-      updatedBy: "system",
+      createdBy: input.actorId ?? "system",
+      updatedBy: input.actorId ?? "system",
     })),
   };
 }

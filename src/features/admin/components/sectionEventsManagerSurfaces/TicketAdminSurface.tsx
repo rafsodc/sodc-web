@@ -77,6 +77,7 @@ interface TicketAdminSurfaceProps {
   attendeeTickets: EventAttendeeTicketRow[];
   attendeeGuestsUnavailable?: boolean;
   onManageTicket?: (row: EventAttendeeTicketRow, action: "edit" | "delete") => void;
+  onAddUserTicket?: () => void;
   moderatorNoteDraft: Record<string, string>;
   onModeratorNoteChange: (bookingId: string, value: string) => void;
   reviewingBookingId: string | null;
@@ -112,6 +113,7 @@ export function TicketAdminSurface({
   attendeeTickets,
   attendeeGuestsUnavailable,
   onManageTicket,
+  onAddUserTicket,
   moderatorNoteDraft,
   onModeratorNoteChange,
   reviewingBookingId,
@@ -161,6 +163,7 @@ export function TicketAdminSurface({
         />
       </AdminAccordion>
       <AdminAccordion title="Current attendee tickets">
+        {onAddUserTicket && <Button startIcon={<AddIcon />} variant="contained" sx={{ mb: 2 }} onClick={onAddUserTicket}>Add ticket</Button>}
         {attendeeGuestsUnavailable ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert> : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} onManageTicket={onManageTicket} />}
       </AdminAccordion>
       <AdminAccordion title="Booking audit activity">
