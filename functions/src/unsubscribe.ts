@@ -3,7 +3,8 @@ import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Response } from "express";
-import { adminOptOutSectionAnnouncement } from "@dataconnect/admin-generated";
+import { adminOptOutSectionAnnouncement, setAnnouncementEmailOptOut } from "@dataconnect/admin-generated";
+import { announcementEmailOptOutId } from "./announcementEmailOptOut";
 import { FUNCTIONS_REGION } from "./constants";
 
 export const unsubscribeSecret = defineSecret("UNSUBSCRIBE_SECRET");
@@ -18,6 +19,7 @@ const APP_BASE_URL = (() => {
 
 interface UnsubscribePayload {
   userId: string;
+  email?: string;
   sectionId: string;
   sectionName: string;
   exp: number;
@@ -83,6 +85,7 @@ function confirmationPage(token: string, sectionName: string): string {
 
 export interface UnsubscribeHandlerDependencies {
   optOut?: typeof adminOptOutSectionAnnouncement;
+  optOutEmail?: typeof setAnnouncementEmailOptOut;
 }
 
 export async function handleUnsubscribeRequest(
@@ -122,7 +125,11 @@ export async function handleUnsubscribeRequest(
   }
 
   try {
-    await (dependencies.optOut ?? adminOptOutSectionAnnouncement)({
+    if (payload.email) {
+      await (dependencies.optOutEmail ?? setAnnouncementEmailOptOut)({
+        id: announcementEmailOptOutId(payload.sectionId, payload.email), sectionId: payload.sectionId,
+      });
+    } else await (dependencies.optOut ?? adminOptOutSectionAnnouncement)({
       userId: payload.userId,
       sectionId: payload.sectionId,
     });

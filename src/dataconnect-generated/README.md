@@ -68,6 +68,10 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetRecentNotifyDeliveryReceiptsForUser*](#getrecentnotifydeliveryreceiptsforuser)
   - [*GetLatestNotifyDeliveryReceiptForReference*](#getlatestnotifydeliveryreceiptforreference)
   - [*GetCallableInvocation*](#getcallableinvocation)
+  - [*GetAnnouncementAttendeeBookings*](#getannouncementattendeebookings)
+  - [*GetAnnouncementAttendeeOrders*](#getannouncementattendeeorders)
+  - [*GetAnnouncementContactUsers*](#getannouncementcontactusers)
+  - [*GetAnnouncementEmailOptOuts*](#getannouncementemailoptouts)
   - [*GetAttendeeEventSection*](#getattendeeeventsection)
   - [*GetEventAttendeeNames*](#geteventattendeenames)
   - [*ListPotentialLostProfiles*](#listpotentiallostprofiles)
@@ -180,6 +184,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*UpsertCallableInvocation*](#upsertcallableinvocation)
   - [*EnsureCallableRateLimitBucket*](#ensurecallableratelimitbucket)
   - [*ConsumeCallableRateLimit*](#consumecallableratelimit)
+  - [*SetAnnouncementEmailOptOut*](#setannouncementemailoptout)
   - [*AdminDeleteBookingLine*](#admindeletebookingline)
   - [*AdminDeleteBooking*](#admindeletebooking)
   - [*ResolvePaymentReconciliationException*](#resolvepaymentreconciliationexception)
@@ -5553,6 +5558,7 @@ export interface GetAnnouncementSendHistoryData {
   announcementSends: ({
     id: UUIDString;
     templateUuid: string;
+    audienceSummary?: string | null;
     templateName?: string | null;
     sentBy: string;
     sentAt: TimestampString;
@@ -7460,6 +7466,516 @@ console.log(data.callableInvocation);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.callableInvocation);
+});
+```
+
+## GetAnnouncementAttendeeBookings
+You can execute the `GetAnnouncementAttendeeBookings` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementAttendeeBookings(vars: GetAnnouncementAttendeeBookingsVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAttendeeBookingsData, GetAnnouncementAttendeeBookingsVariables>;
+
+interface GetAnnouncementAttendeeBookingsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementAttendeeBookingsVariables): QueryRef<GetAnnouncementAttendeeBookingsData, GetAnnouncementAttendeeBookingsVariables>;
+}
+export const getAnnouncementAttendeeBookingsRef: GetAnnouncementAttendeeBookingsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementAttendeeBookings(dc: DataConnect, vars: GetAnnouncementAttendeeBookingsVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAttendeeBookingsData, GetAnnouncementAttendeeBookingsVariables>;
+
+interface GetAnnouncementAttendeeBookingsRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementAttendeeBookingsVariables): QueryRef<GetAnnouncementAttendeeBookingsData, GetAnnouncementAttendeeBookingsVariables>;
+}
+export const getAnnouncementAttendeeBookingsRef: GetAnnouncementAttendeeBookingsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementAttendeeBookingsRef:
+```typescript
+const name = getAnnouncementAttendeeBookingsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementAttendeeBookings` query requires an argument of type `GetAnnouncementAttendeeBookingsVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementAttendeeBookingsVariables {
+  eventId: UUIDString;
+  offset: number;
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementAttendeeBookings` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementAttendeeBookingsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementAttendeeBookingsData {
+  bookings: ({
+    id: UUIDString;
+    revisionGroupId: UUIDString;
+    revisionNumber: number;
+    approvalStatus: BookingApprovalStatus;
+    accommodationRequested: boolean;
+    booker: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      rank?: string | null;
+      membershipStatus: MembershipStatus;
+      serviceNumber: string;
+      announcementOptOutAll: boolean;
+    } & User_Key;
+    lines: ({
+      id: UUIDString;
+      guestDisplayName?: string | null;
+      guestUser?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        rank?: string | null;
+        membershipStatus: MembershipStatus;
+        serviceNumber: string;
+        announcementOptOutAll: boolean;
+      } & User_Key;
+      ticketType: {
+        title: string;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+      };
+      bookingPlace: {
+        attendanceRemoved: boolean;
+        attendanceName?: string | null;
+        attendanceAccommodationRequested?: boolean | null;
+        attendanceTicketType?: {
+          title: string;
+          includesDinner: boolean;
+          includesSymposium: boolean;
+        };
+        paymentAllocations: ({
+          allocatedAmountMinor: number;
+          refundedAmountMinor: number;
+          ticketOrderId: UUIDString;
+        })[];
+      };
+    } & BookingLine_Key)[];
+  } & Booking_Key)[];
+}
+```
+### Using `GetAnnouncementAttendeeBookings`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementAttendeeBookings, GetAnnouncementAttendeeBookingsVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementAttendeeBookings` query requires an argument of type `GetAnnouncementAttendeeBookingsVariables`:
+const getAnnouncementAttendeeBookingsVars: GetAnnouncementAttendeeBookingsVariables = {
+  eventId: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementAttendeeBookings()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementAttendeeBookings(getAnnouncementAttendeeBookingsVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementAttendeeBookings({ eventId: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementAttendeeBookings(dataConnect, getAnnouncementAttendeeBookingsVars);
+
+console.log(data.bookings);
+
+// Or, you can use the `Promise` API.
+getAnnouncementAttendeeBookings(getAnnouncementAttendeeBookingsVars).then((response) => {
+  const data = response.data;
+  console.log(data.bookings);
+});
+```
+
+### Using `GetAnnouncementAttendeeBookings`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementAttendeeBookingsRef, GetAnnouncementAttendeeBookingsVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementAttendeeBookings` query requires an argument of type `GetAnnouncementAttendeeBookingsVariables`:
+const getAnnouncementAttendeeBookingsVars: GetAnnouncementAttendeeBookingsVariables = {
+  eventId: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementAttendeeBookingsRef()` function to get a reference to the query.
+const ref = getAnnouncementAttendeeBookingsRef(getAnnouncementAttendeeBookingsVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementAttendeeBookingsRef({ eventId: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementAttendeeBookingsRef(dataConnect, getAnnouncementAttendeeBookingsVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.bookings);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.bookings);
+});
+```
+
+## GetAnnouncementAttendeeOrders
+You can execute the `GetAnnouncementAttendeeOrders` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementAttendeeOrders(vars: GetAnnouncementAttendeeOrdersVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAttendeeOrdersData, GetAnnouncementAttendeeOrdersVariables>;
+
+interface GetAnnouncementAttendeeOrdersRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementAttendeeOrdersVariables): QueryRef<GetAnnouncementAttendeeOrdersData, GetAnnouncementAttendeeOrdersVariables>;
+}
+export const getAnnouncementAttendeeOrdersRef: GetAnnouncementAttendeeOrdersRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementAttendeeOrders(dc: DataConnect, vars: GetAnnouncementAttendeeOrdersVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAttendeeOrdersData, GetAnnouncementAttendeeOrdersVariables>;
+
+interface GetAnnouncementAttendeeOrdersRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementAttendeeOrdersVariables): QueryRef<GetAnnouncementAttendeeOrdersData, GetAnnouncementAttendeeOrdersVariables>;
+}
+export const getAnnouncementAttendeeOrdersRef: GetAnnouncementAttendeeOrdersRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementAttendeeOrdersRef:
+```typescript
+const name = getAnnouncementAttendeeOrdersRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementAttendeeOrders` query requires an argument of type `GetAnnouncementAttendeeOrdersVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementAttendeeOrdersVariables {
+  eventId: UUIDString;
+  offset: number;
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementAttendeeOrders` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementAttendeeOrdersData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementAttendeeOrdersData {
+  ticketOrders: ({
+    id: UUIDString;
+    status: TicketOrderStatus;
+  } & TicketOrder_Key)[];
+}
+```
+### Using `GetAnnouncementAttendeeOrders`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementAttendeeOrders, GetAnnouncementAttendeeOrdersVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementAttendeeOrders` query requires an argument of type `GetAnnouncementAttendeeOrdersVariables`:
+const getAnnouncementAttendeeOrdersVars: GetAnnouncementAttendeeOrdersVariables = {
+  eventId: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementAttendeeOrders()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementAttendeeOrders(getAnnouncementAttendeeOrdersVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementAttendeeOrders({ eventId: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementAttendeeOrders(dataConnect, getAnnouncementAttendeeOrdersVars);
+
+console.log(data.ticketOrders);
+
+// Or, you can use the `Promise` API.
+getAnnouncementAttendeeOrders(getAnnouncementAttendeeOrdersVars).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrders);
+});
+```
+
+### Using `GetAnnouncementAttendeeOrders`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementAttendeeOrdersRef, GetAnnouncementAttendeeOrdersVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementAttendeeOrders` query requires an argument of type `GetAnnouncementAttendeeOrdersVariables`:
+const getAnnouncementAttendeeOrdersVars: GetAnnouncementAttendeeOrdersVariables = {
+  eventId: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementAttendeeOrdersRef()` function to get a reference to the query.
+const ref = getAnnouncementAttendeeOrdersRef(getAnnouncementAttendeeOrdersVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementAttendeeOrdersRef({ eventId: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementAttendeeOrdersRef(dataConnect, getAnnouncementAttendeeOrdersVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.ticketOrders);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.ticketOrders);
+});
+```
+
+## GetAnnouncementContactUsers
+You can execute the `GetAnnouncementContactUsers` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementContactUsers(vars: GetAnnouncementContactUsersVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementContactUsersData, GetAnnouncementContactUsersVariables>;
+
+interface GetAnnouncementContactUsersRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementContactUsersVariables): QueryRef<GetAnnouncementContactUsersData, GetAnnouncementContactUsersVariables>;
+}
+export const getAnnouncementContactUsersRef: GetAnnouncementContactUsersRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementContactUsers(dc: DataConnect, vars: GetAnnouncementContactUsersVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementContactUsersData, GetAnnouncementContactUsersVariables>;
+
+interface GetAnnouncementContactUsersRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementContactUsersVariables): QueryRef<GetAnnouncementContactUsersData, GetAnnouncementContactUsersVariables>;
+}
+export const getAnnouncementContactUsersRef: GetAnnouncementContactUsersRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementContactUsersRef:
+```typescript
+const name = getAnnouncementContactUsersRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementContactUsers` query requires an argument of type `GetAnnouncementContactUsersVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementContactUsersVariables {
+  pattern: string;
+  offset: number;
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementContactUsers` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementContactUsersData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementContactUsersData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    membershipStatus: MembershipStatus;
+    announcementOptOutAll: boolean;
+  } & User_Key)[];
+}
+```
+### Using `GetAnnouncementContactUsers`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementContactUsers, GetAnnouncementContactUsersVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementContactUsers` query requires an argument of type `GetAnnouncementContactUsersVariables`:
+const getAnnouncementContactUsersVars: GetAnnouncementContactUsersVariables = {
+  pattern: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementContactUsers()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementContactUsers(getAnnouncementContactUsersVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementContactUsers({ pattern: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementContactUsers(dataConnect, getAnnouncementContactUsersVars);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+getAnnouncementContactUsers(getAnnouncementContactUsersVars).then((response) => {
+  const data = response.data;
+  console.log(data.users);
+});
+```
+
+### Using `GetAnnouncementContactUsers`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementContactUsersRef, GetAnnouncementContactUsersVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementContactUsers` query requires an argument of type `GetAnnouncementContactUsersVariables`:
+const getAnnouncementContactUsersVars: GetAnnouncementContactUsersVariables = {
+  pattern: ..., 
+  offset: ..., 
+};
+
+// Call the `getAnnouncementContactUsersRef()` function to get a reference to the query.
+const ref = getAnnouncementContactUsersRef(getAnnouncementContactUsersVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementContactUsersRef({ pattern: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementContactUsersRef(dataConnect, getAnnouncementContactUsersVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.users);
+});
+```
+
+## GetAnnouncementEmailOptOuts
+You can execute the `GetAnnouncementEmailOptOuts` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getAnnouncementEmailOptOuts(vars: GetAnnouncementEmailOptOutsVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementEmailOptOutsData, GetAnnouncementEmailOptOutsVariables>;
+
+interface GetAnnouncementEmailOptOutsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAnnouncementEmailOptOutsVariables): QueryRef<GetAnnouncementEmailOptOutsData, GetAnnouncementEmailOptOutsVariables>;
+}
+export const getAnnouncementEmailOptOutsRef: GetAnnouncementEmailOptOutsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAnnouncementEmailOptOuts(dc: DataConnect, vars: GetAnnouncementEmailOptOutsVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementEmailOptOutsData, GetAnnouncementEmailOptOutsVariables>;
+
+interface GetAnnouncementEmailOptOutsRef {
+  ...
+  (dc: DataConnect, vars: GetAnnouncementEmailOptOutsVariables): QueryRef<GetAnnouncementEmailOptOutsData, GetAnnouncementEmailOptOutsVariables>;
+}
+export const getAnnouncementEmailOptOutsRef: GetAnnouncementEmailOptOutsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAnnouncementEmailOptOutsRef:
+```typescript
+const name = getAnnouncementEmailOptOutsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAnnouncementEmailOptOuts` query requires an argument of type `GetAnnouncementEmailOptOutsVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAnnouncementEmailOptOutsVariables {
+  ids: string[];
+}
+```
+### Return Type
+Recall that executing the `GetAnnouncementEmailOptOuts` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAnnouncementEmailOptOutsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAnnouncementEmailOptOutsData {
+  announcementEmailOptOuts: ({
+    id: string;
+  } & AnnouncementEmailOptOut_Key)[];
+}
+```
+### Using `GetAnnouncementEmailOptOuts`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementEmailOptOuts, GetAnnouncementEmailOptOutsVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementEmailOptOuts` query requires an argument of type `GetAnnouncementEmailOptOutsVariables`:
+const getAnnouncementEmailOptOutsVars: GetAnnouncementEmailOptOutsVariables = {
+  ids: ..., 
+};
+
+// Call the `getAnnouncementEmailOptOuts()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAnnouncementEmailOptOuts(getAnnouncementEmailOptOutsVars);
+// Variables can be defined inline as well.
+const { data } = await getAnnouncementEmailOptOuts({ ids: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAnnouncementEmailOptOuts(dataConnect, getAnnouncementEmailOptOutsVars);
+
+console.log(data.announcementEmailOptOuts);
+
+// Or, you can use the `Promise` API.
+getAnnouncementEmailOptOuts(getAnnouncementEmailOptOutsVars).then((response) => {
+  const data = response.data;
+  console.log(data.announcementEmailOptOuts);
+});
+```
+
+### Using `GetAnnouncementEmailOptOuts`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAnnouncementEmailOptOutsRef, GetAnnouncementEmailOptOutsVariables } from '@dataconnect/generated';
+
+// The `GetAnnouncementEmailOptOuts` query requires an argument of type `GetAnnouncementEmailOptOutsVariables`:
+const getAnnouncementEmailOptOutsVars: GetAnnouncementEmailOptOutsVariables = {
+  ids: ..., 
+};
+
+// Call the `getAnnouncementEmailOptOutsRef()` function to get a reference to the query.
+const ref = getAnnouncementEmailOptOutsRef(getAnnouncementEmailOptOutsVars);
+// Variables can be defined inline as well.
+const ref = getAnnouncementEmailOptOutsRef({ ids: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAnnouncementEmailOptOutsRef(dataConnect, getAnnouncementEmailOptOutsVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.announcementEmailOptOuts);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.announcementEmailOptOuts);
 });
 ```
 
@@ -19316,6 +19832,7 @@ export interface CreateAnnouncementSendWithDeliveryModeVariables {
   sentBy: string;
   recipientCount: number;
   skippedCount: number;
+  audienceSummary?: string | null;
   recipientSnapshot: string;
   requestedDeliveryMode: GovNotifyDeliveryMode;
   siteDeliveryMode: GovNotifyDeliveryMode;
@@ -19350,6 +19867,7 @@ const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeli
   sentBy: ..., 
   recipientCount: ..., 
   skippedCount: ..., 
+  audienceSummary: ..., // optional
   recipientSnapshot: ..., 
   requestedDeliveryMode: ..., 
   siteDeliveryMode: ..., 
@@ -19364,7 +19882,7 @@ const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeli
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createAnnouncementSendWithDeliveryMode(createAnnouncementSendWithDeliveryModeVars);
 // Variables can be defined inline as well.
-const { data } = await createAnnouncementSendWithDeliveryMode({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., });
+const { data } = await createAnnouncementSendWithDeliveryMode({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., audienceSummary: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -19394,6 +19912,7 @@ const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeli
   sentBy: ..., 
   recipientCount: ..., 
   skippedCount: ..., 
+  audienceSummary: ..., // optional
   recipientSnapshot: ..., 
   requestedDeliveryMode: ..., 
   siteDeliveryMode: ..., 
@@ -19407,7 +19926,7 @@ const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeli
 // Call the `createAnnouncementSendWithDeliveryModeRef()` function to get a reference to the mutation.
 const ref = createAnnouncementSendWithDeliveryModeRef(createAnnouncementSendWithDeliveryModeVars);
 // Variables can be defined inline as well.
-const ref = createAnnouncementSendWithDeliveryModeRef({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., });
+const ref = createAnnouncementSendWithDeliveryModeRef({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., audienceSummary: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -21288,6 +21807,118 @@ executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.consumed);
   console.log(data.callableRateLimitBucket_deleteMany);
+});
+```
+
+## SetAnnouncementEmailOptOut
+You can execute the `SetAnnouncementEmailOptOut` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+setAnnouncementEmailOptOut(vars: SetAnnouncementEmailOptOutVariables): MutationPromise<SetAnnouncementEmailOptOutData, SetAnnouncementEmailOptOutVariables>;
+
+interface SetAnnouncementEmailOptOutRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: SetAnnouncementEmailOptOutVariables): MutationRef<SetAnnouncementEmailOptOutData, SetAnnouncementEmailOptOutVariables>;
+}
+export const setAnnouncementEmailOptOutRef: SetAnnouncementEmailOptOutRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+setAnnouncementEmailOptOut(dc: DataConnect, vars: SetAnnouncementEmailOptOutVariables): MutationPromise<SetAnnouncementEmailOptOutData, SetAnnouncementEmailOptOutVariables>;
+
+interface SetAnnouncementEmailOptOutRef {
+  ...
+  (dc: DataConnect, vars: SetAnnouncementEmailOptOutVariables): MutationRef<SetAnnouncementEmailOptOutData, SetAnnouncementEmailOptOutVariables>;
+}
+export const setAnnouncementEmailOptOutRef: SetAnnouncementEmailOptOutRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the setAnnouncementEmailOptOutRef:
+```typescript
+const name = setAnnouncementEmailOptOutRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `SetAnnouncementEmailOptOut` mutation requires an argument of type `SetAnnouncementEmailOptOutVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface SetAnnouncementEmailOptOutVariables {
+  id: string;
+  sectionId: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `SetAnnouncementEmailOptOut` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `SetAnnouncementEmailOptOutData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface SetAnnouncementEmailOptOutData {
+  announcementEmailOptOut_upsert: AnnouncementEmailOptOut_Key;
+}
+```
+### Using `SetAnnouncementEmailOptOut`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, setAnnouncementEmailOptOut, SetAnnouncementEmailOptOutVariables } from '@dataconnect/generated';
+
+// The `SetAnnouncementEmailOptOut` mutation requires an argument of type `SetAnnouncementEmailOptOutVariables`:
+const setAnnouncementEmailOptOutVars: SetAnnouncementEmailOptOutVariables = {
+  id: ..., 
+  sectionId: ..., 
+};
+
+// Call the `setAnnouncementEmailOptOut()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await setAnnouncementEmailOptOut(setAnnouncementEmailOptOutVars);
+// Variables can be defined inline as well.
+const { data } = await setAnnouncementEmailOptOut({ id: ..., sectionId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await setAnnouncementEmailOptOut(dataConnect, setAnnouncementEmailOptOutVars);
+
+console.log(data.announcementEmailOptOut_upsert);
+
+// Or, you can use the `Promise` API.
+setAnnouncementEmailOptOut(setAnnouncementEmailOptOutVars).then((response) => {
+  const data = response.data;
+  console.log(data.announcementEmailOptOut_upsert);
+});
+```
+
+### Using `SetAnnouncementEmailOptOut`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, setAnnouncementEmailOptOutRef, SetAnnouncementEmailOptOutVariables } from '@dataconnect/generated';
+
+// The `SetAnnouncementEmailOptOut` mutation requires an argument of type `SetAnnouncementEmailOptOutVariables`:
+const setAnnouncementEmailOptOutVars: SetAnnouncementEmailOptOutVariables = {
+  id: ..., 
+  sectionId: ..., 
+};
+
+// Call the `setAnnouncementEmailOptOutRef()` function to get a reference to the mutation.
+const ref = setAnnouncementEmailOptOutRef(setAnnouncementEmailOptOutVars);
+// Variables can be defined inline as well.
+const ref = setAnnouncementEmailOptOutRef({ id: ..., sectionId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = setAnnouncementEmailOptOutRef(dataConnect, setAnnouncementEmailOptOutVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.announcementEmailOptOut_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.announcementEmailOptOut_upsert);
 });
 ```
 

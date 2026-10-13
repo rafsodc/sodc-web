@@ -1055,6 +1055,41 @@ function consumeCallableRateLimit(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.consumeCallableRateLimit = consumeCallableRateLimit;
 
+function getAnnouncementAttendeeBookings(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementAttendeeBookings', inputVars, inputOpts);
+}
+exports.getAnnouncementAttendeeBookings = getAnnouncementAttendeeBookings;
+
+function getAnnouncementAttendeeOrders(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementAttendeeOrders', inputVars, inputOpts);
+}
+exports.getAnnouncementAttendeeOrders = getAnnouncementAttendeeOrders;
+
+function getAnnouncementContactUsers(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementContactUsers', inputVars, inputOpts);
+}
+exports.getAnnouncementContactUsers = getAnnouncementContactUsers;
+
+function getAnnouncementEmailOptOuts(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAnnouncementEmailOptOuts', inputVars, inputOpts);
+}
+exports.getAnnouncementEmailOptOuts = getAnnouncementEmailOptOuts;
+
+function setAnnouncementEmailOptOut(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('SetAnnouncementEmailOptOut', inputVars, inputOpts);
+}
+exports.setAnnouncementEmailOptOut = setAnnouncementEmailOptOut;
+
 function getAttendeeEventSection(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

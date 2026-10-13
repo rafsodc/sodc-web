@@ -94,6 +94,7 @@
     "moveAllNotifyTemplateBindingsToLatestVersion",
     "notifyDeliveryCallback",
     "previewAnnouncementTemplate",
+    "previewEventAnnouncementAudience",
     "reconcileMyCheckoutSessionOrders",
     "reconcileMyEmail",
     "registerForSectionCallable",

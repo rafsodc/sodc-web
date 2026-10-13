@@ -1,3 +1,4 @@
+import { parseEventAnnouncementSelection, resolveEventAnnouncementAudience, type EventAnnouncementSelection } from "./eventAnnouncementAudience";
 import { createHash, randomUUID } from "node:crypto";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onTaskDispatched } from "firebase-functions/v2/tasks";
@@ -367,6 +368,7 @@ export interface AnnouncementSend {
   id: string;
   templateUuid: string;
   templateName: string | null;
+  audienceSummary?: string | null;
   sectionId: string;
   sentBy: string;
   sentAt: string;
@@ -426,6 +428,7 @@ export interface AnnouncementRecipientPage {
 }
 
 interface SkippedAnnouncementRecipient {
+  reason?: string;
   userId: string;
   firstName: string;
   lastName: string;
@@ -433,6 +436,8 @@ interface SkippedAnnouncementRecipient {
 }
 
 interface AnnouncementRecipientSnapshot {
+  eventAudience?: EventAnnouncementSelection;
+  audienceSummary?: string;
   version: 1;
   effectiveDeliveryMode?: GovNotifyDeliveryMode;
   tasks: AnnouncementEmailTask[];
@@ -525,7 +530,7 @@ async function ensureRecipientRows(
         id: randomUUID(),
         ...recipient,
         status: "skipped",
-        skippedReason: "opted_out",
+        skippedReason: recipient.reason ?? "opted_out",
         effectiveDeliveryMode: snapshot.effectiveDeliveryMode ?? "LIVE",
       })),
   ];
@@ -687,6 +692,25 @@ export async function prepareAnnouncementSendTask(
   return result;
 }
 
+export const previewEventAnnouncementAudience = onCall(
+  { region: FUNCTIONS_REGION },
+  async (request) => {
+    requireEnabled(request);
+    await enforceRateLimit("previewEventAnnouncementAudience", request.auth!.uid);
+    const sectionId = requireString(request.data?.sectionId, "sectionId");
+    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+    const selection = parseEventAnnouncementSelection(request.data?.eventAudience);
+    if (!selection) throw new HttpsError("invalid-argument", "Event audience is required");
+    return (await resolveEventAnnouncementAudience(sectionId, selection)).preview;
+  },
+);
+
+function assertSameAudience(snapshot: AnnouncementRecipientSnapshot, selection: EventAnnouncementSelection | undefined) {
+  if (JSON.stringify(snapshot.eventAudience) !== JSON.stringify(selection)) {
+    throw new HttpsError("already-exists", "requestId belongs to a different audience");
+  }
+}
+
 export const sendSectionAnnouncement = onCall(
   {
     region: FUNCTIONS_REGION,
@@ -726,6 +750,7 @@ export const sendSectionAnnouncement = onCall(
       ? validateUUID(request.data.replyToAddressId, "replyToAddressId")
       : undefined;
 
+    const eventAudience = parseEventAnnouncementSelection(request.data?.eventAudience);
     let resumed = false;
     let existingResult = await getAnnouncementSendById({ id: requestId });
     let existing = existingResult.data?.announcementSend;
@@ -745,6 +770,7 @@ export const sendSectionAnnouncement = onCall(
       }
       resumed = true;
       snapshot = parseRecipientSnapshot(existing.recipientSnapshot);
+      assertSameAudience(snapshot, eventAudience);
     } else {
       let replyTo;
       try {
@@ -760,24 +786,34 @@ export const sendSectionAnnouncement = onCall(
       const template = templateResponse.data as { body?: string; subject?: string };
       const requiredPersonalisation = extractTemplateVariables(template.body ?? "", template.subject ?? "");
 
-      const [{ recipients, sectionName }, sectionOptOuts] = await Promise.all([
-        resolveAnnouncementRecipients(sectionId),
-        collectDataConnectPages(async (limit, offset) => {
-          const result = await getSectionAnnouncementOptOutsPaged({ sectionId, limit, offset });
-          return result.data?.sectionAnnouncementOptOuts ?? [];
-        }),
-      ]);
-      const sectionOptOutIds = new Set(
-        sectionOptOuts.map(
-          (row: { user: { id: string } }) => row.user.id,
-        ),
-      );
-      const { deliverable, optedOut } = partitionAnnouncementRecipients(recipients, sectionOptOutIds);
+      const eventResolution = eventAudience ? await resolveEventAnnouncementAudience(sectionId, eventAudience) : undefined;
+      if (eventResolution && (request.data?.audienceFingerprint !== eventResolution.preview.fingerprint || eventResolution.deliverable.length === 0)) {
+        throw new HttpsError("failed-precondition", "Preview the current attendee audience before sending. It may have changed or have no recipients.");
+      }
+      let sectionName: string;
+      let deliverable: Array<AnnouncementAudienceRecipient & { emailContact?: boolean }>;
+      let skippedRecipients: SkippedAnnouncementRecipient[];
+      if (eventResolution) {
+        ({ sectionName, deliverable, skippedRecipients } = eventResolution);
+      } else {
+        const [resolved, sectionOptOuts] = await Promise.all([
+          resolveAnnouncementRecipients(sectionId),
+          collectDataConnectPages(async (limit, offset) => {
+            const result = await getSectionAnnouncementOptOutsPaged({ sectionId, limit, offset });
+            return result.data?.sectionAnnouncementOptOuts ?? [];
+          }),
+        ]);
+        sectionName = resolved.sectionName;
+        const partitioned = partitionAnnouncementRecipients(resolved.recipients, new Set(sectionOptOuts.map((row) => row.user.id)));
+        deliverable = partitioned.deliverable;
+        skippedRecipients = partitioned.optedOut.map((recipient) => ({ userId: recipient.id, email: recipient.email, firstName: recipient.firstName, lastName: recipient.lastName }));
+      }
       const secret = unsubscribeSecret.value();
       const tasks = deliverable.map((recipient): AnnouncementEmailTask => {
         const unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
           {
             userId: recipient.id,
+            ...(recipient.emailContact ? { email: recipient.email } : {}),
             sectionId,
             sectionName,
             exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
@@ -806,12 +842,8 @@ export const sendSectionAnnouncement = onCall(
         version: 1,
         effectiveDeliveryMode: deliveryMode.effectiveMode,
         tasks,
-        skippedRecipients: optedOut.map((recipient) => ({
-          userId: recipient.id,
-          email: recipient.email,
-          firstName: recipient.firstName,
-          lastName: recipient.lastName,
-        })),
+        skippedRecipients,
+        ...(eventAudience ? { eventAudience, audienceSummary: eventResolution!.audienceSummary } : {}),
       };
 
       try {
@@ -824,6 +856,7 @@ export const sendSectionAnnouncement = onCall(
           recipientCount: snapshot.tasks.length,
           skippedCount: snapshot.skippedRecipients.length,
           recipientSnapshot: JSON.stringify(snapshot),
+          audienceSummary: snapshot.audienceSummary ?? null,
           requestedDeliveryMode:
             deliveryMode.requestedMode as DataConnectGovNotifyDeliveryMode,
           siteDeliveryMode: deliveryMode.siteMode as DataConnectGovNotifyDeliveryMode,
@@ -852,6 +885,7 @@ export const sendSectionAnnouncement = onCall(
         }
         resumed = true;
         snapshot = parseRecipientSnapshot(existing.recipientSnapshot);
+        assertSameAudience(snapshot, eventAudience);
       }
     }
 
@@ -984,6 +1018,7 @@ export const getAnnouncementSendHistory = onCall(
       id: s.id,
       templateUuid: s.templateUuid,
       templateName: s.templateName ?? null,
+      audienceSummary: s.audienceSummary ?? null,
       sectionId,
       sentBy: s.sentBy,
       sentAt: s.sentAt,

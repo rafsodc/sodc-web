@@ -67,6 +67,7 @@ const STATUS_OPTIONS: Array<{ value: AnnouncementRecipientStatusFilter; label: s
 
 function statusChip(recipient: AnnouncementRecipient) {
   const { status, effectiveDeliveryMode: mode } = recipient;
+  if (recipient.status === "skipped" && recipient.skippedReason === "missing_contact") return "No usable email contact";
   if (recipient.failureCategory === "notify_team_only") {
     return <Chip label="Not on Notify team" color="warning" size="small" />;
   }
@@ -398,6 +399,7 @@ function SendRow({
           <Typography variant="body2" noWrap sx={{ maxWidth: 220 }}>
             {send.templateName ?? send.templateUuid}
           </Typography>
+          {send.audienceSummary && <Typography variant="caption" display="block">{send.audienceSummary}</Typography>}
         </TableCell>
         <TableCell>
           <Chip

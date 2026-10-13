@@ -33,6 +33,15 @@ const EMAIL_VERIFIED_EXPR = "@auth(expr: \"auth.token.email_verified == true\")"
 const NO_ACCESS = "@auth(level: NO_ACCESS)";
 
 describe("Data Connect auth contracts", () => {
+  it("keeps attendee announcement reads and email opt-outs server-only and restricts eligible bookings", () => {
+    const source = readApiFile("attendee-announcements.gql");
+    const operations = source.split(/(?=^(?:query|mutation) )/m).filter(block => /^(?:query|mutation) /.test(block));
+    expect(operations).toHaveLength(5);
+    for (const operation of operations) expect(operation).toContain(NO_ACCESS);
+    expect(source).toContain("status: { in: [SUBMITTED, CONFIRMED] }");
+    expect(source).toContain("approvalStatus: { in: [APPROVED, NOT_REQUIRED] }");
+    expect(source).toContain("supersededAt: { isNull: true }");
+  });
   it("keeps every organiser guest operation behind server-side capability or moderation checks", () => {
     const source = readApiFile("organiser-guests.gql");
     const operations = source.split(/(?=^(?:query|mutation) )/m).filter(block => /^(?:query|mutation) /.test(block));

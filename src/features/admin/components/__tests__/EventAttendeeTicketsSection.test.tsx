@@ -109,3 +109,20 @@ describe("current attendee ticket filters", () => {
     expect(within(screen.getByRole("table")).getByText("Jamie Guest")).toBeInTheDocument();
   });
 });
+
+it("passes active filters into the attendee announcement composer", async () => {
+  const onAnnounce = vi.fn();
+  const user = userEvent.setup();
+  render(<EventAttendeeTicketsSection eventTitle="Dinner" loading={false} rows={[attendeeRow()]} onAnnounce={onAnnounce} />);
+  await user.type(screen.getByRole("textbox", { name: "Filter attendee" }), "alex");
+  await user.click(screen.getByRole("button", { name: "Send announcement to attendees" }));
+  expect(onAnnounce).toHaveBeenCalledWith(expect.objectContaining({ attendeeName: "alex", paymentState: "" }));
+});
+
+it("offers announcement preview even when there are no member rows", async () => {
+  const onAnnounce = vi.fn();
+  const user = userEvent.setup();
+  render(<EventAttendeeTicketsSection eventTitle="Dinner" loading={false} rows={[]} onAnnounce={onAnnounce} />);
+  await user.click(screen.getByRole("button", { name: "Send announcement to attendees" }));
+  expect(onAnnounce).toHaveBeenCalledWith(expect.objectContaining({ audience: "", paymentState: "" }));
+});

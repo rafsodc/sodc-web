@@ -2002,6 +2002,80 @@ exports.consumeCallableRateLimit = function consumeCallableRateLimit(dcOrVars, v
 }
 ;
 
+const getAnnouncementAttendeeBookingsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementAttendeeBookings', inputVars);
+}
+getAnnouncementAttendeeBookingsRef.operationName = 'GetAnnouncementAttendeeBookings';
+exports.getAnnouncementAttendeeBookingsRef = getAnnouncementAttendeeBookingsRef;
+
+exports.getAnnouncementAttendeeBookings = function getAnnouncementAttendeeBookings(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementAttendeeBookingsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementAttendeeOrdersRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementAttendeeOrders', inputVars);
+}
+getAnnouncementAttendeeOrdersRef.operationName = 'GetAnnouncementAttendeeOrders';
+exports.getAnnouncementAttendeeOrdersRef = getAnnouncementAttendeeOrdersRef;
+
+exports.getAnnouncementAttendeeOrders = function getAnnouncementAttendeeOrders(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementAttendeeOrdersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementContactUsersRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementContactUsers', inputVars);
+}
+getAnnouncementContactUsersRef.operationName = 'GetAnnouncementContactUsers';
+exports.getAnnouncementContactUsersRef = getAnnouncementContactUsersRef;
+
+exports.getAnnouncementContactUsers = function getAnnouncementContactUsers(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementContactUsersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const getAnnouncementEmailOptOutsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAnnouncementEmailOptOuts', inputVars);
+}
+getAnnouncementEmailOptOutsRef.operationName = 'GetAnnouncementEmailOptOuts';
+exports.getAnnouncementEmailOptOutsRef = getAnnouncementEmailOptOutsRef;
+
+exports.getAnnouncementEmailOptOuts = function getAnnouncementEmailOptOuts(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getAnnouncementEmailOptOutsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const setAnnouncementEmailOptOutRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'SetAnnouncementEmailOptOut', inputVars);
+}
+setAnnouncementEmailOptOutRef.operationName = 'SetAnnouncementEmailOptOut';
+exports.setAnnouncementEmailOptOutRef = setAnnouncementEmailOptOutRef;
+
+exports.setAnnouncementEmailOptOut = function setAnnouncementEmailOptOut(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(setAnnouncementEmailOptOutRef(dcInstance, inputVars));
+}
+;
+
 const getAttendeeEventSectionRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

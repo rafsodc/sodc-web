@@ -56,6 +56,7 @@ export const CALLABLE_RATE_LIMITS = {
   setNotifyTemplateBinding: { limit: 30, windowMs: HOUR_MS },
   moveAllNotifyTemplateBindingsToLatestVersion: { limit: 10, windowMs: HOUR_MS },
   getAnnouncementTemplates: { limit: 30, windowMs: 5 * MINUTE_MS },
+  previewEventAnnouncementAudience: { limit: 30, windowMs: 5 * MINUTE_MS },
   previewAnnouncementTemplate: { limit: 30, windowMs: 5 * MINUTE_MS },
   sendSectionAnnouncement: { limit: 5, windowMs: HOUR_MS },
   retryAnnouncementPreparation: { limit: 10, windowMs: HOUR_MS },
