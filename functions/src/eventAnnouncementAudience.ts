@@ -138,7 +138,7 @@ export async function resolveEventAnnouncementAudience(sectionId: string, select
     approvalStatus: "Approval", paymentState: "Payment",
   };
   const applied = (Object.keys(filters) as Array<keyof EventAttendeeTicketFilters>).filter((key) => filters[key])
-    .map((key) => `${labels[key]}: ${filters[key].replaceAll("_", " ")}`).join(", ");
+    .map((key) => `${labels[key]}: ${filters[key].replace(/_/g, " ")}`).join(", ");
   return { deliverable, skippedRecipients, preview, sectionName: section.data.section?.name ?? sectionId,
     audienceSummary: `${event.title} — current attendees${applied ? ` (${applied})` : " (all)"}` };
 }

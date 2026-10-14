@@ -1,7 +1,7 @@
 import { searchSectionMembers } from "../../../shared/utils/firebaseFunctions";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import { render, screen, fireEvent, waitFor } from "../../../test-utils";
+import { render, screen, fireEvent, waitFor, within } from "../../../test-utils";
 import { guestCall, type Guest, type GuestTicket } from "../api";
 import GuestTicketPage from "../GuestTicketPage";
 import OrganiserGuestsManager from "../OrganiserGuestsManager";
@@ -236,20 +236,24 @@ describe("organiser management and reports", () => {
     call.mockResolvedValue({ event: { id: "event" }, ticketTypes: [{ id: "type", title: "Guest dinner" }], guests: [{ ...guest, paymentStatus: "PAID" }] });
     render(<OrganiserGuestsManager sectionId="section" eventId="event" />);
     fireEvent.click(await screen.findByRole("button", { name: "Edit guest" }));
-    fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Jamie" } });
-    fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Updated" } });
-    fireEvent.click(screen.getByLabelText("Request accommodation"));
-    fireEvent.change(screen.getByLabelText("Accommodation notes"), { target: { value: "Twin room" } });
-    fireEvent.change(screen.getByLabelText("Sit next to (optional)"), { target: { value: "Alex" } });
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.change(dialog.getByLabelText("First name"), { target: { value: "Jamie" } });
+    fireEvent.change(dialog.getByLabelText("Last name"), { target: { value: "Updated" } });
+    fireEvent.click(dialog.getByLabelText("Request accommodation"));
+    fireEvent.change(dialog.getByLabelText("Accommodation notes"), { target: { value: "Twin room" } });
+    fireEvent.change(dialog.getByLabelText("Sit next to (optional)"), { target: { value: "Alex" } });
     fireEvent.click(await screen.findByRole("option", { name: "Alex Member" }));
-    fireEvent.change(screen.getByLabelText("Sit next to (optional)"), { target: { value: "Taylor" } });
+    fireEvent.change(dialog.getByLabelText("Sit next to (optional)"), { target: { value: "Taylor" } });
     fireEvent.click(await screen.findByRole("option", { name: "Taylor Guest" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save guest" }));
+    fireEvent.click(dialog.getByRole("button", { name: "Save guest" }));
     await waitFor(() => expect(call).toHaveBeenCalledWith("manageOrganiserGuest", expect.objectContaining({
       action: "edit", id: "guest", version: 3, firstName: "Jamie", lastName: "Updated",
       accommodationRequested: true, accommodationNote: "Twin room", sitNextToUserIds: ["user-alex", "user-taylor"],
     })));
-  });
+    expect(await screen.findByText("Guest list saved.")).toBeInTheDocument();
+    // This integration flow includes two debounced searches and a MUI dialog;
+    // coverage instrumentation on CI can take longer than the default 5 seconds.
+  }, 10_000);
   it("includes organiser guest accommodation and seating in reports", () => {
     const [row] = organiserGuestTicketRows([{ ...guest, accommodationRequested: true, accommodationNote: "Twin room", seatingPreferences: ["Alex"] }]);
     expect(row).toMatchObject({ accommodationRequested: true, accommodationNote: "Twin room", seatingPreferences: ["Alex"] });
