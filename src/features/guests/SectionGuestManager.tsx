@@ -32,7 +32,7 @@ export default function SectionGuestManager({
       </TextField>
       {eventId && (
         <>
-          <MemberTicketsManager sectionId={sectionId} key={`members:${eventId}`} eventId={eventId} />
+          <MemberTicketsManager eventTitle={data?.events.find((event) => event.id === eventId)?.title} sectionId={sectionId} key={`members:${eventId}`} eventId={eventId} />
           <OrganiserGuestsManager sectionId={sectionId} key={eventId} eventId={eventId} />
         </>
       )}

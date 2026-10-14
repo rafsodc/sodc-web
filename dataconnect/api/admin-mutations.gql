@@ -2216,6 +2216,7 @@ mutation CreateAnnouncementSendWithDeliveryMode(
   $sentBy: String!
   $recipientCount: Int!
   $skippedCount: Int!
+  $audienceSummary: String
   $recipientSnapshot: String!
   $requestedDeliveryMode: GovNotifyDeliveryMode!
   $siteDeliveryMode: GovNotifyDeliveryMode!
@@ -2233,6 +2234,7 @@ mutation CreateAnnouncementSendWithDeliveryMode(
     sentBy: $sentBy
     recipientCount: $recipientCount
     skippedCount: $skippedCount
+    audienceSummary: $audienceSummary
     recipientSnapshot: $recipientSnapshot
     requestedDeliveryMode: $requestedDeliveryMode
     siteDeliveryMode: $siteDeliveryMode
@@ -2364,6 +2366,7 @@ query GetAnnouncementSendHistory($sectionId: UUID!) @auth(level: NO_ACCESS) {
   ) {
     id
     templateUuid
+    audienceSummary
     templateName
     sentBy
     sentAt

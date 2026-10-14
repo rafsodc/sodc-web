@@ -1,3 +1,6 @@
+import EventAnnouncementAudience from "./EventAnnouncementAudience";
+import type { EventAttendeeTicketFilters } from "../utils/bookingApprovalsAdmin";
+import type { EventAnnouncementPreview } from "../../../shared/utils/firebaseFunctions/announcements";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -34,6 +37,7 @@ interface SendAnnouncementPageProps {
   sectionId: string;
   sectionName: string;
   onBack: () => void;
+  eventAudience?: { eventId: string; eventTitle?: string; filters: EventAttendeeTicketFilters };
 }
 
 function formatUpdatedAt(iso: string): string {
@@ -48,7 +52,10 @@ export default function SendAnnouncementPage({
   sectionId,
   sectionName,
   onBack,
+  eventAudience,
 }: SendAnnouncementPageProps) {
+  const [audienceFilters, setAudienceFilters] = useState(eventAudience?.filters);
+  const [audiencePreview, setAudiencePreview] = useState<EventAnnouncementPreview | null>(null);
   const [templates, setTemplates] = useState<AnnouncementTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
@@ -136,7 +143,7 @@ export default function SendAnnouncementPage({
   };
 
   const handleSend = async () => {
-    if (!selectedId) return;
+    if (!selectedId || (eventAudience && !audiencePreview?.recipients.length)) return;
     setSending(true);
     setSendError(null);
     setSendResult(null);
@@ -144,7 +151,10 @@ export default function SendAnnouncementPage({
       const selectedTemplate = templates.find((t) => t.id === selectedId);
       const requestId = sendRequestId ?? crypto.randomUUID();
       setSendRequestId(requestId);
-      const result = replyToAddressId
+      const result = eventAudience && audienceFilters && audiencePreview
+        ? await sendSectionAnnouncement(sectionId, selectedId, requestId, selectedTemplate?.name, deliveryMode, replyToAddressId || undefined,
+          { eventAudience: { eventId: eventAudience.eventId, filters: audienceFilters }, audienceFingerprint: audiencePreview.fingerprint })
+        : replyToAddressId
         ? await sendSectionAnnouncement(
           sectionId,
           selectedId,
@@ -163,6 +173,10 @@ export default function SendAnnouncementPage({
       setSendResult(result);
       setHistoryTrigger((n) => n + 1);
     } catch (caught) {
+      if (eventAudience && (caught as { code?: string })?.code === "functions/failed-precondition") {
+        setSendRequestId(null);
+        setAudiencePreview(null);
+      }
       reportError("admin.announcements.send", caught, { sectionId, templateId: selectedId });
       setSendError(toAdminUserFacingError(caught, "announcements").message);
     } finally {
@@ -173,7 +187,7 @@ export default function SendAnnouncementPage({
   return (
     <Box className="page-container">
       <PageHeader
-        title={`Send announcement — ${sectionName}`}
+        title={`Send announcement — ${audiencePreview?.eventTitle ?? eventAudience?.eventTitle ?? sectionName}`}
         onBack={onBack}
       />
 
@@ -181,6 +195,10 @@ export default function SendAnnouncementPage({
         Select a GOV Notify template named starting with <strong>BULK:</strong>. Review the preview
         carefully, choose a delivery mode, and confirm the selected audience before submitting.
       </Typography>
+
+      {eventAudience && audienceFilters && <EventAnnouncementAudience sectionId={sectionId} eventId={eventAudience.eventId}
+        filters={audienceFilters} onFilters={setAudienceFilters} preview={audiencePreview} onPreview={setAudiencePreview}
+        disabled={sending || !!sendRequestId} />}
 
       {templatesError && (
         <Alert severity="error" sx={{ mb: 2 }}>{templatesError}</Alert>
@@ -330,7 +348,7 @@ export default function SendAnnouncementPage({
                 {sendResult.effectiveDeliveryMode === "SIMULATION"
                   ? " for simulated provider acceptance; no email will be delivered."
                   : "."}
-                {sendResult.skippedCount > 0 && ` ${sendResult.skippedCount} skipped (opted out).`}
+                {sendResult.skippedCount > 0 && ` ${sendResult.skippedCount} skipped.`}
                 {sendResult.resumed && " This send was resumed from its original recipient list."}
                 {` Effective mode: ${sendResult.effectiveDeliveryMode.replace("_", " ")}.`}
                 {" "}Check send history below to track progress.
@@ -343,12 +361,12 @@ export default function SendAnnouncementPage({
                 variant="contained"
                 startIcon={sending ? <CircularProgress size={16} color="inherit" /> : <Campaign />}
                 onClick={() => void handleSend()}
-                disabled={sending || !siteDeliveryMode}
+                disabled={sending || !siteDeliveryMode || (!!eventAudience && !audiencePreview?.recipients.length)}
               >
-                {sending ? "Starting…" : sendRequestId ? "Resume announcement send" : `Send to ${sectionName} members`}
+                {sending ? "Starting…" : sendRequestId ? "Resume announcement send" : eventAudience ? `Send to ${audiencePreview?.recipients.length ?? 0} attendee contacts` : `Send to ${sectionName} members`}
               </Button>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                Members who have opted out of announcements will not receive this email.
+                Contacts who have opted out of announcements will not receive this email.
               </Typography>
             </>
           )}

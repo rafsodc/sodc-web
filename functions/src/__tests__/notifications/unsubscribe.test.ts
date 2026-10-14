@@ -1,3 +1,4 @@
+import { announcementEmailOptOutId } from "../../announcementEmailOptOut";
 import { describe, expect, it, vi } from "vitest";
 import type { Request } from "firebase-functions/v2/https";
 import type { Response } from "express";
@@ -141,4 +142,17 @@ describe("unsubscribeAnnouncement", () => {
     expect(html).toContain("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
     expect(html).not.toContain("<script>");
   });
+});
+
+it("records guest email opt-outs without needing a member account", async () => {
+  const optOut = vi.fn();
+  const optOutEmail = vi.fn().mockResolvedValue(undefined);
+  const signedToken = signUnsubscribeToken({ userId: "organiser-guest:1", email: " Guest@Example.com ", sectionId: "section-1", sectionName: "Signals", exp: Date.now() + 60_000 }, SECRET);
+  const res = response();
+  await handleUnsubscribeRequest(request({ method: "GET", query: { token: signedToken } }), res, SECRET, { optOut, optOutEmail });
+  expect(optOutEmail).not.toHaveBeenCalled();
+  await handleUnsubscribeRequest(request({ method: "POST", query: { token: signedToken } }), res, SECRET, { optOut, optOutEmail });
+  expect(optOut).not.toHaveBeenCalled();
+  expect(optOutEmail).toHaveBeenCalledWith({ id: announcementEmailOptOutId("section-1", "guest@example.com"), sectionId: "section-1" });
+  expect(res.send).toHaveBeenCalledWith("OK");
 });

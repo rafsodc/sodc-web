@@ -73,6 +73,14 @@ Within an event, the **Bookings** tab shows all bookings for that event. You can
 
 ---
 
+## Announcements to event attendees
+
+In an event's attendee table, choose **Send announcement to attendees**. Any active table filters carry into the composer; adjust them or choose **Clear audience filters** to include all current attendees. Unpaid bookings are included unless you choose a payment filter. Pending approvals, cancelled tickets and removed attendees are excluded.
+
+Choose **Preview recipients** to review the matching ticket count, unique email contacts and skipped contacts. Filters apply together to each ticket before contacts are deduplicated. Linked guests use their own email; accompanying guests without one use the booking contact where available. Organiser guests use their recorded email. Announcement opt-outs still apply.
+
+Select a template, review its preview and delivery mode, then use **Send to … attendee contacts**. If attendance changes before sending, preview the audience again. Send history records the event and filters; resuming a send uses its original recipients. Section-wide announcements remain available separately.
+
 ## Booking approvals
 
 When a booking exceeds an event's automatic guest limit, the whole booking requires moderator approval.

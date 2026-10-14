@@ -55,6 +55,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `setNotifyTemplateBinding` | 30 | 1 hour | GOV.UK Notify template lookup and binding write |
 | `moveAllNotifyTemplateBindingsToLatestVersion` | 10 | 1 hour | GOV.UK Notify template enumeration and bulk binding write |
 | `getAnnouncementTemplates` | 30 | 5 minutes | GOV.UK Notify template enumeration |
+| `previewEventAnnouncementAudience` | 30 | 5 minutes | Filtered event attendees and opt-outs |
 | `previewAnnouncementTemplate` | 30 | 5 minutes | GOV.UK Notify preview API |
 | `sendSectionAnnouncement` | 5 | 1 hour | Recipient resolution and bulk task/email fan-out |
 | `retryAnnouncementPreparation` | 10 | 1 hour | Moderator recovery of a durable bulk-send preparation attempt |
@@ -124,6 +125,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `updateNotifyReplyToAvailability` | High | None | None | Medium | Admin + enabled; verified-only enablement and atomic default replacement/clear |
 | `changeNotifyReplyToDefault` | High | None | None | Medium | Admin + enabled; verified enabled target, optimistic lock and audit |
 | `setNotifyTemplateReplyToOverride` | High | None | None | Medium | Admin + enabled; manifest allowlist, verified enabled target and audit |
+| `previewEventAnnouncementAudience` | Medium | Medium | Data Connect | High | Enabled + section moderator; event ownership checked; 30/5 minutes |
 | `previewAnnouncementTemplate` | Medium | Low | GOV.UK Notify | High | Enabled + moderator; 30/5 minutes |
 | `sendSectionAnnouncement` | High | High | GOV.UK Notify | Very high | Enabled + moderator; 5/hour; queued delivery |
 | `retryAnnouncementPreparation` | High | High | Cloud Tasks | High | Enabled + moderator; send/section binding; 10/hour; idempotent attempt ID |

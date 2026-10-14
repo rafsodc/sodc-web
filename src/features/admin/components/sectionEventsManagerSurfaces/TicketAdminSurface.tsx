@@ -76,6 +76,7 @@ interface TicketAdminSurfaceProps {
   ticketOrdersById: TicketOrdersById;
   attendeeTickets: EventAttendeeTicketRow[];
   attendeeGuestsUnavailable?: boolean;
+  onAnnounce?: (filters: EventAttendeeTicketFilters) => void;
   onManageTicket?: (row: EventAttendeeTicketRow, action: "edit" | "delete") => void;
   onAddUserTicket?: () => void;
   moderatorNoteDraft: Record<string, string>;
@@ -113,6 +114,7 @@ export function TicketAdminSurface({
   attendeeTickets,
   attendeeGuestsUnavailable,
   onManageTicket,
+  onAnnounce,
   onAddUserTicket,
   moderatorNoteDraft,
   onModeratorNoteChange,
@@ -164,7 +166,7 @@ export function TicketAdminSurface({
       </AdminAccordion>
       <AdminAccordion title="Current attendee tickets">
         {onAddUserTicket && <Button startIcon={<AddIcon />} variant="contained" sx={{ mb: 2 }} onClick={onAddUserTicket}>Add ticket</Button>}
-        {attendeeGuestsUnavailable ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert> : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} onManageTicket={onManageTicket} />}
+        {attendeeGuestsUnavailable ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert> : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} onManageTicket={onManageTicket} onAnnounce={onAnnounce} />}
       </AdminAccordion>
       <AdminAccordion title="Booking audit activity">
         <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />
@@ -505,10 +507,12 @@ export function EventAttendeeTicketsSection({
   loading,
   rows,
   onManageTicket,
+  onAnnounce,
 }: {
   eventTitle: string;
   loading: boolean;
   rows: EventAttendeeTicketRow[];
+  onAnnounce?: (filters: EventAttendeeTicketFilters) => void;
   onManageTicket?: (row: EventAttendeeTicketRow, action: "edit" | "delete") => void;
 }) {
   const { decision: cookieDecision, acceptPreferenceCookies } = useCookiePreferences();
@@ -564,7 +568,10 @@ export function EventAttendeeTicketsSection({
   };
 
   if (loading) return <CircularProgress size={22} />;
-  if (rows.length === 0) return <Alert severity="info">No active attendee tickets for this event.</Alert>;
+  if (rows.length === 0) return <Box>
+    <Alert severity="info">No active attendee tickets in this list.</Alert>
+    {onAnnounce && <Button sx={{ mt: 2 }} variant="contained" onClick={() => onAnnounce({ ...filters })}>Send announcement to attendees</Button>}
+  </Box>;
   return (
     <Box>
       {copyMessage ? (
@@ -577,6 +584,7 @@ export function EventAttendeeTicketsSection({
           Showing {filteredRows.length} of {rows.length} attendees
         </Typography>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          {onAnnounce && <Button variant="contained" onClick={() => onAnnounce({ ...filters })}>Send announcement to attendees</Button>}
           <Button size="small" disabled={!hasActiveFilters} onClick={() => {
             setFilters(emptyEventAttendeeTicketFilters);
             setCopyMessage(null);

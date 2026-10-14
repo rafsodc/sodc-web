@@ -1,3 +1,4 @@
+import type { EventAttendeeTicketFilters } from "../../../../functions/src/shared/attendeeFilters";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../../config/firebase";
 
@@ -138,6 +139,7 @@ export async function sendSectionAnnouncement(
   templateName: string | undefined,
   deliveryMode: GovNotifyDeliveryMode,
   replyToAddressId?: string,
+  audience?: { eventAudience: { eventId: string; filters: EventAttendeeTicketFilters }; audienceFingerprint: string },
 ): Promise<SendAnnouncementResult> {
   const callable = httpsCallable<
     {
@@ -147,6 +149,8 @@ export async function sendSectionAnnouncement(
       templateName?: string;
       deliveryMode: GovNotifyDeliveryMode;
       replyToAddressId?: string;
+      eventAudience?: { eventId: string; filters: EventAttendeeTicketFilters };
+      audienceFingerprint?: string;
     },
     SendAnnouncementResult
   >(functions, "sendSectionAnnouncement");
@@ -157,6 +161,7 @@ export async function sendSectionAnnouncement(
     templateName,
     deliveryMode,
     replyToAddressId,
+    ...audience,
   });
   return result.data;
 }
@@ -165,6 +170,7 @@ export interface AnnouncementSend {
   id: string;
   templateUuid: string;
   templateName: string | null;
+  audienceSummary?: string | null;
   sectionId: string;
   sentBy: string;
   sentAt: string;
@@ -281,4 +287,14 @@ export async function getAnnouncementSendRecipients(
   >(functions, "getAnnouncementSendRecipients");
   const result = await callable({ sendId, sectionId, ...options });
   return result.data;
+}
+
+export interface EventAnnouncementPreview {
+  eventTitle: string; fingerprint: string; matchedTicketCount: number;
+  recipients: Array<{ name: string; email: string }>;
+  skipped: Array<{ name: string; email: string; reason: string }>;
+}
+export async function previewEventAnnouncementAudience(sectionId: string, eventId: string, filters: EventAttendeeTicketFilters): Promise<EventAnnouncementPreview> {
+  const callable = httpsCallable<{ sectionId: string; eventAudience: { eventId: string; filters: EventAttendeeTicketFilters } }, EventAnnouncementPreview>(functions, "previewEventAnnouncementAudience");
+  return (await callable({ sectionId, eventAudience: { eventId, filters } })).data;
 }

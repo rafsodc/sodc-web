@@ -697,6 +697,8 @@ type AnnouncementSend @table {
   # Immutable versioned snapshot used to resume a partially-enqueued send without
   # re-resolving an audience that may have changed since the moderator clicked send.
   recipientSnapshot: String
+  # Event and filter description captured for send history.
+  audienceSummary: String
 }
 
 # Per-recipient audit row for a bulk announcement send.
@@ -877,4 +879,12 @@ type OrganiserGuestAudit @table {
   action: String!
   actor: String!
   occurredAt: Timestamp! @default(expr: "request.time")
+}
+
+# Section announcement opt-outs for email contacts without a member account.
+# The primary key hashes the section and normalized email; no address is stored.
+type AnnouncementEmailOptOut @table {
+  id: String!
+  section: Section!
+  createdAt: Timestamp! @default(expr: "request.time")
 }

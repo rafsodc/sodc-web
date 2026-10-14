@@ -1,3 +1,4 @@
+import type { EventAttendeeTicketFilters } from "../utils/bookingApprovalsAdmin";
 import TicketAttendanceDialog from "./TicketAttendanceDialog";
 import AddUserTicketDialog from "./AddUserTicketDialog";
 import type { EventAttendeeTicketRow } from "../utils/bookingApprovalsAdmin";
@@ -125,6 +126,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const [deletingTicketTypeId, setDeletingTicketTypeId] = useState<string | null>(null);
   const [approvalStatusFilter, setApprovalStatusFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING");
   const [reviewingBookingId, setReviewingBookingId] = useState<string | null>(null);
+  const [eventAnnouncement, setEventAnnouncement] = useState<{ eventId: string; eventTitle?: string; filters: EventAttendeeTicketFilters } | undefined>();
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const [moderatorNoteDraft, setModeratorNoteDraft] = useState<Record<string, string>>({});
   const {
@@ -512,7 +514,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
       <SendAnnouncementPage
         sectionId={sectionId}
         sectionName={sectionName}
-        onBack={() => setSendingAnnouncement(false)}
+        eventAudience={eventAnnouncement}
+        onBack={() => { setSendingAnnouncement(false); setEventAnnouncement(undefined); }}
       />
     );
   }
@@ -538,6 +541,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     return (
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <TicketAdminSurface
+          onAnnounce={(filters) => { setEventAnnouncement({ eventId: ticketTypesEventId, eventTitle: eventForAdmin?.title, filters }); setSendingAnnouncement(true); }}
           event={eventForAdmin}
           eventTitle={eventForAdmin?.title ?? "Event"}
           error={error}

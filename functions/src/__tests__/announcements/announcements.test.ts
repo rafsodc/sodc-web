@@ -1,3 +1,5 @@
+import * as eventAudiences from "../../eventAnnouncementAudience";
+import { emptyEventAttendeeTicketFilters } from "../../shared/attendeeFilters";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as admin from "@dataconnect/admin-generated";
 import { NotifyClient } from "notifications-node-client";
@@ -12,6 +14,7 @@ vi.mock("firebase-admin/functions", () => ({
 import {
   getAnnouncementTemplates,
   previewAnnouncementTemplate,
+  previewEventAnnouncementAudience,
   sendSectionAnnouncement,
   getAnnouncementSendHistory,
   getAnnouncementSendRecipients,
@@ -89,6 +92,7 @@ function callAsAdmin(data: Record<string, unknown>) {
 const announcementCallables = [
   getAnnouncementTemplates,
   previewAnnouncementTemplate,
+  previewEventAnnouncementAudience,
   sendSectionAnnouncement,
   getAnnouncementSendHistory,
   getAnnouncementSendRecipients,
@@ -837,5 +841,73 @@ describe("buildRecipientPersonalisation (#362)", () => {
 
     expect(withRef.unsubscribeUrl).toBe("https://x/unsub");
     expect(withoutRef).not.toHaveProperty("unsubscribeUrl");
+  });
+});
+
+describe("attendee announcement preview and durable send", () => {
+  const eventId = "11111111-1111-4111-8111-111111111111";
+  const requestId = "00000000-0000-4000-8000-000000000639";
+  const eventAudience = { eventId, filters: { ...emptyEventAttendeeTicketFilters, includesDinner: "YES" } };
+  const resolution = {
+    sectionName: "Signals", audienceSummary: "Dinner — attendees (Dinner: Yes)",
+    deliverable: [{ id: "organiser-guest:1", firstName: "Guest", lastName: "One", email: "guest@example.com", serviceNumber: "", membershipStatus: "", emailContact: true }],
+    skippedRecipients: [{ userId: "missing:2", firstName: "Missing", lastName: "Contact", email: "", reason: "missing_contact" }],
+    preview: { eventTitle: "Dinner", fingerprint: "fingerprint", matchedTicketCount: 2, recipients: [{ name: "Guest One", email: "guest@example.com" }], skipped: [{ name: "Missing Contact", email: "", reason: "missing_contact" }] },
+  };
+  const call = (overrides = {}) => sendSectionAnnouncement.run({ auth: { uid: "admin-1", token: { enabled: true, admin: true } }, data: {
+    sectionId: sectionAId, templateUuid: "template-1", requestId, deliveryMode: "LIVE", eventAudience, audienceFingerprint: "fingerprint", ...overrides,
+  } } as never);
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(eventAudiences, "resolveEventAnnouncementAudience").mockResolvedValue(resolution);
+    mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: null } } as never);
+    mockCreateAnnouncementSend.mockResolvedValue({ data: {} } as never);
+    vi.spyOn(govNotifyLiveApiKey, "value").mockReturnValue("notify-key");
+    vi.spyOn(unsubscribeSecret, "value").mockReturnValue("secret");
+    vi.spyOn(NotifyClient.prototype, "getTemplateById").mockResolvedValue({ data: { body: "Hello ((firstName))", subject: "Update" } } as never);
+    taskQueueMocks.enqueue.mockResolvedValue(undefined);
+  });
+  it("requires a current nonempty preview before writing or enqueueing", async () => {
+    await expect(call({ audienceFingerprint: "stale" })).rejects.toMatchObject({ code: "failed-precondition" });
+    vi.mocked(eventAudiences.resolveEventAnnouncementAudience).mockResolvedValue({ ...resolution, deliverable: [] });
+    await expect(call()).rejects.toMatchObject({ code: "failed-precondition" });
+    expect(mockCreateAnnouncementSend).not.toHaveBeenCalled();
+    expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
+  });
+  it("saves filters, guest unsubscribe and missing contacts, then replays the saved recipients", async () => {
+    await expect(call()).resolves.toMatchObject({ recipientCount: 1, skippedCount: 1 });
+    const saved = mockCreateAnnouncementSend.mock.calls[0][0];
+    const snapshot = JSON.parse(saved.recipientSnapshot!);
+    expect(snapshot.eventAudience).toEqual(eventAudience);
+    expect(saved.audienceSummary).toBe(resolution.audienceSummary);
+    expect(snapshot.skippedRecipients[0].reason).toBe("missing_contact");
+    const token = new URL(snapshot.tasks[0].unsubscribeUrl).searchParams.get("token")!;
+    expect(JSON.parse(Buffer.from(token.split(".")[0], "base64url").toString())).toMatchObject({ email: "guest@example.com" });
+    mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: saved } } as never);
+    vi.mocked(eventAudiences.resolveEventAnnouncementAudience).mockClear();
+    await expect(call()).resolves.toMatchObject({ recipientCount: 1, resumed: true });
+    expect(eventAudiences.resolveEventAnnouncementAudience).not.toHaveBeenCalled();
+    await expect(call({ eventAudience: { eventId, filters: {} } })).rejects.toMatchObject({ code: "already-exists" });
+    await expect(call({ eventAudience: undefined })).rejects.toMatchObject({ code: "already-exists" });
+    expect(mockCreateAnnouncementSend).toHaveBeenCalledOnce();
+  });
+  it("checks the audience on duplicate-key recovery too", async () => {
+    mockGetAnnouncementSendById.mockResolvedValueOnce({ data: { announcementSend: null } } as never).mockResolvedValueOnce({ data: { announcementSend: {
+      sectionId: sectionAId, templateUuid: "template-1", sentBy: "admin-1", requestedDeliveryMode: "LIVE", siteDeliveryMode: "LIVE", effectiveDeliveryMode: "LIVE",
+      recipientSnapshot: JSON.stringify({ version: 1, tasks: [], skippedRecipients: [] }),
+    } } } as never);
+    mockCreateAnnouncementSend.mockRejectedValueOnce(new Error("duplicate key"));
+    await expect(call()).rejects.toMatchObject({ code: "already-exists" });
+    expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
+  });
+  it("previews only after authorization", async () => {
+    const data = { sectionId: sectionAId, eventAudience };
+    await expect(previewEventAnnouncementAudience.run({ auth: { uid: "admin-1", token: { enabled: true, admin: true } }, data } as never)).resolves.toEqual(resolution.preview);
+    await expect(previewEventAnnouncementAudience.run({ data } as never)).rejects.toMatchObject({ code: "unauthenticated" });
+    mockGetSectionById.mockResolvedValue({ data: { section: { purposeLinks: [] } } } as never);
+    vi.spyOn(admin, "getUserAccessGroupsById").mockResolvedValue({ data: { user: { userGroups: [] } } } as never);
+    vi.spyOn(admin, "getUserMembershipStatus").mockResolvedValue({ data: { user: { membershipStatus: "REGULAR" } } } as never);
+    await expect(previewEventAnnouncementAudience.run({ auth: { uid: "member", token: { enabled: true } }, data } as never)).rejects.toMatchObject({ code: "permission-denied" });
+    expect(eventAudiences.resolveEventAnnouncementAudience).toHaveBeenCalledOnce();
   });
 });
