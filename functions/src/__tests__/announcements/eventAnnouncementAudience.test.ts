@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as admin from "@dataconnect/admin-generated";
 import { parseEventAnnouncementSelection, resolveEventAnnouncementAudience } from "../../eventAnnouncementAudience";
 import { emptyEventAttendeeTicketFilters } from "../../shared/attendeeFilters";
-import { announcementEmailOptOutId } from "../../announcementEmailOptOut";
 
 const eventId = "11111111-1111-4111-8111-111111111111";
 const sectionId = "22222222-2222-4222-8222-222222222222";
@@ -16,9 +15,7 @@ const booking = (id: string, booker = person(id)) => ({ id, revisionGroupId: id,
 const guest = (id: string, email = `${id}@example.com`) => ({ id, firstName: id, lastName: "Guest", email, cancelledAt: null, accommodationRequested: false, paidAt: null, priceMinor: 0, refundedAmountMinor: 0, refundPendingMinor: 0, ticketType: { title: "VIP" }, standardTicketType: null, includesDinner: true, includesSymposium: true });
 const bookings = vi.spyOn(admin, "getAnnouncementAttendeeBookings");
 const guests = vi.spyOn(admin, "listOrganiserGuests");
-const users = vi.spyOn(admin, "getAnnouncementContactUsers");
 const event = vi.spyOn(admin, "getOrganiserGuestEvent");
-const emailOptOuts = vi.spyOn(admin, "getAnnouncementEmailOptOuts");
 const sectionOptOuts = vi.spyOn(admin, "getSectionAnnouncementOptOutsPaged");
 const resolve = (filters = {}) => resolveEventAnnouncementAudience(sectionId, { eventId, filters: { ...emptyEventAttendeeTicketFilters, ...filters } });
 
@@ -28,9 +25,7 @@ beforeEach(() => {
   vi.spyOn(admin, "getAnnouncementAudienceSection").mockResolvedValue({ data: { section: { name: "Signals" } } } as never);
   bookings.mockResolvedValue({ data: { bookings: [] } } as never);
   guests.mockResolvedValue({ data: { organiserGuests: [] } } as never);
-  users.mockResolvedValue({ data: { users: [] } } as never);
   vi.spyOn(admin, "getAnnouncementAttendeeOrders").mockResolvedValue({ data: { ticketOrders: [] } } as never);
-  emailOptOuts.mockResolvedValue({ data: { announcementEmailOptOuts: [] } } as never);
   sectionOptOuts.mockResolvedValue({ data: { sectionAnnouncementOptOuts: [] } } as never);
 });
 
@@ -43,7 +38,6 @@ describe("event announcement audience", () => {
     const result = await resolve();
     expect(result.preview.matchedTicketCount).toBe(5);
     expect(result.deliverable.map(r => r.email)).toEqual(["linked@example.com", "member@example.com", "vip@example.com"]);
-    expect(result.deliverable[2].emailContact).toBe(true);
   });
   it("filters ticket rows before contact resolution and intersects filters", async () => {
     const b = booking("member");
@@ -60,14 +54,17 @@ describe("event announcement audience", () => {
     expect(result.preview.matchedTicketCount).toBe(1);
     expect((await resolve()).preview.matchedTicketCount).toBe(1);
   });
-  it("suppresses global, section and email opt-outs even when a guest shares a member email", async () => {
-    guests.mockResolvedValue({ data: { organiserGuests: [guest("global"), guest("section"), guest("email"), guest("good")] } } as never);
-    users.mockResolvedValue({ data: { users: [{ ...person("global"), announcementOptOutAll: true }, person("section")] } } as never);
+  it("includes opted-out members and guest contacts without consulting section preferences", async () => {
+    const global = { ...person("global"), announcementOptOutAll: true };
+    const b = booking("global", global);
+    b.lines.push(line("linked", "GUEST", { ...person("linked"), announcementOptOutAll: true }));
+    bookings.mockResolvedValue({ data: { bookings: [b, booking("section")] } } as never);
+    guests.mockResolvedValue({ data: { organiserGuests: [guest("duplicate", "global@example.com"), guest("other")] } } as never);
     sectionOptOuts.mockResolvedValue({ data: { sectionAnnouncementOptOuts: [{ user: { id: "section" } }] } } as never);
-    emailOptOuts.mockResolvedValue({ data: { announcementEmailOptOuts: [{ id: announcementEmailOptOutId(sectionId, "email@example.com") }] } } as never);
     const result = await resolve();
-    expect(result.deliverable.map(r => r.email)).toEqual(["good@example.com"]);
-    expect(result.skippedRecipients).toHaveLength(3);
+    expect(result.deliverable.map(r => r.email)).toEqual(["global@example.com", "linked@example.com", "other@example.com", "section@example.com"]);
+    expect(result.skippedRecipients).toEqual([]);
+    expect(sectionOptOuts).not.toHaveBeenCalled();
   });
   it("reports missing or invalid contacts without submitting them", async () => {
     bookings.mockResolvedValue({ data: { bookings: [booking("missing", person("missing", ""))] } } as never);

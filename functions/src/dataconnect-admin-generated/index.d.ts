@@ -209,11 +209,6 @@ export interface AdminOptOutSectionAnnouncementVariables {
   sectionId: UUIDString;
 }
 
-export interface AnnouncementEmailOptOut_Key {
-  id: string;
-  __typename?: 'AnnouncementEmailOptOut_Key';
-}
-
 export interface AnnouncementRecipient_Key {
   id: UUIDString;
   __typename?: 'AnnouncementRecipient_Key';
@@ -926,7 +921,6 @@ export interface GetAnnouncementAttendeeBookingsData {
       rank?: string | null;
       membershipStatus: MembershipStatus;
       serviceNumber: string;
-      announcementOptOutAll: boolean;
     } & User_Key;
     lines: ({
       id: UUIDString;
@@ -939,7 +933,6 @@ export interface GetAnnouncementAttendeeBookingsData {
         rank?: string | null;
         membershipStatus: MembershipStatus;
         serviceNumber: string;
-        announcementOptOutAll: boolean;
       } & User_Key;
       ticketType: {
         title: string;
@@ -1009,33 +1002,6 @@ export interface GetAnnouncementAudienceSectionData {
 
 export interface GetAnnouncementAudienceSectionVariables {
   sectionId: UUIDString;
-}
-
-export interface GetAnnouncementContactUsersData {
-  users: ({
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    serviceNumber: string;
-    membershipStatus: MembershipStatus;
-    announcementOptOutAll: boolean;
-  } & User_Key)[];
-}
-
-export interface GetAnnouncementContactUsersVariables {
-  pattern: string;
-  offset: number;
-}
-
-export interface GetAnnouncementEmailOptOutsData {
-  announcementEmailOptOuts: ({
-    id: string;
-  } & AnnouncementEmailOptOut_Key)[];
-}
-
-export interface GetAnnouncementEmailOptOutsVariables {
-  ids: string[];
 }
 
 export interface GetAnnouncementExplicitMembersPagedData {
@@ -3854,15 +3820,6 @@ export interface Section_Key {
   __typename?: 'Section_Key';
 }
 
-export interface SetAnnouncementEmailOptOutData {
-  announcementEmailOptOut_upsert: AnnouncementEmailOptOut_Key;
-}
-
-export interface SetAnnouncementEmailOptOutVariables {
-  id: string;
-  sectionId: UUIDString;
-}
-
 export interface SetNotifyTemplateReplyToOverrideData {
   notifyTemplateReplyToOverride_upsert: NotifyTemplateReplyToOverride_Key;
   notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
@@ -4946,21 +4903,6 @@ export function getAnnouncementAttendeeBookings(vars: GetAnnouncementAttendeeBoo
 export function getAnnouncementAttendeeOrders(dc: DataConnect, vars: GetAnnouncementAttendeeOrdersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementAttendeeOrdersData>>;
 /** Generated Node Admin SDK operation action function for the 'GetAnnouncementAttendeeOrders' Query. Allow users to pass in custom DataConnect instances. */
 export function getAnnouncementAttendeeOrders(vars: GetAnnouncementAttendeeOrdersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementAttendeeOrdersData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetAnnouncementContactUsers' Query. Allow users to execute without passing in DataConnect. */
-export function getAnnouncementContactUsers(dc: DataConnect, vars: GetAnnouncementContactUsersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementContactUsersData>>;
-/** Generated Node Admin SDK operation action function for the 'GetAnnouncementContactUsers' Query. Allow users to pass in custom DataConnect instances. */
-export function getAnnouncementContactUsers(vars: GetAnnouncementContactUsersVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementContactUsersData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetAnnouncementEmailOptOuts' Query. Allow users to execute without passing in DataConnect. */
-export function getAnnouncementEmailOptOuts(dc: DataConnect, vars: GetAnnouncementEmailOptOutsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementEmailOptOutsData>>;
-/** Generated Node Admin SDK operation action function for the 'GetAnnouncementEmailOptOuts' Query. Allow users to pass in custom DataConnect instances. */
-export function getAnnouncementEmailOptOuts(vars: GetAnnouncementEmailOptOutsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAnnouncementEmailOptOutsData>>;
-
-/** Generated Node Admin SDK operation action function for the 'SetAnnouncementEmailOptOut' Mutation. Allow users to execute without passing in DataConnect. */
-export function setAnnouncementEmailOptOut(dc: DataConnect, vars: SetAnnouncementEmailOptOutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SetAnnouncementEmailOptOutData>>;
-/** Generated Node Admin SDK operation action function for the 'SetAnnouncementEmailOptOut' Mutation. Allow users to pass in custom DataConnect instances. */
-export function setAnnouncementEmailOptOut(vars: SetAnnouncementEmailOptOutVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SetAnnouncementEmailOptOutData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetAttendeeEventSection' Query. Allow users to execute without passing in DataConnect. */
 export function getAttendeeEventSection(dc: DataConnect, vars: GetAttendeeEventSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAttendeeEventSectionData>>;

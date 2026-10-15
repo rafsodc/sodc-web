@@ -24,7 +24,7 @@ describe("SendAnnouncementPage", () => {
       id: "template-1",
       name: "BULK: Section update",
       updatedAt: "2026-07-19T10:00:00.000Z",
-      requiredPersonalisation: ["firstName"],
+      requiredPersonalisation: ["firstName", "unsubscribeUrl"],
     }]);
     vi.mocked(firebaseFunctions.previewAnnouncementTemplate).mockResolvedValue({
       html: "<p>Hello Jane</p>",
@@ -150,6 +150,16 @@ describe("attendee audience", () => {
     await user.click(screen.getByRole("button", { name: "Send to 1 attendee contacts" }));
     expect(firebaseFunctions.sendSectionAnnouncement).toHaveBeenCalledWith("section-1", "template-1", expect.any(String), "BULK: Dinner", "SIMULATION", undefined, { eventAudience: { eventId: "event-1", filters }, audienceFingerprint: "preview-1" });
     expect(await screen.findByText(/Preparing 1 email/)).toBeInTheDocument();
+  });
+  it("only offers attendee templates without unsubscribe links", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementTemplates).mockResolvedValue([
+      { id: "template-1", name: "BULK: Dinner", updatedAt: "2026-01-01", requiredPersonalisation: [] },
+      { id: "section-template", name: "BULK: Section", updatedAt: "2026-01-01", requiredPersonalisation: ["unsubscribeUrl"] },
+    ]);
+    const user = await open();
+    expect(screen.getByText(/regardless of announcement preferences/)).toBeInTheDocument();
+    await user.click(screen.getByLabelText("Template"));
+    expect(screen.queryByRole("option", { name: /BULK: Section/ })).not.toBeInTheDocument();
   });
   it("invalidates the preview after filter edits and handles preview failures and empty audiences", async () => {
     const user = await open();

@@ -850,7 +850,7 @@ describe("attendee announcement preview and durable send", () => {
   const eventAudience = { eventId, filters: { ...emptyEventAttendeeTicketFilters, includesDinner: "YES" } };
   const resolution = {
     sectionName: "Signals", audienceSummary: "Dinner — attendees (Dinner: Yes)",
-    deliverable: [{ id: "organiser-guest:1", firstName: "Guest", lastName: "One", email: "guest@example.com", serviceNumber: "", membershipStatus: "", emailContact: true }],
+    deliverable: [{ id: "organiser-guest:1", firstName: "Guest", lastName: "One", email: "guest@example.com", serviceNumber: "", membershipStatus: "" }],
     skippedRecipients: [{ userId: "missing:2", firstName: "Missing", lastName: "Contact", email: "", reason: "missing_contact" }],
     preview: { eventTitle: "Dinner", fingerprint: "fingerprint", matchedTicketCount: 2, recipients: [{ name: "Guest One", email: "guest@example.com" }], skipped: [{ name: "Missing Contact", email: "", reason: "missing_contact" }] },
   };
@@ -874,15 +874,16 @@ describe("attendee announcement preview and durable send", () => {
     expect(mockCreateAnnouncementSend).not.toHaveBeenCalled();
     expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
   });
-  it("saves filters, guest unsubscribe and missing contacts, then replays the saved recipients", async () => {
+  it("saves filters and missing contacts without unsubscribe links, then replays the saved recipients", async () => {
     await expect(call()).resolves.toMatchObject({ recipientCount: 1, skippedCount: 1 });
     const saved = mockCreateAnnouncementSend.mock.calls[0][0];
     const snapshot = JSON.parse(saved.recipientSnapshot!);
     expect(snapshot.eventAudience).toEqual(eventAudience);
     expect(saved.audienceSummary).toBe(resolution.audienceSummary);
     expect(snapshot.skippedRecipients[0].reason).toBe("missing_contact");
-    const token = new URL(snapshot.tasks[0].unsubscribeUrl).searchParams.get("token")!;
-    expect(JSON.parse(Buffer.from(token.split(".")[0], "base64url").toString())).toMatchObject({ email: "guest@example.com" });
+    expect(snapshot.tasks[0]).not.toHaveProperty("unsubscribeUrl");
+    expect(snapshot.tasks[0].personalisation).not.toHaveProperty("unsubscribeUrl");
+    expect(mockGetSectionAnnouncementOptOuts).not.toHaveBeenCalled();
     mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: saved } } as never);
     vi.mocked(eventAudiences.resolveEventAnnouncementAudience).mockClear();
     await expect(call()).resolves.toMatchObject({ recipientCount: 1, resumed: true });
@@ -890,6 +891,12 @@ describe("attendee announcement preview and durable send", () => {
     await expect(call({ eventAudience: { eventId, filters: {} } })).rejects.toMatchObject({ code: "already-exists" });
     await expect(call({ eventAudience: undefined })).rejects.toMatchObject({ code: "already-exists" });
     expect(mockCreateAnnouncementSend).toHaveBeenCalledOnce();
+  });
+  it("rejects event templates containing an unsubscribe placeholder", async () => {
+    vi.spyOn(NotifyClient.prototype, "getTemplateById").mockResolvedValue({ data: { body: "Unsubscribe: ((unsubscribeUrl))", subject: "Update" } } as never);
+    await expect(call()).rejects.toMatchObject({ code: "failed-precondition" });
+    expect(mockCreateAnnouncementSend).not.toHaveBeenCalled();
+    expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
   });
   it("checks the audience on duplicate-key recovery too", async () => {
     mockGetAnnouncementSendById.mockResolvedValueOnce({ data: { announcementSend: null } } as never).mockResolvedValueOnce({ data: { announcementSend: {

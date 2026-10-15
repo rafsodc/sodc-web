@@ -1,4 +1,3 @@
-import { announcementEmailOptOutId } from "../../announcementEmailOptOut";
 import { describe, expect, it, vi } from "vitest";
 import type { Request } from "firebase-functions/v2/https";
 import type { Response } from "express";
@@ -144,15 +143,12 @@ describe("unsubscribeAnnouncement", () => {
   });
 });
 
-it("records guest email opt-outs without needing a member account", async () => {
+it.each(["GET", "POST"])("handles previously issued guest links on %s without changing member preferences", async (method) => {
   const optOut = vi.fn();
-  const optOutEmail = vi.fn().mockResolvedValue(undefined);
-  const signedToken = signUnsubscribeToken({ userId: "organiser-guest:1", email: " Guest@Example.com ", sectionId: "section-1", sectionName: "Signals", exp: Date.now() + 60_000 }, SECRET);
+  const signedToken = signUnsubscribeToken({ userId: "organiser-guest:1", email: "guest@example.com", sectionId: "section-1", sectionName: "Signals", exp: Date.now() + 60_000 }, SECRET);
   const res = response();
-  await handleUnsubscribeRequest(request({ method: "GET", query: { token: signedToken } }), res, SECRET, { optOut, optOutEmail });
-  expect(optOutEmail).not.toHaveBeenCalled();
-  await handleUnsubscribeRequest(request({ method: "POST", query: { token: signedToken } }), res, SECRET, { optOut, optOutEmail });
+  await handleUnsubscribeRequest(request({ method, query: { token: signedToken } }), res, SECRET, { optOut });
   expect(optOut).not.toHaveBeenCalled();
-  expect(optOutEmail).toHaveBeenCalledWith({ id: announcementEmailOptOutId("section-1", "guest@example.com"), sectionId: "section-1" });
-  expect(res.send).toHaveBeenCalledWith("OK");
+  expect(res.status).toHaveBeenCalledWith(410);
+  expect(res.send).toHaveBeenCalledWith("Event attendee messages do not have an unsubscribe preference.");
 });

@@ -231,11 +231,6 @@ export interface AdminOptOutSectionAnnouncementVariables {
   sectionId: UUIDString;
 }
 
-export interface AnnouncementEmailOptOut_Key {
-  id: string;
-  __typename?: 'AnnouncementEmailOptOut_Key';
-}
-
 export interface AnnouncementRecipient_Key {
   id: UUIDString;
   __typename?: 'AnnouncementRecipient_Key';
@@ -948,7 +943,6 @@ export interface GetAnnouncementAttendeeBookingsData {
       rank?: string | null;
       membershipStatus: MembershipStatus;
       serviceNumber: string;
-      announcementOptOutAll: boolean;
     } & User_Key;
     lines: ({
       id: UUIDString;
@@ -961,7 +955,6 @@ export interface GetAnnouncementAttendeeBookingsData {
         rank?: string | null;
         membershipStatus: MembershipStatus;
         serviceNumber: string;
-        announcementOptOutAll: boolean;
       } & User_Key;
       ticketType: {
         title: string;
@@ -1031,33 +1024,6 @@ export interface GetAnnouncementAudienceSectionData {
 
 export interface GetAnnouncementAudienceSectionVariables {
   sectionId: UUIDString;
-}
-
-export interface GetAnnouncementContactUsersData {
-  users: ({
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    serviceNumber: string;
-    membershipStatus: MembershipStatus;
-    announcementOptOutAll: boolean;
-  } & User_Key)[];
-}
-
-export interface GetAnnouncementContactUsersVariables {
-  pattern: string;
-  offset: number;
-}
-
-export interface GetAnnouncementEmailOptOutsData {
-  announcementEmailOptOuts: ({
-    id: string;
-  } & AnnouncementEmailOptOut_Key)[];
-}
-
-export interface GetAnnouncementEmailOptOutsVariables {
-  ids: string[];
 }
 
 export interface GetAnnouncementExplicitMembersPagedData {
@@ -3876,15 +3842,6 @@ export interface Section_Key {
   __typename?: 'Section_Key';
 }
 
-export interface SetAnnouncementEmailOptOutData {
-  announcementEmailOptOut_upsert: AnnouncementEmailOptOut_Key;
-}
-
-export interface SetAnnouncementEmailOptOutVariables {
-  id: string;
-  sectionId: UUIDString;
-}
-
 export interface SetNotifyTemplateReplyToOverrideData {
   notifyTemplateReplyToOverride_upsert: NotifyTemplateReplyToOverride_Key;
   notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
@@ -5871,42 +5828,6 @@ export const getAnnouncementAttendeeOrdersRef: GetAnnouncementAttendeeOrdersRef;
 
 export function getAnnouncementAttendeeOrders(vars: GetAnnouncementAttendeeOrdersVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAttendeeOrdersData, GetAnnouncementAttendeeOrdersVariables>;
 export function getAnnouncementAttendeeOrders(dc: DataConnect, vars: GetAnnouncementAttendeeOrdersVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementAttendeeOrdersData, GetAnnouncementAttendeeOrdersVariables>;
-
-interface GetAnnouncementContactUsersRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: GetAnnouncementContactUsersVariables): QueryRef<GetAnnouncementContactUsersData, GetAnnouncementContactUsersVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: GetAnnouncementContactUsersVariables): QueryRef<GetAnnouncementContactUsersData, GetAnnouncementContactUsersVariables>;
-  operationName: string;
-}
-export const getAnnouncementContactUsersRef: GetAnnouncementContactUsersRef;
-
-export function getAnnouncementContactUsers(vars: GetAnnouncementContactUsersVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementContactUsersData, GetAnnouncementContactUsersVariables>;
-export function getAnnouncementContactUsers(dc: DataConnect, vars: GetAnnouncementContactUsersVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementContactUsersData, GetAnnouncementContactUsersVariables>;
-
-interface GetAnnouncementEmailOptOutsRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: GetAnnouncementEmailOptOutsVariables): QueryRef<GetAnnouncementEmailOptOutsData, GetAnnouncementEmailOptOutsVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: GetAnnouncementEmailOptOutsVariables): QueryRef<GetAnnouncementEmailOptOutsData, GetAnnouncementEmailOptOutsVariables>;
-  operationName: string;
-}
-export const getAnnouncementEmailOptOutsRef: GetAnnouncementEmailOptOutsRef;
-
-export function getAnnouncementEmailOptOuts(vars: GetAnnouncementEmailOptOutsVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementEmailOptOutsData, GetAnnouncementEmailOptOutsVariables>;
-export function getAnnouncementEmailOptOuts(dc: DataConnect, vars: GetAnnouncementEmailOptOutsVariables, options?: ExecuteQueryOptions): QueryPromise<GetAnnouncementEmailOptOutsData, GetAnnouncementEmailOptOutsVariables>;
-
-interface SetAnnouncementEmailOptOutRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: SetAnnouncementEmailOptOutVariables): MutationRef<SetAnnouncementEmailOptOutData, SetAnnouncementEmailOptOutVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: SetAnnouncementEmailOptOutVariables): MutationRef<SetAnnouncementEmailOptOutData, SetAnnouncementEmailOptOutVariables>;
-  operationName: string;
-}
-export const setAnnouncementEmailOptOutRef: SetAnnouncementEmailOptOutRef;
-
-export function setAnnouncementEmailOptOut(vars: SetAnnouncementEmailOptOutVariables): MutationPromise<SetAnnouncementEmailOptOutData, SetAnnouncementEmailOptOutVariables>;
-export function setAnnouncementEmailOptOut(dc: DataConnect, vars: SetAnnouncementEmailOptOutVariables): MutationPromise<SetAnnouncementEmailOptOutData, SetAnnouncementEmailOptOutVariables>;
 
 interface GetAttendeeEventSectionRef {
   /* Allow users to create refs without passing in DataConnect */

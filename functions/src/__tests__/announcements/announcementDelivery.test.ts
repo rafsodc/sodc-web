@@ -72,6 +72,17 @@ function harness(initialStatus: AnnouncementRecipientStatus = "queued") {
 }
 
 describe("processAnnouncementEmailTask", () => {
+  it("sends attendee messages without a one-click unsubscribe header", async () => {
+    const test = harness();
+    const attendeeTask = { ...task };
+    delete attendeeTask.unsubscribeUrl;
+    await processAnnouncementEmailTask(attendeeTask, { retryCount: 0 }, {
+      repository: test.repository, client: test.client, now: () => "2026-07-19T10:00:00.000Z",
+    });
+    expect(test.sendEmail).toHaveBeenCalledOnce();
+    expect(test.sendEmail.mock.calls[0][2]).not.toHaveProperty("oneClickUnsubscribeURL");
+    expect(test.row().status).toBe("sent");
+  });
   it("claims a queued recipient and records the provider acceptance", async () => {
     const test = harness();
 
