@@ -2,11 +2,9 @@ import { createHash } from "node:crypto";
 import { HttpsError } from "firebase-functions/v2/https";
 import {
   getOrganiserGuestEvent, getAnnouncementAudienceSection, getAnnouncementAttendeeBookings,
-  getAnnouncementAttendeeOrders, listOrganiserGuests, getAnnouncementContactUsers,
-  getSectionAnnouncementOptOutsPaged, getAnnouncementEmailOptOuts,
+  getAnnouncementAttendeeOrders, listOrganiserGuests,
 } from "@dataconnect/admin-generated";
 import { requireString, validateUUID } from "./helpers";
-import { announcementEmailOptOutId } from "./announcementEmailOptOut";
 import type { AnnouncementAudienceRecipient } from "./announcementRecipients";
 import { attendeePaymentState, emptyEventAttendeeTicketFilters, filterEventAttendeeTicketRows,
   type EventAttendeeTicketFilters, type FilterableAttendee } from "./shared/attendeeFilters";
@@ -39,7 +37,7 @@ async function pages<T>(fetch: (offset: number) => Promise<T[]>): Promise<T[]> {
 }
 const emailKey = (email: string) => email.trim().toLowerCase();
 const usableEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-type Contact = AnnouncementAudienceRecipient & { emailContact?: boolean };
+type Contact = AnnouncementAudienceRecipient;
 type Row = FilterableAttendee & { key: string; contact: Contact };
 export interface EventAnnouncementPreview {
   eventTitle: string; fingerprint: string; matchedTicketCount: number;
@@ -53,12 +51,11 @@ export async function resolveEventAnnouncementAudience(sectionId: string, select
   if (!event || event.section.id.replace(/-/g, "").toLowerCase() !== sectionId.replace(/-/g, "").toLowerCase()) {
     throw new HttpsError("not-found", "Event not found in this section");
   }
-  const [section, bookings, orders, guests, sectionOptOuts] = await Promise.all([
+  const [section, bookings, orders, guests] = await Promise.all([
     getAnnouncementAudienceSection({ sectionId }),
     pages(async (offset) => (await getAnnouncementAttendeeBookings({ eventId, offset })).data.bookings),
     pages(async (offset) => (await getAnnouncementAttendeeOrders({ eventId, offset })).data.ticketOrders),
     pages(async (offset) => (await listOrganiserGuests({ eventId, offset })).data.organiserGuests),
-    pages(async (offset) => (await getSectionAnnouncementOptOutsPaged({ sectionId, limit: 500, offset })).data.sectionAnnouncementOptOuts),
   ]);
   const latest = new Map<string, typeof bookings[number]>();
   for (const booking of bookings) {
@@ -92,7 +89,7 @@ export async function resolveEventAnnouncementAudience(sectionId: string, select
         : guest.refundPendingMinor > 0 ? "REFUND_PENDING" : guest.paidAt ? guest.refundedAmountMinor > 0 ? "PARTIALLY_REFUNDED" : "PAID"
           : guest.priceMinor === 0 ? "FREE" : "UNPAID",
       contact: { id: `organiser-guest:${guest.id}`, firstName: guest.firstName, lastName: guest.lastName,
-        email: guest.email ?? "", serviceNumber: "", membershipStatus: "", emailContact: true } });
+        email: guest.email ?? "", serviceNumber: "", membershipStatus: "" } });
   }
   const matching = filterEventAttendeeTicketRows(rows, filters);
   const missing = matching.filter((row) => !usableEmail(row.contact.email));
@@ -100,32 +97,12 @@ export async function resolveEventAnnouncementAudience(sectionId: string, select
   // Prefer a member identity when a member and a guest share a contact address.
   for (const { contact } of matching) {
     const key = emailKey(contact.email);
-    if (usableEmail(key) && (!contacts.has(key) || contacts.get(key)?.emailContact)) contacts.set(key, { ...contact, email: key });
+    if (usableEmail(key) && (!contacts.has(key) || contacts.get(key)?.id.startsWith("organiser-guest:"))) contacts.set(key, { ...contact, email: key });
   }
   const emails = [...contacts.keys()].sort();
-  const optedOutIds = new Set(sectionOptOuts.map((row) => row.user.id));
-  const optedOutEmails = new Set<string>();
-  for (let index = 0; index < emails.length; index += 100) {
-    const batch = emails.slice(index, index + 100);
-    const pattern = `(?i)^\\s*(${batch.map((email) => email.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")).join("|")})\\s*$`;
-    const users = await pages(async (offset) => (await getAnnouncementContactUsers({ pattern, offset })).data.users);
-    const emailOptOuts = (await getAnnouncementEmailOptOuts({ ids: batch.map((email) => announcementEmailOptOutId(sectionId, email)) })).data.announcementEmailOptOuts;
-    const hashes = new Set(emailOptOuts.map((row) => row.id));
-    for (const email of batch) if (hashes.has(announcementEmailOptOutId(sectionId, email))) optedOutEmails.add(email);
-    for (const user of users) {
-      const key = emailKey(user.email);
-      if (user.announcementOptOutAll || optedOutIds.has(user.id)) optedOutEmails.add(key);
-      if (contacts.get(key)?.emailContact) contacts.set(key, { ...user, email: key });
-    }
-  }
-  const deliverable: Contact[] = [];
+  // Attendance messages reach every selected contact, independently of section announcement preferences.
+  const deliverable = emails.map((email) => contacts.get(email)!);
   const skippedRecipients: Array<{ userId: string; firstName: string; lastName: string; email: string; reason: string }> = [];
-  for (const email of emails) {
-    const contact = contacts.get(email)!;
-    if (contact.announcementOptOutAll || optedOutIds.has(contact.id) || optedOutEmails.has(email)) {
-      skippedRecipients.push({ userId: contact.id, firstName: contact.firstName, lastName: contact.lastName, email, reason: "opted_out" });
-    } else deliverable.push(contact);
-  }
   for (const row of missing) skippedRecipients.push({ userId: `missing:${row.key}`, firstName: row.attendeeName, lastName: "", email: "", reason: "missing_contact" });
   skippedRecipients.sort((a, b) => a.userId.localeCompare(b.userId));
   const fingerprint = createHash("sha256").update(JSON.stringify({ selection, deliverable, skippedRecipients, matchedTicketCount: matching.length })).digest("hex");

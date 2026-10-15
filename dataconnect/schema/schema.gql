@@ -880,11 +880,3 @@ type OrganiserGuestAudit @table {
   actor: String!
   occurredAt: Timestamp! @default(expr: "request.time")
 }
-
-# Section announcement opt-outs for email contacts without a member account.
-# The primary key hashes the section and normalized email; no address is stored.
-type AnnouncementEmailOptOut @table {
-  id: String!
-  section: Section!
-  createdAt: Timestamp! @default(expr: "request.time")
-}

@@ -54,6 +54,7 @@ export default function SendAnnouncementPage({
   onBack,
   eventAudience,
 }: SendAnnouncementPageProps) {
+  const isEventAnnouncement = !!eventAudience;
   const [audienceFilters, setAudienceFilters] = useState(eventAudience?.filters);
   const [audiencePreview, setAudiencePreview] = useState<EventAnnouncementPreview | null>(null);
   const [templates, setTemplates] = useState<AnnouncementTemplate[]>([]);
@@ -87,13 +88,13 @@ export default function SendAnnouncementPage({
     setLoadingTemplates(true);
     setTemplatesError(null);
     getAnnouncementTemplates(sectionId)
-      .then(setTemplates)
+      .then((items) => setTemplates(isEventAnnouncement ? items.filter((template) => !template.requiredPersonalisation.includes("unsubscribeUrl")) : items))
       .catch((caught) => {
         reportError("admin.announcements.templates", caught, { sectionId });
         setTemplatesError(toAdminUserFacingError(caught, "announcements").message);
       })
       .finally(() => setLoadingTemplates(false));
-  }, [sectionId, templatesTrigger]);
+  }, [sectionId, templatesTrigger, isEventAnnouncement]);
 
   useEffect(() => {
     setDeliveryModeError(null);
@@ -228,7 +229,7 @@ export default function SendAnnouncementPage({
               >
                 {templates.length === 0 && (
                   <MenuItem value="" disabled>
-                    No BULK: templates found in GOV Notify
+                    {eventAudience ? "No BULK: templates without an unsubscribe link found" : "No BULK: templates found in GOV Notify"}
                   </MenuItem>
                 )}
                 {templates.map((t) => (
@@ -366,7 +367,7 @@ export default function SendAnnouncementPage({
                 {sending ? "Starting…" : sendRequestId ? "Resume announcement send" : eventAudience ? `Send to ${audiencePreview?.recipients.length ?? 0} attendee contacts` : `Send to ${sectionName} members`}
               </Button>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                Contacts who have opted out of announcements will not receive this email.
+                {eventAudience ? "Event messages go to all selected attendee contacts, regardless of announcement preferences." : "Contacts who have opted out of announcements will not receive this email."}
               </Typography>
             </>
           )}

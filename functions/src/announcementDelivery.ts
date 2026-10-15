@@ -50,7 +50,7 @@ export interface AnnouncementEmailTask {
   lastName: string;
   email: string;
   personalisation: Record<string, string>;
-  unsubscribeUrl: string;
+  unsubscribeUrl?: string;
   templateUuid: string;
   effectiveDeliveryMode?: GovNotifyDeliveryMode;
   /** null means deliberately use Notify's service default; undefined is a legacy task. */
@@ -97,7 +97,7 @@ export interface AnnouncementNotifyClient {
     options: {
       personalisation: Record<string, string>;
       reference: string;
-      oneClickUnsubscribeURL: string;
+      oneClickUnsubscribeURL?: string;
       emailReplyToId?: string;
     },
   ): Promise<{ data?: { id?: string; reference?: string } }>;
@@ -367,7 +367,7 @@ export async function processAnnouncementEmailTask(
     const response = await client.sendEmail(task.templateUuid, task.email, {
       personalisation: task.personalisation,
       reference,
-      oneClickUnsubscribeURL: task.unsubscribeUrl,
+      ...(task.unsubscribeUrl ? { oneClickUnsubscribeURL: task.unsubscribeUrl } : {}),
       emailReplyToId,
     });
     const marked = await markStatus(repository, row, "sent", now, {

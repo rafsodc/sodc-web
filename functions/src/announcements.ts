@@ -236,7 +236,7 @@ export function buildRecipientPersonalisation(
     membershipStatus: string;
   },
   sectionName: string,
-  unsubscribeUrl: string,
+  unsubscribeUrl: string | undefined,
   requiredPersonalisation: string[]
 ): Record<string, string> {
   const candidate: Record<string, string> = {
@@ -246,7 +246,7 @@ export function buildRecipientPersonalisation(
     serviceNumber: recipient.serviceNumber,
     membershipStatus: recipient.membershipStatus,
     section: sectionName,
-    unsubscribeUrl,
+    ...(unsubscribeUrl ? { unsubscribeUrl } : {}),
   };
   const required = new Set(requiredPersonalisation);
   return Object.fromEntries(Object.entries(candidate).filter(([key]) => required.has(key)));
@@ -786,12 +786,16 @@ export const sendSectionAnnouncement = onCall(
       const template = templateResponse.data as { body?: string; subject?: string };
       const requiredPersonalisation = extractTemplateVariables(template.body ?? "", template.subject ?? "");
 
+      if (eventAudience && requiredPersonalisation.includes("unsubscribeUrl")) {
+        throw new HttpsError("failed-precondition", "Choose an event template without an unsubscribe link.");
+      }
+
       const eventResolution = eventAudience ? await resolveEventAnnouncementAudience(sectionId, eventAudience) : undefined;
       if (eventResolution && (request.data?.audienceFingerprint !== eventResolution.preview.fingerprint || eventResolution.deliverable.length === 0)) {
         throw new HttpsError("failed-precondition", "Preview the current attendee audience before sending. It may have changed or have no recipients.");
       }
       let sectionName: string;
-      let deliverable: Array<AnnouncementAudienceRecipient & { emailContact?: boolean }>;
+      let deliverable: AnnouncementAudienceRecipient[];
       let skippedRecipients: SkippedAnnouncementRecipient[];
       if (eventResolution) {
         ({ sectionName, deliverable, skippedRecipients } = eventResolution);
@@ -808,17 +812,16 @@ export const sendSectionAnnouncement = onCall(
         deliverable = partitioned.deliverable;
         skippedRecipients = partitioned.optedOut.map((recipient) => ({ userId: recipient.id, email: recipient.email, firstName: recipient.firstName, lastName: recipient.lastName }));
       }
-      const secret = unsubscribeSecret.value();
+      const secret = eventAudience ? undefined : unsubscribeSecret.value();
       const tasks = deliverable.map((recipient): AnnouncementEmailTask => {
-        const unsubscribeUrl = `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
+        const unsubscribeUrl = eventAudience ? undefined : `${APP_BASE_URL}/unsubscribe?token=${signUnsubscribeToken(
           {
             userId: recipient.id,
-            ...(recipient.emailContact ? { email: recipient.email } : {}),
             sectionId,
             sectionName,
             exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
           },
-          secret,
+          secret!,
         )}`;
         return {
           sendId: requestId,
@@ -832,7 +835,7 @@ export const sendSectionAnnouncement = onCall(
             unsubscribeUrl,
             requiredPersonalisation,
           ),
-          unsubscribeUrl,
+          ...(unsubscribeUrl ? { unsubscribeUrl } : {}),
           templateUuid,
           effectiveDeliveryMode: deliveryMode.effectiveMode,
           emailReplyToId: replyTo.notifyUuid ?? null,

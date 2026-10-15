@@ -3,10 +3,10 @@ query GetAnnouncementAttendeeBookings($eventId: UUID!, $offset: Int!) @auth(leve
     approvalStatus: { in: [APPROVED, NOT_REQUIRED] }, supersededAt: { isNull: true } },
     orderBy: { id: ASC }, limit: 500, offset: $offset) {
     id revisionGroupId revisionNumber approvalStatus accommodationRequested
-    booker { id firstName lastName email rank membershipStatus serviceNumber announcementOptOutAll }
+    booker { id firstName lastName email rank membershipStatus serviceNumber }
     lines: bookingLines_on_booking(limit: 100) {
       id guestDisplayName
-      guestUser { id firstName lastName email rank membershipStatus serviceNumber announcementOptOutAll }
+      guestUser { id firstName lastName email rank membershipStatus serviceNumber }
       ticketType { title audience price includesDinner includesSymposium }
       bookingPlace {
         attendanceRemoved attendanceName attendanceAccommodationRequested
@@ -20,15 +20,4 @@ query GetAnnouncementAttendeeBookings($eventId: UUID!, $offset: Int!) @auth(leve
 }
 query GetAnnouncementAttendeeOrders($eventId: UUID!, $offset: Int!) @auth(level: NO_ACCESS) {
   ticketOrders(where: { eventId: { eq: $eventId } }, orderBy: { id: ASC }, limit: 500, offset: $offset) { id status }
-}
-query GetAnnouncementContactUsers($pattern: String!, $offset: Int!) @auth(level: NO_ACCESS) {
-  users(where: { email: { pattern: { regex: $pattern } } }, orderBy: { id: ASC }, limit: 500, offset: $offset) {
-    id firstName lastName email serviceNumber membershipStatus announcementOptOutAll
-  }
-}
-query GetAnnouncementEmailOptOuts($ids: [String!]!) @auth(level: NO_ACCESS) {
-  announcementEmailOptOuts(where: { id: { in: $ids } }, limit: 500) { id }
-}
-mutation SetAnnouncementEmailOptOut($id: String!, $sectionId: UUID!) @auth(level: NO_ACCESS) {
-  announcementEmailOptOut_upsert(data: { id: $id, sectionId: $sectionId })
 }

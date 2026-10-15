@@ -3,8 +3,7 @@ import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Response } from "express";
-import { adminOptOutSectionAnnouncement, setAnnouncementEmailOptOut } from "@dataconnect/admin-generated";
-import { announcementEmailOptOutId } from "./announcementEmailOptOut";
+import { adminOptOutSectionAnnouncement } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 
 export const unsubscribeSecret = defineSecret("UNSUBSCRIBE_SECRET");
@@ -85,7 +84,6 @@ function confirmationPage(token: string, sectionName: string): string {
 
 export interface UnsubscribeHandlerDependencies {
   optOut?: typeof adminOptOutSectionAnnouncement;
-  optOutEmail?: typeof setAnnouncementEmailOptOut;
 }
 
 export async function handleUnsubscribeRequest(
@@ -119,17 +117,19 @@ export async function handleUnsubscribeRequest(
     return;
   }
 
+  // Previously issued guest links cannot be applied to a member preference.
+  if (payload.email) {
+    res.status(410).send("Event attendee messages do not have an unsubscribe preference.");
+    return;
+  }
+
   if (req.method === "GET") {
     res.status(200).type("html").send(confirmationPage(token, payload.sectionName));
     return;
   }
 
   try {
-    if (payload.email) {
-      await (dependencies.optOutEmail ?? setAnnouncementEmailOptOut)({
-        id: announcementEmailOptOutId(payload.sectionId, payload.email), sectionId: payload.sectionId,
-      });
-    } else await (dependencies.optOut ?? adminOptOutSectionAnnouncement)({
+    await (dependencies.optOut ?? adminOptOutSectionAnnouncement)({
       userId: payload.userId,
       sectionId: payload.sectionId,
     });
