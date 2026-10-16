@@ -31,7 +31,7 @@ import {
 } from "../../../shared/utils/firebaseFunctions";
 import TemplateEditor from "./TemplateEditor";
 import AnnouncementSendHistory from "./AnnouncementSendHistory";
-import { reportError, toAdminUserFacingError } from "../../../shared/errors";
+import { extractDomainErrorCode, reportError, toAdminUserFacingError } from "../../../shared/errors";
 
 interface SendAnnouncementPageProps {
   sectionId: string;
@@ -176,7 +176,8 @@ export default function SendAnnouncementPage({
     } catch (caught) {
       if (eventAudience && (caught as { code?: string })?.code === "functions/failed-precondition") {
         setSendRequestId(null);
-        setAudiencePreview(null);
+        const reason = extractDomainErrorCode(caught);
+        if (!reason || reason === "ANNOUNCEMENT_AUDIENCE_CHANGED" || reason === "ANNOUNCEMENT_AUDIENCE_EMPTY") setAudiencePreview(null);
       }
       reportError("admin.announcements.send", caught, { sectionId, templateId: selectedId });
       setSendError(toAdminUserFacingError(caught, "announcements").message);

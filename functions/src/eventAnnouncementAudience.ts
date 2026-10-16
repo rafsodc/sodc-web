@@ -95,9 +95,19 @@ export async function resolveEventAnnouncementAudience(sectionId: string, select
   const missing = matching.filter((row) => !usableEmail(row.contact.email));
   const contacts = new Map<string, Contact>();
   // Prefer a member identity when a member and a guest share a contact address.
-  for (const { contact } of matching) {
+  // Line ordering and JSON property ordering from Data Connect are not audience changes.
+  for (const { contact } of [...matching].sort((a, b) => a.key.localeCompare(b.key))) {
     const key = emailKey(contact.email);
-    if (usableEmail(key) && (!contacts.has(key) || contacts.get(key)?.id.startsWith("organiser-guest:"))) contacts.set(key, { ...contact, email: key });
+    if (usableEmail(key) && (!contacts.has(key) || contacts.get(key)?.id.startsWith("organiser-guest:"))) {
+      contacts.set(key, {
+        id: contact.id,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        email: key,
+        serviceNumber: contact.serviceNumber,
+        membershipStatus: contact.membershipStatus,
+      });
+    }
   }
   const emails = [...contacts.keys()].sort();
   // Attendance messages reach every selected contact, independently of section announcement preferences.

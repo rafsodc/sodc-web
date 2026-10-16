@@ -182,9 +182,23 @@ describe("attendee audience", () => {
     const user = await open();
     await user.click(screen.getByRole("button", { name: "Preview recipients" }));
     await screen.findByText(/3 matching tickets/);
-    vi.mocked(firebaseFunctions.sendSectionAnnouncement).mockRejectedValueOnce({ code: "functions/failed-precondition", message: "Audience changed" });
+    vi.mocked(firebaseFunctions.sendSectionAnnouncement).mockRejectedValueOnce({ code: "functions/failed-precondition", details: { code: "ANNOUNCEMENT_AUDIENCE_CHANGED" }, message: "Audience changed" });
     await user.click(screen.getByRole("button", { name: "Send to 1 attendee contacts" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Preview recipients before sending" })).toBeDisabled());
     expect(screen.getByRole("button", { name: "Preview recipients" })).toBeEnabled();
+    expect(screen.getByText(/Click Preview recipients again, review the list, then send/)).toBeInTheDocument();
+  });
+  it.each([
+    ["ANNOUNCEMENT_TEMPLATE_UNSUBSCRIBE", "This template contains an unsubscribe link."],
+    ["ANNOUNCEMENT_REPLY_TO_UNAVAILABLE", "The selected reply-to address is no longer available."],
+  ])("keeps the recipient preview when %s needs attention", async (code, message) => {
+    const user = await open();
+    await user.click(screen.getByRole("button", { name: "Preview recipients" }));
+    await screen.findByText(/3 matching tickets/);
+    vi.mocked(firebaseFunctions.sendSectionAnnouncement).mockRejectedValueOnce({ code: "functions/failed-precondition", details: { code } });
+    await user.click(screen.getByRole("button", { name: "Send to 1 attendee contacts" }));
+    expect(await screen.findByText((text) => text.startsWith(message))).toBeInTheDocument();
+    expect(screen.getByText(/3 matching tickets/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send to 1 attendee contacts" })).toBeEnabled();
   });
 });
