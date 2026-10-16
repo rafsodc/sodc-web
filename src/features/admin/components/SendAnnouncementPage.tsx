@@ -364,7 +364,11 @@ export default function SendAnnouncementPage({
                 onClick={() => void handleSend()}
                 disabled={sending || !siteDeliveryMode || (!!eventAudience && !audiencePreview?.recipients.length)}
               >
-                {sending ? "Starting…" : sendRequestId ? "Resume announcement send" : eventAudience ? `Send to ${audiencePreview?.recipients.length ?? 0} attendee contacts` : `Send to ${sectionName} members`}
+                {sending ? "Starting…"
+                  : sendRequestId ? "Resume announcement send"
+                  : eventAudience && !audiencePreview ? "Preview recipients before sending"
+                  : eventAudience ? `Send to ${audiencePreview!.recipients.length} attendee contacts`
+                  : `Send to ${sectionName} members`}
               </Button>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
                 {eventAudience ? "Event messages go to all selected attendee contacts, regardless of announcement preferences." : "Contacts who have opted out of announcements will not receive this email."}
