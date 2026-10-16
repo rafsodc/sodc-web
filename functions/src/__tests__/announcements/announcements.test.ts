@@ -868,9 +868,9 @@ describe("attendee announcement preview and durable send", () => {
     taskQueueMocks.enqueue.mockResolvedValue(undefined);
   });
   it("requires a current nonempty preview before writing or enqueueing", async () => {
-    await expect(call({ audienceFingerprint: "stale" })).rejects.toMatchObject({ code: "failed-precondition" });
+    await expect(call({ audienceFingerprint: "stale" })).rejects.toMatchObject({ code: "failed-precondition", details: { code: "ANNOUNCEMENT_AUDIENCE_CHANGED" } });
     vi.mocked(eventAudiences.resolveEventAnnouncementAudience).mockResolvedValue({ ...resolution, deliverable: [] });
-    await expect(call()).rejects.toMatchObject({ code: "failed-precondition" });
+    await expect(call()).rejects.toMatchObject({ code: "failed-precondition", details: { code: "ANNOUNCEMENT_AUDIENCE_EMPTY" } });
     expect(mockCreateAnnouncementSend).not.toHaveBeenCalled();
     expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
   });

@@ -84,6 +84,33 @@ describe("event announcement audience", () => {
     all.pop();
     expect((await resolve()).preview.fingerprint).not.toBe(result.preview.fingerprint);
   });
+  it("keeps the same fingerprint when Data Connect returns contact properties in a different order", async () => {
+    const b = booking("member");
+    bookings.mockResolvedValue({ data: { bookings: [b] } } as never);
+    const original = await resolve();
+    const reordered = Object.fromEntries(Object.entries(b.booker).reverse());
+    bookings.mockResolvedValue({ data: { bookings: [{ ...b, booker: reordered }] } } as never);
+    const next = await resolve();
+    expect(next.preview.recipients).toEqual(original.preview.recipients);
+    expect(next.preview.fingerprint).toBe(original.preview.fingerprint);
+  });
+  it("keeps shared-email contact selection stable when ticket rows are reordered", async () => {
+    const b = booking("member");
+    b.lines = [line("a", "GUEST", person("guest-a", "shared@example.com")), line("b", "GUEST", person("guest-b", "shared@example.com"))];
+    bookings.mockResolvedValue({ data: { bookings: [b] } } as never);
+    const original = await resolve();
+    b.lines.reverse();
+    const next = await resolve();
+    expect(next.preview.fingerprint).toBe(original.preview.fingerprint);
+    expect(next.preview.recipients).toEqual(original.preview.recipients);
+  });
+  it.each(["email", "firstName", "serviceNumber", "membershipStatus"] as const)("requires a new preview when contact %s changes", async (field) => {
+    const b = booking("member");
+    bookings.mockResolvedValue({ data: { bookings: [b] } } as never);
+    const original = await resolve();
+    b.booker[field] = field === "email" ? "new@example.com" : "Changed";
+    expect((await resolve()).preview.fingerprint).not.toBe(original.preview.fingerprint);
+  });
   it("checks the event belongs to the authorized section before reading contacts", async () => {
     event.mockResolvedValue({ data: { event: { section: { id: eventId } } } } as never);
     await expect(resolve()).rejects.toMatchObject({ code: "not-found" });

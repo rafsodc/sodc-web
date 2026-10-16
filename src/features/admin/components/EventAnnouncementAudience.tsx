@@ -45,7 +45,7 @@ export default function EventAnnouncementAudience({ sectionId, eventId, filters,
   };
   return <Box component="section" sx={{ mb: 3 }}>
     <Typography variant="h6">Event attendees</Typography>
-    <Typography sx={{ mb: 2 }}>Current attendees include unpaid bookings and organiser guests. Filters combine to narrow the audience. Guests without an email use their booking contact where available.</Typography>
+    <Typography sx={{ mb: 2 }}>Current attendees include unpaid bookings and organiser guests. Filters combine to narrow the audience. Guests without an email use their booking contact where available. Choose Preview recipients to calculate and review the audience before sending.</Typography>
     <Stack direction="row" useFlexGap flexWrap="wrap" spacing={2} sx={{ mb: 2 }}>
       {fields.map((field) => <TextField key={field.key} label={field.label} size="small" sx={{ minWidth: 170 }}
         select={!!field.options} value={filters[field.key]} disabled={disabled}
