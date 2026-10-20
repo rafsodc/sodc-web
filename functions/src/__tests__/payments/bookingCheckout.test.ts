@@ -19,7 +19,7 @@ function booking(args: {
   revisionNumber?: number;
   approvalStatus?: BookingApprovalStatus;
   supersededAt?: string | null;
-  places?: Array<{ id: string; ticketTypeId?: string; price?: number; statuses?: TicketOrderStatus[] }>;
+  places?: Array<{ id: string; ticketTypeId?: string; price?: number; statuses?: TicketOrderStatus[]; removed?: boolean }>;
 }) {
   return {
     id: args.id ?? "booking-1",
@@ -32,6 +32,7 @@ function booking(args: {
       id: `line-${index}`,
       bookingPlace: {
         id: place.id,
+        attendanceRemoved: place.removed ?? false,
         paymentAllocations: (place.statuses ?? []).map((status, allocationIndex) => ({
           id: `allocation-${index}-${allocationIndex}`,
           allocatedAmountMinor: Math.round((place.price ?? 50) * 100),
@@ -105,6 +106,34 @@ describe("bookingCheckout", () => {
       expect.objectContaining({ bookingPlaceId: "place-a", unitAmountMinor: 1000 }),
     ]);
     expect(bookingIsFullyPaid(revised)).toBe(false);
+  });
+
+  it("charges only two current unpaid tickets when a fourth ticket was removed", () => {
+    const current = booking({ places: [
+      { id: "paid-member", price: 70, statuses: [TicketOrderStatus.PAID] },
+      { id: "guest-symposium", price: 35 },
+      { id: "guest-full", price: 70 },
+      { id: "removed-guest", price: 70, removed: true },
+    ] });
+    const items = computeUnpaidBookingCheckoutItems(current);
+    expect(items.map((item) => item.bookingPlaceId)).toEqual(["guest-symposium", "guest-full"]);
+    expect(items.reduce((sum, item) => sum + item.unitAmountMinor, 0)).toBe(10500);
+  });
+
+  it("does not charge or automatically refund removed places, and checks payment only for current places", () => {
+    const current = booking({ places: [
+      { id: "paid-member", price: 70, statuses: [TicketOrderStatus.PAID] },
+      { id: "removed-unpaid", price: 70, removed: true },
+      { id: "removed-paid", price: 35, removed: true, statuses: [TicketOrderStatus.PAID] },
+    ] });
+    current.lines[2].bookingPlace.paymentAllocations[0].allocatedAmountMinor = 7000;
+    expect(computeUnpaidBookingCheckoutItems(current)).toEqual([]);
+    expect(planBookingAllocationRefunds(current)).toEqual([]);
+    expect(bookingIsFullyPaid(current)).toBe(true);
+    current.lines[1].bookingPlace.attendanceRemoved = false;
+    expect(computeUnpaidBookingCheckoutItems(current)).toEqual([expect.objectContaining({ bookingPlaceId: "removed-unpaid", unitAmountMinor: 7000 })]);
+    expect(bookingIsFullyPaid(current)).toBe(false);
+    expect(bookingIsFullyPaid(booking({ places: [{ id: "removed", removed: true }] }))).toBe(false);
   });
 
   it("plans a negative revision delta against the exact paid place allocation", () => {
