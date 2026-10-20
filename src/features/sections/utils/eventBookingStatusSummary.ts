@@ -14,7 +14,7 @@ export interface EventBookingSummaryInput {
   status: BookingStatus | string;
   approvalStatus?: string;
   revisionNumber: number;
-  lines?: Array<{ ticketType?: { id: string } | null }> | null;
+  lines?: Array<{ ticketType?: { id: string } | null; bookingPlace?: { attendanceRemoved?: boolean } }> | null;
 }
 
 export interface EventBookingPaymentOrderInput {
@@ -89,6 +89,7 @@ function requiredTicketTypeCounts(
   };
 
   for (const line of booking.lines ?? []) {
+    if (line.bookingPlace?.attendanceRemoved) continue;
     add(line.ticketType?.id);
   }
   return counts;
@@ -123,6 +124,7 @@ function ticketTypeOrderCounts(
 
 function ticketTypeIdsFromBooking(booking: EventBookingSummaryInput): string[] {
   const fromLines = (booking.lines ?? [])
+    .filter((line) => !line.bookingPlace?.attendanceRemoved)
     .map((line) => line.ticketType?.id)
     .filter((id): id is string => Boolean(id));
   return fromLines;

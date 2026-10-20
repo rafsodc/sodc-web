@@ -25,6 +25,19 @@ function booking(status: TicketOrderStatus, approvalStatus = BookingApprovalStat
 }
 
 describe("booking payment finalization", () => {
+  it("confirms current paid tickets without requiring payment for removed places", async () => {
+    const current = booking(TicketOrderStatus.PAID);
+    const removed = booking(TicketOrderStatus.PENDING).lines[0];
+    Object.assign(removed.bookingPlace, { id: "removed-place", attendanceRemoved: true });
+    current.lines.push(removed);
+    const updateBookingStatus = vi.fn().mockResolvedValue({ data: {} });
+    const result = await confirmBookingIfFullyPaid(
+      { bookerId: "user-1", eventId: "30000000-0000-4000-8000-000000000001" },
+      { getBookings: vi.fn().mockResolvedValue({ data: { user: { bookings: [current] } } }), updateBookingStatus, settleAdjustments: vi.fn() } as never
+    );
+    expect(result.confirmed).toBe(true);
+    expect(updateBookingStatus).toHaveBeenCalledExactlyOnceWith({ id: current.id, status: BookingStatus.CONFIRMED });
+  });
   it("confirms an approval-eligible booking after every exact place is paid", async () => {
     const updateBookingStatus = vi.fn().mockResolvedValue({ data: {} });
     const settleAdjustments = vi.fn().mockResolvedValue({ data: {} });

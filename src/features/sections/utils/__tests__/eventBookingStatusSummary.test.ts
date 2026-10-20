@@ -61,6 +61,12 @@ describe("buildBookingTicketRowsWithPaymentStatus", () => {
 });
 
 describe("summarizeEventBookingPayment", () => {
+  it("does not ask for payment for removed tickets once current tickets are paid", () => {
+    const removed = { ...booking, lines: [booking.lines[0], { ...booking.lines[1], bookingPlace: { attendanceRemoved: true } }] };
+    const paidMember = { status: TicketOrderStatus.PAID, quantity: 1, event: { id: eventId }, ticketType: { id: memberTicketId } };
+    expect(summarizeEventBookingPayment({ booking: removed, eventId, ticketOrders: [paidMember], adjustments: [] })).toMatchObject({ kind: "paid", unpaidTicketTypeId: null });
+    expect(summarizeEventBookingPayment({ booking: { ...removed, lines: [removed.lines[1]] }, eventId, ticketOrders: [], adjustments: [] })).toMatchObject({ kind: "not_started", unpaidTicketTypeId: null });
+  });
   it("reports not started, pending, and fully paid states from all booking lines", () => {
     const none = summarizeEventBookingPayment({ booking, eventId, ticketOrders: [], adjustments: [] });
     expect(none.kind).toBe("not_started");

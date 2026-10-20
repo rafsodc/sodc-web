@@ -3062,6 +3062,7 @@ export interface GetBookingsForBookerAndEventData {
         id: UUIDString;
         bookingPlace: {
           id: UUIDString;
+          attendanceRemoved: boolean;
           paymentAllocations: ({
             id: UUIDString;
             ticketOrderId: UUIDString;

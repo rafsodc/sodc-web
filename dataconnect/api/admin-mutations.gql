@@ -1404,6 +1404,7 @@ query GetBookingsForBookerAndEvent($bookerId: String!, $eventId: UUID!) @auth(le
         id
         bookingPlace {
           id
+          attendanceRemoved
           paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
             id
             ticketOrderId

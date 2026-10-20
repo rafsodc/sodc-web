@@ -148,6 +148,20 @@ The member-facing state is derived in this priority order:
 
 Free bookings skip Stripe and move to `CONFIRMED` once approval is `NOT_REQUIRED` or `APPROVED` (implemented by #545).
 
+### Tickets removed from attendance
+
+An organiser's attendance-only removal preserves the original booking line,
+place and payment history. Checkout reads `BookingPlace.attendanceRemoved` and
+excludes removed places from new charges, automatic refund planning and the
+payment-completion check. An empty current booking is not confirmed by checkout.
+Any refund for a removed paid ticket remains a manual adjustment.
+
+Pending orders are reusable only when all their allocated places still need
+payment. An order containing a removed place is superseded when a fresh checkout
+is requested; the replacement covers only current unpaid places. Existing paid
+allocations are retained. Deploy the updated connector before the functions so
+checkout receives the removal flag, then release the frontend payment summary.
+
 ## Revision approval rules
 
 - Initial submission derives approval from the number of guest-audience booking lines.

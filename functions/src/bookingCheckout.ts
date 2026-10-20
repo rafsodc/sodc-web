@@ -81,6 +81,8 @@ function hasSettledAllocation(line: BookingRow["lines"][number]): boolean {
 export function planBookingAllocationRefunds(booking: BookingRow): BookingAllocationRefund[] {
   const refunds: BookingAllocationRefund[] = [];
   for (const line of booking.lines) {
+    // Attendance removal leaves financial records for manual adjustment.
+    if (line.bookingPlace.attendanceRemoved) continue;
     const requiredAmountMinor = Math.round(line.ticketType.price * 100);
     let excessAmountMinor = Math.max(0, paidAmountMinor(line) - requiredAmountMinor);
     if (excessAmountMinor === 0) continue;
@@ -111,9 +113,10 @@ export function planBookingAllocationRefunds(booking: BookingRow): BookingAlloca
 }
 
 export function bookingIsFullyPaid(booking: BookingRow): boolean {
+  const currentLines = booking.lines.filter((line) => !line.bookingPlace.attendanceRemoved);
   return (
-    booking.lines.length > 0 &&
-    booking.lines.every(
+    currentLines.length > 0 &&
+    currentLines.every(
       (line) =>
         hasSettledAllocation(line) &&
         paidAmountMinor(line) >= Math.round(line.ticketType.price * 100)
@@ -125,6 +128,7 @@ export function bookingIsFullyPaid(booking: BookingRow): boolean {
 export function computeUnpaidBookingCheckoutItems(booking: BookingRow): BookingCheckoutPlaceItem[] {
   const items: BookingCheckoutPlaceItem[] = [];
   for (const line of booking.lines) {
+    if (line.bookingPlace.attendanceRemoved) continue;
     const bookingPlaceId = line.bookingPlace.id;
     const requiredAmountMinor = Math.round(line.ticketType.price * 100);
     const remainingAmountMinor = Math.max(0, requiredAmountMinor - paidAmountMinor(line));

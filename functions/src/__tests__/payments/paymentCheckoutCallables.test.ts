@@ -176,6 +176,40 @@ describe("payment checkout callables", () => {
     expect(result).toEqual({ url: "https://checkout.stripe.test/session", orderIds: [ORDER_ID], confirmed: false });
   });
 
+  it("charges £105 for two unpaid current tickets and replaces a pending order that includes a removed guest", async () => {
+    const current = booking(BookingApprovalStatus.APPROVED, [70, 35, 70, 70]);
+    const guestFull = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const removedGuest = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    current.lines[2].bookingPlace.id = guestFull;
+    current.lines[3].bookingPlace.id = removedGuest;
+    current.lines[3].bookingPlace.attendanceRemoved = true;
+    current.lines[0].bookingPlace.paymentAllocations = [{
+      id: "paid-allocation", ticketOrderId: "paid-member-order", allocatedAmountMinor: 7000, refundedAmountMinor: 0,
+    }];
+    getBookings.mockResolvedValue({ data: { user: { bookings: [current], ticketOrders: [
+      { id: "paid-member-order", status: TicketOrderStatus.PAID, stripePaymentIntentId: "pi_paid_member" },
+    ] } } } as never);
+    getOrders.mockResolvedValue({ data: { user: { ticketOrders: [
+      { id: ORDER_ID, status: TicketOrderStatus.PENDING, quantity: 1, unitAmountMinor: 3500,
+        ticketType: { id: TICKET_TYPE_ID }, paymentAllocations: [{ bookingPlace: { id: PLACE_B } }] },
+      { id: STALE_ORDER_ID, status: TicketOrderStatus.PENDING, quantity: 2, unitAmountMinor: 7000,
+        ticketType: { id: TICKET_TYPE_ID }, paymentAllocations: [{ bookingPlace: { id: guestFull } }, { bookingPlace: { id: removedGuest } }] },
+    ] } } } as never);
+    const stripe = stripeClient();
+    mocks.requireStripe.mockReturnValue(stripe);
+    mocks.createAllocatedTicketOrder.mockResolvedValue("dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+    await eventHandler(enabledRequest({ eventId: EVENT_ID }));
+    expect(markFailed).toHaveBeenCalledExactlyOnceWith({ id: STALE_ORDER_ID, webhookEventId: `checkout-supersede:${STALE_ORDER_ID}` });
+    expect(mocks.createAllocatedTicketOrder).toHaveBeenCalledExactlyOnceWith({
+      userId: USER_ID, eventId: EVENT_ID, ticketTypeId: TICKET_TYPE_ID, unitAmountMinor: 7000, bookingPlaceIds: [guestFull],
+    });
+    expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({ line_items: [
+      expect.objectContaining({ quantity: 1, price_data: expect.objectContaining({ unit_amount: 3500 }) }),
+      expect.objectContaining({ quantity: 1, price_data: expect.objectContaining({ unit_amount: 7000 }) }),
+    ] }), expect.anything());
+    expect(stripe.refunds.create).not.toHaveBeenCalled();
+  });
+
   it("allows an eligible member with a payment-ready booking to pay after closing", async () => {
     const closedTicketType = ticketType();
     closedTicketType.event.bookingEndDateTime = "2021-01-01T00:00:00.000Z";

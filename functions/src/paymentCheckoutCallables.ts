@@ -206,7 +206,7 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
       await confirmBookingIfFullyPaid({ bookerId: uid, eventId });
       return { url: null, orderIds: [], confirmed: true };
     }
-    throw new HttpsError("failed-precondition", "All tickets for this booking are already paid");
+    throw new HttpsError("failed-precondition", "No current tickets require payment");
   }
 
   const checkoutLines = planCheckoutOrderLines(unpaidItems, eventTicketOrders);
