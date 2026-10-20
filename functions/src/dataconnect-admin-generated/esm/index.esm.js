@@ -967,6 +967,24 @@ export function confirmPotentialLost(dcOrVarsOrOptions, varsOrOptions, options) 
   return dcInstance.executeMutation('ConfirmPotentialLost', inputVars, inputOpts);
 }
 
+export function getNewMemberReportMigration(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNewMemberReportMigration', undefined, inputOpts);
+}
+
+export function listNewMemberReportEvents(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListNewMemberReportEvents', inputVars, inputOpts);
+}
+
+export function listNewMemberReportProfiles(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListNewMemberReportProfiles', inputVars, inputOpts);
+}
+
 export function getOrganiserGuestEvent(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

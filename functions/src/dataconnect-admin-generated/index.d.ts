@@ -1903,6 +1903,12 @@ export interface GetMyTicketOrdersData {
   } & User_Key;
 }
 
+export interface GetNewMemberReportMigrationData {
+  legacyUserIdentities: ({
+    importedAt: TimestampString;
+  })[];
+}
+
 export interface GetNotificationDeliveryByChannelAndKeyData {
   notificationDeliveries: ({
     id: UUIDString;
@@ -3039,6 +3045,47 @@ export interface ListMigrationUsersData {
 
 export interface ListMigrationUsersVariables {
   limit: number;
+}
+
+export interface ListNewMemberReportEventsData {
+  events: ({
+    id: UUIDString;
+    title: string;
+    endDateTime: TimestampString;
+    section: {
+      name: string;
+    };
+  } & Event_Key)[];
+}
+
+export interface ListNewMemberReportEventsVariables {
+  through: TimestampString;
+  limit: number;
+  offset: number;
+}
+
+export interface ListNewMemberReportProfilesData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    rank?: string | null;
+    membershipStatus: MembershipStatus;
+    createdAt: TimestampString;
+    createdBy?: string | null;
+    legacyPasswordMigrated?: boolean | null;
+    legacyIdentity?: {
+      sourceSystem: string;
+    };
+  } & User_Key)[];
+}
+
+export interface ListNewMemberReportProfilesVariables {
+  since: TimestampString;
+  through: TimestampString;
+  limit: number;
+  offset: number;
 }
 
 export interface ListNotifyReplyToAuditsData {
@@ -4945,6 +4992,21 @@ export function getPotentialLostProfile(vars: GetPotentialLostProfileVariables, 
 export function confirmPotentialLost(dc: DataConnect, vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
 /** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLost' Mutation. Allow users to pass in custom DataConnect instances. */
 export function confirmPotentialLost(vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetNewMemberReportMigration' Query. Allow users to execute without passing in DataConnect. */
+export function getNewMemberReportMigration(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNewMemberReportMigrationData>>;
+/** Generated Node Admin SDK operation action function for the 'GetNewMemberReportMigration' Query. Allow users to pass in custom DataConnect instances. */
+export function getNewMemberReportMigration(options?: OperationOptions): Promise<ExecuteOperationResponse<GetNewMemberReportMigrationData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListNewMemberReportEvents' Query. Allow users to execute without passing in DataConnect. */
+export function listNewMemberReportEvents(dc: DataConnect, vars: ListNewMemberReportEventsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListNewMemberReportEventsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListNewMemberReportEvents' Query. Allow users to pass in custom DataConnect instances. */
+export function listNewMemberReportEvents(vars: ListNewMemberReportEventsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListNewMemberReportEventsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListNewMemberReportProfiles' Query. Allow users to execute without passing in DataConnect. */
+export function listNewMemberReportProfiles(dc: DataConnect, vars: ListNewMemberReportProfilesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListNewMemberReportProfilesData>>;
+/** Generated Node Admin SDK operation action function for the 'ListNewMemberReportProfiles' Query. Allow users to pass in custom DataConnect instances. */
+export function listNewMemberReportProfiles(vars: ListNewMemberReportProfilesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListNewMemberReportProfilesData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetOrganiserGuestEvent' Query. Allow users to execute without passing in DataConnect. */
 export function getOrganiserGuestEvent(dc: DataConnect, vars: GetOrganiserGuestEventVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetOrganiserGuestEventData>>;

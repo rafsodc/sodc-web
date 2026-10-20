@@ -1125,6 +1125,27 @@ function confirmPotentialLost(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.confirmPotentialLost = confirmPotentialLost;
 
+function getNewMemberReportMigration(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNewMemberReportMigration', undefined, inputOpts);
+}
+exports.getNewMemberReportMigration = getNewMemberReportMigration;
+
+function listNewMemberReportEvents(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListNewMemberReportEvents', inputVars, inputOpts);
+}
+exports.listNewMemberReportEvents = listNewMemberReportEvents;
+
+function listNewMemberReportProfiles(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListNewMemberReportProfiles', inputVars, inputOpts);
+}
+exports.listNewMemberReportProfiles = listNewMemberReportProfiles;
+
 function getOrganiserGuestEvent(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

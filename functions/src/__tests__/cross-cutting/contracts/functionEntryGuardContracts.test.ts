@@ -30,6 +30,9 @@ describe("function entry guard contracts", () => {
     assertOnCallGuard(deliveryAdmin, "updateGovNotifyDeliveryMode", "requireAdmin(request);");
 
     const users = readSource("users.ts");
+    const newMembers = readSource("newMembersReport.ts");
+    assertOnCallGuard(newMembers, "getNewMemberReportOptions", "requireAdmin(request);");
+    assertOnCallGuard(newMembers, "getNewMembersReport", "requireAdmin(request);");
     assertOnCallGuard(users, "updateDisplayName", "requireAuth(request);");
     assertOnCallGuard(users, "updateUserDisplayName", "requireAdmin(request);");
     assertOnCallGuard(users, "searchUsers", "requireAdmin(request);");

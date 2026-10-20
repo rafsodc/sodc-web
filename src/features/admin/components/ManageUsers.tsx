@@ -22,6 +22,7 @@ import AdminUsersTable from "../../users/components/AdminUsersTable";
 import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import EditUserDialog from "../../profile/components/EditUserDialog";
 import PotentialLostMembers from "./PotentialLostMembers";
+import NewMembersReport from "./NewMembersReport";
 import UserGroupMemberships from "./UserGroupMemberships";
 import { listAdminUsers } from "./listAdminUsers";
 import { grantAdminClaim, revokeAdminClaim } from "../../../shared/utils/firebaseFunctions";
@@ -253,6 +254,8 @@ export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsers
       )}
 
       <Tabs
+        variant="scrollable"
+        scrollButtons="auto"
         value={tabValue}
         onChange={(_, newValue) => {
           setTabValue(newValue);
@@ -263,6 +266,7 @@ export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsers
         <Tab label="Search users" />
         <Tab label="Administrators" />
         <Tab label="Potential lost" />
+        <Tab label="New members" />
       </Tabs>
 
       {tabValue === 0 && (
@@ -378,6 +382,7 @@ export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsers
       )}
 
       {tabValue === 2 && <PotentialLostMembers />}
+      {tabValue === 3 && <NewMembersReport />}
 
       <EditUserDialog
         open={editDialogOpen}
