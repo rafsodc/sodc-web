@@ -1,4 +1,4 @@
-import { toUserFacingError, type UserFacingError } from "./errorHandling";
+import { toUserFacingError, type UserFacingError, type UserFacingErrorInput } from "./errorHandling";
 
 export type AdminErrorContext =
   | "users"
@@ -31,9 +31,28 @@ const CONTEXT_MESSAGES: Record<AdminErrorContext, string> = {
   "audit-logs": "We could not load the audit logs. Please try again.",
 };
 
+const ANNOUNCEMENT_ERRORS: Record<string, UserFacingErrorInput> = {
+  ANNOUNCEMENT_AUDIENCE_CHANGED: {
+    category: "precondition", title: "Review the attendee list",
+    message: "The attendee list has changed since your preview. Click Preview recipients again, review the list, then send.", retryable: true,
+  },
+  ANNOUNCEMENT_AUDIENCE_EMPTY: {
+    category: "precondition", title: "No attendee contacts",
+    message: "No contacts match the current attendee audience. Check the filters and click Preview recipients again.", retryable: false,
+  },
+  ANNOUNCEMENT_TEMPLATE_UNSUBSCRIBE: {
+    category: "precondition", title: "Choose another template",
+    message: "This template contains an unsubscribe link. Choose a template without one for event attendee messages.", retryable: false,
+  },
+  ANNOUNCEMENT_REPLY_TO_UNAVAILABLE: {
+    category: "precondition", title: "Choose a reply-to address",
+    message: "The selected reply-to address is no longer available. Refresh the page and choose another address or the system default.", retryable: true,
+  },
+};
+
 /** Maps an administration failure without exposing provider or server messages. */
 export function toAdminUserFacingError(error: unknown, context: AdminErrorContext): UserFacingError {
-  const mapped = toUserFacingError(error);
+  const mapped = toUserFacingError(error, context === "announcements" ? { domainErrors: ANNOUNCEMENT_ERRORS } : {});
   if (mapped.category !== "unknown") return mapped;
   return {
     ...mapped,

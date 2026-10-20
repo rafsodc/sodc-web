@@ -777,7 +777,7 @@ export const sendSectionAnnouncement = onCall(
         replyTo = await resolveNotifyReplyToForAnnouncement(selectedReplyToAddressId);
       } catch (error) {
         if (error instanceof NotifyReplyToSelectionError) {
-          throw new HttpsError("failed-precondition", error.message);
+          throw new HttpsError("failed-precondition", error.message, { code: "ANNOUNCEMENT_REPLY_TO_UNAVAILABLE" });
         }
         throw error;
       }
@@ -787,12 +787,15 @@ export const sendSectionAnnouncement = onCall(
       const requiredPersonalisation = extractTemplateVariables(template.body ?? "", template.subject ?? "");
 
       if (eventAudience && requiredPersonalisation.includes("unsubscribeUrl")) {
-        throw new HttpsError("failed-precondition", "Choose an event template without an unsubscribe link.");
+        throw new HttpsError("failed-precondition", "Choose an event template without an unsubscribe link.", { code: "ANNOUNCEMENT_TEMPLATE_UNSUBSCRIBE" });
       }
 
       const eventResolution = eventAudience ? await resolveEventAnnouncementAudience(sectionId, eventAudience) : undefined;
-      if (eventResolution && (request.data?.audienceFingerprint !== eventResolution.preview.fingerprint || eventResolution.deliverable.length === 0)) {
-        throw new HttpsError("failed-precondition", "Preview the current attendee audience before sending. It may have changed or have no recipients.");
+      if (eventResolution && eventResolution.deliverable.length === 0) {
+        throw new HttpsError("failed-precondition", "No attendee contacts match the current audience.", { code: "ANNOUNCEMENT_AUDIENCE_EMPTY" });
+      }
+      if (eventResolution && request.data?.audienceFingerprint !== eventResolution.preview.fingerprint) {
+        throw new HttpsError("failed-precondition", "Preview the current attendee audience before sending.", { code: "ANNOUNCEMENT_AUDIENCE_CHANGED" });
       }
       let sectionName: string;
       let deliverable: AnnouncementAudienceRecipient[];
