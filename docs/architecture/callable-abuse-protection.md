@@ -45,6 +45,8 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `getSectionMembersMerged` | 60 | 5 minutes | Member-directory enumeration |
 | `searchSectionMembers` | 60 | 5 minutes | Member-directory enumeration (bounded, name-match only) |
 | `listPotentialLostMembers` | 30 | 5 minutes | Admin-only member review evidence |
+| `getNewMemberReportOptions` | 30 | 5 minutes | Admin-only migration baseline and completed event enumeration |
+| `getNewMembersReport` | 30 | 5 minutes | Admin-only date-bounded registration report with member contact details |
 | `confirmPotentialLostMember` | 30 | 1 hour | Admin-only audited membership restriction |
 | `getEventAttendees` | 60 | 5 minutes | Names, member/guest audience and symposium/dinner attendance; enabled account and event section access |
 | `createTicketCheckoutSession` | 10 | 15 minutes | Stripe session creation |
@@ -99,6 +101,8 @@ Risk levels are relative to other authenticated callables in this application. â
 | `getSectionEventsForUser` | Low | Medium | None | Medium | Enabled + section access; bounded section query |
 | `getEventForUser` | Low | Low | None | Low | Enabled + section access; single-event query |
 | `listPotentialLostMembers` | Medium | Medium | None | Low | Enabled admin; paged profiles and Auth records |
+| `getNewMemberReportOptions` | Low | Medium | None | Medium | Enabled admin; 30/5 minutes; paged completed events and earliest migration timestamp |
+| `getNewMembersReport` | Medium | High | None | Medium | Enabled admin; 30/5 minutes; paged profiles within a validated date range and fixed upper time bound; legacy identities excluded |
 | `confirmPotentialLostMember` | High | Low | Email | Medium | Enabled admin; fresh evidence and atomic status/audit write |
 | `getEventAttendees` | Medium | Low | None | Low | Enabled + section access; 60/5 minutes; dedicated names, audience and attendance-flags response |
 | `submitEventBooking` | High | None | GOV.UK Notify | High | Enabled; validation/idempotency; 20/hour weighted by line count (#541) |
