@@ -78,6 +78,7 @@ vi.mock("../../../profile/components/EditUserDialog", () => ({
 }));
 vi.mock("../../../users/components/AdminUsersTable", () => ({ default: () => null }));
 vi.mock("../UserGroupMemberships", () => ({ default: () => null }));
+vi.mock("../NewMembersReport", () => ({ default: () => <div>New member report contents</div> }));
 
 function Harness() {
   const [refreshes, setRefreshes] = useState(0);
@@ -95,6 +96,12 @@ describe("ManageUsers", () => {
     mocks.listAdminUsers.mockResolvedValue({ success: true, users: [] });
     vi.mocked(firebaseFunctions.grantAdminClaim).mockResolvedValue({ success: true, message: "Admin granted" });
     vi.mocked(firebaseFunctions.revokeAdminClaim).mockResolvedValue({ success: true, message: "Admin revoked" });
+  });
+
+  it("opens the new members report from user administration", async () => {
+    render(<Harness />);
+    await userEvent.setup().click(screen.getByRole("tab", { name: "New members" }));
+    expect(screen.getByText("New member report contents")).toBeInTheDocument();
   });
 
   it("refreshes rendered app-level user state after an admin edits their own profile", async () => {

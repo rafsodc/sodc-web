@@ -2148,6 +2148,51 @@ exports.confirmPotentialLost = function confirmPotentialLost(dcOrVars, vars) {
 }
 ;
 
+const getNewMemberReportMigrationRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetNewMemberReportMigration');
+}
+getNewMemberReportMigrationRef.operationName = 'GetNewMemberReportMigration';
+exports.getNewMemberReportMigrationRef = getNewMemberReportMigrationRef;
+
+exports.getNewMemberReportMigration = function getNewMemberReportMigration(dcOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getNewMemberReportMigrationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listNewMemberReportEventsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListNewMemberReportEvents', inputVars);
+}
+listNewMemberReportEventsRef.operationName = 'ListNewMemberReportEvents';
+exports.listNewMemberReportEventsRef = listNewMemberReportEventsRef;
+
+exports.listNewMemberReportEvents = function listNewMemberReportEvents(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listNewMemberReportEventsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listNewMemberReportProfilesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListNewMemberReportProfiles', inputVars);
+}
+listNewMemberReportProfilesRef.operationName = 'ListNewMemberReportProfiles';
+exports.listNewMemberReportProfilesRef = listNewMemberReportProfilesRef;
+
+exports.listNewMemberReportProfiles = function listNewMemberReportProfiles(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listNewMemberReportProfilesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
 const getOrganiserGuestEventRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

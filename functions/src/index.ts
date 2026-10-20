@@ -3,6 +3,7 @@ import * as admin from "firebase-admin";
 // Export all functions
 export * from "./admin";
 export * from "./users";
+export { getNewMemberReportOptions, getNewMembersReport } from "./newMembersReport";
 export * from "./membershipStatus";
 export * from "./sections";
 export * from "./eventAttendees";

@@ -1925,6 +1925,12 @@ export interface GetMyTicketOrdersData {
   } & User_Key;
 }
 
+export interface GetNewMemberReportMigrationData {
+  legacyUserIdentities: ({
+    importedAt: TimestampString;
+  })[];
+}
+
 export interface GetNotificationDeliveryByChannelAndKeyData {
   notificationDeliveries: ({
     id: UUIDString;
@@ -3061,6 +3067,47 @@ export interface ListMigrationUsersData {
 
 export interface ListMigrationUsersVariables {
   limit: number;
+}
+
+export interface ListNewMemberReportEventsData {
+  events: ({
+    id: UUIDString;
+    title: string;
+    endDateTime: TimestampString;
+    section: {
+      name: string;
+    };
+  } & Event_Key)[];
+}
+
+export interface ListNewMemberReportEventsVariables {
+  through: TimestampString;
+  limit: number;
+  offset: number;
+}
+
+export interface ListNewMemberReportProfilesData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    rank?: string | null;
+    membershipStatus: MembershipStatus;
+    createdAt: TimestampString;
+    createdBy?: string | null;
+    legacyPasswordMigrated?: boolean | null;
+    legacyIdentity?: {
+      sourceSystem: string;
+    };
+  } & User_Key)[];
+}
+
+export interface ListNewMemberReportProfilesVariables {
+  since: TimestampString;
+  through: TimestampString;
+  limit: number;
+  offset: number;
 }
 
 export interface ListNotifyReplyToAuditsData {
@@ -5926,6 +5973,42 @@ export const confirmPotentialLostRef: ConfirmPotentialLostRef;
 
 export function confirmPotentialLost(vars: ConfirmPotentialLostVariables): MutationPromise<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
 export function confirmPotentialLost(dc: DataConnect, vars: ConfirmPotentialLostVariables): MutationPromise<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
+
+interface GetNewMemberReportMigrationRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetNewMemberReportMigrationData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): QueryRef<GetNewMemberReportMigrationData, undefined>;
+  operationName: string;
+}
+export const getNewMemberReportMigrationRef: GetNewMemberReportMigrationRef;
+
+export function getNewMemberReportMigration(options?: ExecuteQueryOptions): QueryPromise<GetNewMemberReportMigrationData, undefined>;
+export function getNewMemberReportMigration(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetNewMemberReportMigrationData, undefined>;
+
+interface ListNewMemberReportEventsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListNewMemberReportEventsVariables): QueryRef<ListNewMemberReportEventsData, ListNewMemberReportEventsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListNewMemberReportEventsVariables): QueryRef<ListNewMemberReportEventsData, ListNewMemberReportEventsVariables>;
+  operationName: string;
+}
+export const listNewMemberReportEventsRef: ListNewMemberReportEventsRef;
+
+export function listNewMemberReportEvents(vars: ListNewMemberReportEventsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNewMemberReportEventsData, ListNewMemberReportEventsVariables>;
+export function listNewMemberReportEvents(dc: DataConnect, vars: ListNewMemberReportEventsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNewMemberReportEventsData, ListNewMemberReportEventsVariables>;
+
+interface ListNewMemberReportProfilesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListNewMemberReportProfilesVariables): QueryRef<ListNewMemberReportProfilesData, ListNewMemberReportProfilesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListNewMemberReportProfilesVariables): QueryRef<ListNewMemberReportProfilesData, ListNewMemberReportProfilesVariables>;
+  operationName: string;
+}
+export const listNewMemberReportProfilesRef: ListNewMemberReportProfilesRef;
+
+export function listNewMemberReportProfiles(vars: ListNewMemberReportProfilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListNewMemberReportProfilesData, ListNewMemberReportProfilesVariables>;
+export function listNewMemberReportProfiles(dc: DataConnect, vars: ListNewMemberReportProfilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListNewMemberReportProfilesData, ListNewMemberReportProfilesVariables>;
 
 interface GetOrganiserGuestEventRef {
   /* Allow users to create refs without passing in DataConnect */

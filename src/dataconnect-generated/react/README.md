@@ -81,6 +81,9 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetEventAttendeeNames*](#geteventattendeenames)
   - [*ListPotentialLostProfiles*](#listpotentiallostprofiles)
   - [*GetPotentialLostProfile*](#getpotentiallostprofile)
+  - [*GetNewMemberReportMigration*](#getnewmemberreportmigration)
+  - [*ListNewMemberReportEvents*](#listnewmemberreportevents)
+  - [*ListNewMemberReportProfiles*](#listnewmemberreportprofiles)
   - [*GetOrganiserGuestEvent*](#getorganiserguestevent)
   - [*ListOrganiserGuestTypes*](#listorganiserguesttypes)
   - [*GetOrganiserGuestType*](#getorganiserguesttype)
@@ -6507,6 +6510,271 @@ export default function GetPotentialLostProfileComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.user);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetNewMemberReportMigration
+You can execute the `GetNewMemberReportMigration` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetNewMemberReportMigration(dc: DataConnect, options?: useDataConnectQueryOptions<GetNewMemberReportMigrationData>): UseDataConnectQueryResult<GetNewMemberReportMigrationData, undefined>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetNewMemberReportMigration(options?: useDataConnectQueryOptions<GetNewMemberReportMigrationData>): UseDataConnectQueryResult<GetNewMemberReportMigrationData, undefined>;
+```
+
+### Variables
+The `GetNewMemberReportMigration` Query has no variables.
+### Return Type
+Recall that calling the `GetNewMemberReportMigration` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetNewMemberReportMigration` Query is of type `GetNewMemberReportMigrationData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetNewMemberReportMigrationData {
+  legacyUserIdentities: ({
+    importedAt: TimestampString;
+  })[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetNewMemberReportMigration`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig } from '@dataconnect/generated';
+import { useGetNewMemberReportMigration } from '@dataconnect/generated/react'
+
+export default function GetNewMemberReportMigrationComponent() {
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetNewMemberReportMigration();
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetNewMemberReportMigration(dataConnect);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNewMemberReportMigration(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNewMemberReportMigration(dataConnect, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.legacyUserIdentities);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListNewMemberReportEvents
+You can execute the `ListNewMemberReportEvents` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListNewMemberReportEvents(dc: DataConnect, vars: ListNewMemberReportEventsVariables, options?: useDataConnectQueryOptions<ListNewMemberReportEventsData>): UseDataConnectQueryResult<ListNewMemberReportEventsData, ListNewMemberReportEventsVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListNewMemberReportEvents(vars: ListNewMemberReportEventsVariables, options?: useDataConnectQueryOptions<ListNewMemberReportEventsData>): UseDataConnectQueryResult<ListNewMemberReportEventsData, ListNewMemberReportEventsVariables>;
+```
+
+### Variables
+The `ListNewMemberReportEvents` Query requires an argument of type `ListNewMemberReportEventsVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListNewMemberReportEventsVariables {
+  through: TimestampString;
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that calling the `ListNewMemberReportEvents` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListNewMemberReportEvents` Query is of type `ListNewMemberReportEventsData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListNewMemberReportEventsData {
+  events: ({
+    id: UUIDString;
+    title: string;
+    endDateTime: TimestampString;
+    section: {
+      name: string;
+    };
+  } & Event_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListNewMemberReportEvents`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListNewMemberReportEventsVariables } from '@dataconnect/generated';
+import { useListNewMemberReportEvents } from '@dataconnect/generated/react'
+
+export default function ListNewMemberReportEventsComponent() {
+  // The `useListNewMemberReportEvents` Query hook requires an argument of type `ListNewMemberReportEventsVariables`:
+  const listNewMemberReportEventsVars: ListNewMemberReportEventsVariables = {
+    through: ..., 
+    limit: ..., 
+    offset: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListNewMemberReportEvents(listNewMemberReportEventsVars);
+  // Variables can be defined inline as well.
+  const query = useListNewMemberReportEvents({ through: ..., limit: ..., offset: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListNewMemberReportEvents(dataConnect, listNewMemberReportEventsVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListNewMemberReportEvents(listNewMemberReportEventsVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListNewMemberReportEvents(dataConnect, listNewMemberReportEventsVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.events);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## ListNewMemberReportProfiles
+You can execute the `ListNewMemberReportProfiles` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListNewMemberReportProfiles(dc: DataConnect, vars: ListNewMemberReportProfilesVariables, options?: useDataConnectQueryOptions<ListNewMemberReportProfilesData>): UseDataConnectQueryResult<ListNewMemberReportProfilesData, ListNewMemberReportProfilesVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListNewMemberReportProfiles(vars: ListNewMemberReportProfilesVariables, options?: useDataConnectQueryOptions<ListNewMemberReportProfilesData>): UseDataConnectQueryResult<ListNewMemberReportProfilesData, ListNewMemberReportProfilesVariables>;
+```
+
+### Variables
+The `ListNewMemberReportProfiles` Query requires an argument of type `ListNewMemberReportProfilesVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListNewMemberReportProfilesVariables {
+  since: TimestampString;
+  through: TimestampString;
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that calling the `ListNewMemberReportProfiles` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListNewMemberReportProfiles` Query is of type `ListNewMemberReportProfilesData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListNewMemberReportProfilesData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    rank?: string | null;
+    membershipStatus: MembershipStatus;
+    createdAt: TimestampString;
+    createdBy?: string | null;
+    legacyPasswordMigrated?: boolean | null;
+    legacyIdentity?: {
+      sourceSystem: string;
+    };
+  } & User_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListNewMemberReportProfiles`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListNewMemberReportProfilesVariables } from '@dataconnect/generated';
+import { useListNewMemberReportProfiles } from '@dataconnect/generated/react'
+
+export default function ListNewMemberReportProfilesComponent() {
+  // The `useListNewMemberReportProfiles` Query hook requires an argument of type `ListNewMemberReportProfilesVariables`:
+  const listNewMemberReportProfilesVars: ListNewMemberReportProfilesVariables = {
+    since: ..., 
+    through: ..., 
+    limit: ..., 
+    offset: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListNewMemberReportProfiles(listNewMemberReportProfilesVars);
+  // Variables can be defined inline as well.
+  const query = useListNewMemberReportProfiles({ since: ..., through: ..., limit: ..., offset: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListNewMemberReportProfiles(dataConnect, listNewMemberReportProfilesVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListNewMemberReportProfiles(listNewMemberReportProfilesVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListNewMemberReportProfiles(dataConnect, listNewMemberReportProfilesVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.users);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }

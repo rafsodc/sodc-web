@@ -74,6 +74,9 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetEventAttendeeNames*](#geteventattendeenames)
   - [*ListPotentialLostProfiles*](#listpotentiallostprofiles)
   - [*GetPotentialLostProfile*](#getpotentiallostprofile)
+  - [*GetNewMemberReportMigration*](#getnewmemberreportmigration)
+  - [*ListNewMemberReportEvents*](#listnewmemberreportevents)
+  - [*ListNewMemberReportProfiles*](#listnewmemberreportprofiles)
   - [*GetOrganiserGuestEvent*](#getorganiserguestevent)
   - [*ListOrganiserGuestTypes*](#listorganiserguesttypes)
   - [*GetOrganiserGuestType*](#getorganiserguesttype)
@@ -8241,6 +8244,352 @@ console.log(data.user);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.user);
+});
+```
+
+## GetNewMemberReportMigration
+You can execute the `GetNewMemberReportMigration` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getNewMemberReportMigration(options?: ExecuteQueryOptions): QueryPromise<GetNewMemberReportMigrationData, undefined>;
+
+interface GetNewMemberReportMigrationRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<GetNewMemberReportMigrationData, undefined>;
+}
+export const getNewMemberReportMigrationRef: GetNewMemberReportMigrationRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getNewMemberReportMigration(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetNewMemberReportMigrationData, undefined>;
+
+interface GetNewMemberReportMigrationRef {
+  ...
+  (dc: DataConnect): QueryRef<GetNewMemberReportMigrationData, undefined>;
+}
+export const getNewMemberReportMigrationRef: GetNewMemberReportMigrationRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getNewMemberReportMigrationRef:
+```typescript
+const name = getNewMemberReportMigrationRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetNewMemberReportMigration` query has no variables.
+### Return Type
+Recall that executing the `GetNewMemberReportMigration` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetNewMemberReportMigrationData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetNewMemberReportMigrationData {
+  legacyUserIdentities: ({
+    importedAt: TimestampString;
+  })[];
+}
+```
+### Using `GetNewMemberReportMigration`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getNewMemberReportMigration } from '@dataconnect/generated';
+
+
+// Call the `getNewMemberReportMigration()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getNewMemberReportMigration();
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getNewMemberReportMigration(dataConnect);
+
+console.log(data.legacyUserIdentities);
+
+// Or, you can use the `Promise` API.
+getNewMemberReportMigration().then((response) => {
+  const data = response.data;
+  console.log(data.legacyUserIdentities);
+});
+```
+
+### Using `GetNewMemberReportMigration`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getNewMemberReportMigrationRef } from '@dataconnect/generated';
+
+
+// Call the `getNewMemberReportMigrationRef()` function to get a reference to the query.
+const ref = getNewMemberReportMigrationRef();
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getNewMemberReportMigrationRef(dataConnect);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.legacyUserIdentities);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.legacyUserIdentities);
+});
+```
+
+## ListNewMemberReportEvents
+You can execute the `ListNewMemberReportEvents` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listNewMemberReportEvents(vars: ListNewMemberReportEventsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNewMemberReportEventsData, ListNewMemberReportEventsVariables>;
+
+interface ListNewMemberReportEventsRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListNewMemberReportEventsVariables): QueryRef<ListNewMemberReportEventsData, ListNewMemberReportEventsVariables>;
+}
+export const listNewMemberReportEventsRef: ListNewMemberReportEventsRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listNewMemberReportEvents(dc: DataConnect, vars: ListNewMemberReportEventsVariables, options?: ExecuteQueryOptions): QueryPromise<ListNewMemberReportEventsData, ListNewMemberReportEventsVariables>;
+
+interface ListNewMemberReportEventsRef {
+  ...
+  (dc: DataConnect, vars: ListNewMemberReportEventsVariables): QueryRef<ListNewMemberReportEventsData, ListNewMemberReportEventsVariables>;
+}
+export const listNewMemberReportEventsRef: ListNewMemberReportEventsRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listNewMemberReportEventsRef:
+```typescript
+const name = listNewMemberReportEventsRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListNewMemberReportEvents` query requires an argument of type `ListNewMemberReportEventsVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListNewMemberReportEventsVariables {
+  through: TimestampString;
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that executing the `ListNewMemberReportEvents` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListNewMemberReportEventsData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListNewMemberReportEventsData {
+  events: ({
+    id: UUIDString;
+    title: string;
+    endDateTime: TimestampString;
+    section: {
+      name: string;
+    };
+  } & Event_Key)[];
+}
+```
+### Using `ListNewMemberReportEvents`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listNewMemberReportEvents, ListNewMemberReportEventsVariables } from '@dataconnect/generated';
+
+// The `ListNewMemberReportEvents` query requires an argument of type `ListNewMemberReportEventsVariables`:
+const listNewMemberReportEventsVars: ListNewMemberReportEventsVariables = {
+  through: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `listNewMemberReportEvents()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listNewMemberReportEvents(listNewMemberReportEventsVars);
+// Variables can be defined inline as well.
+const { data } = await listNewMemberReportEvents({ through: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listNewMemberReportEvents(dataConnect, listNewMemberReportEventsVars);
+
+console.log(data.events);
+
+// Or, you can use the `Promise` API.
+listNewMemberReportEvents(listNewMemberReportEventsVars).then((response) => {
+  const data = response.data;
+  console.log(data.events);
+});
+```
+
+### Using `ListNewMemberReportEvents`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listNewMemberReportEventsRef, ListNewMemberReportEventsVariables } from '@dataconnect/generated';
+
+// The `ListNewMemberReportEvents` query requires an argument of type `ListNewMemberReportEventsVariables`:
+const listNewMemberReportEventsVars: ListNewMemberReportEventsVariables = {
+  through: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `listNewMemberReportEventsRef()` function to get a reference to the query.
+const ref = listNewMemberReportEventsRef(listNewMemberReportEventsVars);
+// Variables can be defined inline as well.
+const ref = listNewMemberReportEventsRef({ through: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listNewMemberReportEventsRef(dataConnect, listNewMemberReportEventsVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.events);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.events);
+});
+```
+
+## ListNewMemberReportProfiles
+You can execute the `ListNewMemberReportProfiles` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listNewMemberReportProfiles(vars: ListNewMemberReportProfilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListNewMemberReportProfilesData, ListNewMemberReportProfilesVariables>;
+
+interface ListNewMemberReportProfilesRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListNewMemberReportProfilesVariables): QueryRef<ListNewMemberReportProfilesData, ListNewMemberReportProfilesVariables>;
+}
+export const listNewMemberReportProfilesRef: ListNewMemberReportProfilesRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listNewMemberReportProfiles(dc: DataConnect, vars: ListNewMemberReportProfilesVariables, options?: ExecuteQueryOptions): QueryPromise<ListNewMemberReportProfilesData, ListNewMemberReportProfilesVariables>;
+
+interface ListNewMemberReportProfilesRef {
+  ...
+  (dc: DataConnect, vars: ListNewMemberReportProfilesVariables): QueryRef<ListNewMemberReportProfilesData, ListNewMemberReportProfilesVariables>;
+}
+export const listNewMemberReportProfilesRef: ListNewMemberReportProfilesRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listNewMemberReportProfilesRef:
+```typescript
+const name = listNewMemberReportProfilesRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListNewMemberReportProfiles` query requires an argument of type `ListNewMemberReportProfilesVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListNewMemberReportProfilesVariables {
+  since: TimestampString;
+  through: TimestampString;
+  limit: number;
+  offset: number;
+}
+```
+### Return Type
+Recall that executing the `ListNewMemberReportProfiles` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListNewMemberReportProfilesData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListNewMemberReportProfilesData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    rank?: string | null;
+    membershipStatus: MembershipStatus;
+    createdAt: TimestampString;
+    createdBy?: string | null;
+    legacyPasswordMigrated?: boolean | null;
+    legacyIdentity?: {
+      sourceSystem: string;
+    };
+  } & User_Key)[];
+}
+```
+### Using `ListNewMemberReportProfiles`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listNewMemberReportProfiles, ListNewMemberReportProfilesVariables } from '@dataconnect/generated';
+
+// The `ListNewMemberReportProfiles` query requires an argument of type `ListNewMemberReportProfilesVariables`:
+const listNewMemberReportProfilesVars: ListNewMemberReportProfilesVariables = {
+  since: ..., 
+  through: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `listNewMemberReportProfiles()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listNewMemberReportProfiles(listNewMemberReportProfilesVars);
+// Variables can be defined inline as well.
+const { data } = await listNewMemberReportProfiles({ since: ..., through: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listNewMemberReportProfiles(dataConnect, listNewMemberReportProfilesVars);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+listNewMemberReportProfiles(listNewMemberReportProfilesVars).then((response) => {
+  const data = response.data;
+  console.log(data.users);
+});
+```
+
+### Using `ListNewMemberReportProfiles`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listNewMemberReportProfilesRef, ListNewMemberReportProfilesVariables } from '@dataconnect/generated';
+
+// The `ListNewMemberReportProfiles` query requires an argument of type `ListNewMemberReportProfilesVariables`:
+const listNewMemberReportProfilesVars: ListNewMemberReportProfilesVariables = {
+  since: ..., 
+  through: ..., 
+  limit: ..., 
+  offset: ..., 
+};
+
+// Call the `listNewMemberReportProfilesRef()` function to get a reference to the query.
+const ref = listNewMemberReportProfilesRef(listNewMemberReportProfilesVars);
+// Variables can be defined inline as well.
+const ref = listNewMemberReportProfilesRef({ since: ..., through: ..., limit: ..., offset: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listNewMemberReportProfilesRef(dataConnect, listNewMemberReportProfilesVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.users);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.users);
 });
 ```
 

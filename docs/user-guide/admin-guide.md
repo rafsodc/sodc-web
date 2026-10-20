@@ -27,6 +27,16 @@ Once approved, the member's account is activated and they can access sections an
 - Grant or revoke admin rights
 - Deactivate an account if needed
 
+### New members report
+
+Open **Admin → Manage Users → New members** to list people who registered on the site during a selected period. The default starts at the first recorded import from the old site. Imported accounts and profiles linked to an old-site identity are excluded.
+
+Choose **An event** to start from the end of a previous event, or **A date** to start at midnight on that date in UK time. Results run through the time the report is loaded; use **Refresh** to update them.
+
+By default, the report includes current members: Regular, Reserve, Civil Service, Industry and Retired. Choose **All registrations** to also include pending, resigned, lost and deceased profiles. The registration date is when the site profile was created, rather than the person's original SODC membership date.
+
+Search by name or email to narrow the list. **Export CSV** downloads all matching rows, including those on other pages.
+
 ---
 
 ## Managing sections

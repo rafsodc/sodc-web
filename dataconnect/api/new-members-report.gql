@@ -1,0 +1,17 @@
+# Report access is checked by the enabled-admin callable before any data is read.
+query GetNewMemberReportMigration @auth(level: NO_ACCESS) {
+  legacyUserIdentities(orderBy: { importedAt: ASC }, limit: 1) { importedAt }
+}
+
+query ListNewMemberReportEvents($through: Timestamp!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  events(where: { endDateTime: { le: $through } }, orderBy: [{ endDateTime: DESC }, { id: ASC }], limit: $limit, offset: $offset) {
+    id title endDateTime section { name }
+  }
+}
+
+query ListNewMemberReportProfiles($since: Timestamp!, $through: Timestamp!, $limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  users(where: { createdAt: { ge: $since, le: $through } }, orderBy: [{ createdAt: ASC }, { id: ASC }], limit: $limit, offset: $offset) {
+    id firstName lastName email rank membershipStatus createdAt createdBy legacyPasswordMigrated
+    legacyIdentity: legacyUserIdentity_on_user { sourceSystem }
+  }
+}
