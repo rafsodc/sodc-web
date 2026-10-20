@@ -14,7 +14,7 @@ query GetAttendanceTicketType($id: UUID!) @auth(level: NO_ACCESS) {
 
 mutation UpdateTicketAttendance(
   $bookingId: UUID!, $placeId: UUID!, $version: Int!, $ticketTypeId: UUID!,
-  $name: String!, $dietaryNote: String!, $removed: Boolean!, $actor: String!,
+  $name: String!, $dietaryNote: String!, $removed: Boolean!, $actor: String!, $expectedRemoved: Boolean! = false,
   $accommodationRequested: Boolean, $accommodationNote: String, $sitNextToUserIds: [String!]
 ) @auth(level: NO_ACCESS) @transaction {
   booking_updateMany(
@@ -22,7 +22,7 @@ mutation UpdateTicketAttendance(
     data: { updatedAt_expr: "request.time", updatedBy: $actor }
   ) @check(expr: "this == 1", message: "ATTENDANCE_CONFLICT")
   bookingPlace_updateMany(
-    where: { id: { eq: $placeId }, attendanceVersion: { eq: $version }, attendanceRemoved: { eq: false } }
+    where: { id: { eq: $placeId }, attendanceVersion: { eq: $version }, attendanceRemoved: { eq: $expectedRemoved } }
     data: {
       attendanceTicketTypeId: $ticketTypeId, attendanceName: $name,
       attendanceDietaryNote: $dietaryNote, attendanceRemoved: $removed,

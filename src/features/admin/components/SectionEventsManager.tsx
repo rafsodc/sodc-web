@@ -68,7 +68,7 @@ interface SectionEventsManagerProps {
 
 export default function SectionEventsManager({ sectionId, sectionName, initialEventId, onBack }: SectionEventsManagerProps) {
   const queryClient = useQueryClient();
-  const [ticketEdit, setTicketEdit] = useState<{ row: EventAttendeeTicketRow; action: "edit" | "delete" } | null>(null);
+  const [ticketEdit, setTicketEdit] = useState<{ row: EventAttendeeTicketRow; action: "edit" | "delete" | "restore" } | null>(null);
   const [addingUserTicket, setAddingUserTicket] = useState(false);
   const {
     data: eventsData,
@@ -478,6 +478,14 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     () => [...activeEventTicketRows(eventBookings, ticketOrdersById, seatingPreferenceUserNamesById), ...organiserGuestTicketRows(guestReport.data?.guests ?? [])],
     [eventBookings, seatingPreferenceUserNamesById, ticketOrdersById, guestReport.data]
   );
+  const removedTickets = useMemo(
+    () => activeEventTicketRows(eventBookings, ticketOrdersById, seatingPreferenceUserNamesById, "removed"),
+    [eventBookings, ticketOrdersById, seatingPreferenceUserNamesById]
+  );
+  const restoreTicket = (row: EventAttendeeTicketRow) => {
+    setAddingUserTicket(false);
+    setTicketEdit({ row, action: "restore" });
+  };
   const bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[] = paymentAdjustmentsData?.event?.bookings ?? [];
 
   const handleReviewBooking = async (
@@ -560,6 +568,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           allEventBookings={eventBookings}
           ticketOrdersById={ticketOrdersById}
           attendeeTickets={attendeeTickets}
+          removedTickets={removedTickets}
           onManageTicket={(row, action) => setTicketEdit({ row, action })}
           onAddUserTicket={() => setAddingUserTicket(true)}
           attendeeGuestsUnavailable={guestReport.isPending || guestReport.isError}
@@ -578,6 +587,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         />
 
         {addingUserTicket && <AddUserTicketDialog sectionId={sectionId} eventId={ticketTypesEventId}
+          removedTickets={removedTickets} onRestore={restoreTicket}
           onClose={() => setAddingUserTicket(false)} onSaved={async () => {
             await Promise.all([refetchEventBookings(), refetchPaymentAdjustments(),
               queryClient.invalidateQueries({ queryKey: ["eventAttendees", ticketTypesEventId] })]);
@@ -596,7 +606,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
             await Promise.all([refetchEventBookings(), refetchEventDetail(),
               queryClient.invalidateQueries({ queryKey: ["eventAttendees", ticketTypesEventId] })]);
             setTicketEdit(null);
-            showSuccess(ticketEdit.action === "delete" ? "Ticket deleted. Transactions unchanged." : "Ticket saved. Transactions unchanged.");
+            showSuccess(ticketEdit.action === "delete" ? "Ticket deleted. Transactions unchanged." : ticketEdit.action === "restore" ? "Ticket restored. Transactions unchanged." : "Ticket saved. Transactions unchanged.");
           }}
         />}
         <OrganiserGuestsManager sectionId={sectionId} key={ticketTypesEventId} eventId={ticketTypesEventId} />

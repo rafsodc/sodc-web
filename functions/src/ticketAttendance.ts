@@ -19,7 +19,7 @@ export const manageTicketAttendance = onCall({ region: FUNCTIONS_REGION }, async
     const id = validateUUID(requireString(request.data?.id, "id"));
     const eventId = validateUUID(requireString(request.data?.eventId, "eventId"));
     const { action, version } = request.data;
-    if (!["edit", "delete"].includes(action) || !Number.isInteger(version) || version < 0) {
+    if (!["edit", "delete", "restore"].includes(action) || !Number.isInteger(version) || version < 0) {
       throw new HttpsError("invalid-argument", "Invalid ticket action or version");
     }
     await enforceRateLimit("manageTicketAttendance", request.auth!.uid);
@@ -27,7 +27,7 @@ export const manageTicketAttendance = onCall({ region: FUNCTIONS_REGION }, async
     if (!line || validateUUID(line.booking.event.id) !== eventId) throw new HttpsError("not-found", "Ticket not found");
     await requireSectionModerator(line.booking.event.section.id, request.auth!.uid, request.auth!.token.admin === true);
     if (line.booking.supersededAt || !["SUBMITTED", "CONFIRMED"].includes(line.booking.status) ||
-        !["NOT_REQUIRED", "APPROVED"].includes(line.booking.approvalStatus) || line.bookingPlace.attendanceRemoved ||
+        !["NOT_REQUIRED", "APPROVED"].includes(line.booking.approvalStatus) || line.bookingPlace.attendanceRemoved !== (action === "restore") ||
         line.bookingPlace.attendanceVersion !== version) {
       throw new HttpsError("failed-precondition", "The ticket changed. Refresh and try again.");
     }
@@ -40,14 +40,14 @@ export const manageTicketAttendance = onCall({ region: FUNCTIONS_REGION }, async
       accommodationRequested: line.bookingPlace.attendanceAccommodationRequested,
       accommodationNote: line.bookingPlace.attendanceAccommodationNote,
       sitNextToUserIds: line.bookingPlace.attendanceSitNextToUserIds,
-      ...(action === "edit" ? request.data : {}),
+      ...(action !== "delete" ? request.data : {}),
     });
     await updateTicketAttendance({
       ...preferences,
       bookingId: line.booking.id, placeId: line.bookingPlace.id, version, ticketTypeId,
       name: text(request.data.attendeeName, "attendee name", 200, true),
       dietaryNote: text(request.data.dietaryNote ?? "", "dietary requirements", 2000),
-      removed: action === "delete", actor: request.auth!.uid,
+      removed: action === "delete", expectedRemoved: action === "restore", actor: request.auth!.uid,
     });
     return { success: true };
   } catch (error) {

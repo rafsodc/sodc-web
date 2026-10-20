@@ -8,6 +8,7 @@ import TicketPreferencesFields from "../../guests/TicketPreferencesFields";
 import { submitEventBooking, type SubmitEventBookingLine } from "../../../shared/utils/firebaseFunctions";
 import { toBookingUserFacingError } from "../../../shared/errors/bookingErrors";
 import { formatGbpMajorAmount } from "../../../shared/utils/currencyDisplay";
+import type { EventAttendeeTicketRow } from "../utils/bookingApprovalsAdmin";
 
 type UserOption = { id: string; firstName: string; lastName: string; email?: string | null };
 const userLabel = (user: UserOption) => `${user.firstName} ${user.lastName}${user.email ? ` — ${user.email}` : ""}`;
@@ -21,8 +22,10 @@ export interface ManagedBookingContext {
   };
 }
 
-export default function AddUserTicketDialog({ eventId, sectionId, onClose, onSaved }: {
+export default function AddUserTicketDialog({ eventId, sectionId, onClose, onSaved, removedTickets = [], onRestore }: {
   eventId: string; sectionId: string; onClose: () => void; onSaved: () => Promise<void>;
+  removedTickets?: EventAttendeeTicketRow[];
+  onRestore?: (row: EventAttendeeTicketRow) => void;
 }) {
   const [search, setSearch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,6 +46,8 @@ export default function AddUserTicketDialog({ eventId, sectionId, onClose, onSav
     queryFn: () => guestCall<ManagedBookingContext>("getManagedBookingContext", { eventId, bookerId: user!.id }),
     enabled: Boolean(user), gcTime: 0, retry: false, refetchOnWindowFocus: false,
   });
+  const removedMember = context.data?.booking && removedTickets.find((row) =>
+    row.bookingId === context.data.booking?.id && row.audience === "MEMBER");
   return <Dialog open onClose={() => !busy && onClose()} fullWidth maxWidth="sm">
     <DialogTitle>Add ticket for a user</DialogTitle>
     <DialogContent>
@@ -61,6 +66,10 @@ export default function AddUserTicketDialog({ eventId, sectionId, onClose, onSav
         {users.data?.hasMore && <Typography variant="body2">Refine your search to find more users.</Typography>}
         {user && context.isPending && <CircularProgress aria-label="Loading booking" size={24} />}
         {user && context.isError && <Alert severity="error" action={<Button onClick={() => void context.refetch()}>Retry</Button>}>{toBookingUserFacingError(context.error, "booking-submit").message}</Alert>}
+        {user && !context.isError && removedMember && onRestore && <Alert severity="info"
+          action={<Button disabled={busy || saved} onClick={() => onRestore(removedMember)}>Restore ticket</Button>}>
+          This user's member ticket was removed. Restore it to choose a different ticket type. Any payment adjustment is handled manually.
+        </Alert>}
         {user && context.data && !context.isError && <AddTicketForm key={`${user.id}:${context.data.booking?.id ?? "new"}`}
           eventId={eventId} sectionId={sectionId} context={context.data} onBusy={setBusy} onCreated={() => setSaved(true)} onSaved={onSaved} />}
       </Stack>

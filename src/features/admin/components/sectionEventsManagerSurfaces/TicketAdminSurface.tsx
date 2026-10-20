@@ -55,6 +55,7 @@ import {
 } from "../../utils/attendeeEmailSeparatorPreference";
 import { useCookiePreferences } from "../../../../shared/cookies/CookiePreferencesContext";
 import { AdminAccordion, AdminTable } from "./adminSurfacePrimitives";
+import RemovedTicketsSection from "../RemovedTicketsSection";
 
 interface TicketAdminSurfaceProps {
   event: EventRow | null;
@@ -75,9 +76,10 @@ interface TicketAdminSurfaceProps {
   allEventBookings: EventBookingAdminRow[];
   ticketOrdersById: TicketOrdersById;
   attendeeTickets: EventAttendeeTicketRow[];
+  removedTickets?: EventAttendeeTicketRow[];
   attendeeGuestsUnavailable?: boolean;
   onAnnounce?: (filters: EventAttendeeTicketFilters) => void;
-  onManageTicket?: (row: EventAttendeeTicketRow, action: "edit" | "delete") => void;
+  onManageTicket?: (row: EventAttendeeTicketRow, action: "edit" | "delete" | "restore") => void;
   onAddUserTicket?: () => void;
   moderatorNoteDraft: Record<string, string>;
   onModeratorNoteChange: (bookingId: string, value: string) => void;
@@ -112,6 +114,7 @@ export function TicketAdminSurface({
   allEventBookings,
   ticketOrdersById,
   attendeeTickets,
+  removedTickets = [],
   attendeeGuestsUnavailable,
   onManageTicket,
   onAnnounce,
@@ -167,6 +170,7 @@ export function TicketAdminSurface({
       <AdminAccordion title="Current attendee tickets">
         {onAddUserTicket && <Button startIcon={<AddIcon />} variant="contained" sx={{ mb: 2 }} onClick={onAddUserTicket}>Add ticket</Button>}
         {attendeeGuestsUnavailable ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert> : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} onManageTicket={onManageTicket} onAnnounce={onAnnounce} />}
+        {!loadingEventBookings && onManageTicket && <RemovedTicketsSection rows={removedTickets} onRestore={(row) => onManageTicket(row, "restore")} />}
       </AdminAccordion>
       <AdminAccordion title="Booking audit activity">
         <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />

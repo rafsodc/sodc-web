@@ -23385,6 +23385,7 @@ export interface UpdateTicketAttendanceVariables {
   dietaryNote: string;
   removed: boolean;
   actor: string;
+  expectedRemoved?: boolean;
   accommodationRequested?: boolean | null;
   accommodationNote?: string | null;
   sitNextToUserIds?: string[] | null;
@@ -23416,6 +23417,7 @@ const updateTicketAttendanceVars: UpdateTicketAttendanceVariables = {
   dietaryNote: ..., 
   removed: ..., 
   actor: ..., 
+  expectedRemoved: ..., // optional
   accommodationRequested: ..., // optional
   accommodationNote: ..., // optional
   sitNextToUserIds: ..., // optional
@@ -23425,7 +23427,7 @@ const updateTicketAttendanceVars: UpdateTicketAttendanceVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await updateTicketAttendance(updateTicketAttendanceVars);
 // Variables can be defined inline as well.
-const { data } = await updateTicketAttendance({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., });
+const { data } = await updateTicketAttendance({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., expectedRemoved: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -23458,6 +23460,7 @@ const updateTicketAttendanceVars: UpdateTicketAttendanceVariables = {
   dietaryNote: ..., 
   removed: ..., 
   actor: ..., 
+  expectedRemoved: ..., // optional
   accommodationRequested: ..., // optional
   accommodationNote: ..., // optional
   sitNextToUserIds: ..., // optional
@@ -23466,7 +23469,7 @@ const updateTicketAttendanceVars: UpdateTicketAttendanceVariables = {
 // Call the `updateTicketAttendanceRef()` function to get a reference to the mutation.
 const ref = updateTicketAttendanceRef(updateTicketAttendanceVars);
 // Variables can be defined inline as well.
-const ref = updateTicketAttendanceRef({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., });
+const ref = updateTicketAttendanceRef({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., expectedRemoved: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

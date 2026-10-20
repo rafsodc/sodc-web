@@ -110,11 +110,12 @@ export function previousActiveBooking(
 export function activeEventTicketRows(
   bookings: readonly EventBookingAdminRow[],
   ticketOrdersById: TicketOrdersById,
-  userNamesById: ReadonlyMap<string, string> = new Map()
+  userNamesById: ReadonlyMap<string, string> = new Map(),
+  attendance: "current" | "removed" = "current"
 ): EventAttendeeTicketRow[] {
   return currentActiveBookings(bookings).flatMap((booking) =>
     [...booking.lines]
-      .filter((line) => !line.bookingPlace?.attendanceRemoved)
+      .filter((line) => Boolean(line.bookingPlace?.attendanceRemoved) === (attendance === "removed"))
       .sort((left, right) => left.sortOrder - right.sortOrder)
       .map((line) => {
         const ticket = line.bookingPlace?.attendanceTicketType ?? line.ticketType;

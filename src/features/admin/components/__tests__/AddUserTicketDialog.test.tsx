@@ -4,6 +4,8 @@ import AddUserTicketDialog, { type ManagedBookingContext } from "../AddUserTicke
 import MemberTicketsManager from "../../../guests/MemberTicketsManager";
 import { guestCall } from "../../../guests/api";
 import { searchSectionMembers, submitEventBooking } from "../../../../shared/utils/firebaseFunctions";
+import { activeEventTicketRows } from "../../utils/bookingApprovalsAdmin";
+import type { EventBookingAdminRow } from "../sectionEventsManagerTypes";
 
 vi.mock("../../../guests/api", () => ({ guestCall: vi.fn() }));
 vi.mock("../../../../config/firebase", () => ({ auth: { currentUser: { uid: "organiser" } } }));
@@ -19,6 +21,14 @@ const context: ManagedBookingContext = {
 };
 const onSaved = vi.fn();
 const onClose = vi.fn();
+function removedBooking(): EventBookingAdminRow {
+  return {
+    id: "booking", revisionGroupId: "booking", revisionNumber: 1, status: "CONFIRMED", approvalStatus: "APPROVED",
+    supersededAt: null, booker: selectedUser, accommodationRequested: false, sitNextToUserIds: [],
+    lines: [{ id: "member-line", sortOrder: 0, ticketType: { ...context.ticketTypes[0], includesDinner: true, includesSymposium: false },
+      bookingPlace: { id: "place", attendanceRemoved: true, attendanceVersion: 2, paymentAllocations: [] } }],
+  } as unknown as EventBookingAdminRow;
+}
 function mockContext(value: ManagedBookingContext) {
   vi.mocked(guestCall).mockImplementation(async (name) => (name === "searchSectionMembers"
     ? { members: [selectedUser], hasMore: false } : value) as never);
@@ -41,6 +51,40 @@ beforeEach(() => {
 });
 
 describe("adding tickets for a user", () => {
+  it("offers restoration instead of requiring a guest when the user's member ticket was removed", async () => {
+    mockContext({ ...context, booking: { id: "booking", revisionNumber: 1, approvalStatus: "APPROVED",
+      lines: [{ ticketTypeId: "member-ticket", sortOrder: 0 }], accommodationRequested: false, accommodationNote: null, sitNextToUserIds: [] } });
+    const rows = activeEventTicketRows([removedBooking()], new Map(), new Map(), "removed");
+    const restore = vi.fn();
+    render(<AddUserTicketDialog eventId="event" sectionId="section" onClose={onClose} onSaved={onSaved} removedTickets={rows} onRestore={restore} />);
+    await selectUser();
+    expect(screen.getByText(/This user's member ticket was removed/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Restore ticket" }));
+    expect(restore).toHaveBeenCalledWith(rows[0]);
+    expect(submitEventBooking).not.toHaveBeenCalled();
+  });
+
+  it("restores a removed member ticket from the manager and refreshes attendance", async () => {
+    const booking = removedBooking();
+    vi.mocked(guestCall).mockImplementation(async (name) => {
+      if (name === "manageTicketAttendance") {
+        booking.lines[0].bookingPlace.attendanceRemoved = false;
+        return { success: true } as never;
+      }
+      return { bookings: [booking], orders: [], seatingUsers: [], ticketTypes: context.ticketTypes } as never;
+    });
+    render(<MemberTicketsManager eventId="event" sectionId="section" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Removed tickets (1)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restore ticket for Selected Member" }));
+    expect(screen.getByRole("dialog", { name: "Restore ticket" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Restore ticket" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Removed tickets (1)" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit ticket for Selected Member" })).toBeInTheDocument();
+    expect(guestCall).toHaveBeenCalledWith("manageTicketAttendance", expect.objectContaining({ id: "member-line", action: "restore", version: 2 }));
+    expect(submitEventBooking).not.toHaveBeenCalled();
+  });
+
   it("opens the user-ticket form from the organiser ticket manager", async () => {
     vi.mocked(guestCall).mockResolvedValue({ bookings: [], orders: [], seatingUsers: [], ticketTypes: [] });
     render(<MemberTicketsManager eventId="event" sectionId="section" />);

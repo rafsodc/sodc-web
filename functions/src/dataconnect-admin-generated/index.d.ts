@@ -4088,6 +4088,7 @@ export interface UpdateTicketAttendanceVariables {
   dietaryNote: string;
   removed: boolean;
   actor: string;
+  expectedRemoved?: boolean;
   accommodationRequested?: boolean | null;
   accommodationNote?: string | null;
   sitNextToUserIds?: string[] | null;
