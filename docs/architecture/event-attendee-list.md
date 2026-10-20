@@ -47,3 +47,23 @@ are unchanged.
 
 Deploy the updated connector and attendee callable before the frontend so the
 two attendance flags are available when the new tab is released.
+
+## Restoring removed member and accompanying guest tickets
+
+Deleting a ticket from attendance preserves its booking place and financial
+records. Organisers and administrators can expand **Removed tickets**, choose
+**Restore**, and select a different ticket type within the same audience before
+saving. The **Add ticket** dialog also offers this route when the selected user's
+member ticket was removed. Restoration changes attendance only; payment or refund
+adjustments remain manual.
+
+Removed tickets stay out of current attendee lists, CSV exports and announcement
+audiences until restored. Only tickets on current eligible booking revisions can
+be restored. The callable checks moderator access, event, audience, removal state
+and attendance version; the transaction rechecks booking eligibility and the
+expected removal state/version before updating. It keeps the original place ID,
+increments the attendance version and records the actor.
+
+Deploy the updated connector before the callable and frontend. The new
+`expectedRemoved` mutation variable defaults to `false`, preserving existing
+edit/delete callers during rollout.

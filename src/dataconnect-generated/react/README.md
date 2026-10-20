@@ -18974,6 +18974,7 @@ export interface UpdateTicketAttendanceVariables {
   dietaryNote: string;
   removed: boolean;
   actor: string;
+  expectedRemoved?: boolean;
   accommodationRequested?: boolean | null;
   accommodationNote?: string | null;
   sitNextToUserIds?: string[] | null;
@@ -19035,13 +19036,14 @@ export default function UpdateTicketAttendanceComponent() {
     dietaryNote: ..., 
     removed: ..., 
     actor: ..., 
+    expectedRemoved: ..., // optional
     accommodationRequested: ..., // optional
     accommodationNote: ..., // optional
     sitNextToUserIds: ..., // optional
   };
   mutation.mutate(updateTicketAttendanceVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., });
+  mutation.mutate({ bookingId: ..., placeId: ..., version: ..., ticketTypeId: ..., name: ..., dietaryNote: ..., removed: ..., actor: ..., expectedRemoved: ..., accommodationRequested: ..., accommodationNote: ..., sitNextToUserIds: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

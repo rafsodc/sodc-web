@@ -43,6 +43,19 @@ describe("ticket attendance dialog", () => {
     await waitFor(() => expect(saved).toHaveBeenCalledOnce());
     expect(guestCall).toHaveBeenCalledWith("manageTicketAttendance", expect.objectContaining({ accommodationRequested: true, accommodationNote: "Accessible room", sitNextToUserIds: ["user-jamie", "user-taylor"] }));
   });
+  it("restores a removed ticket with a different type and keeps payment adjustments manual", async () => {
+    render(<TicketAttendanceDialog sectionId="section" eventId="event" row={row} action="restore" ticketTypes={ticketTypes} onClose={close} onSaved={saved} />);
+    expect(screen.getByText(/Handle any payment or refund adjustment manually/)).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByLabelText("Ticket type"));
+    expect(screen.queryByRole("option", { name: "Guest" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Symposium" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restore ticket" }));
+    await waitFor(() => expect(saved).toHaveBeenCalledOnce());
+    expect(guestCall).toHaveBeenCalledWith("manageTicketAttendance", {
+      eventId: "event", id: "line", version: 2, action: "restore", attendeeName: "Alex Member",
+      dietaryNote: "No nuts", ticketTypeId: "other",
+    });
+  });
   it("clears inherited preferences and edits an accompanying guest name", async () => {
     const guest = { ...row, audience: TicketAudience.GUEST, ticketTypeId: "guest", attendeeName: "Old Guest", accommodationRequested: true, accommodationNote: "Old note", seatingPreferences: ["Original person"], sitNextToUserIds: ["original-person"] };
     render(<TicketAttendanceDialog sectionId="section" eventId="event" row={guest} action="edit" ticketTypes={ticketTypes} onClose={close} onSaved={saved} />);

@@ -252,6 +252,10 @@ describe("booking approval admin model", () => {
     expect(original).toEqual(before);
     original.lines[0].bookingPlace.attendanceRemoved = true;
     expect(activeEventTicketRows([original], new Map())).toEqual([]);
+    expect(activeEventTicketRows([original], new Map(), new Map(), "removed")).toEqual([
+      expect.objectContaining({ attendeeName: "Corrected name", ticketType: "Replacement", ticketId: "line", attendanceVersion: 1 }),
+    ]);
+    expect(activeEventTicketRows([{ ...original, supersededAt: "2026-01-01" }], new Map(), new Map(), "removed")).toEqual([]);
   });
 
   it("overrides preferences on one ticket while leaving its sibling on booking defaults", () => {

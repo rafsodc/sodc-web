@@ -27,7 +27,37 @@ describe("attendance-only ticket management", () => {
   it.each(["edit", "delete"])("%s changes only attendance and preserves the booking/place identity", async (action) => {
     expect(await manageTicketAttendance.run(request({ action }))).toEqual({ success: true });
     expect(requireSectionModerator).toHaveBeenCalledWith(id, "organiser", false);
-    expect(write).toHaveBeenCalledWith({ accommodationRequested: null, accommodationNote: null, sitNextToUserIds: null, bookingId: id, placeId: id, version: 0, ticketTypeId: other, name: "Updated attendee", dietaryNote: "Vegetarian", removed: action === "delete", actor: "organiser" });
+    expect(write).toHaveBeenCalledWith({ accommodationRequested: null, accommodationNote: null, sitNextToUserIds: null, bookingId: id, placeId: id, version: 0, ticketTypeId: other, name: "Updated attendee", dietaryNote: "Vegetarian", removed: action === "delete", expectedRemoved: false, actor: "organiser" });
+  });
+  it.each(["MEMBER", "GUEST"])("restores a removed %s ticket with a different type and preferences without financial changes", async (audience) => {
+    const current = line();
+    current.ticketType.audience = audience;
+    current.bookingPlace.attendanceRemoved = true;
+    read.mockResolvedValue({ data: { bookingLine: current } } as never);
+    ticket.mockResolvedValue({ data: { ticketType: { id: other, audience, event: { id } } } } as never);
+    await manageTicketAttendance.run(request({ action: "restore", accommodationRequested: true, accommodationNote: "Room", sitNextToUserIds: ["friend"] }));
+    expect(requireSectionModerator).toHaveBeenCalledWith(id, "organiser", false);
+    expect(write).toHaveBeenCalledWith({
+      bookingId: id, placeId: id, version: 0, ticketTypeId: other, name: "Updated attendee",
+      dietaryNote: "Vegetarian", removed: false, expectedRemoved: true, actor: "organiser",
+      accommodationRequested: true, accommodationNote: "Room", sitNextToUserIds: ["friend"],
+    });
+  });
+  it("rejects restoring a ticket that is already active", async () => {
+    await expect(manageTicketAttendance.run(request({ action: "restore" }))).rejects.toMatchObject({ code: "failed-precondition" });
+    expect(write).not.toHaveBeenCalled();
+  });
+  it.each(["superseded", "pending", "stale", "wrong-event", "wrong-audience"])("rejects invalid restoration: %s", async (state) => {
+    const current = line();
+    current.bookingPlace.attendanceRemoved = true;
+    if (state === "superseded") Object.assign(current.booking, { supersededAt: "2026-01-01" });
+    if (state === "pending") current.booking.approvalStatus = "PENDING";
+    if (state === "stale") current.bookingPlace.attendanceVersion = 1;
+    if (state === "wrong-event") current.booking.event.id = other;
+    if (state === "wrong-audience") ticket.mockResolvedValue({ data: { ticketType: { id: other, audience: "GUEST", event: { id } } } } as never);
+    read.mockResolvedValue({ data: { bookingLine: current } } as never);
+    await expect(manageTicketAttendance.run(request({ action: "restore" }))).rejects.toBeDefined();
+    expect(write).not.toHaveBeenCalled();
   });
   it("updates per-ticket preferences and preserves explicit clearing", async () => {
     await manageTicketAttendance.run(request({ accommodationRequested: false, accommodationNote: "", sitNextToUserIds: [] }));
@@ -116,6 +146,8 @@ describe("attendance-only ticket management", () => {
     expect(source).not.toMatch(/(?:ticketOrder|bookingPlacePaymentAllocation|bookingPaymentAdjustment)_(?:update|insert|delete|upsert)/);
     expect(source).not.toMatch(/priceMinor:|price:|checkoutKey:|stripeSessionId:/);
     expect(source).toContain("attendanceVersion: { eq: $version }");
+    expect(source).toContain("attendanceRemoved: { eq: $expectedRemoved }");
+    expect(source).toContain("$expectedRemoved: Boolean! = false");
     expect(source).toContain("message: \"ATTENDANCE_CONFLICT\"");
   });
 });

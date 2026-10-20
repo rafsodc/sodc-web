@@ -9,7 +9,7 @@ export default function TicketAttendanceDialog({ sectionId, eventId, row, action
   sectionId: string;
   eventId: string;
   row: EventAttendeeTicketRow;
-  action: "edit" | "delete";
+  action: "edit" | "delete" | "restore";
   ticketTypes: TicketTypeRow[];
   onClose: () => void;
   onSaved: () => Promise<void>;
@@ -43,7 +43,7 @@ export default function TicketAttendanceDialog({ sectionId, eventId, row, action
     }
   }
   return <Dialog open onClose={() => !busy && onClose()} fullWidth maxWidth="sm">
-    <DialogTitle>{action === "delete" ? "Delete ticket?" : "Edit ticket"}</DialogTitle>
+    <DialogTitle>{action === "delete" ? "Delete ticket?" : action === "restore" ? "Restore ticket" : "Edit ticket"}</DialogTitle>
     <DialogContent>
       <Stack spacing={2} sx={{ pt: 1 }}>
         <Alert severity="info">Transactions stay unchanged. Handle any payment or refund adjustment manually.</Alert>
@@ -60,7 +60,7 @@ export default function TicketAttendanceDialog({ sectionId, eventId, row, action
     </DialogContent>
     <DialogActions>
       <Button disabled={busy} onClick={onClose}>Cancel</Button>
-      <Button disabled={busy || !attendeeName.trim() || !ticketTypeId} color={action === "delete" ? "error" : "primary"} variant="contained" onClick={() => void save()}>{action === "delete" ? "Delete ticket" : "Save"}</Button>
+      <Button disabled={busy || !attendeeName.trim() || !ticketTypeId} color={action === "delete" ? "error" : "primary"} variant="contained" onClick={() => void save()}>{action === "delete" ? "Delete ticket" : action === "restore" ? "Restore ticket" : "Save"}</Button>
     </DialogActions>
   </Dialog>;
 }
