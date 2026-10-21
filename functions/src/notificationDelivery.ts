@@ -418,9 +418,11 @@ export async function sendNotificationOnce(
       ...request,
       deliveryKey: request.preserveDeliveryKey ? request.deliveryKey : govNotifyReferenceForMode(request.deliveryKey, deliveryMode),
       deliveryMode,
-      recoveryPayload: request.recoveryPayload
+      // A preserved physical key and its payload mode are one recovery identity.
+      // The effective mode still controls sending, but must not corrupt a failed skip retry.
+      recoveryPayload: request.recoveryPayload && !request.preserveDeliveryKey
         ? { ...request.recoveryPayload, deliveryMode }
-        : undefined,
+        : request.recoveryPayload,
     };
   }
   const repository = dependencies.repository ?? dataConnectNotificationDeliveryRepository;

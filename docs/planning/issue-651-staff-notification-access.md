@@ -24,6 +24,7 @@ Booking-moderation alerts and new-applicant alerts now bind the recipient to an 
 - Staff recovery payloads use version 2 and UID-based keys. Applicant subject `userId` and booking subject `bookingId` retain their meanings. Recovery validates type, key, original recipient UID and subject against the ledger, retries only that UID and preserves the original physical delivery key.
 - Legacy version-1 staff payloads have no independently trustworthy recipient UID and terminate as `LEGACY_RECIPIENT_IDENTITY_UNVERIFIABLE`. Their email is never rebound to today's user at that address.
 - Any recorded legacy staff event fences UID-key replacements for that logical booking/applicant event, including SENT, FAILED, PENDING and subsequently SKIPPED records. Explicit modes are separate; missing or conflicting historical mode information conservatively fences all modes. The lookup fails closed if its bounded history could be truncated.
+- A preserved physical recovery key retains its original payload mode even if the runtime ceiling changes. Tests cover failed LIVE records under a SIMULATION ceiling with a false/throwing first skip write, a later successful terminal skip, and zero provider calls.
 - A recovered staff delivery whose requested mode is reduced by the current runtime ceiling is terminal-skipped as `DELIVERY_MODE_CHANGED`, rather than completing a live delivery by sending it in another mode.
 
 ## Acceptance evidence
@@ -39,8 +40,9 @@ Booking-moderation alerts and new-applicant alerts now bind the recipient to an 
 
 ## Validation completed locally on 21 October 2026
 
-- Functions lint: passed.
-- Full Functions tests with coverage, two workers: 105 suites, 1,316 tests passed; all existing thresholds passed. Coverage: 72.47% statements, 69.14% branches, 78.53% functions, 73.27% lines.
+- Functions lint: passed after the coordinator review fix.
+- Focused delivery/recovery/payload regression run after that fix: 4 suites, 49 tests passed. Both newly added failure variants failed against the previous implementation before the fix.
+- Full Functions tests with coverage, two workers: 105 suites, 1,318 tests passed; all existing thresholds passed. Coverage: 72.48% statements, 69.22% branches, 78.53% functions, 73.29% lines.
 - Functions production build: passed.
 - Frontend production build: passed.
 - Full frontend tests, two workers: 114 suites, 914 tests passed.
