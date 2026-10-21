@@ -7,6 +7,7 @@ vi.mock("firebase/functions", () => ({
 
 vi.mock("../../../config/firebase", () => ({
   functions: {},
+  auth: { currentUser: { uid: "test-caller" } },
 }));
 
 vi.mock("../uuid", () => ({
@@ -62,7 +63,7 @@ describe("grantAdminClaim", () => {
     const result = await grantAdminClaim("uid-123");
 
     expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "grantAdmin");
-    expect(callable).toHaveBeenCalledWith({ uid: "uid-123" });
+    expect(callable).toHaveBeenCalledWith({ uid: "uid-123", operationId: expect.any(String) });
     expect(result).toEqual({ success: true, message: "Admin granted" });
   });
 
@@ -82,7 +83,7 @@ describe("revokeAdminClaim", () => {
     const result = await revokeAdminClaim("uid-456");
 
     expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "revokeAdmin");
-    expect(callable).toHaveBeenCalledWith({ uid: "uid-456" });
+    expect(callable).toHaveBeenCalledWith({ uid: "uid-456", operationId: expect.any(String) });
     expect(result).toEqual({ success: true, message: "Admin revoked" });
   });
 
@@ -213,7 +214,7 @@ describe("updateMembershipStatus", () => {
     const result = await updateMembershipStatus("user-789", "REGULAR" as MembershipStatus);
 
     expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "updateMembershipStatus");
-    expect(callable).toHaveBeenCalledWith({ userId: "user-789", newStatus: "REGULAR" as MembershipStatus });
+    expect(callable).toHaveBeenCalledWith({ userId: "user-789", newStatus: "REGULAR" as MembershipStatus, operationId: expect.any(String) });
     expect(result).toEqual({ success: true });
   });
 
@@ -234,12 +235,12 @@ describe("updateMembershipStatus", () => {
 });
 
 describe("resignMembership", () => {
-  it("calls resignMembership with empty payload", async () => {
+  it("calls resignMembership with an operation reference", async () => {
     const callable = makeCallable({ data: { success: true } });
     const result = await resignMembership();
 
     expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), "resignMembership");
-    expect(callable).toHaveBeenCalledWith({});
+    expect(callable).toHaveBeenCalledWith({ operationId: expect.any(String) });
     expect(result).toEqual({ success: true });
   });
 

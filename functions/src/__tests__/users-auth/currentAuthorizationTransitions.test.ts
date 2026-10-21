@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({getUser: vi.fn(), setClaims: vi.fn(), updateUser: vi.fn(), revoke: vi.fn(),
-  lookup: vi.fn(), operation: vi.fn(), initialize: vi.fn(), begin: vi.fn(), complete: vi.fn(), failure: vi.fn(), supersede: vi.fn(), profile: vi.fn()}));
+  lookup: vi.fn(), operation: vi.fn(), initialize: vi.fn(), begin: vi.fn(), complete: vi.fn(), failure: vi.fn(), supersede: vi.fn(), profile: vi.fn(), control: vi.fn(), noop: vi.fn()}));
 vi.mock("firebase-admin", () => ({auth: () => ({getUser: mocks.getUser, setCustomUserClaims: mocks.setClaims, updateUser: mocks.updateUser, revokeRefreshTokens: mocks.revoke})}));
 vi.mock("../../securityRepository", () => ({getUserSecurityState: mocks.lookup, getSecurityTransition: mocks.operation,
-  initializeUserSecurityState: mocks.initialize, beginSecurityTransition: mocks.begin, completeSecurityTransition: mocks.complete,
+  getAdminSafetyControl: mocks.control, recordSecurityNoop: mocks.noop, initializeUserSecurityState: mocks.initialize, beginSecurityTransition: mocks.begin, completeSecurityTransition: mocks.complete,
   recordSecuritySynchronizationFailure: mocks.failure, supersedeSecurityTransition: mocks.supersede}));
 vi.mock("@dataconnect/admin-generated", () => ({getUserMembershipStatus: mocks.profile}));
 import { initializeUserSecurityState, transitionUserSecurity, synchronizeUserSecurity } from "../../currentAuthorizationTransitions";
@@ -14,13 +14,15 @@ let state: State | null;
 let account: {disabled: boolean; emailVerified: boolean; email: string; customClaims: Record<string, unknown>};
 let operations: Map<string, Record<string, any>>;
 let events: string[];
-const input = {userId: "member", actorId: "reviewer", reason: "RESTRICT", operationId: "operation-2", membershipStatus: "LOST" as const};
+const input = {actorKind: "OPERATOR" as const, userId: "member", actorId: "reviewer", reason: "RESTRICT", operationId: "operation-2", membershipStatus: "LOST" as const};
 const token = {auth: {uid: "member", token: {enabled: true, admin: true, securityVersion: 1}}};
 beforeEach(() => {
   vi.resetAllMocks(); events = []; operations = new Map();
   state = {userId: "member", securityVersion: 1, membershipStatus: "REGULAR", desiredEnabled: true, desiredAdmin: false,
     accessReady: true, adminReady: false, operationId: "old", syncStatus: "READY", user: {membershipStatus: "REGULAR"}};
   account = {disabled: false, emailVerified: true, email: "old@example.org", customClaims: {enabled: true, admin: false, securityVersion: 1, unrelated: "kept"}};
+  mocks.control.mockResolvedValue({data: {adminSafetyControl: {id: "site-wide", version: 1, readyAdminCount: 2, status: "READY"}}});
+  mocks.noop.mockImplementation(async values => {operations.set(values.operationId, {...values, securityVersion: values.expectedVersion, noOp: true, syncStatus: "READY"});});
   mocks.lookup.mockImplementation(async () => ({data: {userSecurityState: state && structuredClone(state)}}));
   mocks.operation.mockImplementation(async ({operationId}) => ({data: {securityTransition: operations.get(operationId) ?? null}}));
   mocks.profile.mockResolvedValue({data: {user: {membershipStatus: "REGULAR"}}});
@@ -94,8 +96,8 @@ describe("durable security transition", () => {
     expect(operations.get("operation-2")!.syncStatus).toBe("SUPERSEDED");
   });
   it("does not write Auth after a database CAS failure", async () => {
-    mocks.begin.mockRejectedValueOnce(new Error("SECURITY_STATE_CONFLICT"));
-    await expect(transitionUserSecurity(input)).rejects.toThrow("SECURITY_STATE_CONFLICT");
+    mocks.begin.mockRejectedValue(new Error("SECURITY_STATE_CONFLICT"));
+    await expect(transitionUserSecurity(input)).rejects.toMatchObject({details: {code: "SECURITY_CONFLICT_RETRY"}});
     expect(mocks.setClaims).not.toHaveBeenCalled();
   });
   it.each([{disabled: true}, {emailVerified: false}])("rejects a new administrator whose identity is not ready: %s", async change => {
@@ -113,12 +115,12 @@ describe("durable security transition", () => {
   });
   it("initializes only the explicitly approved bootstrap role", async () => {
     state = null; account.customClaims.admin = true;
-    await initializeUserSecurityState({userId: "member", actorId: "operator", reason: "BOOTSTRAP"});
+    await initializeUserSecurityState({actorKind: "OPERATOR", userId: "member", actorId: "operator", reason: "BOOTSTRAP"});
     expect(state!.adminReady).toBe(false);
   });
   it("supports audited first-administrator bootstrap", async () => {
     state = null; account.customClaims.admin = true;
-    await initializeUserSecurityState({userId: "member", actorId: "operator", reason: "BOOTSTRAP", allowAdminBootstrap: true});
+    await initializeUserSecurityState({actorKind: "OPERATOR", userId: "member", actorId: "operator", reason: "BOOTSTRAP", allowAdminBootstrap: true});
     expect(state!.adminReady).toBe(true); expect(account.customClaims.securityVersion).toBe(1);
   });
   it("repairs a late old Auth write after the newer version already became READY", async () => {
@@ -130,7 +132,7 @@ describe("durable security transition", () => {
     expect(state).toMatchObject({securityVersion: 3, accessReady: true, syncStatus: "READY"});
   });
   it("a READY sweep restricts an externally disabled account rather than undoing the disable", async () => {
-    await transitionUserSecurity({...input, membershipStatus: "REGULAR"});
+    await transitionUserSecurity({...input, membershipStatus: "RESERVE"});
     account.disabled = true;
     await synchronizeUserSecurity("operation-2");
     expect(account.disabled).toBe(true);
@@ -142,21 +144,21 @@ describe("durable security transition", () => {
   });
   it("the old verified email cannot release the new-address verification hold", async () => {
     await transitionUserSecurity({...input, membershipStatus: "REGULAR", verificationEmail: "new@example.org"});
-    await expect(transitionUserSecurity({userId: "member", actorId: "member", reason: "VERIFY", releaseEmailVerification: true})).rejects.toThrow("intended new email");
+    await expect(transitionUserSecurity({actorKind: "OPERATOR", userId: "member", actorId: "member", reason: "VERIFY", releaseEmailVerification: true})).rejects.toThrow("intended new email");
     expect(state!.accessReady).toBe(false);
     account.email = "new@example.org";
-    await transitionUserSecurity({userId: "member", actorId: "member", reason: "VERIFY", releaseEmailVerification: true});
+    await transitionUserSecurity({actorKind: "OPERATOR", userId: "member", actorId: "member", reason: "VERIFY", releaseEmailVerification: true});
     expect(state).toMatchObject({securityVersion: 3, accessReady: true});
   });
 
   it("binds initial unverified identity to its intended address and restores only after exact verification", async () => {
     state = null; account.emailVerified = false;
-    await initializeUserSecurityState({userId: "member", actorId: "operator", reason: "BOOTSTRAP"});
+    await initializeUserSecurityState({actorKind: "OPERATOR", userId: "member", actorId: "operator", reason: "BOOTSTRAP"});
     expect(state).toMatchObject({accessReady: false, verificationEmail: "old@example.org"});
     account.emailVerified = true; account.email = "different@example.org";
-    await expect(transitionUserSecurity({userId: "member", actorId: "member", reason: "VERIFY", releaseEmailVerification: true})).rejects.toThrow("intended new email");
+    await expect(transitionUserSecurity({actorKind: "OPERATOR", userId: "member", actorId: "member", reason: "VERIFY", releaseEmailVerification: true})).rejects.toThrow("intended new email");
     account.email = "old@example.org";
-    await transitionUserSecurity({userId: "member", actorId: "member", reason: "VERIFY", releaseEmailVerification: true});
+    await transitionUserSecurity({actorKind: "OPERATOR", userId: "member", actorId: "member", reason: "VERIFY", releaseEmailVerification: true});
     expect(state).toMatchObject({securityVersion: 2, accessReady: true, verificationEmail: null});
   });
 

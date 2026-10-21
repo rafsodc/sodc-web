@@ -1,3 +1,4 @@
+import { runSecurityMutation } from "../securityMutation";
 import { httpsCallable } from "../sessionCallable";
 import { functions } from "../../../config/firebase";
 
@@ -26,9 +27,9 @@ export async function requestEmailChange(newEmail: string): Promise<void> {
 }
 
 export async function reconcileMyEmail(): Promise<string> {
-  const callable = httpsCallable<void, { success: true; email: string }>(
+  const callable = httpsCallable<{ operationId: string }, { success: true; email: string }>(
     functions,
     "reconcileMyEmail",
   );
-  return (await callable()).data.email;
+  return (await runSecurityMutation("reconcileMyEmail", {}, callable)).data.email;
 }

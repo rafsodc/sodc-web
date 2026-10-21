@@ -48,9 +48,16 @@ describe("staged current-authorization rollout", () => {
     const temp = await temporary(); const expected = {projectId: "sodc-web-beta", gitSha: "a".repeat(40)};
     await expect(verifyAuthorizationMigration(temp, expected)).rejects.toThrow("one-shot deployment is unsafe");
     const folder = path.join(temp, ".firebase/authorization-migration"); await mkdir(folder, {recursive: true});
-    const attestation = {migrationId: AUTHORIZATION_MIGRATION_ID, schemaVersion: "sodc-authorization-migration/v1", ...expected, backfillComplete: true, strictApiReady: true, reviewedBy: "operator", evidence: "nonprod gate + profile and Auth audit reference"};
+    const attestation = {migrationId: AUTHORIZATION_MIGRATION_ID, schemaVersion: "sodc-authorization-migration/v1", ...expected, backfillComplete: true, strictApiReady: true, adminSafetyControlReady: true, securityWriteFreezeVerified: true, reviewedBy: "operator", evidence: "nonprod gate + profile and Auth audit reference"};
     await writeFile(path.join(folder, `${expected.projectId}.json`), JSON.stringify(attestation));
     expect(await verifyAuthorizationMigration(temp, expected, () => true)).toEqual(attestation);
+    await writeFile(path.join(folder, `${expected.projectId}.json`), JSON.stringify({...attestation, securityWriteFreezeVerified: false}));
+    await expect(verifyAuthorizationMigration(temp, expected, () => true)).rejects.toThrow("not attested");
+    await writeFile(path.join(folder, `${expected.projectId}.json`), JSON.stringify({...attestation, adminSafetyControlReady: false}));
+    await expect(verifyAuthorizationMigration(temp, expected, () => true)).rejects.toThrow("not attested");
+    await writeFile(path.join(folder, `${expected.projectId}.json`), JSON.stringify({...attestation, migrationId: "current-authorization/v1"}));
+    await expect(verifyAuthorizationMigration(temp, expected, () => true)).rejects.toThrow("not attested");
+    await writeFile(path.join(folder, `${expected.projectId}.json`), JSON.stringify(attestation));
     await expect(verifyAuthorizationMigration(temp, {...expected, gitSha: "different"}, () => false)).rejects.toThrow("not attested");
     expect(await verifyAuthorizationMigration(temp, {...expected, gitSha: "b".repeat(40)}, () => true)).toEqual(attestation);
     for (const script of ["deploy-environment.mjs", "deployment-preflight.mjs"]) {

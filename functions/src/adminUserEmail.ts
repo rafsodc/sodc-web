@@ -1,7 +1,8 @@
-import { transitionUserSecurity } from "./currentAuthorizationTransitions";
+import { transitionUserSecurity, securityRequestAuthority, securityRequestOperationId } from "./currentAuthorizationTransitions";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { getUserSecurityState, getSecurityTransition } from "./securityRepository";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireAdmin, requireString, validateEmail } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
@@ -18,6 +19,7 @@ export const updateUserEmail = onCall(
   async (request) => {
     await requireAdmin(request);
     const actorUid = request.auth!.uid;
+    const operationId = securityRequestOperationId(request);
     const userId = requireString(request.data?.userId, "userId");
     const email = validateEmail(requireString(request.data?.email, "email"));
     const expectedEmail = validateEmail(requireString(request.data?.expectedEmail, "expectedEmail"));
@@ -37,8 +39,15 @@ export const updateUserEmail = onCall(
         }
         const changed = currentEmail !== email;
         try {
+          await transitionUserSecurity({userId, actorId: actorUid, reason: "EMAIL_REVERIFICATION", verificationEmail: email, expectedEmail, ...securityRequestAuthority(request), operationId});
           if (changed) {
-            await transitionUserSecurity({userId, actorId: actorUid, reason: "EMAIL_REVERIFICATION", verificationEmail: email});
+            const [stateResult, operationResult] = await Promise.all([getUserSecurityState({userId}), getSecurityTransition({operationId})]);
+            const state = stateResult.data.userSecurityState;
+            const receipt = operationResult.data.securityTransition;
+            const ownsHold = state?.operationId === operationId || (receipt?.noOp && receipt.userId === userId && receipt.securityVersion === state?.securityVersion);
+            if (!ownsHold || state?.verificationEmail !== email || state.accessReady || state.adminReady) {
+              throw new HttpsError("failed-precondition", "This email operation is no longer current. Reopen the user and try again.", {code: "EMAIL_CHANGE_CONFLICT"});
+            }
             user = await admin.auth().updateUser(userId, { email, emailVerified: false });
           }
           // Repeat revocation on an unverified retry, including recovery after a
@@ -56,6 +65,7 @@ export const updateUserEmail = onCall(
           }
           user = fresh;
         } catch (error) {
+          if (error instanceof HttpsError && error.details && typeof error.details === "object" && "code" in error.details && ["LAST_ADMIN_REQUIRED", "ADMIN_SAFETY_RECOVERY_REQUIRED", "SECURITY_ACTOR_REVOKED", "SECURITY_OPERATION_CONFLICT", "EMAIL_CHANGE_CONFLICT"].includes(String(error.details.code))) throw error;
           // There is no cross-service transaction. Auth is authoritative: never
           // roll it back and risk overwriting a newer verified change. Repair the
           // profile from a fresh Auth read, and make any incomplete save explicit.
@@ -69,7 +79,7 @@ export const updateUserEmail = onCall(
             actorUid, userId, outcome: repaired ? "profile-reconciled" : "recovery-required", errorCode: errorCode(error),
           });
           if (["auth/email-already-exists", "auth/invalid-email", "auth/user-not-found"].includes(errorCode(error))) throw error;
-          if (error instanceof HttpsError && error.details) throw error;
+          if (error instanceof HttpsError) throw error;
           throw new HttpsError("unavailable", "The email update could not be completed. Retry with the same address to finish synchronising the account.", {
             code: "EMAIL_CHANGE_INCOMPLETE",
           });

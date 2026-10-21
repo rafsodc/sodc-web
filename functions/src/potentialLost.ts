@@ -1,10 +1,10 @@
 import { getUserSecurityState } from "./securityRepository";
-import { securityIntentHash, synchronizeUserSecurity } from "./currentAuthorizationTransitions";
-import { createHash, randomUUID } from "node:crypto";
+import { persistPotentialLostSecurity, resumeSecurityOperation, transitionUserSecurity, securityRequestAuthority, securityRequestOperationId } from "./currentAuthorizationTransitions";
+import { createHash } from "node:crypto";
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import {
-  listPotentialLostProfiles, getPotentialLostProfile, confirmPotentialLostWithSecurityState as confirmPotentialLost,
+  listPotentialLostProfiles, getPotentialLostProfile,
   type GetPotentialLostProfileData,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
@@ -13,7 +13,6 @@ import { enforceRateLimit } from "./rateLimiter";
 import { isOlderThanYears } from "./memberReviewRules";
 import { canUserChangeStatus } from "./validation";
 import { sendMembershipStatusEmailIfChanged } from "./membershipStatus";
-import { reconcileEnabledClaim } from "./enabledClaimReconciliation";
 import { invalidateDcProfileCache } from "./users";
 import { govNotifySecrets } from "./mailer";
 
@@ -78,13 +77,17 @@ export const confirmPotentialLostMember = onCall(
     await enforceRateLimit("confirmPotentialLostMember", request.auth!.uid);
     const userId = requireString(request.data?.userId, "userId");
     const reviewToken = requireString(request.data?.reviewToken, "reviewToken");
+    const securityOperationId = securityRequestOperationId(request);
+    const intent = {userId, actorId: request.auth!.uid, reason: "POTENTIAL_LOST", membershipStatus: "LOST" as const, reviewToken,
+      operationId: securityOperationId, ...securityRequestAuthority(request)};
     try {
+      if (await resumeSecurityOperation(intent)) return {success: true};
       const [profileResult, auth] = await Promise.all([getPotentialLostProfile({ id: userId }), admin.auth().getUser(userId)]);
       const profile = profileResult.data.user;
       if (!profile) throw new HttpsError("not-found", "Member not found");
       if (profile.membershipStatus === "LOST") {
         // Retrying a completed confirmation repairs a partial claim failure without another audit entry.
-        await reconcileEnabledClaim(userId, "LOST", request.auth!.uid);
+        await transitionUserSecurity(intent);
         return { success: true };
       }
       const candidate = potentialLostCandidate(profile, auth);
@@ -93,20 +96,18 @@ export const confirmPotentialLostMember = onCall(
       const state = (await getUserSecurityState({userId})).data.userSecurityState;
       if (!state) throw new HttpsError("failed-precondition", "Authorization must be initialized");
       if (state.desiredAdmin) throw new HttpsError("permission-denied", "Admins cannot have restricted membership statuses");
-      const securityOperationId = randomUUID();
       try {
-        await confirmPotentialLost({userId, expectedStatus: profile.membershipStatus, expectedUpdatedAt: profile.updatedAt,
+        await persistPotentialLostSecurity(intent, {userId, expectedStatus: profile.membershipStatus, expectedUpdatedAt: profile.updatedAt,
           expectedEmailDeliveryVersion: profile.emailDeliveryVersion, reviewedBy: request.auth!.uid,
           reasons: candidate.reasons, lastSignInTime: candidate.lastSignInTime, lastActivityTime: candidate.lastActivityTime,
           inactivitySince: candidate.inactivitySince, activitySource: candidate.activitySource, emailBounceCount: candidate.emailBounceCount,
           expectedSecurityVersion: state.securityVersion, nextSecurityVersion: state.securityVersion + 1,
-          securityOperationId, desiredAdmin: state.desiredAdmin, securityIntentHash: securityIntentHash({userId, actorId: request.auth!.uid, reason: "POTENTIAL_LOST", membershipStatus: "LOST"})});
+          securityOperationId, desiredAdmin: state.desiredAdmin});
       } catch (error) {
         if (String(error).includes("POTENTIAL_LOST_CONFLICT")) throw new HttpsError("failed-precondition", "The member's details have changed. Refresh the list and review them again.");
         throw error;
       }
       invalidateDcProfileCache();
-      await synchronizeUserSecurity(securityOperationId);
       await sendMembershipStatusEmailIfChanged({ userId, previousStatus: profile.membershipStatus, newStatus: "LOST", appBaseUrl: process.env.APP_BASE_URL || "http://localhost:5173" });
       return { success: true };
     } catch (error) { handleFunctionError(error, "confirming lost membership"); }

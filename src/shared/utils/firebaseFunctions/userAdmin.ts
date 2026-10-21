@@ -1,3 +1,4 @@
+import { runSecurityMutation, securityMutationError } from "../securityMutation";
 import { httpsCallable } from "../sessionCallable";
 import type { MembershipStatus } from "@dataconnect/generated";
 import { functions } from "../../../config/firebase";
@@ -12,13 +13,15 @@ export interface UpdateUserEmailResult {
 
 export async function updateUserEmail(userId: string, email: string, expectedEmail: string): Promise<UpdateUserEmailResult> {
   const callable = httpsCallable<
-    { userId: string; email: string; expectedEmail: string },
+    { userId: string; email: string; expectedEmail: string; operationId: string },
     UpdateUserEmailResult
   >(functions, "updateUserEmail");
-  return (await callable({ userId, email, expectedEmail })).data;
+  return (await runSecurityMutation("updateUserEmail", { userId, email, expectedEmail }, callable)).data;
 }
 
 export function userEmailChangeError(error: unknown): string {
+  const safetyError = securityMutationError(error, "");
+  if (safetyError) return safetyError;
   const domain = extractDomainErrorCode(error);
   if (domain === "EMAIL_CHANGE_BUSY") return "Another email update is in progress. Retry in five minutes.";
   if (domain === "EMAIL_CHANGE_CONFLICT") return "The sign-in email has changed. Close and reopen the user before trying again.";
@@ -37,6 +40,7 @@ export function userEmailChangeError(error: unknown): string {
 // ============================================================================
 
 interface GrantAdminRequest {
+  operationId: string;
   uid: string;
 }
 
@@ -59,18 +63,19 @@ export async function grantAdminClaim(
       "grantAdmin"
     );
 
-    const result = await grantAdminCallable({ uid });
+    const result = await runSecurityMutation("grantAdmin", { uid }, grantAdminCallable);
     return { success: true, message: result.data.message };
   } catch (error: unknown) {
     reportError("callable.grant-admin", error);
     return {
       success: false,
-      error: "Administrator access could not be granted. Please try again."
+      error: securityMutationError(error, "Administrator access could not be granted. Please try again.")
     };
   }
 }
 
 interface RevokeAdminRequest {
+  operationId: string;
   uid: string;
 }
 
@@ -93,13 +98,13 @@ export async function revokeAdminClaim(
       "revokeAdmin"
     );
 
-    const result = await revokeAdminCallable({ uid });
+    const result = await runSecurityMutation("revokeAdmin", { uid }, revokeAdminCallable);
     return { success: true, message: result.data.message };
   } catch (error: unknown) {
     reportError("callable.revoke-admin", error);
     return {
       success: false,
-      error: "Administrator access could not be revoked. Please try again."
+      error: securityMutationError(error, "Administrator access could not be revoked. Please try again.")
     };
   }
 }
@@ -284,6 +289,7 @@ export async function syncPendingUserClaims(): Promise<{
 // ============================================================================
 
 interface UpdateMembershipStatusRequest {
+  operationId: string;
   userId: string;
   newStatus: MembershipStatus;
 }
@@ -310,13 +316,13 @@ export async function updateMembershipStatus(
       UpdateMembershipStatusResponse
     >(functions, "updateMembershipStatus");
 
-    const result = await updateMembershipStatusCallable({ userId, newStatus });
+    const result = await runSecurityMutation("updateMembershipStatus", { userId, newStatus }, updateMembershipStatusCallable);
     return { success: result.data.success };
   } catch (error: unknown) {
     reportError("callable.update-membership-status", error, { userId, newStatus });
     return {
       success: false,
-      error: "The membership status could not be updated. Please try again.",
+      error: securityMutationError(error, "The membership status could not be updated. Please try again."),
       domainCode: extractDomainErrorCode(error),
     };
   }
@@ -337,17 +343,17 @@ export async function resignMembership(): Promise<{
 }> {
   try {
     const resignMembershipCallable = httpsCallable<
-      Record<string, never>,
+      { operationId: string },
       ResignMembershipResponse
     >(functions, "resignMembership");
 
-    const result = await resignMembershipCallable({});
+    const result = await runSecurityMutation("resignMembership", {}, resignMembershipCallable);
     return { success: result.data.success };
   } catch (error: unknown) {
     reportError("callable.resign-membership", error);
     return {
       success: false,
-      error: "The membership could not be resigned. Please try again.",
+      error: securityMutationError(error, "The membership could not be resigned. Please try again."),
       domainCode: extractDomainErrorCode(error),
     };
   }

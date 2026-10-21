@@ -152,7 +152,7 @@ export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsers
       } else {
         setUpdateMessage({
           type: "error",
-          text: "Administrator access could not be granted. Please try again.",
+          text: result.error || "Administrator access could not be granted. Please try again.",
         });
       }
     } catch (caught) {
@@ -190,7 +190,7 @@ export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsers
       } else {
         setUpdateMessage({
           type: "error",
-          text: "Administrator access could not be revoked. Please try again.",
+          text: result.error || "Administrator access could not be revoked. Please try again.",
         });
       }
     } catch (caught) {

@@ -20,7 +20,7 @@ npm --prefix functions run build
 firebase emulators:start --only auth,functions,dataconnect --project demo-sodc-session-isolation
 ```
 
-The repository's Data Connect schema/connectors must be loaded by the emulator. In another terminal, create two verified local users and their reviewed REGULAR profiles. The seed script validates the demo project and both exact loopback endpoints before loading Admin SDKs. It only upserts the two fixed fixture UIDs and initializes/transitions their current authorization through the compiled server boundary, with matching claim versions for strict connectors; it does not wipe any database:
+The repository's Data Connect schema/connectors must be loaded by the emulator. In another terminal, prepare two ordinary verified member fixtures and a separate administrator anchor. The seed script validates the demo project and both exact loopback endpoints before loading Admin SDKs. It creates/updates only the three fixed fixture UIDs, initializes/transitions current authorization and activates the administrator control through the compiled server boundary. Existing profile status is never raw-upserted and no database is wiped:
 
 ```sh
 GCLOUD_PROJECT=demo-sodc-session-isolation \
@@ -53,3 +53,5 @@ Without `SODC_SESSION_E2E=1`, the command deliberately reports three skipped tes
 ## Release evidence still required
 
 Record the emulator/Chromium versions, command, result and BFCache behavior before production promotion. The implementation session ran frontend/SDK unit integration checks and browser discovery/skip checks; it did not start emulators, create accounts, or run the browser scenarios. An already accepted server mutation can still complete after logout; these checks establish that its old callback cannot populate or act in a later session.
+
+The seed script creates a separate verified `session-e2e-admin` anchor so administrator safety can reach READY while `session-e2e-a`/`session-e2e-b` remain ordinary members. It precreates the control, supplies explicit trusted local OPERATOR context and unique per-run operation references, completes verified state and activates control. Repeated seeding uses current transitions for membership/role/disabled changes; existing profile status is never raw-upserted. Existing unverified fixture authority is held before the emulator-only verification write. It refuses unexpected identity emails. The exact demo/loopback gate is pure-tested before SDK/credential imports, and its local owner credential never discovers cloud ADC. The updated browser fixture workflow itself has not been executed as part of #654; real browser acceptance remains a separate local gate.

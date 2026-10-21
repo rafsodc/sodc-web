@@ -10,7 +10,9 @@ import { applicationDefault, deleteApp, initializeApp, type App } from "firebase
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { getDataConnect, type DataConnect } from "firebase-admin/data-connect";
 import { createUser, MembershipStatus } from "@dataconnect/admin-generated";
-import { initializeUserSecurityState } from "../../currentAuthorizationTransitions";
+import { initializeUserSecurityState, synchronizeUserSecurity, transitionUserSecurity } from "../../currentAuthorizationTransitions";
+import { getAdminSafetyControl, getUserSecurityState, listReadyAdministrators } from "../../securityRepository";
+import { isNonRestrictedStatus } from "../../validation";
 
 const runnerUrl = pathToFileURL(resolve(__dirname, "../../../scripts/run-security-integration.mjs")).href;
 let config: { projectId: string; apiKey: string; appCheckToken?: string };
@@ -33,7 +35,9 @@ let actor: Fixture;
 let target: Fixture;
 let actorToken: string;
 const fixtures: Fixture[] = [];
+const cleanupOperations = new Map<string, string>();
 const sectionNames = new Set<string>();
+const securityWriters = new Set(["grantAdmin", "revokeAdmin", "updateMembershipStatus", "resignMembership", "updateUserEmail", "confirmPotentialLostMember", "reconcileMyEmail"]);
 
 /** Do not put fetch errors/response objects in failed assertions: they can contain credentials. */
 async function quiet<T>(label: string, operation: () => Promise<T>): Promise<T> {
@@ -77,7 +81,9 @@ async function clientOperation(kind: "Query" | "Mutation", operationName: string
 }
 
 async function callable(name: string, token: string, data: Record<string, unknown> = {}) {
-  return post(new URL(`https://europe-west2-${config.projectId}.cloudfunctions.net/${name}`), { data }, {
+  // One ID per explicit invocation. This helper never retries/replays a write.
+  const request = securityWriters.has(name) && !data.operationId ? { ...data, operationId: randomUUID() } : data;
+  return post(new URL(`https://europe-west2-${config.projectId}.cloudfunctions.net/${name}`), { data: request }, {
     Authorization: `Bearer ${token}`, ...appCheckHeaders(),
   });
 }
@@ -98,6 +104,7 @@ async function signedToken(fixture: Fixture): Promise<string> {
 async function createFixture(role: string): Promise<Fixture> {
   const fixture = { uid: `${prefix}-${role}`, email: `${prefix}-${role}@example.invalid`, password: randomBytes(32).toString("base64url") };
   fixtures.push(fixture); // Register before creation so partial setup is still cleaned up.
+  cleanupOperations.set(fixture.uid, randomUUID());
   await quiet("CREATE_DISPOSABLE_AUTH", () => auth.createUser({ ...fixture, emailVerified: true, displayName: "Security integration fixture" }));
   await quiet("CREATE_DISPOSABLE_PROFILE", () => createUser({
     userId: fixture.uid, firstName: "Security", lastName: "Fixture", email: fixture.email,
@@ -105,7 +112,8 @@ async function createFixture(role: string): Promise<Fixture> {
   }));
   await quiet("BOOTSTRAP_DISPOSABLE_CLAIMS", () => auth.setCustomUserClaims(fixture.uid, { enabled: true, admin: true }));
   await quiet("INITIALIZE_DISPOSABLE_SECURITY", () => initializeUserSecurityState({
-    userId: fixture.uid, actorId: "security-integration-fixture", reason: "Disposable non-production test bootstrap", allowAdminBootstrap: true,
+    userId: fixture.uid, actorId: "security-integration-fixture", actorKind: "OPERATOR", operationId: randomUUID(),
+    reason: "Disposable non-production test bootstrap", allowAdminBootstrap: true,
   }));
   return fixture;
 }
@@ -181,24 +189,49 @@ async function cleanupFixtures() {
   // Every predicate is bound to fresh in-memory run IDs; no broad project cleanup.
   const ids = fixtures.map((fixture) => fixture.uid);
   if (!ids.every((id) => id.startsWith(`${prefix}-`))) throw new Error("Refusing cleanup outside this disposable run.");
-  const cleanup = `mutation CleanupSecurityFixtures($ids: [String!]!, $names: [String!]!) @transaction {
+  // Remove readiness through the same counted boundary first. If other admins
+  // disappeared during the run, LAST_ADMIN_REQUIRED must preserve the fixture
+  // for explicit operator recovery rather than deleting the last identity.
+  for (const fixture of fixtures) {
+    const current = (await quiet(`READ_FIXTURE_SECURITY:${prefix}`, () => getUserSecurityState({ userId: fixture.uid }))).data.userSecurityState;
+    if (!current) continue;
+    let identityExists = true;
+    try { await auth.getUser(fixture.uid); }
+    catch (error) { if ((error as { code?: string })?.code === "auth/user-not-found") identityExists = false; else throw new Error(`Disposable cleanup could not verify run ${prefix}.`); }
+    if (identityExists) {
+      await quiet(`RETIRE_COUNTED_FIXTURE:${prefix}`, () => transitionUserSecurity({
+        userId: fixture.uid, actorId: "security-integration-cleanup", actorKind: "OPERATOR",
+        operationId: cleanupOperations.get(fixture.uid)!, reason: "Disposable non-production fixture cleanup", admin: false, authDisabled: true,
+      }));
+    } else if (current.adminReady || current.accessReady) {
+      await quiet(`RECONCILE_MISSING_FIXTURE:${prefix}`, () => synchronizeUserSecurity(current.operationId));
+    }
+    const retired = (await quiet(`VERIFY_RETIRED_FIXTURE:${prefix}`, () => getUserSecurityState({ userId: fixture.uid }))).data.userSecurityState;
+    if (retired?.adminReady) throw new Error(`A counted fixture remains for run ${prefix}; use explicit operator recovery. Auth has not been deleted.`);
+  }
+  const retiredRows = await quiet(`VERIFY_FIXTURE_RETIREMENT:${prefix}`, () => Promise.all(ids.map(async userId => (await getUserSecurityState({ userId })).data.userSecurityState)));
+  if (retiredRows.some(row => row?.adminReady)) throw new Error(`Fixture retirement changed during cleanup for run ${prefix}.`);
+  const expectedStates = retiredRows.filter(Boolean).length;
+  const cleanup = `mutation CleanupSecurityFixtures($ids: [String!]!, $names: [String!]!, $expectedStates: Int!) @transaction {
+    userSecurityState_deleteMany(where: {userId: {in: $ids}, adminReady: {eq: false}}) @check(expr: "this == vars.expectedStates", message: "FIXTURE_CLEANUP_CONFLICT")
     section_deleteMany(where: {name: {in: $names}})
     notificationDelivery_deleteMany(where: {userId: {in: $ids}})
     callableRateLimitBucket_deleteMany(where: {userId: {in: $ids}})
     callableInvocation_deleteMany(where: {userId: {in: $ids}})
     securityTransition_deleteMany(where: {userId: {in: $ids}})
-    userSecurityState_deleteMany(where: {userId: {in: $ids}})
     user_deleteMany(where: {id: {in: $ids}})
   }`;
-  let databaseFailed = false;
-  try { await dc.executeGraphql(cleanup, { variables: { ids, names: [...sectionNames] } }); } catch { databaseFailed = true; }
+  // Do not delete Auth identities after an uncertain/failed database cleanup.
+  // A pending completion races this predicate atomically and cannot add a
+  // contribution after its security row is gone. Never reset a saved counter.
+  await quiet(`DELETE_RETIRED_FIXTURE_ROWS:${prefix}`, () => dc.executeGraphql(cleanup, { variables: { ids, names: [...sectionNames], expectedStates } }));
   let authFailed = false;
   for (const fixture of fixtures) {
     try { await auth.deleteUser(fixture.uid); } catch (error) {
       if ((error as { code?: string })?.code !== "auth/user-not-found") authFailed = true;
     }
   }
-  if (databaseFailed || authFailed) throw new Error(`Disposable fixture cleanup incomplete for run ${prefix}; use the scoped operator cleanup procedure.`);
+  if (authFailed) throw new Error(`Disposable fixture cleanup incomplete for run ${prefix}; use the scoped operator cleanup procedure.`);
 }
 
 describe("issued-token revocation through deployed client endpoints", () => {
@@ -212,6 +245,18 @@ describe("issued-token revocation through deployed client endpoints", () => {
       "query IntegrationEmailMode { govNotifyDeliveryConfiguration(key: {id: \"site-wide\"}) { mode } }",
     ));
     expect(mode.data.govNotifyDeliveryConfiguration?.mode === "SIMULATION", "Explicit SIMULATION email configuration is required before membership test transitions").toBe(true);
+    const [safety, roster] = await quiet("READ_ADMIN_SAFETY", () => Promise.all([getAdminSafetyControl(), listReadyAdministrators()]));
+    const baseline = safety.data.adminSafetyControl;
+    expect(baseline?.status === "READY" && baseline.readyAdminCount > 0 && roster.data.userSecurityStates.length === baseline.readyAdminCount,
+      "An already audited READY non-production control and an unrelated ready administrator are required; this gate never bootstraps or resets the global roster").toBe(true);
+    for (const row of roster.data.userSecurityStates) {
+      const identity = await quiet("VERIFY_EXISTING_ADMIN", () => auth.getUser(row.userId));
+      expect(row.accessReady && row.syncStatus === "READY" && row.desiredEnabled && row.desiredAdmin && !row.verificationEmail &&
+        row.membershipStatus === row.user.membershipStatus && isNonRestrictedStatus(row.membershipStatus) &&
+        !identity.disabled && identity.emailVerified && identity.customClaims?.enabled === true && identity.customClaims?.admin === true &&
+        identity.customClaims?.securityVersion === row.securityVersion,
+      "Resolve existing administrator drift before this controlled non-production run").toBe(true);
+    }
     actor = await createFixture("actor");
     target = await createFixture("target");
     actorToken = await signedToken(actor);

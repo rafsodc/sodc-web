@@ -1,5 +1,11 @@
 import { validateAdminArgs } from 'firebase-admin/data-connect';
 
+export const AdminSafetyStatus = {
+  BOOTSTRAP: "BOOTSTRAP",
+  READY: "READY",
+  RECOVERY_REQUIRED: "RECOVERY_REQUIRED",
+}
+
 export const MembershipStatus = {
   PENDING: "PENDING",
   REGULAR: "REGULAR",
@@ -10,6 +16,14 @@ export const MembershipStatus = {
   RESIGNED: "RESIGNED",
   LOST: "LOST",
   DECEASED: "DECEASED",
+}
+
+export const SecurityActorKind = {
+  ADMIN: "ADMIN",
+  SELF: "SELF",
+  SELF_VERIFICATION: "SELF_VERIFICATION",
+  OPERATOR: "OPERATOR",
+  DRIFT: "DRIFT",
 }
 
 export const SecuritySyncStatus = {
@@ -54,6 +68,12 @@ export function beginSecurityTransition(dcOrVarsOrOptions, varsOrOptions, option
   return dcInstance.executeMutation('BeginSecurityTransition', inputVars, inputOpts);
 }
 
+export function recordSecurityNoop(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordSecurityNoop', inputVars, inputOpts);
+}
+
 export function completeSecurityTransition(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -76,5 +96,47 @@ export function listSecurityStatesForReconciliation(dcOrVarsOrOptions, varsOrOpt
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeQuery('ListSecurityStatesForReconciliation', inputVars, inputOpts);
+}
+
+export function getAdminSafetyControl(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAdminSafetyControl', undefined, inputOpts);
+}
+
+export function listReadyAdministrators(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListReadyAdministrators', undefined, inputOpts);
+}
+
+export function createAdminSafetyControl(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateAdminSafetyControl', inputVars, inputOpts);
+}
+
+export function activateAdminSafetyControl(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ActivateAdminSafetyControl', inputVars, inputOpts);
+}
+
+export function confirmPotentialLostWithAdminSafety(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ConfirmPotentialLostWithAdminSafety', inputVars, inputOpts);
+}
+
+export function getAdminSafetyAudit(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetAdminSafetyAudit', inputVars, inputOpts);
+}
+
+export function reconcileAdminSafetyControl(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ReconcileAdminSafetyControl', inputVars, inputOpts);
 }
 

@@ -177,8 +177,8 @@ exports.getGovNotifyDeliveryConfigurationRef = getGovNotifyDeliveryConfiguration
 
 exports.getGovNotifyDeliveryConfiguration = function getGovNotifyDeliveryConfiguration(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getGovNotifyDeliveryConfigurationRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getGovNotifyDeliveryConfigurationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -235,8 +235,8 @@ exports.getNotifyReplyToConfigurationRef = getNotifyReplyToConfigurationRef;
 
 exports.getNotifyReplyToConfiguration = function getNotifyReplyToConfiguration(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getNotifyReplyToConfigurationRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getNotifyReplyToConfigurationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -405,8 +405,8 @@ exports.getNotifyTemplateBindingsRef = getNotifyTemplateBindingsRef;
 
 exports.getNotifyTemplateBindings = function getNotifyTemplateBindings(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getNotifyTemplateBindingsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getNotifyTemplateBindingsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2231,8 +2231,8 @@ exports.getNewMemberReportMigrationRef = getNewMemberReportMigrationRef;
 
 exports.getNewMemberReportMigration = function getNewMemberReportMigration(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getNewMemberReportMigrationRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getNewMemberReportMigrationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2521,8 +2521,8 @@ exports.getCurrentUserRef = getCurrentUserRef;
 
 exports.getCurrentUser = function getCurrentUser(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getCurrentUserRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getCurrentUserRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2551,8 +2551,8 @@ exports.listUsersRef = listUsersRef;
 
 exports.listUsers = function listUsers(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listUsersRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(listUsersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2581,8 +2581,8 @@ exports.listSectionsRef = listSectionsRef;
 
 exports.listSections = function listSections(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listSectionsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(listSectionsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2596,8 +2596,8 @@ exports.getSectionsForUserRef = getSectionsForUserRef;
 
 exports.getSectionsForUser = function getSectionsForUser(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getSectionsForUserRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getSectionsForUserRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2611,8 +2611,8 @@ exports.listUserGroupsRef = listUserGroupsRef;
 
 exports.listUserGroups = function listUserGroups(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listUserGroupsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(listUserGroupsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2626,8 +2626,8 @@ exports.getUserAccessGroupsRef = getUserAccessGroupsRef;
 
 exports.getUserAccessGroups = function getUserAccessGroups(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getUserAccessGroupsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getUserAccessGroupsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2641,8 +2641,8 @@ exports.checkUserProfileExistsRef = checkUserProfileExistsRef;
 
 exports.checkUserProfileExists = function checkUserProfileExists(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(checkUserProfileExistsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(checkUserProfileExistsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2761,8 +2761,8 @@ exports.getAllUserGroupsWithStatusesRef = getAllUserGroupsWithStatusesRef;
 
 exports.getAllUserGroupsWithStatuses = function getAllUserGroupsWithStatuses(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getAllUserGroupsWithStatusesRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getAllUserGroupsWithStatusesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2806,8 +2806,8 @@ exports.getMyBookingsRef = getMyBookingsRef;
 
 exports.getMyBookings = function getMyBookings(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyBookingsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getMyBookingsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2836,8 +2836,8 @@ exports.getMyTicketOrdersRef = getMyTicketOrdersRef;
 
 exports.getMyTicketOrders = function getMyTicketOrders(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyTicketOrdersRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getMyTicketOrdersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2851,8 +2851,8 @@ exports.getMyBookingPaymentAdjustmentsRef = getMyBookingPaymentAdjustmentsRef;
 
 exports.getMyBookingPaymentAdjustments = function getMyBookingPaymentAdjustments(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyBookingPaymentAdjustmentsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getMyBookingPaymentAdjustmentsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2911,8 +2911,8 @@ exports.listOpenPaymentReconciliationExceptionsRef = listOpenPaymentReconciliati
 
 exports.listOpenPaymentReconciliationExceptions = function listOpenPaymentReconciliationExceptions(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listOpenPaymentReconciliationExceptionsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(listOpenPaymentReconciliationExceptionsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2941,8 +2941,8 @@ exports.getMyAnnouncementPreferencesRef = getMyAnnouncementPreferencesRef;
 
 exports.getMyAnnouncementPreferences = function getMyAnnouncementPreferences(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyAnnouncementPreferencesRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getMyAnnouncementPreferencesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 
@@ -2971,8 +2971,8 @@ exports.serviceListUsersRef = serviceListUsersRef;
 
 exports.serviceListUsers = function serviceListUsers(dcOrOptions, options) {
 
-  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(serviceListUsersRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(serviceListUsersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 ;
 

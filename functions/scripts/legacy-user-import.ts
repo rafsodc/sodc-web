@@ -644,8 +644,9 @@ async function reconcileAccess(
     }
     const enabled = isNonRestrictedStatus(plan.record.membershipStatus);
     const migrationCreatedAuth = plan.createAuthUser || hasMigrationStage(ledger, plan.record.legacyUserId, "auth-created");
-    await initializeUserSecurityState({userId: plan.canonicalUid, actorId: "legacy-user-import", reason: "LEGACY_INITIALIZE"});
-    await transitionUserSecurity({userId: plan.canonicalUid, actorId: "legacy-user-import", reason: "LEGACY_RECONCILE",
+    const securityReference = sha256Hex(JSON.stringify([ledger.projectId, ledger.migrationBatchId, ledger.sourceChecksum, plan.canonicalUid]));
+    await initializeUserSecurityState({operationId: `legacy-init:${securityReference}`, userId: plan.canonicalUid, actorId: "legacy-user-import", actorKind: "OPERATOR", reason: "LEGACY_INITIALIZE"});
+    await transitionUserSecurity({operationId: `legacy-access:${securityReference}`, userId: plan.canonicalUid, actorId: "legacy-user-import", actorKind: "OPERATOR", reason: "LEGACY_RECONCILE",
       ...(migrationCreatedAuth && enabled ? {authDisabled: false} : {})});
     checkpoint(options.statePath, ledger, plan, "access-reconciled");
   }

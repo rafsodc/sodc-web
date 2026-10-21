@@ -1,4 +1,4 @@
-import { transitionUserSecurity } from "./currentAuthorizationTransitions";
+import { resumeSecurityOperation, transitionUserSecurity, securityRequestAuthority, securityRequestOperationId } from "./currentAuthorizationTransitions";
 import { getUserSecurityState } from "./securityRepository";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
@@ -333,6 +333,7 @@ export const reconcileMyEmail = onCall(
   { region: FUNCTIONS_REGION, timeoutSeconds: 60 },
   async (request): Promise<{ success: true; email: string }> => {
     requireAuth(request);
+    const operationId = securityRequestOperationId(request);
     await enforceRateLimit("reconcileMyEmail", request.auth!.uid);
     return withUserEmailLease(request.auth!.uid, async (writeEmail) => {
       const user = await admin.auth().getUser(request.auth!.uid);
@@ -342,10 +343,19 @@ export const reconcileMyEmail = onCall(
       const email = validateEmail(user.email);
       await writeEmail(email, user.uid);
       const state = (await getUserSecurityState({userId: user.uid})).data.userSecurityState;
-      if (state && !state.accessReady && state.syncStatus === "READY" && state.user.membershipStatus === state.membershipStatus && state.verificationEmail === email) {
-        await transitionUserSecurity({userId: user.uid, actorId: user.uid, reason: "VERIFIED_EMAIL_RECONCILIATION", releaseEmailVerification: true});
+      if (state) {
+        const intent = {userId: user.uid, actorId: user.uid, reason: "VERIFIED_EMAIL_RECONCILIATION", releaseEmailVerification: true,
+          ...securityRequestAuthority(request, "SELF_VERIFICATION"), operationId};
+        if (!(await resumeSecurityOperation(intent)) && state.syncStatus === "READY" && state.user.membershipStatus === state.membershipStatus &&
+            (state.verificationEmail === email || (state.accessReady && !state.verificationEmail))) await transitionUserSecurity(intent);
       }
-      return { success: true, email };
-    });
+      return { success: true as const, email };
+    }, {onMissingProfile: async () => {
+      // Verified onboarding has no profile/authority to synchronize yet. This is
+      // an Auth-only response, never an initializer or an authorization grant.
+      const user = await admin.auth().getUser(request.auth!.uid);
+      if (!user.email || !user.emailVerified) throw new HttpsError("failed-precondition", "A verified email address is required.");
+      return {success: true as const, email: validateEmail(user.email)};
+    }});
   },
 );

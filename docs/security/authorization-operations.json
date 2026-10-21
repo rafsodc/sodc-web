@@ -1689,6 +1689,13 @@
   {
     "connector": "authorization-service",
     "file": "security.gql",
+    "operation": "RecordSecurityNoop",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
     "operation": "CompleteSecurityTransition",
     "kind": "mutation",
     "classification": "service-only"
@@ -1712,6 +1719,55 @@
     "file": "security.gql",
     "operation": "ListSecurityStatesForReconciliation",
     "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "GetAdminSafetyControl",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ListReadyAdministrators",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "CreateAdminSafetyControl",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ActivateAdminSafetyControl",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ConfirmPotentialLostWithAdminSafety",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "GetAdminSafetyAudit",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ReconcileAdminSafetyControl",
+    "kind": "mutation",
     "classification": "service-only"
   }
 ]

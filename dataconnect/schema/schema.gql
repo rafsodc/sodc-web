@@ -890,6 +890,27 @@ type OrganiserGuestAudit @table {
 # Current authorization is owned by trusted services, never a client profile mutation.
 # Ready flags deny access while Auth synchronization is pending or failed.
 enum SecuritySyncStatus { PENDING READY SUPERSEDED }
+enum SecurityActorKind { ADMIN SELF SELF_VERIFICATION OPERATOR DRIFT }
+enum AdminSafetyStatus { BOOTSTRAP READY RECOVERY_REQUIRED }
+
+# Pre-created in a separately committed, audited operator transaction.
+type AdminSafetyControl @table(key: ["id"]) {
+  id: String!
+  version: Int!
+  readyAdminCount: Int!
+  status: AdminSafetyStatus!
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+type AdminSafetyAudit @table(key: ["operationId"]) {
+  operationId: String!
+  actorId: String!
+  reason: String!
+  action: String!
+  intentHash: String!
+  controlVersion: Int!
+  readyAdminCount: Int!
+  createdAt: Timestamp! @default(expr: "request.time")
+}
 type UserSecurityState @table(key: ["user"]) {
   user: User!
   securityVersion: Int!
@@ -915,6 +936,13 @@ type SecurityTransition @table(key: ["operationId"]) {
   authDisabled: Boolean
   verificationEmail: String
   intentHash: String!
+  actorKind: SecurityActorKind! @default(value: OPERATOR)
+  actorSecurityVersion: Int
+  noOp: Boolean! @default(value: false)
+  startedControlVersion: Int
+  completedControlVersion: Int
+  startedAdminDelta: Int! @default(value: 0)
+  completedAdminDelta: Int! @default(value: 0)
   actorId: String!
   reason: String!
   syncStatus: SecuritySyncStatus!

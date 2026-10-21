@@ -12,7 +12,7 @@ import { notifyMembershipStatusEmailIfNeeded } from "./membershipStatusEmailDisp
 import { invalidateDcProfileCache } from "./users";
 import { enforceRateLimit } from "./rateLimiter";
 import { reconcileEnabledClaim } from "./enabledClaimReconciliation";
-import { initializeUserSecurityState, transitionUserSecurity } from "./currentAuthorizationTransitions";
+import { initializeUserSecurityState, transitionUserSecurity, securityRequestAuthority, securityRequestOperationId, type SecurityAuthority } from "./currentAuthorizationTransitions";
 import { getUserSecurityState } from "./securityRepository";
 
 const APP_BASE_URL = (() => {
@@ -42,6 +42,8 @@ export async function sendMembershipStatusEmailIfChanged(args: {
 interface MembershipStatusPersistenceDependencies {
   transition?: typeof transitionUserSecurity;
   actorId?: string;
+  authority?: SecurityAuthority;
+  operationId?: string;
 }
 
 /** Profile, denial, version and audit commit atomically before Auth synchronization. */
@@ -51,7 +53,7 @@ export async function persistMembershipStatusWithEnabledClaim(
   dependencies: MembershipStatusPersistenceDependencies = {},
 ): Promise<void> {
   await (dependencies.transition ?? transitionUserSecurity)({ userId, membershipStatus,
-    actorId: dependencies.actorId ?? userId, reason: "MEMBERSHIP_STATUS" });
+    actorId: dependencies.actorId ?? userId, reason: "MEMBERSHIP_STATUS", ...dependencies.authority!, operationId: dependencies.operationId });
   invalidateDcProfileCache();
 }
 
@@ -91,7 +93,7 @@ export const updateMembershipStatus = onCall(
     if (!targetState && isAdmin) {
       const profile = await fetchCurrentStatusFromDataConnect(userId);
       if (profile === "PENDING") {
-        await initializeUserSecurityState({userId, actorId: request.auth!.uid, reason: "INITIAL_APPROVAL"});
+        await initializeUserSecurityState({userId, actorId: request.auth!.uid, reason: "INITIAL_APPROVAL", ...securityRequestAuthority(request), operationId: securityRequestOperationId(request) + ":init"});
         targetState = (await getUserSecurityState({userId})).data.userSecurityState;
       }
     }
@@ -106,7 +108,8 @@ export const updateMembershipStatus = onCall(
       const reconciliation = await reconcileEnabledClaim(
         userId,
         currentStatus as MembershipStatus,
-        request.auth!.uid
+        request.auth!.uid,
+        {authority: securityRequestAuthority(request), operationId: securityRequestOperationId(request), reason: "MEMBERSHIP_STATUS", membershipStatus: currentStatus as MembershipStatus}
       );
       logger.info("Reconciled enabled claim from unchanged membership status", {
         userId,
@@ -142,7 +145,7 @@ export const updateMembershipStatus = onCall(
     
     await persistMembershipStatusWithEnabledClaim(
       userId,
-      newStatus as MembershipStatus, { actorId: request.auth!.uid }
+      newStatus as MembershipStatus, { actorId: request.auth!.uid, authority: securityRequestAuthority(request, isAdmin ? "ADMIN" : "SELF"), operationId: securityRequestOperationId(request) }
     );
     
     // Access group membership by status is computed at read time (admin UI and getSectionMembersMerged)
@@ -198,7 +201,7 @@ export const resignMembership = onCall(
         );
       }
 
-      await persistMembershipStatusWithEnabledClaim(userId, newStatus);
+      await persistMembershipStatusWithEnabledClaim(userId, newStatus, {authority: securityRequestAuthority(request, "SELF"), operationId: securityRequestOperationId(request)});
 
       await sendMembershipStatusEmailIfChanged({
         userId,
