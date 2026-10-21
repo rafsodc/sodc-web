@@ -11,7 +11,7 @@ import type * as SecuritySdk from "@dataconnect/security-admin-generated";
 // No ordinary test setup or Auth impersonation supplies the mutation evidence.
 // These tests exercise actual SQL transactions in the runner's fresh local DB.
 type Outcome = { kind: "result"; ok: boolean; pid: number; message?: string };
-type Mutation = { operation: "beginSecurityTransition" | "completeSecurityTransition" | "recordSecurityNoop"; variables: Record<string, unknown> };
+type Mutation = { operation: "beginSecurityTransition" | "completeSecurityTransition" | "recordSecurityNoop" | "initializeUserSecurityState" | "initializePendingEmailHold"; variables: Record<string, unknown> };
 let sdk: typeof SecuritySdk;
 let dc: DataConnect;
 let security: DataConnect;
@@ -132,6 +132,32 @@ async function complete(userId: string): Promise<Mutation> {
   return { operation: "completeSecurityTransition", variables: { expectedControlVersion: current.version, userId,
     securityVersion: target.securityVersion, operationId: target.operationId, membershipStatus: target.membershipStatus,
     accessReady: target.desiredEnabled, adminReady: target.desiredEnabled && target.desiredAdmin } };
+}
+
+async function pendingApplicant() {
+  const userId = `${prefix}-${caseSequence}-applicant`;
+  caseIds.push(userId);
+  await dc.executeGraphql(`mutation SeedPendingApplicant($userId: String!, $email: String!) {
+    user_insert(data: {id: $userId, firstName: "Pending", lastName: "Local fixture", email: $email,
+      serviceNumber: "LOCAL-PENDING", membershipStatus: PENDING, createdBy: "local-fixture", updatedBy: "local-fixture"})
+  }`, {variables: {userId, email: `${userId}@example.test`}});
+  return userId;
+}
+
+async function pendingEmailHold(userId: string, actorId: string): Promise<Mutation> {
+  return {operation: "initializePendingEmailHold", variables: {
+    expectedControlVersion: (await control()).version, actorSecurityVersion: (await state(actorId)).securityVersion,
+    userId, expectedProfileEmail: `${userId}@example.test`, verificationEmail: `corrected-${userId}@example.test`,
+    operationId: operationId(), actorId, reason: "LOCAL_PENDING_EMAIL", intentHash: "local-pending-email-intent",
+  }};
+}
+
+async function approvalInitialization(userId: string, actorId: string): Promise<Mutation> {
+  return {operation: "initializeUserSecurityState", variables: {
+    expectedControlVersion: (await control()).version, actorKind: "ADMIN", actorSecurityVersion: (await state(actorId)).securityVersion,
+    userId, membershipStatus: "PENDING", desiredEnabled: false, desiredAdmin: false, verificationEmail: null,
+    operationId: operationId(), actorId, reason: "LOCAL_INITIAL_APPROVAL", intentHash: "local-approval-init-intent",
+  }};
 }
 
 beforeAll(async () => {
@@ -382,5 +408,96 @@ describe("actual independent-process administrator safety transactions", () => {
     expect(await operation(String(request.variables.operationId))).toBeNull();
     expect(await control()).toEqual(before);
     await assertCount(2);
+  });
+
+  it("initializes duplicate applicant email corrections once without granting membership or counting an admin", async () => {
+    const [actor] = await initialize(1);
+    const applicant = await pendingApplicant();
+    const request = await pendingEmailHold(applicant, actor);
+    const before = await control();
+    const results = await race([request, request]);
+    expect(results.filter(result => result.ok)).toHaveLength(1);
+    expect((await control()).version).toBe(before.version + 1);
+    expect(await state(applicant)).toMatchObject({membershipStatus: "PENDING", securityVersion: 1,
+      accessReady: false, adminReady: false, desiredEnabled: false, desiredAdmin: false,
+      verificationEmail: request.variables.verificationEmail, operationId: request.variables.operationId});
+    expect((await race([await complete(applicant)]))[0].ok).toBe(true);
+    expect(await state(applicant)).toMatchObject({syncStatus: "READY", accessReady: false, adminReady: false});
+    await assertCount(1);
+  });
+
+  it("serializes independent approval initialization and email hold creation against the same absent authority", async () => {
+    const [actor] = await initialize(1);
+    const applicant = await pendingApplicant();
+    const requests = await Promise.all([pendingEmailHold(applicant, actor), approvalInitialization(applicant, actor)]);
+    const before = await control();
+    const results = await race(requests);
+    expect(results.filter(result => result.ok)).toHaveLength(1);
+    expect((await control()).version).toBe(before.version + 1);
+    const winner = results.findIndex(result => result.ok);
+    expect(await state(applicant)).toMatchObject({operationId: requests[winner].variables.operationId,
+      accessReady: false, adminReady: false, desiredEnabled: false, desiredAdmin: false});
+    expect(await operation(String(requests[1 - winner].variables.operationId))).toBeNull();
+    await assertCount(1);
+  });
+
+  it.each(["hold", "approval"])("keeps correction denied and preserves its exact hold when %s wins initialization", async winner => {
+    const [actor] = await initialize(1);
+    const applicant = await pendingApplicant();
+    const hold = await pendingEmailHold(applicant, actor);
+    const approval = await approvalInitialization(applicant, actor);
+    const first = winner === "hold" ? hold : approval;
+    const second = winner === "hold" ? approval : hold;
+    expect((await race([first]))[0].ok).toBe(true);
+    expect((await race([await complete(applicant)]))[0].ok).toBe(true);
+    second.variables.expectedControlVersion = (await control()).version;
+    expect((await race([second]))[0].ok).toBe(false);
+    const enable = await begin(applicant, actor, {expectedMembershipStatus: "PENDING", membershipStatus: "REGULAR",
+      desiredEnabled: winner === "approval", verificationEmail: winner === "hold" ? hold.variables.verificationEmail : null});
+    expect((await race([enable]))[0].ok).toBe(true);
+    expect((await race([await complete(applicant)]))[0].ok).toBe(true);
+    if (winner === "approval") {
+      expect((await state(applicant)).accessReady).toBe(true);
+      const correction = await begin(applicant, actor, {desiredEnabled: false, verificationEmail: hold.variables.verificationEmail});
+      expect((await race([correction]))[0].ok).toBe(true);
+      expect((await race([await complete(applicant)]))[0].ok).toBe(true);
+    }
+    expect(await state(applicant)).toMatchObject({membershipStatus: "REGULAR", accessReady: false, adminReady: false,
+      desiredEnabled: false, verificationEmail: hold.variables.verificationEmail, syncStatus: "READY"});
+    await assertCount(1);
+  });
+
+  it.each(["email", "status"])("rolls back applicant email initialization on changed profile %s", async field => {
+    const [actor] = await initialize(1);
+    const applicant = await pendingApplicant();
+    const request = await pendingEmailHold(applicant, actor);
+    if (field === "email") request.variables.expectedProfileEmail = "stale@example.test";
+    else await dc.executeGraphql("mutation ChangedApplicant($userId: String!) {user_update(key: {id: $userId}, data: {membershipStatus: REGULAR})}", {variables: {userId: applicant}});
+    const before = await control();
+    const result = (await race([request]))[0];
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("SECURITY_PROFILE_CONFLICT");
+    expect(await state(applicant)).toBeNull();
+    expect(await operation(String(request.variables.operationId))).toBeNull();
+    expect(await control()).toEqual(before);
+    await assertCount(1);
+  });
+
+  it("refuses client access and revalidates a revoked actor before initializing applicant authority", async () => {
+    const [actor, other] = await initialize(2);
+    const applicant = await pendingApplicant();
+    const request = await pendingEmailHold(applicant, actor);
+    await expect(sdk.initializePendingEmailHold(security, request.variables as unknown as SecuritySdk.InitializePendingEmailHoldVariables,
+      {impersonate: {authClaims: {sub: actor, enabled: true, admin: true, securityVersion: 1}}})).rejects.toThrow();
+    expect((await race([await begin(actor, other)]))[0].ok).toBe(true);
+    request.variables.expectedControlVersion = (await control()).version;
+    const before = await control();
+    const result = (await race([request]))[0];
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("SECURITY_ACTOR_REVOKED");
+    expect(await state(applicant)).toBeNull();
+    expect(await operation(String(request.variables.operationId))).toBeNull();
+    expect(await control()).toEqual(before);
+    await assertCount(1);
   });
 });

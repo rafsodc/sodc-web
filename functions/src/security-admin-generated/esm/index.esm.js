@@ -62,6 +62,12 @@ export function initializeUserSecurityState(dcOrVarsOrOptions, varsOrOptions, op
   return dcInstance.executeMutation('InitializeUserSecurityState', inputVars, inputOpts);
 }
 
+export function initializePendingEmailHold(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('InitializePendingEmailHold', inputVars, inputOpts);
+}
+
 export function beginSecurityTransition(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

@@ -1,8 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAppQueryClient } from "../queryClient";
+import { createSessionLifecycle, installSessionRuntime } from "../../appShell/sessionLifecycle";
 const queryClient = createAppQueryClient();
 
 describe("queryClient retry policy", () => {
+  it("preserves a public bearer query across anonymous to first sign-in", async () => {
+    const lifecycle = createSessionLifecycle(); lifecycle.observe(null);
+    const uninstall = installSessionRuntime({ lifecycle, retire: () => lifecycle.retire(), signOut: async () => lifecycle.retire() });
+    let resolve!: (value: string) => void;
+    const queryFn = vi.fn(() => new Promise<string>(done => { resolve = done; }));
+    const pending = queryClient.fetchQuery({ queryKey: ["public-capability"], meta: { sessionBoundary: "capability" }, queryFn });
+    await vi.waitFor(() => expect(queryFn).toHaveBeenCalledOnce());
+    expect(lifecycle.observe("first-user")).toBe(true);
+    resolve("guest ticket");
+    await expect(pending).resolves.toBe("guest ticket");
+    uninstall();
+    queryClient.removeQueries({ queryKey: ["public-capability"] });
+  });
   it("does not retry authentication failures before session recovery", async () => {
     const queryFn = vi.fn().mockRejectedValue({ code: 401 });
 

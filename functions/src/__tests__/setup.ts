@@ -32,6 +32,6 @@ vi.mock("../securityRepository", () => ({
   listSecurityStatesForReconciliation: vi.fn(async () => ({data: {userSecurityStates: []}})),
   listReadyAdministrators: vi.fn(async () => ({data: {userSecurityStates: []}})), recordSecurityNoop: vi.fn(), getAdminSafetyAudit: vi.fn(async () => ({data: {adminSafetyAudit: null}})),
   createAdminSafetyControl: vi.fn(), activateAdminSafetyControl: vi.fn(), reconcileAdminSafetyControl: vi.fn(), confirmPotentialLostWithAdminSafety: vi.fn(),
-  initializeUserSecurityState: vi.fn(), beginSecurityTransition: vi.fn(), completeSecurityTransition: vi.fn(),
+  initializePendingEmailHold: vi.fn(), initializeUserSecurityState: vi.fn(), beginSecurityTransition: vi.fn(), completeSecurityTransition: vi.fn(),
   recordSecuritySynchronizationFailure: vi.fn(), listPendingSecurityTransitions: vi.fn(), supersedeSecurityTransition: vi.fn(),
 }));

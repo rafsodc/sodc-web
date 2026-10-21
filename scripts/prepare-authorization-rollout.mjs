@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const AUTHORIZATION_PROJECTS = ["sodc-web", "sodc-web-beta", "sodc-web-production"];
+export const LEGACY_POTENTIAL_LOST_OPERATIONS = ["ConfirmPotentialLostWithSecurityState", "ConfirmPotentialLost"];
 
 /** Remove only the named redacted authority lookup; retain every existing claim/ownership check. */
 export function compatibilityOperationSource(source) {
@@ -55,12 +56,22 @@ export async function prepareAuthorizationRollout({repositoryRoot, output, proje
     if (connector !== "api") continue;
     for (const file of (await readdir(directory)).filter(file => file.endsWith(".gql"))) {
       const target = path.join(directory, file);
-      await writeFile(target, compatibilityOperationSource(await readFile(target, "utf8")));
+      const source = await readFile(target, "utf8");
+      if (LEGACY_POTENTIAL_LOST_OPERATIONS.some(name => new RegExp(`mutation\\s+${name}\\s*\\(`).test(source))) {
+        throw new Error("Legacy Potential Lost writers must remain outside strict API sources");
+      }
+      await writeFile(target, compatibilityOperationSource(source));
     }
   }
+  // These historical writers intentionally bypass current admin safety. They
+  // belong only to the reviewed compatibility artifact, never default sources
+  // or generated SDKs. Preserve both deployed Functions generations unchanged.
+  const legacy = await readFile(path.join(repositoryRoot, "scripts/authorization-compatibility/member-review.gql"), "utf8");
+  await writeFile(path.join(connectorRoot, "api/legacy-member-review.gql"), legacy);
   await writeFile(path.join(output, "firebase.json"), JSON.stringify({dataconnect: {source: "dataconnect"}}, null, 2) + "\n");
   await writeFile(path.join(output, "AUTHORIZATION-ROLLOUT.json"), JSON.stringify({
     schemaVersion: "sodc-authorization-compatibility/v1", projectId, createdAt: now.toISOString(), expiresAt: expiry.toISOString(),
+    compatibilityOnlyOperations: LEGACY_POTENTIAL_LOST_OPERATIONS,
     purpose: "Temporary additive API deployment before security-state backfill and strict API cutover. Legacy claim checks remain. No deploy has occurred.",
     warning: "This artifact does not enforce current-authorization revocation. Never use after strict API cutover. Delete after migration or expiry.",
   }, null, 2) + "\n");

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockUser } from "../../../test-utils/mocks/firebase";
 import { captureSession, createSessionLifecycle, installSessionRuntime, runSessionOperation, SessionChangedError } from "../sessionLifecycle";
 import { reportAuthorizationDenial } from "../../auth/authorizationRecoveryEvents";
+import { beginAuthorizationUpdate } from "../../auth/authorizationUpdate";
 import type { OwnAuthorizationStatus } from "../../auth/authorizationStatus";
 
 const { statusMock, legacyRefresh } = vi.hoisted(() => ({ statusMock: vi.fn(), legacyRefresh: vi.fn() }));
@@ -35,6 +36,34 @@ beforeEach(() => { vi.clearAllMocks(); statusMock.mockResolvedValue(enabled); le
 afterEach(() => { uninstall?.(); queryClient?.clear(); vi.useRealTimers(); });
 
 describe("current authorization session recovery", () => {
+  it("does not recover the signed-in member for a rejected public bearer query", async () => {
+    const { user, retire, signOut, result } = setup();
+    await act(async () => {
+      await queryClient.fetchQuery({ queryKey: ["guest-ticket", "expired-link"],
+        meta: { sessionBoundary: "capability" }, queryFn: async () => { throw denied; } }).catch(() => undefined);
+    });
+    expect(statusMock).not.toHaveBeenCalled();
+    expect(user.getIdToken).not.toHaveBeenCalled();
+    expect(retire).not.toHaveBeenCalled();
+    expect(signOut).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("idle");
+  });
+  it("recovers a fresh denial on the same query key after an earlier expected-update error", async () => {
+    const { signOut } = setup();
+    const update = beginAuthorizationUpdate(captureSession("A"));
+    const read = vi.fn().mockRejectedValue(stale);
+    await act(async () => {
+      await queryClient.fetchQuery({ queryKey: ["same-profile"], queryFn: read }).catch(() => undefined);
+    });
+    expect(statusMock).not.toHaveBeenCalled();
+    update.finish(true);
+    statusMock.mockResolvedValue({ ...enabled, status: "restricted" });
+    await act(async () => {
+      await queryClient.fetchQuery({ queryKey: ["same-profile"], queryFn: read }).catch(() => undefined);
+    });
+    await waitFor(() => expect(signOut).toHaveBeenCalledOnce());
+    expect(read).toHaveBeenCalledTimes(2);
+  });
   it("coalesces concurrent query, mutation and imperative denials before cancellation can reenter", async () => {
     const firstStatus = deferred<OwnAuthorizationStatus>();
     statusMock.mockReturnValueOnce(firstStatus.promise);

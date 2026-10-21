@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { prepareAuthorizationRollout, compatibilityOperationSource } from "./prepare-authorization-rollout.mjs";
+import { prepareAuthorizationRollout, compatibilityOperationSource, LEGACY_POTENTIAL_LOST_OPERATIONS } from "./prepare-authorization-rollout.mjs";
 import { verifyAuthorizationMigration, AUTHORIZATION_MIGRATION_ID } from "./check-authorization-migration.mjs";
 const repositoryRoot = process.cwd();
 const roots = [];
@@ -24,6 +24,9 @@ describe("staged current-authorization rollout", () => {
     expect(await readFile(path.join(output, "dataconnect/authorization-service/connector.yaml"), "utf8")).toBe("connectorId: authorization-service\n");
     const metadata = JSON.parse(await readFile(path.join(output, "AUTHORIZATION-ROLLOUT.json"), "utf8"));
     expect(metadata).toMatchObject({projectId: "sodc-web-beta", expiresAt: "2026-10-22T00:00:00.000Z"});
+    expect(metadata.compatibilityOnlyOperations).toEqual(LEGACY_POTENTIAL_LOST_OPERATIONS);
+    const pinned = await readFile(path.join(repositoryRoot, "scripts/authorization-compatibility/member-review.gql"), "utf8");
+    expect(await readFile(path.join(output, "dataconnect/api/legacy-member-review.gql"), "utf8")).toBe(pinned);
   });
   it("rejects unsupported targets, existing output, unsafe output paths and unbounded expiry", async () => {
     const temp = await temporary(); const base = {repositoryRoot, output: path.join(temp, "new"), projectId: "sodc-web-beta", now: new Date("2026-10-21"), expiresAt: "2026-10-22"};
@@ -36,13 +39,20 @@ describe("staged current-authorization rollout", () => {
   it("refuses unknown lookup syntax rather than silently emitting unguarded source", () => {
     expect(() => compatibilityOperationSource('query X { currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"})')).toThrow("refusing");
   });
-  it("retains the old server operation signature and adds a new atomic security operation", async () => {
-    const source = await readFile(path.join(repositoryRoot, "dataconnect/api/member-review.gql"), "utf8");
+  it("decommissions both unsafe legacy writers from strict sources while preserving their exact compatibility signatures", async () => {
+    const strict = await readFile(path.join(repositoryRoot, "dataconnect/api/member-review.gql"), "utf8");
+    for (const name of LEGACY_POTENTIAL_LOST_OPERATIONS) expect(strict).not.toMatch(new RegExp(`mutation\\s+${name}\\s*\\(`));
+    const source = await readFile(path.join(repositoryRoot, "scripts/authorization-compatibility/member-review.gql"), "utf8");
     const legacy = source.split("mutation ConfirmPotentialLost(")[1];
     expect(legacy).not.toContain("expectedSecurityVersion");
-    const current = source.split("mutation ConfirmPotentialLostWithSecurityState(")[1].split("mutation ConfirmPotentialLost(")[0];
-    expect(current).toContain("userSecurityState_updateMany");
-    expect(current).toContain("securityTransition_insert");
+    expect(legacy).toContain("@auth(level: NO_ACCESS) @transaction");
+    const previous = source.split("mutation ConfirmPotentialLostWithSecurityState(")[1].split("mutation ConfirmPotentialLost(")[0];
+    expect(previous).toContain("userSecurityState_updateMany");
+    expect(previous).toContain("securityTransition_insert");
+    expect(previous).toContain("@auth(level: NO_ACCESS) @transaction");
+    expect(previous).not.toContain("expectedControlVersion");
+    const current = await readFile(path.join(repositoryRoot, "dataconnect/authorization-service/security.gql"), "utf8");
+    expect(current).toContain("mutation ConfirmPotentialLostWithAdminSafety(");
   });
   it("blocks normal deployment until an operator attests the exact project/revision with audit evidence", async () => {
     const temp = await temporary(); const expected = {projectId: "sodc-web-beta", gitSha: "a".repeat(40)};

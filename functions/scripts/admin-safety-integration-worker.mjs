@@ -10,7 +10,7 @@ const { getDataConnect } = require("firebase-admin/data-connect");
 const sdk = require("@dataconnect/security-admin-generated");
 const app = initializeApp({ projectId: context.projectId }, `admin-safety-worker-${process.pid}`);
 const client = getDataConnect(sdk.connectorConfig, app);
-const allowed = new Set(["beginSecurityTransition", "completeSecurityTransition", "recordSecurityNoop"]);
+const allowed = new Set(["beginSecurityTransition", "completeSecurityTransition", "recordSecurityNoop", "initializeUserSecurityState", "initializePendingEmailHold"]);
 let used = false;
 process.on("message", async request => {
   if (used) return;

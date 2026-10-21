@@ -272,8 +272,8 @@ export const listUsersPendingApproval = onCall(
 );
 
 /**
- * Sets enabled: false for new members (callable any time after sign-in).
- * Invoked at registration and again after profile submit so the claim is never left unset.
+ * Registers approval notifications after sign-in/profile submission. Missing
+ * enabled/authority already denies access; only the transition service owns claims.
  */
 export const syncPendingUserClaims = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
@@ -293,9 +293,6 @@ export const syncPendingUserClaims = onCall(
       // Profile creation is PENDING and has no member authority. Existing security
       // state belongs to the transition service and must not be rewritten here.
       if ((await getUserSecurityState({userId: uid})).data.userSecurityState) return {success: true};
-      await admin.auth().setCustomUserClaims(uid, { ...currentClaims, enabled: false });
-      logger.info(`syncPendingUserClaims: onboarding disabled for uid=${uid}`);
-
       // No-ops unless this call is what actually put the user into the approval queue
       // (verified email + profile submitted + awaiting approval) — see #271.
       await notifyAdminsUserPendingApproval({

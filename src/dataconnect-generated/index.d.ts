@@ -423,51 +423,6 @@ export interface ConfirmNotifyReplyToVerificationVariables {
   reason?: string | null;
 }
 
-export interface ConfirmPotentialLostData {
-  user_updateMany: number;
-  potentialLostReview_insert: PotentialLostReview_Key;
-}
-
-export interface ConfirmPotentialLostVariables {
-  userId: string;
-  expectedStatus: MembershipStatus;
-  expectedUpdatedAt: TimestampString;
-  expectedEmailDeliveryVersion: number;
-  reviewedBy: string;
-  reasons: string[];
-  lastSignInTime?: string | null;
-  lastActivityTime?: string | null;
-  inactivitySince?: string | null;
-  activitySource?: string | null;
-  emailBounceCount: number;
-}
-
-export interface ConfirmPotentialLostWithSecurityStateData {
-  userSecurityState_updateMany: number;
-  securityTransition_insert: SecurityTransition_Key;
-  user_updateMany: number;
-  potentialLostReview_insert: PotentialLostReview_Key;
-}
-
-export interface ConfirmPotentialLostWithSecurityStateVariables {
-  expectedSecurityVersion: number;
-  nextSecurityVersion: number;
-  securityOperationId: string;
-  desiredAdmin: boolean;
-  securityIntentHash: string;
-  userId: string;
-  expectedStatus: MembershipStatus;
-  expectedUpdatedAt: TimestampString;
-  expectedEmailDeliveryVersion: number;
-  reviewedBy: string;
-  reasons: string[];
-  lastSignInTime?: string | null;
-  lastActivityTime?: string | null;
-  inactivitySince?: string | null;
-  activitySource?: string | null;
-  emailBounceCount: number;
-}
-
 export interface ConfirmProfileReviewData {
   user_update?: User_Key | null;
 }
@@ -6429,30 +6384,6 @@ export const getPotentialLostProfileRef: GetPotentialLostProfileRef;
 
 export function getPotentialLostProfile(vars: GetPotentialLostProfileVariables, options?: ExecuteQueryOptions): QueryPromise<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
 export function getPotentialLostProfile(dc: DataConnect, vars: GetPotentialLostProfileVariables, options?: ExecuteQueryOptions): QueryPromise<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
-
-interface ConfirmPotentialLostWithSecurityStateRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: ConfirmPotentialLostWithSecurityStateVariables): MutationRef<ConfirmPotentialLostWithSecurityStateData, ConfirmPotentialLostWithSecurityStateVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: ConfirmPotentialLostWithSecurityStateVariables): MutationRef<ConfirmPotentialLostWithSecurityStateData, ConfirmPotentialLostWithSecurityStateVariables>;
-  operationName: string;
-}
-export const confirmPotentialLostWithSecurityStateRef: ConfirmPotentialLostWithSecurityStateRef;
-
-export function confirmPotentialLostWithSecurityState(vars: ConfirmPotentialLostWithSecurityStateVariables): MutationPromise<ConfirmPotentialLostWithSecurityStateData, ConfirmPotentialLostWithSecurityStateVariables>;
-export function confirmPotentialLostWithSecurityState(dc: DataConnect, vars: ConfirmPotentialLostWithSecurityStateVariables): MutationPromise<ConfirmPotentialLostWithSecurityStateData, ConfirmPotentialLostWithSecurityStateVariables>;
-
-interface ConfirmPotentialLostRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: ConfirmPotentialLostVariables): MutationRef<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: ConfirmPotentialLostVariables): MutationRef<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
-  operationName: string;
-}
-export const confirmPotentialLostRef: ConfirmPotentialLostRef;
-
-export function confirmPotentialLost(vars: ConfirmPotentialLostVariables): MutationPromise<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
-export function confirmPotentialLost(dc: DataConnect, vars: ConfirmPotentialLostVariables): MutationPromise<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
 
 interface GetNewMemberReportMigrationRef {
   /* Allow users to create refs without passing in DataConnect */

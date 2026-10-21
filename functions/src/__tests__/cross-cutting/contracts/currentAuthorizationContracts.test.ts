@@ -43,7 +43,7 @@ describe("current-authorization boundary inventory", () => {
     }
   });
   it("keeps Potential Lost denial/version/profile audit atomic and receipt processing delivery-only", () => {
-    const review = read("dataconnect/api/member-review.gql");
+    const review = read("dataconnect/authorization-service/security.gql").split("mutation ConfirmPotentialLostWithAdminSafety(")[1];
     expect(review).toContain("userSecurityState_updateMany"); expect(review).toContain("securityTransition_insert");
     expect(review).toContain("potentialLostReview_insert"); expect(review).toContain("@transaction");
     const receipts = read("dataconnect/api/admin-mutations.gql").split("mutation TryApplyNotifyDeliveryUserState")[1].split("# ── GOV.UK Notify callback")[0];

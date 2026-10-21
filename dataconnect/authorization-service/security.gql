@@ -36,6 +36,32 @@ mutation InitializeUserSecurityState(
     intentHash: $intentHash, actorId: $actorId, actorKind: $actorKind, actorSecurityVersion: $actorSecurityVersion,
     startedControlVersion_expr: "vars.expectedControlVersion + 1", reason: $reason, syncStatus: PENDING})
 }
+# A new applicant's email change must race approval through the same profile,
+# actor and control checks. Never infer a grant from their Auth role claims.
+mutation InitializePendingEmailHold(
+  $expectedControlVersion: Int!, $actorSecurityVersion: Int!, $userId: String!, $expectedProfileEmail: String!,
+  $verificationEmail: String!, $operationId: String!, $actorId: String!, $reason: String!, $intentHash: String!
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact
+    @check(expr: "response.query.target == null", message: "SECURITY_STATE_CONFLICT")
+    @check(expr: "response.query.control.status == 'READY'", message: "ADMIN_SAFETY_RECOVERY_REQUIRED")
+    @check(expr: "response.query.actor != null && response.query.actor.securityVersion == vars.actorSecurityVersion && response.query.actor.accessReady && response.query.actor.adminReady && response.query.actor.syncStatus == 'READY' && response.query.actor.membershipStatus == response.query.actor.user.membershipStatus && response.query.actor.membershipStatus in ['REGULAR','RESERVE','RETIRED','INDUSTRY','CIVIL_SERVICE']", message: "SECURITY_ACTOR_REVOKED") {
+    actor: userSecurityState(key: {userId: $actorId}) {securityVersion accessReady adminReady syncStatus membershipStatus user {membershipStatus}}
+    control: adminSafetyControl(key: {id: "site-wide"}) @check(expr: "this != null && this.version == vars.expectedControlVersion", message: "ADMIN_CONTROL_CONFLICT") {version status}
+    target: userSecurityState(key: {userId: $userId}) {securityVersion}
+    user(id: $userId) @check(expr: "this != null && this.membershipStatus == 'PENDING' && this.email == vars.expectedProfileEmail", message: "SECURITY_PROFILE_CONFLICT") {membershipStatus email}
+  }
+  adminSafetyControl_updateMany(where: {id: {eq: "site-wide"}, version: {eq: $expectedControlVersion}}, data: {version_update: {inc: 1}, updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "ADMIN_CONTROL_CONFLICT")
+  user_updateMany(where: {id: {eq: $userId}, membershipStatus: {eq: PENDING}, email: {eq: $expectedProfileEmail}},
+    data: {updatedAt_expr: "request.time", updatedBy: $actorId}) @check(expr: "this == 1", message: "SECURITY_PROFILE_CONFLICT")
+  userSecurityState_insert(data: {userId: $userId, securityVersion: 1, membershipStatus: PENDING,
+    desiredEnabled: false, desiredAdmin: false, verificationEmail: $verificationEmail,
+    accessReady: false, adminReady: false, operationId: $operationId, syncStatus: PENDING})
+  securityTransition_insert(data: {operationId: $operationId, userId: $userId, securityVersion: 1,
+    membershipStatus: PENDING, desiredEnabled: false, desiredAdmin: false, verificationEmail: $verificationEmail,
+    intentHash: $intentHash, actorId: $actorId, actorKind: ADMIN, actorSecurityVersion: $actorSecurityVersion,
+    startedControlVersion_expr: "vars.expectedControlVersion + 1", reason: $reason, syncStatus: PENDING})
+}
 mutation BeginSecurityTransition(
   $expectedControlVersion: Int!, $actorKind: SecurityActorKind!, $actorSecurityVersion: Int,
   $userId: String!, $expectedVersion: Int!, $nextVersion: Int!, $expectedMembershipStatus: MembershipStatus!,

@@ -1,15 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => Object.fromEntries(["lookup", "operation", "control", "roster", "begin", "complete", "noop", "initialize", "failure", "supersede", "audit", "create", "activate", "recount", "getUser", "setClaims", "updateUser", "revoke", "profile"].map(name => [name, vi.fn()])));
+const mocks = vi.hoisted(() => Object.fromEntries(["lookup", "operation", "pendingEmail", "writeEmail", "sendEmail", "enforceRateLimit", "control", "roster", "begin", "complete", "noop", "initialize", "failure", "supersede", "audit", "create", "activate", "recount", "getUser", "setClaims", "updateUser", "revoke", "profile"].map(name => [name, vi.fn()])));
 vi.mock("../../securityRepository", () => ({getUserSecurityState: mocks.lookup, getSecurityTransition: mocks.operation, getAdminSafetyControl: mocks.control,
   listReadyAdministrators: mocks.roster, beginSecurityTransition: mocks.begin, completeSecurityTransition: mocks.complete, recordSecurityNoop: mocks.noop,
-  initializeUserSecurityState: mocks.initialize, recordSecuritySynchronizationFailure: mocks.failure, supersedeSecurityTransition: mocks.supersede,
+  initializePendingEmailHold: mocks.pendingEmail, initializeUserSecurityState: mocks.initialize, recordSecuritySynchronizationFailure: mocks.failure, supersedeSecurityTransition: mocks.supersede,
   getAdminSafetyAudit: mocks.audit, createAdminSafetyControl: mocks.create, activateAdminSafetyControl: mocks.activate, reconcileAdminSafetyControl: mocks.recount}));
 vi.mock("firebase-admin", () => ({auth: () => ({getUser: mocks.getUser, setCustomUserClaims: mocks.setClaims, updateUser: mocks.updateUser, revokeRefreshTokens: mocks.revoke})}));
 vi.mock("@dataconnect/admin-generated", () => ({getUserMembershipStatus: mocks.profile}));
+vi.mock("../../userEmailSync", () => ({withUserEmailLease: async (_uid: string, work: (write: typeof mocks.writeEmail) => Promise<unknown>) => work(mocks.writeEmail)}));
+vi.mock("../../rateLimiter", () => ({enforceRateLimit: mocks.enforceRateLimit}));
+vi.mock("../../mailer", () => ({govNotifySecrets: [], createConfiguredGovNotifyMailer: () => ({sendEmail: mocks.sendEmail})}));
+import { reconcileMyEmail } from "../../authEmailActions";
+import { updateUserEmail } from "../../adminUserEmail";
 import { transitionUserSecurity, synchronizeUserSecurity, initializeUserSecurityState, bootstrapAdminSafetyControl, activateAdminSafetyControl, reconcileAdminSafetyControl, repairUserSecurity } from "../../currentAuthorizationTransitions";
 type State = {userId: string; securityVersion: number; operationId: string; membershipStatus: string; desiredAdmin: boolean; desiredEnabled: boolean;
   accessReady: boolean; adminReady: boolean; verificationEmail: string | null; syncStatus: string; user: {membershipStatus: string; email: string}};
 type Identity = {uid: string; email: string; emailVerified: boolean; disabled: boolean; customClaims: Record<string, unknown>};
+let profiles: Map<string, {membershipStatus: string; email: string}>;
 let states: Map<string, State>, identities: Map<string, Identity>, operations: Map<string, any>, audits: Map<string, any>;
 let safety: {id: string; version: number; readyAdminCount: number; status: string} | null;
 let events: string[];
@@ -50,7 +56,7 @@ function intent(userId: string, overrides: Record<string, unknown> = {}) {
   return {userId, actorId: "a", actorKind: "ADMIN" as const, actorSecurityVersion: 1, reason: "REVOKE_ADMIN", operationId: `revoke-${userId}-operation`, admin: false, ...overrides};
 }
 beforeEach(() => {
-  vi.resetAllMocks(); states = new Map(); identities = new Map(); operations = new Map(); audits = new Map(); events = [];
+  vi.resetAllMocks(); profiles = new Map(); states = new Map(); identities = new Map(); operations = new Map(); audits = new Map(); events = [];
   safety = {id: "site-wide", version: 1, readyAdminCount: 0, status: "READY"}; seed("a");
   mocks.lookup.mockImplementation(async ({userId}) => ({data: {userSecurityState: structuredClone(states.get(userId) ?? null)}}));
   mocks.operation.mockImplementation(async ({operationId}) => ({data: {securityTransition: structuredClone(operations.get(operationId) ?? null)}}));
@@ -58,7 +64,7 @@ beforeEach(() => {
   mocks.roster.mockImplementation(async () => ({data: {userSecurityStates: structuredClone([...states.values()].filter(state => state.adminReady))}}));
   mocks.audit.mockImplementation(async ({operationId}) => ({data: {adminSafetyAudit: audits.get(operationId) ?? null}}));
   mocks.getUser.mockImplementation(async uid => {const user = identities.get(uid); if (!user) throw Object.assign(new Error("missing"), {code: "auth/user-not-found"}); return structuredClone(user);});
-  mocks.profile.mockImplementation(async ({id}) => ({data: {user: states.get(id)?.user ?? {membershipStatus: "REGULAR"}}}));
+  mocks.profile.mockImplementation(async ({id}) => ({data: {user: states.get(id)?.user ?? profiles.get(id) ?? {membershipStatus: "REGULAR"}}}));
   mocks.setClaims.mockImplementation(async (uid, claims) => {events.push(`auth:${uid}`); identities.get(uid)!.customClaims = {...claims};});
   mocks.updateUser.mockImplementation(async (uid, values) => {Object.assign(identities.get(uid)!, values); return structuredClone(identities.get(uid));});
   mocks.begin.mockImplementation(async values => begin(values));
@@ -80,6 +86,18 @@ beforeEach(() => {
     const state = {userId: values.userId, ...values, securityVersion: 1, accessReady: false, adminReady: false, syncStatus: "PENDING", user: {membershipStatus: values.membershipStatus, email: identities.get(values.userId)!.email}};
     states.set(values.userId, state); safety!.version++;
     operations.set(values.operationId, {...values, securityVersion: 1, noOp: false, syncStatus: "PENDING"});
+  }));
+  mocks.pendingEmail.mockImplementation(async values => transaction(() => {
+    check({...values, actorKind: "ADMIN"});
+    if (states.has(values.userId)) throw new Error("SECURITY_STATE_CONFLICT");
+    const profile = profiles.get(values.userId);
+    if (!profile || profile.membershipStatus !== "PENDING" || profile.email !== values.expectedProfileEmail) throw new Error("SECURITY_PROFILE_CONFLICT");
+    const state: State = {userId: values.userId, securityVersion: 1, operationId: values.operationId, membershipStatus: "PENDING",
+      desiredAdmin: false, desiredEnabled: false, accessReady: false, adminReady: false, verificationEmail: values.verificationEmail,
+      syncStatus: "PENDING", user: {...profile}};
+    states.set(values.userId, state); safety!.version++;
+    operations.set(values.operationId, {...values, ...structuredClone(state), actorKind: "ADMIN", noOp: false});
+    events.push(`hold:${values.userId}`);
   }));
   mocks.supersede.mockImplementation(async ({operationId}) => {operations.get(operationId).syncStatus = "SUPERSEDED";});
   mocks.create.mockImplementation(async values => {if (safety) throw new Error("already exists"); safety = {id: "site-wide", version: 1, readyAdminCount: values.readyAdminCount, status: "BOOTSTRAP"}; audits.set(values.operationId, values);});
@@ -194,11 +212,35 @@ describe("administrator safety orchestration with durable transaction adapter", 
     expect(safety).toMatchObject({readyAdminCount: 0, status: "RECOVERY_REQUIRED"}); expect(states.get("a")!.adminReady).toBe(false);
   });
 
-  it("verified established sign-in reconciliation is a bound no-op for a healthy sole admin", async () => {
-    await transitionUserSecurity({userId: "a", actorId: "a", actorKind: "SELF_VERIFICATION", actorSecurityVersion: 1,
-      reason: "VERIFIED_EMAIL_RECONCILIATION", releaseEmailVerification: true, operationId: "existing-verification-operation"});
-    expect(mocks.noop).toHaveBeenCalledOnce(); expect(mocks.begin).not.toHaveBeenCalled();
-    expect(states.get("a")).toMatchObject({adminReady: true, accessReady: true, securityVersion: 1}); expect(safety!.readyAdminCount).toBe(1);
+  it.each(["RECOVERY_REQUIRED", "BOOTSTRAP", "unavailable", "contended"])("healthy sign-in is independent of administrator control: %s", async mode => {
+    seed("member", false);
+    if (mode === "unavailable") safety = null; else safety!.status = mode;
+    mocks.control.mockRejectedValue(new Error("control must not be read"));
+    await expect(reconcileMyEmail.run({data: {operationId: "healthy-signin-reference"}, auth: {uid: "member", token: {}}} as never)).resolves.toMatchObject({success: true});
+    expect(mocks.control).not.toHaveBeenCalled(); expect(mocks.noop).not.toHaveBeenCalled(); expect(mocks.begin).not.toHaveBeenCalled();
+    expect(operations.has("healthy-signin-reference")).toBe(false); expect(states.get("member")!.securityVersion).toBe(1);
+  });
+  it("healthy sign-in repairs a lagging current READY Auth mirror without requiring a current token version", async () => {
+    seed("member", false); identities.get("member")!.customClaims = {enabled: false}; safety!.status = "RECOVERY_REQUIRED";
+    await reconcileMyEmail.run({data: {operationId: "lagging-signin-reference"}, auth: {uid: "member", token: {securityVersion: 0}}} as never);
+    expect(identities.get("member")!.customClaims).toMatchObject({enabled: true, admin: false, securityVersion: 1});
+    expect(mocks.control).not.toHaveBeenCalled(); expect(mocks.noop).not.toHaveBeenCalled(); expect(states.get("member")!.accessReady).toBe(true);
+  });
+  it("held sign-in still requires the guarded exact-address release and resumes a lost response", async () => {
+    seed("member", false); Object.assign(states.get("member")!, {verificationEmail: "member@example.invalid", accessReady: false, desiredEnabled: false});
+    identities.get("member")!.customClaims.enabled = false;
+    mocks.setClaims.mockRejectedValueOnce(new Error("temporary Auth failure"));
+    const request = {data: {operationId: "held-signin-reference"}, auth: {uid: "member", token: {securityVersion: 1}}};
+    await expect(reconcileMyEmail.run(request as never)).rejects.toThrow("temporary Auth failure");
+    expect(states.get("member")).toMatchObject({accessReady: false, syncStatus: "PENDING"});
+    await reconcileMyEmail.run(request as never);
+    expect(states.get("member")).toMatchObject({accessReady: true, verificationEmail: null, securityVersion: 2});
+    expect(mocks.begin).toHaveBeenCalledOnce(); expect(mocks.noop).not.toHaveBeenCalled();
+  });
+  it.each(["different@example.invalid", "restricted"])("verified sign-in does not grant through a nonmatching hold or denial: %s", async mode => {
+    seed("member", false); Object.assign(states.get("member")!, {verificationEmail: mode === "restricted" ? null : mode, accessReady: false, desiredEnabled: false});
+    await reconcileMyEmail.run({data: {operationId: "denied-signin-reference"}, auth: {uid: "member", token: {securityVersion: 1}}} as never);
+    expect(mocks.begin).not.toHaveBeenCalled(); expect(mocks.setClaims).not.toHaveBeenCalled(); expect(states.get("member")!.accessReady).toBe(false);
   });
   it("cannot self-release an unheld restriction", async () => {
     Object.assign(states.get("a")!, {accessReady: false, adminReady: false, desiredEnabled: false}); safety!.readyAdminCount = 0;
@@ -256,6 +298,79 @@ describe("administrator safety orchestration with durable transaction adapter", 
     await expect(reconcileAdminSafetyControl({operationId: "unknown-recount-reference", actorId: "operator", reason: "Audit"})).rejects.toMatchObject({code: "unavailable"});
     expect(safety).toMatchObject({readyAdminCount: 1, status: "BOOTSTRAP"});
     expect(mocks.activate).not.toHaveBeenCalled(); expect(mocks.recount).not.toHaveBeenCalled(); expect(mocks.setClaims).not.toHaveBeenCalled(); expect(mocks.updateUser).not.toHaveBeenCalled();
+  });
+
+  function applicant() {
+    profiles.set("applicant", {membershipStatus: "PENDING", email: "old@example.invalid"});
+    identities.set("applicant", {uid: "applicant", email: "old@example.invalid", emailVerified: true, disabled: false, customClaims: {admin: true, enabled: false}});
+  }
+  function emailIntent() {return {userId: "applicant", actorId: "a", actorKind: "ADMIN" as const, actorSecurityVersion: 1,
+    reason: "EMAIL_REVERIFICATION", operationId: "applicant-email-reference", expectedEmail: "old@example.invalid", verificationEmail: "new@example.invalid"};}
+  function emailRequest() {return {data: {operationId: "applicant-email-reference", userId: "applicant", email: "new@example.invalid", expectedEmail: "old@example.invalid"}, auth: {uid: "a", token: {securityVersion: 1, admin: true, enabled: true}}};}
+  it("corrects a new applicant only after committing the denied non-admin exact-address hold", async () => {
+    applicant(); const update = mocks.updateUser.getMockImplementation()!;
+    mocks.updateUser.mockImplementation(async (uid, values) => {
+      if (values.email) expect(states.get(uid)).toMatchObject({membershipStatus: "PENDING", desiredAdmin: false, desiredEnabled: false,
+        accessReady: false, adminReady: false, verificationEmail: values.email, operationId: "applicant-email-reference", syncStatus: "READY"});
+      return update(uid, values);
+    });
+    await expect(updateUserEmail.run(emailRequest() as never)).resolves.toMatchObject({success: true, verificationRequired: true});
+    expect(safety!.readyAdminCount).toBe(1); expect(mocks.pendingEmail).toHaveBeenCalledOnce(); expect(mocks.initialize).not.toHaveBeenCalled();
+    expect(identities.get("applicant")!.customClaims).toMatchObject({admin: false, enabled: false, securityVersion: 1});
+  });
+  it("recovers uncertain pending-hold commits with the same canonical intent exactly once", async () => {
+    applicant(); const initialize = mocks.pendingEmail.getMockImplementation()!;
+    mocks.pendingEmail.mockImplementationOnce(async values => {await initialize(values); throw new Error("commit acknowledgement lost");});
+    await transitionUserSecurity(emailIntent()); await transitionUserSecurity(emailIntent());
+    expect(mocks.pendingEmail).toHaveBeenCalledOnce(); expect(states.get("applicant")).toMatchObject({securityVersion: 1, verificationEmail: "new@example.invalid", accessReady: false});
+    await expect(transitionUserSecurity({...emailIntent(), verificationEmail: "different@example.invalid"})).rejects.toMatchObject({details: {code: "SECURITY_OPERATION_CONFLICT"}});
+  });
+  it("recovers a pending applicant Auth email write whose response was lost without replacing its immutable hold", async () => {
+    applicant(); const update = mocks.updateUser.getMockImplementation()!;
+    mocks.updateUser.mockImplementationOnce(async (uid, values) => {await update(uid, values); throw new Error("Auth response lost");});
+    await expect(updateUserEmail.run(emailRequest() as never)).rejects.toMatchObject({details: {code: "EMAIL_CHANGE_INCOMPLETE"}});
+    expect(states.get("applicant")).toMatchObject({securityVersion: 1, operationId: "applicant-email-reference", verificationEmail: "new@example.invalid", accessReady: false});
+    await expect(updateUserEmail.run(emailRequest() as never)).resolves.toMatchObject({success: true, verificationRequired: true});
+    expect(mocks.pendingEmail).toHaveBeenCalledOnce(); expect(mocks.updateUser).toHaveBeenCalledOnce(); expect(mocks.revoke).toHaveBeenCalledWith("applicant");
+  });
+  it("approval winning initialization forces email correction through an ordinary versioned hold", async () => {
+    applicant(); const initialize = mocks.pendingEmail.getMockImplementation()!;
+    mocks.pendingEmail.mockImplementationOnce(async values => {seed("applicant", false); states.get("applicant")!.user.email = "old@example.invalid"; safety!.version++; await initialize(values);});
+    await transitionUserSecurity(emailIntent());
+    expect(mocks.begin).toHaveBeenCalledOnce(); expect(states.get("applicant")).toMatchObject({membershipStatus: "REGULAR", securityVersion: 2,
+      verificationEmail: "new@example.invalid", accessReady: false, adminReady: false});
+    expect(safety!.readyAdminCount).toBe(1);
+  });
+  it("approval after the applicant hold preserves denial until exact verification", async () => {
+    applicant(); await transitionUserSecurity(emailIntent());
+    await transitionUserSecurity({userId: "applicant", actorId: "a", actorKind: "ADMIN", actorSecurityVersion: 1, reason: "APPROVAL", membershipStatus: "REGULAR", operationId: "applicant-approval-reference"});
+    expect(states.get("applicant")).toMatchObject({membershipStatus: "REGULAR", verificationEmail: "new@example.invalid", desiredEnabled: false, accessReady: false});
+    await expect(updateUserEmail.run(emailRequest() as never)).rejects.toMatchObject({details: {code: "EMAIL_CHANGE_CONFLICT"}});
+    expect(mocks.updateUser).not.toHaveBeenCalled();
+    identities.get("applicant")!.email = "new@example.invalid";
+    await transitionUserSecurity({userId: "applicant", actorId: "applicant", actorKind: "SELF_VERIFICATION", actorSecurityVersion: 2,
+      reason: "VERIFIED_EMAIL_RECONCILIATION", releaseEmailVerification: true, operationId: "applicant-verification-reference"});
+    expect(states.get("applicant")).toMatchObject({accessReady: true, adminReady: false, verificationEmail: null});
+  });
+  it("profile CAS failure or current actor revocation never starts an Auth email write", async () => {
+    applicant(); const initialize = mocks.pendingEmail.getMockImplementation()!;
+    mocks.pendingEmail.mockImplementationOnce(async values => {profiles.get("applicant")!.membershipStatus = "LOST"; await initialize(values);});
+    await expect(updateUserEmail.run(emailRequest() as never)).rejects.toMatchObject({details: {code: "EMAIL_CHANGE_CONFLICT"}});
+    expect(mocks.updateUser).not.toHaveBeenCalled(); expect(states.has("applicant")).toBe(false);
+    profiles.get("applicant")!.membershipStatus = "PENDING";
+    mocks.pendingEmail.mockImplementationOnce(async values => {states.get("a")!.adminReady = false; states.get("a")!.securityVersion++; await initialize(values);});
+    await expect(updateUserEmail.run(emailRequest() as never)).rejects.toMatchObject({details: {code: "SECURITY_ACTOR_REVOKED"}});
+    expect(mocks.updateUser).not.toHaveBeenCalled(); expect(states.has("applicant")).toBe(false);
+  });
+  it.each([false, true])("interactive replay refuses superseded grants, including supersession discovered during sync: %s", async alreadySuperseded => {
+    seed("member", false); const request = intent("member", {admin: true, reason: "GRANT_ADMIN"});
+    mocks.setClaims.mockRejectedValueOnce(new Error("uncertain initial grant"));
+    await expect(transitionUserSecurity(request)).rejects.toThrow("uncertain initial grant");
+    await transitionUserSecurity(intent("member", {operationId: "superseding-revoke-reference"}));
+    if (alreadySuperseded) await synchronizeUserSecurity(request.operationId);
+    await expect(transitionUserSecurity(request)).rejects.toMatchObject({details: {code: "SECURITY_OPERATION_CONFLICT"}});
+    await expect(synchronizeUserSecurity(request.operationId)).resolves.toBeUndefined();
+    expect(states.get("member")!.adminReady).toBe(false); expect(safety!.readyAdminCount).toBe(1);
   });
 
 });

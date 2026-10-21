@@ -401,51 +401,6 @@ export interface ConfirmNotifyReplyToVerificationVariables {
   reason?: string | null;
 }
 
-export interface ConfirmPotentialLostData {
-  user_updateMany: number;
-  potentialLostReview_insert: PotentialLostReview_Key;
-}
-
-export interface ConfirmPotentialLostVariables {
-  userId: string;
-  expectedStatus: MembershipStatus;
-  expectedUpdatedAt: TimestampString;
-  expectedEmailDeliveryVersion: number;
-  reviewedBy: string;
-  reasons: string[];
-  lastSignInTime?: string | null;
-  lastActivityTime?: string | null;
-  inactivitySince?: string | null;
-  activitySource?: string | null;
-  emailBounceCount: number;
-}
-
-export interface ConfirmPotentialLostWithSecurityStateData {
-  userSecurityState_updateMany: number;
-  securityTransition_insert: SecurityTransition_Key;
-  user_updateMany: number;
-  potentialLostReview_insert: PotentialLostReview_Key;
-}
-
-export interface ConfirmPotentialLostWithSecurityStateVariables {
-  expectedSecurityVersion: number;
-  nextSecurityVersion: number;
-  securityOperationId: string;
-  desiredAdmin: boolean;
-  securityIntentHash: string;
-  userId: string;
-  expectedStatus: MembershipStatus;
-  expectedUpdatedAt: TimestampString;
-  expectedEmailDeliveryVersion: number;
-  reviewedBy: string;
-  reasons: string[];
-  lastSignInTime?: string | null;
-  lastActivityTime?: string | null;
-  inactivitySince?: string | null;
-  activitySource?: string | null;
-  emailBounceCount: number;
-}
-
 export interface ConfirmProfileReviewData {
   user_update?: User_Key | null;
 }
@@ -5427,16 +5382,6 @@ export function listPotentialLostProfiles(vars: ListPotentialLostProfilesVariabl
 export function getPotentialLostProfile(dc: DataConnect, vars: GetPotentialLostProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPotentialLostProfileData>>;
 /** Generated Node Admin SDK operation action function for the 'GetPotentialLostProfile' Query. Allow users to pass in custom DataConnect instances. */
 export function getPotentialLostProfile(vars: GetPotentialLostProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPotentialLostProfileData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLostWithSecurityState' Mutation. Allow users to execute without passing in DataConnect. */
-export function confirmPotentialLostWithSecurityState(dc: DataConnect, vars: ConfirmPotentialLostWithSecurityStateVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostWithSecurityStateData>>;
-/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLostWithSecurityState' Mutation. Allow users to pass in custom DataConnect instances. */
-export function confirmPotentialLostWithSecurityState(vars: ConfirmPotentialLostWithSecurityStateVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostWithSecurityStateData>>;
-
-/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLost' Mutation. Allow users to execute without passing in DataConnect. */
-export function confirmPotentialLost(dc: DataConnect, vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
-/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLost' Mutation. Allow users to pass in custom DataConnect instances. */
-export function confirmPotentialLost(vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetNewMemberReportMigration' Query. Allow users to execute without passing in DataConnect. */
 export function getNewMemberReportMigration(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNewMemberReportMigrationData>>;

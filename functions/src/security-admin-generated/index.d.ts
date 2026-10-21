@@ -284,6 +284,25 @@ export interface GovNotifyDeliveryModeAudit_Key {
   __typename?: 'GovNotifyDeliveryModeAudit_Key';
 }
 
+export interface InitializePendingEmailHoldData {
+  adminSafetyControl_updateMany: number;
+  user_updateMany: number;
+  userSecurityState_insert: UserSecurityState_Key;
+  securityTransition_insert: SecurityTransition_Key;
+}
+
+export interface InitializePendingEmailHoldVariables {
+  expectedControlVersion: number;
+  actorSecurityVersion: number;
+  userId: string;
+  expectedProfileEmail: string;
+  verificationEmail: string;
+  operationId: string;
+  actorId: string;
+  reason: string;
+  intentHash: string;
+}
+
 export interface InitializeUserSecurityStateData {
   adminSafetyControl_updateMany: number;
   userSecurityState_insert: UserSecurityState_Key;
@@ -556,6 +575,11 @@ export function listPendingSecurityTransitions(vars: ListPendingSecurityTransiti
 export function initializeUserSecurityState(dc: DataConnect, vars: InitializeUserSecurityStateVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<InitializeUserSecurityStateData>>;
 /** Generated Node Admin SDK operation action function for the 'InitializeUserSecurityState' Mutation. Allow users to pass in custom DataConnect instances. */
 export function initializeUserSecurityState(vars: InitializeUserSecurityStateVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<InitializeUserSecurityStateData>>;
+
+/** Generated Node Admin SDK operation action function for the 'InitializePendingEmailHold' Mutation. Allow users to execute without passing in DataConnect. */
+export function initializePendingEmailHold(dc: DataConnect, vars: InitializePendingEmailHoldVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<InitializePendingEmailHoldData>>;
+/** Generated Node Admin SDK operation action function for the 'InitializePendingEmailHold' Mutation. Allow users to pass in custom DataConnect instances. */
+export function initializePendingEmailHold(vars: InitializePendingEmailHoldVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<InitializePendingEmailHoldData>>;
 
 /** Generated Node Admin SDK operation action function for the 'BeginSecurityTransition' Mutation. Allow users to execute without passing in DataConnect. */
 export function beginSecurityTransition(dc: DataConnect, vars: BeginSecurityTransitionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<BeginSecurityTransitionData>>;

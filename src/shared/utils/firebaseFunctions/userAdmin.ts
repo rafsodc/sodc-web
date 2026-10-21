@@ -3,6 +3,7 @@ import { httpsCallable } from "../sessionCallable";
 import type { MembershipStatus } from "@dataconnect/generated";
 import { functions } from "../../../config/firebase";
 import { extractDomainErrorCode, reportError } from "../../errors";
+import { withOwnMembershipStatusUpdate } from "../ownMembershipStatusUpdate";
 
 export interface UpdateUserEmailResult {
   success: true;
@@ -265,7 +266,8 @@ interface SyncPendingUserClaimsResponse {
 }
 
 /**
- * Sets enabled: false on the current user after profile submission.
+ * Registers an eligible pending-profile approval notification after submission.
+ * Security claims remain owned by the server's versioned transition service.
  */
 export async function syncPendingUserClaims(): Promise<{
   success: boolean;
@@ -316,7 +318,9 @@ export async function updateMembershipStatus(
       UpdateMembershipStatusResponse
     >(functions, "updateMembershipStatus");
 
-    const result = await runSecurityMutation("updateMembershipStatus", { userId, newStatus }, updateMembershipStatusCallable);
+    const result = await withOwnMembershipStatusUpdate(userId,
+      () => runSecurityMutation("updateMembershipStatus", { userId, newStatus }, updateMembershipStatusCallable),
+      result => result.data.success);
     return { success: result.data.success };
   } catch (error: unknown) {
     reportError("callable.update-membership-status", error, { userId, newStatus });

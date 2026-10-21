@@ -1,4 +1,4 @@
-import { runSessionOperation } from "../appShell/sessionLifecycle";
+import { runSessionOperation, runSessionRead } from "../appShell/sessionLifecycle";
 import { executeMutation, executeQuery } from "firebase/data-connect";
 import { withTimeout } from "../utils/withTimeout";
 
@@ -6,7 +6,7 @@ export const DATA_CONNECT_OPERATION_TIMEOUT_MS = 30_000;
 
 const timedExecuteQuery = (...args: Parameters<typeof executeQuery>) =>
   withTimeout(
-    runSessionOperation(() => executeQuery(...args)),
+    runSessionRead(() => executeQuery(...args)),
     DATA_CONNECT_OPERATION_TIMEOUT_MS,
     "The Data Connect query timed out",
   );
