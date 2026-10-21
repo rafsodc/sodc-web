@@ -266,7 +266,8 @@ interface SyncPendingUserClaimsResponse {
 }
 
 /**
- * Sets enabled: false on the current user after profile submission.
+ * Registers an eligible pending-profile approval notification after submission.
+ * Security claims remain owned by the server's versioned transition service.
  */
 export async function syncPendingUserClaims(): Promise<{
   success: boolean;
