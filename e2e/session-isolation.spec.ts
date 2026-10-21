@@ -23,7 +23,7 @@ async function signIn(page: Page, account: typeof accountA) {
   await page.goto("/account");
   await page.getByLabel("Email", { exact: true }).fill(account.email);
   await page.getByLabel("Password", { exact: true }).fill(account.password);
-  await page.getByRole("button", { name: /sign in/i, exact: true }).click();
+  await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("button", { name: "Account menu" })).toContainText(account.marker);
 }
 async function logout(page: Page) {

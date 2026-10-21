@@ -234,7 +234,8 @@ export async function initializeUserSecurityState(input: InitializeSecurityInput
     const desiredAdmin = input.actorKind === "OPERATOR" && input.allowAdminBootstrap === true && user.customClaims?.admin === true;
     const desiredEnabled = isNonRestrictedStatus(membershipStatus) && !user.disabled && user.emailVerified;
     try {
-      await db.initializeUserSecurityState({...input, actorKind: input.actorKind as db.SecurityActorKind, actorSecurityVersion: input.actorSecurityVersion ?? null, expectedControlVersion: snapshot.version,
+      await db.initializeUserSecurityState({userId: input.userId, actorId: input.actorId, reason: input.reason,
+        actorKind: input.actorKind as db.SecurityActorKind, actorSecurityVersion: input.actorSecurityVersion ?? null, expectedControlVersion: snapshot.version,
         operationId, membershipStatus, desiredAdmin, desiredEnabled, verificationEmail: !user.emailVerified ? user.email?.trim().toLowerCase() ?? null : null,
         intentHash: securityIntentHash(intent)});
     } catch (error) {
@@ -342,7 +343,8 @@ export async function activateAdminSafetyControl(input: {operationId: string; ac
   if (await replayControl(input, intentHash)) return;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const snapshot = await control(); await verifiedRoster(snapshot);
-    try {await db.activateAdminSafetyControl({...input, intentHash, expectedControlVersion: snapshot.version}); return;}
+    try {await db.activateAdminSafetyControl({operationId: input.operationId, actorId: input.actorId, reason: input.reason,
+      intentHash, expectedControlVersion: snapshot.version}); return;}
     catch (error) {if (await replayControl(input, intentHash)) return; if (!conflict(error) || attempt === MAX_ATTEMPTS - 1) throw error;}
   }
 }
@@ -382,7 +384,8 @@ export async function reconcileAdminSafetyControl(input: {operationId: string; a
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const snapshot = await control(); await verifiedRoster(snapshot, false);
     const rows = (await db.listReadyAdministrators()).data.userSecurityStates;
-    try {await db.reconcileAdminSafetyControl({...input, intentHash, expectedControlVersion: snapshot.version, readyAdminCount: rows.length}); return;}
+    try {await db.reconcileAdminSafetyControl({operationId: input.operationId, actorId: input.actorId, reason: input.reason,
+      intentHash, expectedControlVersion: snapshot.version, readyAdminCount: rows.length}); return;}
     catch (error) {if (await replayControl(input, intentHash)) return; if (!conflict(error) || attempt === MAX_ATTEMPTS - 1) throw error;}
   }
 }

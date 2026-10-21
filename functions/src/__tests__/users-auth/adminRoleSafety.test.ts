@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 const mocks = vi.hoisted(() => Object.fromEntries(["lookup", "operation", "pendingEmail", "writeEmail", "sendEmail", "enforceRateLimit", "control", "roster", "begin", "complete", "noop", "initialize", "failure", "supersede", "audit", "create", "activate", "recount", "getUser", "setClaims", "updateUser", "revoke", "profile"].map(name => [name, vi.fn()])));
 vi.mock("../../securityRepository", () => ({getUserSecurityState: mocks.lookup, getSecurityTransition: mocks.operation, getAdminSafetyControl: mocks.control,
   listReadyAdministrators: mocks.roster, beginSecurityTransition: mocks.begin, completeSecurityTransition: mocks.complete, recordSecurityNoop: mocks.noop,
@@ -19,6 +21,15 @@ let profiles: Map<string, {membershipStatus: string; email: string}>;
 let states: Map<string, State>, identities: Map<string, Identity>, operations: Map<string, any>, audits: Map<string, any>;
 let safety: {id: string; version: number; readyAdminCount: number; status: string} | null;
 let events: string[];
+const securityOperations = readFileSync(resolve(process.cwd(), "../dataconnect/authorization-service/security.gql"), "utf8");
+function assertDeclaredVariables(operation: string, values: Record<string, unknown>) {
+  const declaration = securityOperations.match(new RegExp(`mutation ${operation}\\s*\\(([^)]*)\\)`))?.[1];
+  if (!declaration) throw new Error(`Missing connector operation ${operation}`);
+  const names = new Set([...declaration.matchAll(/\$(\w+)\s*:/g)].map(match => match[1]));
+  for (const name of Object.keys(values)) {
+    if (!names.has(name)) throw new Error(`$${name} is not expected`);
+  }
+}
 function seed(uid: string, admin = true) {
   const state = {userId: uid, securityVersion: 1, operationId: `initial-${uid}`, membershipStatus: "REGULAR", desiredAdmin: admin, desiredEnabled: true,
     accessReady: true, adminReady: admin, verificationEmail: null, syncStatus: "READY", user: {membershipStatus: "REGULAR", email: `${uid}@example.invalid`}};
@@ -82,6 +93,7 @@ beforeEach(() => {
     safety!.version++; operations.set(values.operationId, {...values, securityVersion: values.expectedVersion, noOp: true, syncStatus: "READY"});
   }));
   mocks.initialize.mockImplementation(async values => transaction(() => {
+    assertDeclaredVariables("InitializeUserSecurityState", values);
     check(values);
     const state = {userId: values.userId, ...values, securityVersion: 1, accessReady: false, adminReady: false, syncStatus: "PENDING", user: {membershipStatus: values.membershipStatus, email: identities.get(values.userId)!.email}};
     states.set(values.userId, state); safety!.version++;
@@ -100,12 +112,28 @@ beforeEach(() => {
     events.push(`hold:${values.userId}`);
   }));
   mocks.supersede.mockImplementation(async ({operationId}) => {operations.get(operationId).syncStatus = "SUPERSEDED";});
-  mocks.create.mockImplementation(async values => {if (safety) throw new Error("already exists"); safety = {id: "site-wide", version: 1, readyAdminCount: values.readyAdminCount, status: "BOOTSTRAP"}; audits.set(values.operationId, values);});
-  mocks.activate.mockImplementation(async values => transaction(() => {if (safety!.version !== values.expectedControlVersion) throw new Error("ADMIN_CONTROL_CONFLICT"); if (!safety!.readyAdminCount) throw new Error("ADMIN_ROSTER_CONFLICT"); safety!.version++; safety!.status = "READY"; audits.set(values.operationId, values);}));
-  mocks.recount.mockImplementation(async values => {safety!.version++; safety!.readyAdminCount = values.readyAdminCount; safety!.status = values.readyAdminCount ? "BOOTSTRAP" : "RECOVERY_REQUIRED"; audits.set(values.operationId, values);});
+  mocks.create.mockImplementation(async values => {assertDeclaredVariables("CreateAdminSafetyControl", values); if (safety) throw new Error("already exists"); safety = {id: "site-wide", version: 1, readyAdminCount: values.readyAdminCount, status: "BOOTSTRAP"}; audits.set(values.operationId, values);});
+  mocks.activate.mockImplementation(async values => transaction(() => {assertDeclaredVariables("ActivateAdminSafetyControl", values); if (safety!.version !== values.expectedControlVersion) throw new Error("ADMIN_CONTROL_CONFLICT"); if (!safety!.readyAdminCount) throw new Error("ADMIN_ROSTER_CONFLICT"); safety!.version++; safety!.status = "READY"; audits.set(values.operationId, values);}));
+  mocks.recount.mockImplementation(async values => {assertDeclaredVariables("ReconcileAdminSafetyControl", values); safety!.version++; safety!.readyAdminCount = values.readyAdminCount; safety!.status = values.readyAdminCount ? "BOOTSTRAP" : "RECOVERY_REQUIRED"; audits.set(values.operationId, values);});
 });
 
 describe("administrator safety orchestration with durable transaction adapter", () => {
+  it.each([false, true])("initialization keeps the operator bootstrap option out of connector variables: %s", async allowAdminBootstrap => {
+    states.clear(); operations.clear(); safety!.readyAdminCount = 0;
+    await initializeUserSecurityState({userId: "a", actorId: "operator", actorKind: "OPERATOR", reason: "BOOTSTRAP",
+      operationId: "strict-initialize-reference", allowAdminBootstrap});
+    expect(states.get("a")).toMatchObject({syncStatus: "READY", adminReady: allowAdminBootstrap, accessReady: true});
+    expect(mocks.initialize).toHaveBeenCalledWith(expect.objectContaining({desiredAdmin: allowAdminBootstrap}));
+  });
+  it("keeps shared operator context out of control creation, recount and activation variables", async () => {
+    safety = null;
+    const operator = {actorId: "operator", actorKind: "OPERATOR" as const, recoverObservedDrift: true};
+    await bootstrapAdminSafetyControl({...operator, operationId: "strict-create-reference", reason: "Frozen recovery"});
+    await reconcileAdminSafetyControl({...operator, operationId: "strict-recount-reference", reason: "Audited roster"});
+    await activateAdminSafetyControl({...operator, operationId: "strict-activate-reference", reason: "Verified roster"});
+    expect(safety).toMatchObject({status: "READY", readyAdminCount: 1});
+    expect(mocks.create).toHaveBeenCalledOnce(); expect(mocks.recount).toHaveBeenCalledOnce(); expect(mocks.activate).toHaveBeenCalledOnce();
+  });
   it.each([{admin: false}, {admin: undefined, membershipStatus: "RESERVE"}, {admin: undefined, verificationEmail: "new@example.invalid"}, {admin: undefined, authDisabled: true}])("refuses every sole-admin readiness drop before Auth: %s", async change => {
     await expect(transitionUserSecurity(intent("a", change))).rejects.toMatchObject({details: {code: "LAST_ADMIN_REQUIRED"}});
     expect(safety!.readyAdminCount).toBe(1); expect(states.get("a")!.adminReady).toBe(true); expect(mocks.setClaims).not.toHaveBeenCalled(); expect(mocks.updateUser).not.toHaveBeenCalled();
