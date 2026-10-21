@@ -1147,6 +1147,13 @@ function getPotentialLostProfile(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.getPotentialLostProfile = getPotentialLostProfile;
 
+function confirmPotentialLostWithSecurityState(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ConfirmPotentialLostWithSecurityState', inputVars, inputOpts);
+}
+exports.confirmPotentialLostWithSecurityState = confirmPotentialLostWithSecurityState;
+
 function confirmPotentialLost(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -1496,6 +1503,69 @@ function getMyAnnouncementPreferences(dcOrOptions, options) {
   return dcInstance.executeQuery('GetMyAnnouncementPreferences', undefined, inputOpts);
 }
 exports.getMyAnnouncementPreferences = getMyAnnouncementPreferences;
+
+function serviceGetUserById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetUserById', inputVars, inputOpts);
+}
+exports.serviceGetUserById = serviceGetUserById;
+
+function serviceListUsers(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceListUsers', undefined, inputOpts);
+}
+exports.serviceListUsers = serviceListUsers;
+
+function serviceListUserNamesByIds(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceListUserNamesByIds', inputVars, inputOpts);
+}
+exports.serviceListUserNamesByIds = serviceListUserNamesByIds;
+
+function serviceGetUserAccessGroupsById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetUserAccessGroupsById', inputVars, inputOpts);
+}
+exports.serviceGetUserAccessGroupsById = serviceGetUserAccessGroupsById;
+
+function serviceGetEventsForSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetEventsForSection', inputVars, inputOpts);
+}
+exports.serviceGetEventsForSection = serviceGetEventsForSection;
+
+function serviceGetEventById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetEventById', inputVars, inputOpts);
+}
+exports.serviceGetEventById = serviceGetEventById;
+
+function serviceGetSectionById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetSectionById', inputVars, inputOpts);
+}
+exports.serviceGetSectionById = serviceGetSectionById;
+
+function serviceGetUserGroupById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetUserGroupById', inputVars, inputOpts);
+}
+exports.serviceGetUserGroupById = serviceGetUserGroupById;
+
+function serviceListEventBookingsForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceListEventBookingsForAdmin', inputVars, inputOpts);
+}
+exports.serviceListEventBookingsForAdmin = serviceListEventBookingsForAdmin;
 
 function getTicketAttendanceForManagement(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

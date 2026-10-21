@@ -1,4 +1,4 @@
-import { getSectionMembers, listUsers, SectionUserGroupPurpose } from "@dataconnect/admin-generated";
+import { getSectionMembers, serviceListUsers as listUsers, SectionUserGroupPurpose } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { getAdminUsers } from "./helpers";
 import { selectPrivilegedNotificationRecipientIds } from "./privilegedNotificationRecipient";

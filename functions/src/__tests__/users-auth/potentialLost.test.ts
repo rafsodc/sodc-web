@@ -4,6 +4,8 @@ import { confirmPotentialLostMember, listPotentialLostMembers, potentialLostCand
 import { isOlderThanYears, hasCurrentProfileReview } from "../../memberReviewRules";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { synchronizeUserSecurity } from "../../currentAuthorizationTransitions";
+vi.mock("../../currentAuthorizationTransitions", () => ({synchronizeUserSecurity: vi.fn(), securityIntentHash: vi.fn(() => "test-intent")}));
 import type { UserRecord } from "firebase-admin/auth";
 
 const mocks = vi.hoisted(() => ({ getUser: vi.fn(), listUsers: vi.fn(), reconcile: vi.fn(), notify: vi.fn() }));
@@ -14,7 +16,7 @@ vi.mock("../../membershipStatusEmailDispatcher", () => ({ notifyMembershipStatus
 vi.mock("../../users", () => ({ invalidateDcProfileCache: vi.fn() }));
 const profileQuery = vi.spyOn(sdk, "getPotentialLostProfile");
 const listQuery = vi.spyOn(sdk, "listPotentialLostProfiles");
-const mutation = vi.spyOn(sdk, "confirmPotentialLost");
+const mutation = vi.spyOn(sdk, "confirmPotentialLostWithSecurityState");
 const profile = { id: "member", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com", membershipStatus: sdk.MembershipStatus.REGULAR, updatedAt: "2026-01-01T00:00:00Z", emailBounceCount: 3, emailLastBounceAt: "2026-01-01T00:00:00Z", emailDeliveryVersion: 4 };
 const auth = {
   uid: "member",
@@ -29,13 +31,13 @@ const auth = {
   },
   toJSON: () => ({}),
 } satisfies UserRecord;
-function request(data: unknown = {}, token: Record<string, unknown> = { admin: true, enabled: true }) {
+function request(data: unknown = {}, token: Record<string, unknown> = { admin: true, enabled: true, securityVersion: 1 }) {
   return { auth: { uid: "reviewer", token }, data } as Parameters<typeof confirmPotentialLostMember.run>[0];
 }
 function confirmation() { return request({ userId: "member", reviewToken: potentialLostCandidate(profile, auth)!.reviewToken }); }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   mocks.getUser.mockResolvedValue(auth);
   mocks.listUsers.mockResolvedValue({ users: [auth] });
   mocks.reconcile.mockResolvedValue({ enabled: false });
@@ -105,7 +107,7 @@ describe("potential lost review", () => {
     never.metadata.creationTime = "invalid";
     expect(potentialLostCandidate({ ...profile, emailBounceCount: 0 }, never)).toBeNull();
   });
-  it.each([{ enabled: true }, { admin: true, enabled: false }])("rejects non-admin/disabled callers", async (token) => {
+  it.each([{ enabled: true, securityVersion: 1 }, { admin: true, enabled: false }])("rejects non-admin/disabled callers", async (token) => {
     await expect(listPotentialLostMembers.run(request({}, token))).rejects.toMatchObject({ code: "permission-denied" });
     await expect(confirmPotentialLostMember.run(request({}, token))).rejects.toMatchObject({ code: "permission-denied" });
     expect(listQuery).not.toHaveBeenCalled();
@@ -123,7 +125,7 @@ describe("potential lost review", () => {
   });
   it("confirms through the established access path and records the reviewer atomically", async () => {
     expect(await confirmPotentialLostMember.run(confirmation())).toEqual({ success: true });
-    expect(mocks.reconcile).toHaveBeenCalledWith("member", "LOST");
+    expect(synchronizeUserSecurity).toHaveBeenCalledWith(expect.any(String));
     expect(mutation).toHaveBeenCalledWith(expect.objectContaining({ userId: "member", reviewedBy: "reviewer", expectedStatus: "REGULAR", expectedUpdatedAt: profile.updatedAt, expectedEmailDeliveryVersion: 4, reasons: ["INACTIVE", "BOUNCES"] }));
     expect(mocks.notify).toHaveBeenCalled();
   });
@@ -143,18 +145,19 @@ describe("potential lost review", () => {
     mutation.mockRejectedValueOnce(new Error("POTENTIAL_LOST_CONFLICT"));
     profileQuery.mockResolvedValueOnce({ data: { user: profile } }).mockResolvedValueOnce({ data: { user: { ...profile, membershipStatus: sdk.MembershipStatus.RESIGNED } } });
     await expect(confirmPotentialLostMember.run(confirmation())).rejects.toMatchObject({ code: "failed-precondition" });
-    expect(mocks.reconcile).toHaveBeenLastCalledWith("member", "RESIGNED");
+    expect(mocks.reconcile).not.toHaveBeenCalled();
+    expect(synchronizeUserSecurity).not.toHaveBeenCalled();
     expect(mocks.notify).not.toHaveBeenCalled();
   });
   it("retries an already-completed transition without a second audit", async () => {
     profileQuery.mockResolvedValue({ data: { user: { ...profile, membershipStatus: sdk.MembershipStatus.LOST } } });
     await expect(confirmPotentialLostMember.run(confirmation())).resolves.toEqual({ success: true });
     expect(mutation).not.toHaveBeenCalled();
-    expect(mocks.reconcile).toHaveBeenCalledWith("member", "LOST");
+    expect(mocks.reconcile).toHaveBeenCalledWith("member", "LOST", "reviewer");
   });
   it("keeps queries server-only and status/audit updates atomic", () => {
     const query = readFileSync(resolve(__dirname, "../../../../dataconnect/api/member-review.gql"), "utf8");
-    expect(query.match(/@auth\(level: NO_ACCESS\)/g)).toHaveLength(3);
+    expect(query.match(/@auth\(level: NO_ACCESS\)/g)).toHaveLength(4);
     expect(query).toContain("@transaction");
     expect(query).toContain("message: \"POTENTIAL_LOST_CONFLICT\"");
     expect(query).toContain("potentialLostReview_insert");

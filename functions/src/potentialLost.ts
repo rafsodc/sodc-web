@@ -1,8 +1,10 @@
-import { createHash } from "node:crypto";
+import { getUserSecurityState } from "./securityRepository";
+import { securityIntentHash, synchronizeUserSecurity } from "./currentAuthorizationTransitions";
+import { createHash, randomUUID } from "node:crypto";
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import {
-  listPotentialLostProfiles, getPotentialLostProfile, confirmPotentialLost,
+  listPotentialLostProfiles, getPotentialLostProfile, confirmPotentialLostWithSecurityState as confirmPotentialLost,
   type GetPotentialLostProfileData,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
@@ -10,7 +12,7 @@ import { requireAdmin, requireString, handleFunctionError, listAllAuthUsers } fr
 import { enforceRateLimit } from "./rateLimiter";
 import { isOlderThanYears } from "./memberReviewRules";
 import { canUserChangeStatus } from "./validation";
-import { persistMembershipStatusWithEnabledClaim, sendMembershipStatusEmailIfChanged } from "./membershipStatus";
+import { sendMembershipStatusEmailIfChanged } from "./membershipStatus";
 import { reconcileEnabledClaim } from "./enabledClaimReconciliation";
 import { invalidateDcProfileCache } from "./users";
 import { govNotifySecrets } from "./mailer";
@@ -49,7 +51,7 @@ export function potentialLostCandidate(profile: Profile, auth: admin.auth.UserRe
 }
 
 export const listPotentialLostMembers = onCall({ region: FUNCTIONS_REGION }, async (request) => {
-  requireAdmin(request);
+  await requireAdmin(request);
   await enforceRateLimit("listPotentialLostMembers", request.auth!.uid);
   try {
     const authUsers = new Map((await listAllAuthUsers()).map((user) => [user.uid, user]));
@@ -72,7 +74,7 @@ export const listPotentialLostMembers = onCall({ region: FUNCTIONS_REGION }, asy
 
 export const confirmPotentialLostMember = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] }, async (request) => {
-    requireAdmin(request);
+    await requireAdmin(request);
     await enforceRateLimit("confirmPotentialLostMember", request.auth!.uid);
     const userId = requireString(request.data?.userId, "userId");
     const reviewToken = requireString(request.data?.reviewToken, "reviewToken");
@@ -82,32 +84,29 @@ export const confirmPotentialLostMember = onCall(
       if (!profile) throw new HttpsError("not-found", "Member not found");
       if (profile.membershipStatus === "LOST") {
         // Retrying a completed confirmation repairs a partial claim failure without another audit entry.
-        await reconcileEnabledClaim(userId, "LOST");
+        await reconcileEnabledClaim(userId, "LOST", request.auth!.uid);
         return { success: true };
       }
       const candidate = potentialLostCandidate(profile, auth);
       if (!candidate || candidate.reviewToken !== reviewToken) throw new HttpsError("failed-precondition", "The member's details have changed. Refresh the list and review them again.");
       if (!candidate.canConfirm) throw new HttpsError("permission-denied", candidate.blockedReason!);
+      const state = (await getUserSecurityState({userId})).data.userSecurityState;
+      if (!state) throw new HttpsError("failed-precondition", "Authorization must be initialized");
+      if (state.desiredAdmin) throw new HttpsError("permission-denied", "Admins cannot have restricted membership statuses");
+      const securityOperationId = randomUUID();
       try {
-        await persistMembershipStatusWithEnabledClaim(userId, "LOST", {
-          updateMembershipStatus: async () => {
-            await confirmPotentialLost({
-              userId, expectedStatus: profile.membershipStatus, expectedUpdatedAt: profile.updatedAt,
-              expectedEmailDeliveryVersion: profile.emailDeliveryVersion, reviewedBy: request.auth!.uid,
-              reasons: candidate.reasons, lastSignInTime: candidate.lastSignInTime,
-              lastActivityTime: candidate.lastActivityTime, inactivitySince: candidate.inactivitySince, activitySource: candidate.activitySource, emailBounceCount: candidate.emailBounceCount,
-            });
-            invalidateDcProfileCache();
-          },
-        });
+        await confirmPotentialLost({userId, expectedStatus: profile.membershipStatus, expectedUpdatedAt: profile.updatedAt,
+          expectedEmailDeliveryVersion: profile.emailDeliveryVersion, reviewedBy: request.auth!.uid,
+          reasons: candidate.reasons, lastSignInTime: candidate.lastSignInTime, lastActivityTime: candidate.lastActivityTime,
+          inactivitySince: candidate.inactivitySince, activitySource: candidate.activitySource, emailBounceCount: candidate.emailBounceCount,
+          expectedSecurityVersion: state.securityVersion, nextSecurityVersion: state.securityVersion + 1,
+          securityOperationId, desiredAdmin: state.desiredAdmin, securityIntentHash: securityIntentHash({userId, actorId: request.auth!.uid, reason: "POTENTIAL_LOST", membershipStatus: "LOST"})});
       } catch (error) {
-        // The existing fail-closed helper revokes access first. On a failed CAS/write,
-        // reconcile to the actual stored status so stale reviews do not leave access revoked.
-        const latest = await getPotentialLostProfile({ id: userId });
-        if (latest.data.user) await reconcileEnabledClaim(userId, latest.data.user.membershipStatus);
         if (String(error).includes("POTENTIAL_LOST_CONFLICT")) throw new HttpsError("failed-precondition", "The member's details have changed. Refresh the list and review them again.");
         throw error;
       }
+      invalidateDcProfileCache();
+      await synchronizeUserSecurity(securityOperationId);
       await sendMembershipStatusEmailIfChanged({ userId, previousStatus: profile.membershipStatus, newStatus: "LOST", appBaseUrl: process.env.APP_BASE_URL || "http://localhost:5173" });
       return { success: true };
     } catch (error) { handleFunctionError(error, "confirming lost membership"); }

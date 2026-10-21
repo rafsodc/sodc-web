@@ -1,19 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as firebaseAdmin from "firebase-admin";
+import { getUserSecurityState } from "../../securityRepository";
 import * as dc from "@dataconnect/admin-generated";
 import { authorizePrivilegedNotificationRecipient, readCurrentRecipientState, selectPrivilegedNotificationRecipientIds,
   PrivilegedRecipientLookupError, type CurrentRecipientState } from "../../privilegedNotificationRecipient";
 
 function state(): CurrentRecipientState {
   return { auth: { uid: "staff", disabled: false, emailVerified: true, email: "staff@example.com",
-    customClaims: { enabled: true, admin: true } }, profile: { membershipStatus: "REGULAR", email: "staff@example.com" } };
+    customClaims: { enabled: true, admin: true, securityVersion: 1 } }, profile: { membershipStatus: "REGULAR", email: "staff@example.com" }, security: {userId: "staff", securityVersion: 1, membershipStatus: "REGULAR", desiredEnabled: true, desiredAdmin: true, accessReady: true, adminReady: true, verificationEmail: null, operationId: "op-1", syncStatus: "READY", user: {membershipStatus: "REGULAR"}} };
 }
 const adminScope = { kind: "ADMIN" } as const;
 const bookingScope = { kind: "BOOKING", sectionId: "section-A" } as const;
 
 describe("current privileged notification eligibility", () => {
   it.each(["REGULAR", "RETIRED", "RESERVE", "INDUSTRY", "CIVIL_SERVICE"])("accepts verified enabled admin with %s status", async (status) => {
-    const current = state(); current.profile!.membershipStatus = status;
+    const current = state(); current.profile!.membershipStatus = status; current.security!.membershipStatus = status as never; current.security!.user.membershipStatus = status as never;
     expect(await authorizePrivilegedNotificationRecipient("staff", adminScope, { readCurrentState: async () => current }))
       .toEqual({ eligible: true, recipientUserId: "staff", email: "staff@example.com" });
   });
@@ -36,6 +37,22 @@ describe("current privileged notification eligibility", () => {
     const current = state(); current.profile!.membershipStatus = status;
     expect(await authorizePrivilegedNotificationRecipient("staff", adminScope, { readCurrentState: async () => current }))
       .toEqual({ eligible: false, reason: "RECIPIENT_RESTRICTED" });
+  });
+  it.each([
+    null,
+    {...state().security!, accessReady: false},
+    {...state().security!, syncStatus: "PENDING"},
+    {...state().security!, securityVersion: 2},
+    {...state().security!, verificationEmail: "new@example.com"},
+  ])("denies missing, pending, revoked or mismatched DB authority despite fresh enabled/admin Auth flags", async security => {
+    const current = state(); current.security = security as never;
+    expect(await authorizePrivilegedNotificationRecipient("staff", adminScope, {readCurrentState: async () => current}))
+      .toEqual({eligible: false, reason: "RECIPIENT_AUTHORITY_REVOKED"});
+  });
+  it("uses current DB admin readiness rather than a still-true Auth mirror for privileged mail", async () => {
+    const current = state(); current.security!.adminReady = false;
+    expect(await authorizePrivilegedNotificationRecipient("staff", adminScope, {readCurrentState: async () => current}))
+      .toEqual({eligible: false, reason: "RECIPIENT_AUTHORITY_REVOKED"});
   });
   it.each([true, false])("uses exact section moderator authority (allowed=%s)", async (allowed) => {
     const current = state(); current.auth!.customClaims!.admin = false;
@@ -90,11 +107,13 @@ describe("uncached production recipient state reader", () => {
   beforeEach(() => {
     vi.spyOn(firebaseAdmin, "auth").mockReturnValue({ getUser } as never);
     vi.spyOn(dc, "getUserMembershipStatus").mockResolvedValue({ data: { user: state().profile } } as never);
+    vi.mocked(getUserSecurityState).mockResolvedValue({data: {userSecurityState: state().security}} as never);
     getUser.mockReset().mockResolvedValue(state().auth);
   });
   it("reads Auth and profile for every call", async () => {
     await readCurrentRecipientState("staff"); await readCurrentRecipientState("staff");
     expect(getUser).toHaveBeenCalledTimes(2);
+    expect(getUserSecurityState).toHaveBeenCalledWith({userId: "staff"});
     expect(dc.getUserMembershipStatus).toHaveBeenCalledWith({ id: "staff" });
   });
   it("treats only explicit Auth user-not-found as definitive absence", async () => {
@@ -107,4 +126,9 @@ describe("uncached production recipient state reader", () => {
     vi.mocked(dc.getUserMembershipStatus).mockRejectedValueOnce(new Error("database unavailable"));
     await expect(readCurrentRecipientState("staff")).rejects.toBeInstanceOf(PrivilegedRecipientLookupError);
   });
+  it("preserves authority lookup failures as retryable without returning private errors", async () => {
+    vi.mocked(getUserSecurityState).mockRejectedValueOnce(new Error("private database detail"));
+    await expect(readCurrentRecipientState("staff")).rejects.toMatchObject({message: "RECIPIENT_AUTHORIZATION_LOOKUP_FAILED"});
+  });
+
 });

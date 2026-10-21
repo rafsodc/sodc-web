@@ -75,6 +75,7 @@
     "getGovNotifyDeliveryAdminConfiguration",
     "getManagedBookingContext",
     "getManagedEventTickets",
+    "getMyAuthorizationStatus",
     "getMyTicketOrderStripeArtifactsBatch",
     "getNewMemberReportOptions",
     "getNewMembersReport",

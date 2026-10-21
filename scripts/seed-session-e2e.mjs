@@ -11,6 +11,9 @@ const require = createRequire(new URL("../functions/package.json", import.meta.u
 const { initializeApp, deleteApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getDataConnect } = require("firebase-admin/data-connect");
+// Uses the built server boundary so strict connectors receive matching security state/versions.
+const { initializeUserSecurityState, transitionUserSecurity } = require("../functions/lib/currentAuthorizationTransitions.js");
+const { getUserSecurityState } = require("../functions/lib/securityRepository.js");
 const app = initializeApp({ projectId });
 try {
   const auth = getAuth(app);
@@ -24,7 +27,6 @@ try {
       if (error.code !== "auth/user-not-found") throw error;
       await auth.createUser({ uid, ...properties });
     }
-    await auth.setCustomUserClaims(uid, { enabled: true, admin: false });
     const now = new Date().toISOString();
     await dataConnect.executeGraphql(`
       mutation SeedSessionFixture($id: String!, $lastName: String!, $email: String!, $service: String!, $now: Timestamp!) {
@@ -36,6 +38,10 @@ try {
         })
       }
     `, { variables: { id: uid, lastName, email, service: `E2E-${suffix}`, now } });
+    await initializeUserSecurityState({userId: uid, actorId: "local-session-fixture", reason: "LOCAL_FIXTURE_BOOTSTRAP"});
+    const state = (await getUserSecurityState({userId: uid})).data.userSecurityState;
+    await transitionUserSecurity({userId: uid, actorId: "local-session-fixture", reason: "LOCAL_FIXTURE_READY", membershipStatus: "REGULAR", admin: false, authDisabled: false,
+      ...(state?.verificationEmail ? {releaseEmailVerification: true} : {})});
   }
   console.log("Two disposable session-isolation fixtures are ready in the local emulators.");
 } finally { await deleteApp(app); }

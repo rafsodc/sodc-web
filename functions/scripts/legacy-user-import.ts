@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+import { initializeUserSecurityState, transitionUserSecurity } from "../src/currentAuthorizationTransitions";
 import fs from "node:fs";
 import path from "node:path";
 import * as admin from "firebase-admin";
-import type { UserImportRecord, UserRecord } from "firebase-admin/auth";
+import type { UserImportRecord } from "firebase-admin/auth";
 import {
   createMigratedUserProfileAndIdentity,
   linkLegacyIdentityToExistingUser,
@@ -641,18 +642,11 @@ async function reconcileAccess(
     ) {
       continue;
     }
-    const authUser: UserRecord = await admin.auth().getUser(plan.canonicalUid);
     const enabled = isNonRestrictedStatus(plan.record.membershipStatus);
-    await admin.auth().setCustomUserClaims(plan.canonicalUid, {
-      ...(authUser.customClaims ?? {}),
-      enabled,
-    });
-    const migrationCreatedAuth =
-      plan.createAuthUser ||
-      hasMigrationStage(ledger, plan.record.legacyUserId, "auth-created");
-    if (migrationCreatedAuth && enabled) {
-      await admin.auth().updateUser(plan.canonicalUid, { disabled: false });
-    }
+    const migrationCreatedAuth = plan.createAuthUser || hasMigrationStage(ledger, plan.record.legacyUserId, "auth-created");
+    await initializeUserSecurityState({userId: plan.canonicalUid, actorId: "legacy-user-import", reason: "LEGACY_INITIALIZE"});
+    await transitionUserSecurity({userId: plan.canonicalUid, actorId: "legacy-user-import", reason: "LEGACY_RECONCILE",
+      ...(migrationCreatedAuth && enabled ? {authDisabled: false} : {})});
     checkpoint(options.statePath, ledger, plan, "access-reconciled");
   }
 }

@@ -20,7 +20,7 @@ npm --prefix functions run build
 firebase emulators:start --only auth,functions,dataconnect --project demo-sodc-session-isolation
 ```
 
-The repository's Data Connect schema/connectors must be loaded by the emulator. In another terminal, create two verified local users and their reviewed REGULAR profiles. The seed script validates the demo project and both exact loopback endpoints before loading Admin SDKs. It only upserts the two fixed fixture UIDs; it does not wipe any database:
+The repository's Data Connect schema/connectors must be loaded by the emulator. In another terminal, create two verified local users and their reviewed REGULAR profiles. The seed script validates the demo project and both exact loopback endpoints before loading Admin SDKs. It only upserts the two fixed fixture UIDs and initializes/transitions their current authorization through the compiled server boundary, with matching claim versions for strict connectors; it does not wipe any database:
 
 ```sh
 GCLOUD_PROJECT=demo-sodc-session-isolation \

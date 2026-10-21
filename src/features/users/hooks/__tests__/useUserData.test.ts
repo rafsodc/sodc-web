@@ -3,6 +3,7 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import { useUserData } from "../useUserData";
 import { createMockUser } from "../../../../test-utils/mocks/firebase";
 import * as dataConnect from "firebase/data-connect";
+import { subscribeAuthorizationDenials } from "../../../../shared/auth/authorizationRecoveryEvents";
 import { getCurrentUserRef } from "@dataconnect/generated";
 
 vi.mock("firebase/data-connect", () => ({
@@ -129,6 +130,21 @@ describe("useUserData", () => {
     expect(user.getIdToken).toHaveBeenCalledTimes(1);
     expect(user.getIdToken).toHaveBeenCalledWith(true);
     expect(dataConnect.executeQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it("hands explicit current-authorization denials to global recovery without a local token refresh or retry", async () => {
+    const error = new Error("SESSION_VERSION_STALE");
+    vi.mocked(dataConnect.executeQuery).mockRejectedValue(error);
+    const denied = vi.fn();
+    const unsubscribe = subscribeAuthorizationDenials(denied);
+    const user = enabledUser();
+    const { result } = renderHook(() => useUserData(user, true));
+    await waitFor(() => expect(denied).toHaveBeenCalledOnce());
+    expect(denied).toHaveBeenCalledWith(expect.objectContaining({ error, session: expect.objectContaining({ uid: user.uid }) }));
+    expect(user.getIdToken).not.toHaveBeenCalled();
+    expect(dataConnect.executeQuery).toHaveBeenCalledOnce();
+    expect(result.current.userData).toBeNull();
+    unsubscribe();
   });
 
   it("exits loading with an error when a Data Connect request never settles", async () => {

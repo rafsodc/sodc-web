@@ -41,7 +41,7 @@ function runVerificationTest() {
       uid: "admin-1",
       token: {
         admin: true,
-        enabled: true,
+        enabled: true, securityVersion: 1,
         email: "admin@example.org",
         email_verified: true,
       },

@@ -7,7 +7,9 @@ import type { UserData } from "../../../types";
 import { withTimeout } from "../../../shared/utils/withTimeout";
 import { refreshToken } from "./useTokenRefresh";
 import { isAuthenticationFailure } from "../../../shared/auth/isAuthenticationFailure";
-import { captureSession, isSessionCurrent } from "../../../shared/appShell/sessionLifecycle";
+import { reportAuthorizationDenial } from "../../../shared/auth/authorizationRecoveryEvents";
+import { classifyAuthorizationFailure } from "../../../shared/auth/authorizationFailure";
+import { captureSession, isSessionCurrent, isPrivateSessionSuspended } from "../../../shared/appShell/sessionLifecycle";
 
 export const USER_DATA_REQUEST_TIMEOUT_MS = 30_000;
 interface ProfileState { uid: string | null; userData: UserData | null; loading: boolean; error: Error | null }
@@ -28,7 +30,7 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean,
     if (!force && (fetched.current === uid || fetching.current?.uid === uid)) return;
     const request = ++sequence.current;
     const token = captureSession(uid);
-    const current = () => owner.current === uid && request === sequence.current && isSessionCurrent(token);
+    const current = () => owner.current === uid && request === sequence.current && isSessionCurrent(token) && !isPrivateSessionSuspended(token);
     if (!current()) return;
     fetching.current = { uid: firebaseUser.uid, request };
     setState({ uid, userData: null, loading: true, error: null });
@@ -48,6 +50,9 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean,
         result = await withTimeout(executeQuery(getCurrentUserRef(dataConnect), force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined), requestTimeoutMs, "Loading the current user timed out");
       } catch (error) {
         if (!current()) return;
+        // Explicit current-authority failures belong to the shared coordinator,
+        // which checks own status before deciding to refresh, wait or sign out.
+        if (classifyAuthorizationFailure(error)) { reportAuthorizationDenial(error, token); return; }
         if (!isAuthenticationFailure(error)) throw error;
         // One bounded retry, still owned by the original identity/request.
         await refreshToken(firebaseUser);
@@ -61,6 +66,7 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean,
       setState({ uid, userData: data?.id === uid ? data : null, loading: false, error: null });
     } catch (error) {
       if (!current()) return;
+      if (classifyAuthorizationFailure(error)) { reportAuthorizationDenial(error, token); return; }
       fetched.current = uid;
       setState({ uid, userData: null, loading: false,
         error: !isAuthenticationFailure(error) && error instanceof Error && !error.message.includes("not found") ? error : null });
@@ -90,6 +96,6 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean,
     fetched.current = null;
   }, []);
 
-  const visible = uid !== null && accountEnabled !== false && state.uid === uid && isSessionCurrent(captureSession(uid)) ? state : EMPTY;
+  const visible = uid !== null && accountEnabled !== false && state.uid === uid && isSessionCurrent(captureSession(uid)) && !isPrivateSessionSuspended(captureSession(uid)) ? state : EMPTY;
   return { userData: visible.userData, loading: visible.loading, error: visible.error, refetch: () => fetchUserData(true) };
 }

@@ -8,8 +8,8 @@ vi.mock("../../rateLimiter", () => ({ enforceRateLimit: vi.fn() }));
 const eventQuery = vi.spyOn(sdk, "getAttendeeEventSection");
 const guestNamesQuery = vi.spyOn(sdk, "getPublicOrganiserGuestAttendance");
 const namesQuery = vi.spyOn(sdk, "getEventAttendeeNames");
-const sectionQuery = vi.spyOn(sdk, "getSectionById");
-const groupsQuery = vi.spyOn(sdk, "getUserAccessGroupsById");
+const sectionQuery = vi.spyOn(sdk, "serviceGetSectionById");
+const groupsQuery = vi.spyOn(sdk, "serviceGetUserAccessGroupsById");
 const membershipQuery = vi.spyOn(sdk, "getUserMembershipStatus");
 const eventId = "00000000-0000-4000-8000-000000000001";
 const member = { firstName: "Alex", lastName: "Smith" };
@@ -17,7 +17,7 @@ const attendance = { includesSymposium: false, includesDinner: false };
 const memberAttendance = { ...member, audience: "MEMBER", ...attendance };
 const line = { ticketType: { audience: "MEMBER", ...attendance }, guestUser: null, guestDisplayName: null };
 const booking = { revisionGroupId: "group", revisionNumber: 1, status: "SUBMITTED", approvalStatus: "NOT_REQUIRED", supersededAt: null, booker: member, lines: [line] };
-function request(token: Record<string, unknown> = { enabled: true }, data: unknown = { eventId }) {
+function request(token: Record<string, unknown> = { enabled: true, securityVersion: 1 }, data: unknown = { eventId }) {
   return { auth: { uid: "viewer", token }, data } as Parameters<typeof getEventAttendees.run>[0];
 }
 function names(bookings: unknown[]) {
@@ -62,10 +62,10 @@ describe("minimal event attendees", () => {
   it.each(["MODERATOR", "MEMBERSHIP", "ADMIN"])("allows %s access", async (kind) => {
     access(kind === "MODERATOR" ? ["MODERATOR"] : ["ACCESS"], kind === "MEMBERSHIP" ? ["REGULAR"] : []);
     if (kind !== "MODERATOR") groupsQuery.mockResolvedValue({ data: { user: { userGroups: [] } } } as never);
-    expect(await getEventAttendees.run(request({ enabled: true, admin: kind === "ADMIN" }))).toEqual({ attendees: [memberAttendance] });
+    expect(await getEventAttendees.run(request({ enabled: true, securityVersion: 1, admin: kind === "ADMIN" }))).toEqual({ attendees: [memberAttendance] });
   });
   it("rejects missing events and invalid ids", async () => {
-    await expect(getEventAttendees.run(request({ enabled: true }, { eventId: "bad" }))).rejects.toMatchObject({ code: "invalid-argument" });
+    await expect(getEventAttendees.run(request({ enabled: true, securityVersion: 1 }, { eventId: "bad" }))).rejects.toMatchObject({ code: "invalid-argument" });
     eventQuery.mockResolvedValue({ data: { event: undefined } });
     await expect(getEventAttendees.run(request())).rejects.toMatchObject({ code: "not-found" });
     expect(namesQuery).not.toHaveBeenCalled();

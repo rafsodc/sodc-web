@@ -6,7 +6,7 @@ import * as recipientPolicy from "../../privilegedNotificationRecipient";
 import { resolveBookingModeratorUserIds } from "../../bookingModerators";
 
 const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
-const mockListUsers = vi.spyOn(admin, "listUsers");
+const mockListUsers = vi.spyOn(admin, "serviceListUsers");
 const mockGetAdminUsers = vi.spyOn(helpers, "getAdminUsers");
 
 describe("resolveBookingModeratorUserIds", () => {

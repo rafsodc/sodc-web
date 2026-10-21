@@ -1,66 +1,13 @@
 # Enabled-claim reconciliation
 
-Firebase Auth's `enabled` custom claim is the application access boundary used by
-Functions and Data Connect. The user's Data Connect `membershipStatus` is the source
-of truth for that claim:
+Firebase Auth claims are a restrictive, versioned mirror of server-owned `UserSecurityState`; they cannot grant application access by themselves. See [Current authorization and issued-token revocation](./current-authorization.md) for the full contract, staged migration, operator commands and release gate.
 
-| Membership status | `enabled` |
-|---|---:|
-| `REGULAR`, `RETIRED`, `RESERVE`, `INDUSTRY`, `CIVIL_SERVICE` | `true` |
-| `PENDING`, `RESIGNED`, `LOST`, `DECEASED` | `false` |
+The eligible membership statuses remain `REGULAR`, `RETIRED`, `RESERVE`, `INDUSTRY` and `CIVIL_SERVICE`. `PENDING`, `RESIGNED`, `LOST` and `DECEASED` remain restricted, including for retained administrators. Effective access additionally requires a non-disabled verified Auth identity, no verification hold, a matching current profile status and a READY security version.
 
-The rule applies to administrators too. The `admin` claim is preserved when access is
-revoked, but it never forces `enabled: true`; `requireAdmin` requires both claims.
+Restrictions atomically commit profile status, denied readiness, incremented version and durable transition before Auth synchronization. Grants use the same denied-first transaction and become ready only after fresh Auth mirror verification. Failed or superseded work cannot make another version ready. Both restriction and restoration increment the version, so restoration never revives an old token. Unrelated Auth claims are preserved.
 
-## Write ordering
+An authorised admin may resubmit the stored membership status to repair current intent; a pending intent resumes before any fresh transition. The reconciliation scheduler also retries pending transitions and repairs READY mirror drift. An operator can audit or resume the durable operation through `security-state-admin --mode repair`; this does not reimport roles from Auth or invent a grant. Recovery from a deliberate restriction requires an explicitly authorised new transition. Review pending/error ledger rows and rerun the UID-only audit.
 
-Membership changes span Data Connect and Firebase Auth, which cannot share a single
-transaction. `updateMembershipStatus` therefore uses fail-closed ordering:
+Potential Lost confirmation commits its evidence CAS, review audit, profile restriction and security denial/version in the same transaction. Notify delivery receipts only update delivery/bounce evidence; they never change membership or authorization. Initial or changed-address verification recovery releases only an explicit exact-address hold from freshly verified Auth state.
 
-- Restricting access writes `enabled: false` before storing the restricted status.
-- Granting access stores the non-restricted status before writing `enabled: true`.
-- Auth claim errors are logged and returned as callable failures; they are not ignored.
-
-This ensures a partial failure cannot leave a restricted status with newly granted
-access. A failed restriction may temporarily leave an old active status with access
-already revoked, while a failed activation may leave an active status disabled. Both
-cases are repaired through the same idempotent reconciliation path below.
-
-## Automatic reconciliation paths
-
-- Admin and self-service status changes reconcile the claim in
-  `functions/src/membershipStatus.ts`.
-- Confirming a Potential lost review uses the same fail-closed membership/claim path,
-  with an atomic conditional status update and administrator audit entry. Retrying a
-  completed confirmation reconciles access without creating another audit entry.
-- Notify delivery receipts only maintain bounce/delivery evidence. Three permanent
-  failures flag a member for review; callbacks and receipt recovery never change
-  membership status or access claims.
-
-## Detecting drift
-
-Investigate Functions logs for either of these messages:
-
-- `Could not reconcile enabled claim with membership status`
-- `Membership access was revoked but the status write failed`
-
-Compare the user's Data Connect `membershipStatus` with their Firebase Auth custom
-claims using the mapping above. Do not remove unrelated claims while repairing access.
-
-## Repair procedure
-
-1. Confirm the intended membership status with an authorised administrator.
-2. Open the user's profile in the admin membership workflow and save it with the
-   intended status selected. Admin saves invoke `updateMembershipStatus` even when the
-   status is unchanged; the callable treats that as a claim-reconciliation request and
-   preserves all other custom claims.
-3. Confirm the callable succeeds and the Auth `enabled` claim matches the table above.
-4. Ask the affected user to sign out and back in, or otherwise refresh their Firebase ID
-   token, before testing access.
-5. For a Notify-derived `LOST` transition, also confirm the originating
-   `NotifyDeliveryReceipt` is `PROCESSED`. A `FAILED` row remains eligible for replay
-   with its original receipt ID.
-
-If a restriction revoked access but its Data Connect status write failed, either submit
-the intended restricted status to complete the change or re-submit the stored active
-status to restore access. Record which action was authorised.
+After successful synchronization, refresh the user's token (or sign out/in) before testing access. The unchanged older signed token must continue to fail protected client connector and callable operations. No deployment, backfill or real-token gate is performed by the normal unit suite.

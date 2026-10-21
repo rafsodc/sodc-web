@@ -157,7 +157,7 @@ describe("getMyTicketOrderStripeArtifactsBatch", () => {
 
     await expect(
       handler({
-        auth: { uid: USER_ID, token: { enabled: true } },
+        auth: { uid: USER_ID, token: { enabled: true, securityVersion: 1 } },
         data: { orderIds: [ORDER_1] },
       })
     ).resolves.toEqual({
@@ -183,7 +183,7 @@ describe("getMyTicketOrderStripeArtifactsBatch", () => {
   it("rejects disabled callers before rate limiting or reading orders", async () => {
     await expect(
       handler({
-        auth: { uid: USER_ID, token: { enabled: false } },
+        auth: { uid: USER_ID, token: { securityVersion: 1,  enabled: false } },
         data: { orderIds: [ORDER_1] },
       })
     ).rejects.toMatchObject({ code: "permission-denied" });
@@ -199,7 +199,7 @@ describe("getMyTicketOrderStripeArtifactsBatch", () => {
   ])("rejects %s before reading orders", async (_label, orderIds) => {
     await expect(
       handler({
-        auth: { uid: USER_ID, token: { enabled: true } },
+        auth: { uid: USER_ID, token: { enabled: true, securityVersion: 1 } },
         data: { orderIds },
       })
     ).rejects.toMatchObject({ code: "invalid-argument" });
@@ -212,7 +212,7 @@ describe("getMyTicketOrderStripeArtifactsBatch", () => {
   it("rejects malformed order ids before reading orders", async () => {
     await expect(
       handler({
-        auth: { uid: USER_ID, token: { enabled: true } },
+        auth: { uid: USER_ID, token: { enabled: true, securityVersion: 1 } },
         data: { orderIds: ["not-a-uuid"] },
       })
     ).rejects.toMatchObject({ code: "invalid-argument" });
@@ -246,7 +246,7 @@ describe("getMyTicketOrderStripeArtifactsBatch", () => {
 
     await expect(
       handler({
-        auth: { uid: USER_ID, token: { enabled: true } },
+        auth: { uid: USER_ID, token: { enabled: true, securityVersion: 1 } },
         data: { orderIds: [ORDER_1, ORDER_2] },
       })
     ).rejects.toMatchObject({ code: "permission-denied" });
@@ -261,7 +261,7 @@ describe("getMyTicketOrderStripeArtifactsBatch", () => {
 
     await expect(
       handler({
-        auth: { uid: USER_ID, token: { enabled: true } },
+        auth: { uid: USER_ID, token: { enabled: true, securityVersion: 1 } },
         data: { orderIds: [ORDER_1] },
       })
     ).resolves.toEqual({
@@ -280,7 +280,7 @@ describe("getMyTicketOrderStripeArtifactsBatch", () => {
 
     await expect(
       handler({
-        auth: { uid: USER_ID, token: { enabled: true } },
+        auth: { uid: USER_ID, token: { enabled: true, securityVersion: 1 } },
         data: { orderIds: [ORDER_1] },
       })
     ).rejects.toThrow("Data Connect unavailable");

@@ -1,5 +1,5 @@
 import * as logger from "firebase-functions/logger";
-import { getUserById, NotificationChannel } from "@dataconnect/admin-generated";
+import { serviceGetUserById as getUserById, NotificationChannel } from "@dataconnect/admin-generated";
 import {
   createConfiguredGovNotifyMailer,
   GOV_NOTIFY_PROVIDER,

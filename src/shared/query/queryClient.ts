@@ -1,3 +1,4 @@
+import { classifyAuthorizationFailure } from "../auth/authorizationFailure";
 import { QueryClient } from "@tanstack/react-query";
 import { isAuthenticationFailure } from "../auth/isAuthenticationFailure";
 import { SessionChangedError } from "../appShell/sessionLifecycle";
@@ -7,7 +8,7 @@ export function createAppQueryClient() {
     defaultOptions: {
       queries: {
         retry: (failureCount, error) => !(error instanceof SessionChangedError) &&
-          !isAuthenticationFailure(error) && failureCount < 1,
+          !classifyAuthorizationFailure(error) && !isAuthenticationFailure(error) && failureCount < 1,
         refetchOnWindowFocus: true,
         staleTime: 30_000,
       },

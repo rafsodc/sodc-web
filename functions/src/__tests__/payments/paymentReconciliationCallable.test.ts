@@ -45,7 +45,7 @@ describe("reconcileMyCheckoutSessionOrders", () => {
 
   it("authorizes, rate-limits, validates, and forwards reconciliation", async () => {
     const result = await handler({
-      auth: { uid: "user-1", token: { enabled: true } },
+      auth: { uid: "user-1", token: { enabled: true, securityVersion: 1 } },
       data: { orderId: ORDER_ID },
     });
 
@@ -74,7 +74,7 @@ describe("reconcileMyCheckoutSessionOrders", () => {
   it("rejects disabled users before rate limiting or reconciliation", async () => {
     await expect(
       handler({
-        auth: { uid: "user-1", token: { enabled: false } },
+        auth: { uid: "user-1", token: { securityVersion: 1,  enabled: false } },
         data: { orderId: ORDER_ID },
       })
     ).rejects.toMatchObject({ code: "permission-denied" });
@@ -86,7 +86,7 @@ describe("reconcileMyCheckoutSessionOrders", () => {
   it("rejects invalid order ids before calling the reconciliation service", async () => {
     await expect(
       handler({
-        auth: { uid: "user-1", token: { enabled: true } },
+        auth: { uid: "user-1", token: { enabled: true, securityVersion: 1 } },
         data: { orderId: "not-a-uuid" },
       })
     ).rejects.toMatchObject({ code: "invalid-argument" });
@@ -102,7 +102,7 @@ describe("reconcileMyCheckoutSessionOrders", () => {
 
     await expect(
       handler({
-        auth: { uid: "user-1", token: { enabled: true } },
+        auth: { uid: "user-1", token: { enabled: true, securityVersion: 1 } },
         data: { orderId: ORDER_ID },
       })
     ).rejects.toThrow("Stripe temporarily unavailable");

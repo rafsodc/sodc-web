@@ -3,8 +3,8 @@ import * as admin from "@dataconnect/admin-generated";
 import { MembershipStatus } from "@dataconnect/admin-generated";
 import { requireSectionAccess, requireSectionModerator } from "../../sectionAccess";
 
-const mockGetSectionById = vi.spyOn(admin, "getSectionById");
-const mockGetUserAccessGroupsById = vi.spyOn(admin, "getUserAccessGroupsById");
+const mockGetSectionById = vi.spyOn(admin, "serviceGetSectionById");
+const mockGetUserAccessGroupsById = vi.spyOn(admin, "serviceGetUserAccessGroupsById");
 const mockGetUserMembershipStatus = vi.spyOn(admin, "getUserMembershipStatus");
 
 const sectionId = "00000000-0000-4000-8000-000000000001";

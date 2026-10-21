@@ -23,7 +23,7 @@ function fixture() {
   const store = notificationTestRepository();
   let now = STAFF_NOW;
   const current: CurrentRecipientState = { auth: { uid: "staff-1", disabled: false, emailVerified: true, email: "staff@example.com",
-    customClaims: { enabled: true, admin: true } }, profile: { email: "staff@example.com", membershipStatus: "REGULAR" } };
+    customClaims: { enabled: true, admin: true, securityVersion: 1 } }, profile: { email: "staff@example.com", membershipStatus: "REGULAR" }, security: {userId: "staff-1", securityVersion: 1, membershipStatus: "REGULAR", desiredEnabled: true, desiredAdmin: true, accessReady: true, adminReady: true, verificationEmail: null, operationId: "op-1", syncStatus: "READY", user: {membershipStatus: "REGULAR"}} };
   const readCurrentState = vi.fn(async () => current);
   const authorize = (uid: string, scope: Parameters<typeof authorizePrivilegedNotificationRecipient>[1]) =>
     authorizePrivilegedNotificationRecipient(uid, scope, { readCurrentState });
@@ -57,6 +57,16 @@ describe("privileged delivery and recovery with fake provider and real ledger or
     expect(row).toMatchObject({ status: NotificationDeliveryStatus.SKIPPED, skipReason: "RECIPIENT_NOT_ENABLED", providerMessageId: null, sentAt: null });
     expect(row.skippedAt).toBe(STAFF_LATER);
     expect(await f.recover()).toMatchObject({ skipped: 1, recovered: 0 });
+    expect(f.sendAuthorized).toHaveBeenCalledTimes(1);
+  });
+  it("failed send -> DB-first restriction with still-true Auth mirror -> recovery skips without another provider call", async () => {
+    const f = fixture(); f.sendAuthorized.mockRejectedValueOnce(new Error("provider unavailable"));
+    await f.deliver();
+    f.current.security!.accessReady = false; f.current.security!.syncStatus = "PENDING"; f.current.security!.securityVersion = 2;
+    expect(f.current.auth!.customClaims).toMatchObject({enabled: true, admin: true, securityVersion: 1});
+    f.advance();
+    expect(await f.recover()).toMatchObject({skipped: 1, recovered: 0});
+    expect([...f.rows.values()][0]).toMatchObject({status: NotificationDeliveryStatus.SKIPPED, skipReason: "RECIPIENT_AUTHORITY_REVOKED"});
     expect(f.sendAuthorized).toHaveBeenCalledTimes(1);
   });
   it("recovers an authorized original UID at its current address, then deduplicates after another email change", async () => {

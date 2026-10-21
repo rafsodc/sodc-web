@@ -18,6 +18,7 @@ export interface RateLimitPolicy {
  * drift into inline magic numbers.
  */
 export const CALLABLE_RATE_LIMITS = {
+  getMyAuthorizationStatus: { limit: 30, windowMs: 5 * MINUTE_MS },
   getOrganiserGuestList: { limit: 60, windowMs: 5 * MINUTE_MS },
   getManagedEventTickets: { limit: 60, windowMs: 5 * MINUTE_MS },
   getManagedBookingContext: { limit: 60, windowMs: 5 * MINUTE_MS },

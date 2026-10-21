@@ -1,5 +1,5 @@
-import * as admin from "firebase-admin";
-import * as logger from "firebase-functions/logger";
+import { synchronizeUserSecurity, transitionUserSecurity } from "./currentAuthorizationTransitions";
+import { getUserSecurityState } from "./securityRepository";
 import { isNonRestrictedStatus, type MembershipStatus } from "./validation";
 
 interface AuthClaimsUser {
@@ -35,40 +35,15 @@ export function enabledClaimForMembershipStatus(
 export async function reconcileEnabledClaim(
   userId: string,
   membershipStatus: MembershipStatus,
-  authClient: EnabledClaimAuthClient = admin.auth()
+  actorId: string,
 ): Promise<EnabledClaimReconciliationResult> {
-  const enabled = enabledClaimForMembershipStatus(membershipStatus);
-
-  try {
-    const userRecord = await authClient.getUser(userId);
-    const currentClaims = userRecord.customClaims ?? {};
-    if (currentClaims.enabled === enabled) {
-      logger.info("Enabled claim already matches membership status", {
-        userId,
-        membershipStatus,
-        enabled,
-      });
-      return { enabled, updated: false };
-    }
-
-    await authClient.setCustomUserClaims(userId, {
-      ...currentClaims,
-      enabled,
-    });
-    logger.info("Reconciled enabled claim with membership status", {
-      userId,
-      membershipStatus,
-      enabled,
-      admin: currentClaims.admin === true,
-    });
-    return { enabled, updated: true };
-  } catch (error: unknown) {
-    logger.error("Could not reconcile enabled claim with membership status", {
-      userId,
-      membershipStatus,
-      enabled,
-      errorType: error instanceof Error ? error.name : typeof error,
-    });
-    throw error;
+  const state = (await getUserSecurityState({ userId })).data.userSecurityState;
+  if (!state || state.user.membershipStatus !== membershipStatus) throw new Error("SECURITY_PROFILE_CONFLICT");
+  if (state.syncStatus === "PENDING") {
+    await synchronizeUserSecurity(state.operationId);
+  } else {
+    await transitionUserSecurity({ userId, actorId, reason: "RECONCILE_AUTHORIZATION" });
   }
+  const latest = (await getUserSecurityState({ userId })).data.userSecurityState;
+  return { enabled: latest?.accessReady === true, updated: true };
 }

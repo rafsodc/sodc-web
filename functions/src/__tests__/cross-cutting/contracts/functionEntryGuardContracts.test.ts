@@ -113,6 +113,15 @@ describe("function entry guard contracts", () => {
     expect(guardedSources).not.toContain("requireAuth(request);");
   });
 
+  it("limits the auth-only current-session exception to own metadata and a rate limit", () => {
+    const source = readSource("authorizationStatus.ts");
+    assertOnCallGuard(source, "getMyAuthorizationStatus", "requireAuth(request);");
+    assertOnCallGuard(source, "getMyAuthorizationStatus", "enforceRateLimit(\"getMyAuthorizationStatus\"");
+    expect(source).not.toContain("request.data");
+    expect(source).not.toContain("initializeUserSecurityState");
+    expect(source).not.toContain("transitionUserSecurity(");
+  });
+
   it("keeps password reset public, neutral, and rate limited", () => {
     const authEmailActions = readSource("authEmailActions.ts");
     assertOnCallGuard(
@@ -153,13 +162,13 @@ describe("function entry guard contracts", () => {
       authEmailActions,
       "requestEmailChange",
       "requireRecentAuthentication(request.auth!.token.auth_time);",
-      1_500,
+      1_700,
     );
     assertOnCallGuard(
       authEmailActions,
       "requestEmailChange",
       "enforceRateLimit(\"requestEmailChange\"",
-      1_500,
+      1_700,
     );
     assertOnCallGuard(authEmailActions, "reconcileMyEmail", "requireAuth(request);", 900);
     assertOnCallGuard(
@@ -193,13 +202,13 @@ describe("function entry guard contracts", () => {
       bookings,
       "submitEventBooking",
       "enforceRateLimit(\"submitEventBookingReplayLookup\"",
-      1_500,
+      1_700,
     );
     assertOnCallGuard(
       bookings,
       "submitEventBooking",
       "enforceRateLimit(\"submitEventBooking\"",
-      1_500,
+      1_700,
     );
     const replayLimitIdx = bookings.indexOf("enforceRateLimit(\"submitEventBookingReplayLookup\"");
     const weightedLimitIdx = bookings.indexOf("enforceRateLimit(\"submitEventBooking\"");

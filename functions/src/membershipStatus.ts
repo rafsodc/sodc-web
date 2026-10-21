@@ -1,19 +1,19 @@
+import { currentAuthorization } from "./currentAuthorization";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import * as admin from "firebase-admin";
 import { requireEnabled, handleFunctionError } from "./helpers";
-import { canUserChangeStatus, canUserResignMembership, isNonRestrictedStatus, type MembershipStatus } from "./validation";
+import { canUserChangeStatus, canUserResignMembership, type MembershipStatus } from "./validation";
 import { FUNCTIONS_REGION } from "./constants";
 import {
-  updateUserMembershipStatus,
   getUserMembershipStatus,
-  type MembershipStatus as AdminMembershipStatus,
 } from "@dataconnect/admin-generated";
 import { govNotifySecrets } from "./mailer";
 import { notifyMembershipStatusEmailIfNeeded } from "./membershipStatusEmailDispatcher";
 import { invalidateDcProfileCache } from "./users";
 import { enforceRateLimit } from "./rateLimiter";
 import { reconcileEnabledClaim } from "./enabledClaimReconciliation";
+import { initializeUserSecurityState, transitionUserSecurity } from "./currentAuthorizationTransitions";
+import { getUserSecurityState } from "./securityRepository";
 
 const APP_BASE_URL = (() => {
   const url = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -40,46 +40,19 @@ export async function sendMembershipStatusEmailIfChanged(args: {
 }
 
 interface MembershipStatusPersistenceDependencies {
-  updateMembershipStatus?: (
-    userId: string,
-    membershipStatus: MembershipStatus
-  ) => Promise<void>;
-  reconcileEnabledClaim?: typeof reconcileEnabledClaim;
+  transition?: typeof transitionUserSecurity;
+  actorId?: string;
 }
 
-/**
- * Keeps status and access changes fail-closed across Data Connect and Firebase Auth.
- * Restrictions revoke access before the status write; activations persist the status
- * before granting access. Either partial failure can then be repaired by an admin
- * re-submitting the stored status through updateMembershipStatus.
- */
+/** Profile, denial, version and audit commit atomically before Auth synchronization. */
 export async function persistMembershipStatusWithEnabledClaim(
   userId: string,
   membershipStatus: MembershipStatus,
-  dependencies: MembershipStatusPersistenceDependencies = {}
+  dependencies: MembershipStatusPersistenceDependencies = {},
 ): Promise<void> {
-  const persistStatus =
-    dependencies.updateMembershipStatus ?? updateMembershipStatusInDataConnect;
-  const reconcileClaim =
-    dependencies.reconcileEnabledClaim ?? reconcileEnabledClaim;
-
-  if (isNonRestrictedStatus(membershipStatus)) {
-    await persistStatus(userId, membershipStatus);
-    await reconcileClaim(userId, membershipStatus);
-    return;
-  }
-
-  await reconcileClaim(userId, membershipStatus);
-  try {
-    await persistStatus(userId, membershipStatus);
-  } catch (error: unknown) {
-    logger.error("Membership access was revoked but the status write failed", {
-      userId,
-      membershipStatus,
-      errorType: error instanceof Error ? error.name : typeof error,
-    });
-    throw error;
-  }
+  await (dependencies.transition ?? transitionUserSecurity)({ userId, membershipStatus,
+    actorId: dependencies.actorId ?? userId, reason: "MEMBERSHIP_STATUS" });
+  invalidateDcProfileCache();
 }
 
 // User groups may include membershipStatuses. Status-based membership is inherited (computed in
@@ -93,7 +66,7 @@ export async function persistMembershipStatusWithEnabledClaim(
 export const updateMembershipStatus = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request) => {
-  requireEnabled(request);
+  await requireEnabled(request);
   await enforceRateLimit("updateMembershipStatus", request.auth!.uid);
 
   const { userId, newStatus } = request.data;
@@ -106,16 +79,23 @@ export const updateMembershipStatus = onCall(
     throw new HttpsError("invalid-argument", "newStatus is required and must be a string");
   }
 
-  const isAdmin = request.auth!.token.admin === true;
-  const callerEnabled = request.auth!.token.enabled === true;
+  const isAdmin = currentAuthorization(request).isAdmin;
+  const callerEnabled = currentAuthorization(request).enabled;
   if (!isAdmin && request.auth!.uid !== userId) {
     throw new HttpsError("permission-denied", "Users can only update their own profile");
   }
 
   try {
     // Check if target user is an admin
-    const targetUser = await admin.auth().getUser(userId);
-    const targetUserIsAdmin = targetUser.customClaims?.admin === true;
+    let targetState = (await getUserSecurityState({userId})).data.userSecurityState;
+    if (!targetState && isAdmin) {
+      const profile = await fetchCurrentStatusFromDataConnect(userId);
+      if (profile === "PENDING") {
+        await initializeUserSecurityState({userId, actorId: request.auth!.uid, reason: "INITIAL_APPROVAL"});
+        targetState = (await getUserSecurityState({userId})).data.userSecurityState;
+      }
+    }
+    const targetUserIsAdmin = targetState?.desiredAdmin === true;
     
     const currentStatus = await fetchCurrentStatusFromDataConnect(userId);
 
@@ -125,7 +105,8 @@ export const updateMembershipStatus = onCall(
     if (isAdmin && currentStatus === newStatus) {
       const reconciliation = await reconcileEnabledClaim(
         userId,
-        currentStatus as MembershipStatus
+        currentStatus as MembershipStatus,
+        request.auth!.uid
       );
       logger.info("Reconciled enabled claim from unchanged membership status", {
         userId,
@@ -161,7 +142,7 @@ export const updateMembershipStatus = onCall(
     
     await persistMembershipStatusWithEnabledClaim(
       userId,
-      newStatus as MembershipStatus
+      newStatus as MembershipStatus, { actorId: request.auth!.uid }
     );
     
     // Access group membership by status is computed at read time (admin UI and getSectionMembersMerged)
@@ -188,15 +169,15 @@ export const updateMembershipStatus = onCall(
 export const resignMembership = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request) => {
-    requireEnabled(request);
+    await requireEnabled(request);
     await enforceRateLimit("resignMembership", request.auth!.uid);
 
     const userId = request.auth!.uid;
-    const callerEnabled = request.auth!.token.enabled === true;
+    const callerEnabled = currentAuthorization(request).enabled;
 
     try {
-      const targetUser = await admin.auth().getUser(userId);
-      const targetUserIsAdmin = targetUser.customClaims?.admin === true;
+      const targetState = (await getUserSecurityState({userId})).data.userSecurityState;
+      const targetUserIsAdmin = targetState?.desiredAdmin === true;
       const currentStatus = await fetchCurrentStatusFromDataConnect(userId);
       const newStatus = "RESIGNED" as MembershipStatus;
 
@@ -233,26 +214,6 @@ export const resignMembership = onCall(
     }
   }
 );
-
-/**
- * Updates the membership status in Data Connect using the Admin SDK
- */
-async function updateMembershipStatusInDataConnect(
-  userId: string,
-  membershipStatus: MembershipStatus
-): Promise<void> {
-  try {
-    await updateUserMembershipStatus({
-      userId,
-      membershipStatus: membershipStatus as AdminMembershipStatus
-    });
-    invalidateDcProfileCache();
-    logger.info(`Successfully updated membership status for userId=${userId} to ${membershipStatus}`);
-  } catch (error: any) {
-    logger.error(`Could not update membership status in Data Connect for userId=${userId}:`, error);
-    throw error;
-  }
-}
 
 /**
  * Fetches the current membership status from Data Connect using the Admin SDK
