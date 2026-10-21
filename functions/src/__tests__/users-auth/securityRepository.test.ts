@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({apps: [] as {name: string; options?: object}[],
 vi.unmock("../../securityRepository");
 vi.mock("firebase-admin/app", () => ({getApps: () => mocks.apps, getApp: () => ({name: "[DEFAULT]", options: {projectId: "demo-project"}}), initializeApp: mocks.init}));
 vi.mock("firebase-admin/data-connect", () => ({getDataConnect: mocks.getDataConnect}));
-vi.mock("../../security-admin-generated", () => ({connectorConfig: {connector: "authorization-service", serviceId: "sodc-web-service", location: "europe-west2"},
+vi.mock("@dataconnect/security-admin-generated", () => ({connectorConfig: {connector: "authorization-service", serviceId: "sodc-web-service", location: "europe-west2"},
   getUserSecurityState: mocks.read, beginSecurityTransition: mocks.begin}));
 import { getUserSecurityState, beginSecurityTransition } from "../../securityRepository";
 beforeEach(() => {

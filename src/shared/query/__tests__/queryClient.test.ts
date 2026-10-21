@@ -17,6 +17,14 @@ describe("queryClient retry policy", () => {
     queryClient.removeQueries({ queryKey: ["auth-retry-policy"] });
   });
 
+  it.each(["SESSION_VERSION_STALE", "ACCESS_REVOKED"])("does not retry the explicit %s marker without a generic error code", async marker => {
+    const error = new Error(marker);
+    const queryFn = vi.fn().mockRejectedValue(error);
+    await expect(queryClient.fetchQuery({ queryKey: [marker], queryFn })).rejects.toBe(error);
+    expect(queryFn).toHaveBeenCalledOnce();
+    queryClient.removeQueries({ queryKey: [marker] });
+  });
+
   it("retains one retry for transient failures", async () => {
     const queryFn = vi
       .fn()

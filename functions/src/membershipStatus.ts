@@ -105,7 +105,8 @@ export const updateMembershipStatus = onCall(
     if (isAdmin && currentStatus === newStatus) {
       const reconciliation = await reconcileEnabledClaim(
         userId,
-        currentStatus as MembershipStatus
+        currentStatus as MembershipStatus,
+        request.auth!.uid
       );
       logger.info("Reconciled enabled claim from unchanged membership status", {
         userId,

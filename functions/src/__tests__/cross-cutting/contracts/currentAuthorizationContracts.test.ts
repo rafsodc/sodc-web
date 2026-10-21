@@ -15,6 +15,15 @@ describe("current-authorization boundary inventory", () => {
     expect(source).toContain("syncStatus: {eq: PENDING}");
     expect(source).toContain("intentHash: $intentHash");
   });
+  it("loads generated authorization runtime from the deployed file dependency and wraps every operation with the isolated connector", () => {
+    const repository = read("functions/src/securityRepository.ts");
+    expect(repository).toContain("from \"@dataconnect/security-admin-generated\"");
+    expect(repository).not.toContain("from \"./security-admin-generated\"");
+    for (const operation of read("dataconnect/authorization-service/security.gql").matchAll(/^(?:query|mutation) (\w+)/gm)) {
+      const name = operation[1][0].toLowerCase() + operation[1].slice(1);
+      expect(repository, name).toContain(`sdk.${name}(getAuthorizationDataConnect(), variables)`);
+    }
+  });
   it("awaits every member/admin guard and limits raw token role reads to boundary modules", () => {
     for (const name of readdirSync(resolve(root, "functions/src")).filter(name => name.endsWith(".ts"))) {
       const source = read(`functions/src/${name}`);

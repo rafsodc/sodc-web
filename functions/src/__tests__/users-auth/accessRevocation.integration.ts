@@ -207,7 +207,7 @@ describe("issued-token revocation through deployed client endpoints", () => {
     config = readSecurityIntegrationConfig();
     app = initializeApp({ projectId: config.projectId, credential: applicationDefault() });
     auth = getAuth(app);
-    dc = getDataConnect({ serviceId: "sodc-web-service", location: "europe-west2" }, app);
+    dc = getDataConnect({ connector: "api", serviceId: "sodc-web-service", location: "europe-west2" }, app);
     const mode = await quiet("READ_EMAIL_MODE", () => dc.executeGraphql<{ govNotifyDeliveryConfiguration: { mode: string } | null }, Record<string, never>>(
       "query IntegrationEmailMode { govNotifyDeliveryConfiguration(key: {id: \"site-wide\"}) { mode } }",
     ));

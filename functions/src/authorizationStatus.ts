@@ -37,6 +37,7 @@ export const getMyAuthorizationStatus = onCall({region: FUNCTIONS_REGION}, async
   await synchronizeUserSecurity(state.operationId);
   state = (await getUserSecurityState({userId: uid})).data.userSecurityState;
   if (!state) return result("missing");
+  if (!state.desiredEnabled || state.verificationEmail || !isNonRestrictedStatus(state.user.membershipStatus) || state.membershipStatus !== state.user.membershipStatus) return result("restricted", Boolean(state.verificationEmail));
   if (state.syncStatus !== "READY") return result("pending");
   return result(state.accessReady ? "enabled" : "restricted");
 });

@@ -12,17 +12,17 @@ describe("enabled claim mapping", () => {
 describe("versioned mirror repair", () => {
   beforeEach(() => vi.clearAllMocks());
   it("reconciles from current profile and security intent", async () => {
-    await reconcileEnabledClaim("member", "REGULAR");
-    expect(transitionUserSecurity).toHaveBeenCalledWith({userId: "member", actorId: "member", reason: "RECONCILE_AUTHORIZATION"});
+    await reconcileEnabledClaim("member", "REGULAR", "reviewer");
+    expect(transitionUserSecurity).toHaveBeenCalledWith({userId: "member", actorId: "reviewer", reason: "RECONCILE_AUTHORIZATION"});
   });
   it("resumes a pending transition instead of inventing a new grant", async () => {
     lookup.mockResolvedValueOnce({data: {userSecurityState: {syncStatus: "PENDING", operationId: "pending", user: {membershipStatus: "LOST"}}}} as never);
-    await reconcileEnabledClaim("member", "LOST");
+    await reconcileEnabledClaim("member", "LOST", "reviewer");
     expect(synchronizeUserSecurity).toHaveBeenCalledWith("pending");
     expect(transitionUserSecurity).not.toHaveBeenCalled();
   });
   it("rejects a stale status snapshot", async () => {
-    await expect(reconcileEnabledClaim("member", "DECEASED")).rejects.toThrow("SECURITY_PROFILE_CONFLICT");
+    await expect(reconcileEnabledClaim("member", "DECEASED", "reviewer")).rejects.toThrow("SECURITY_PROFILE_CONFLICT");
     expect(transitionUserSecurity).not.toHaveBeenCalled();
   });
 });

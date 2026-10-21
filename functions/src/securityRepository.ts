@@ -1,7 +1,7 @@
 import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getDataConnect } from "firebase-admin/data-connect";
-import * as sdk from "./security-admin-generated";
-export * from "./security-admin-generated";
+import * as sdk from "@dataconnect/security-admin-generated";
+export * from "@dataconnect/security-admin-generated";
 
 /** Firebase Admin 13.10 omits connector ID from its cache key; isolate this connector. */
 export function getAuthorizationDataConnect() {

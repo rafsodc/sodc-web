@@ -20,7 +20,10 @@ async function main() {
         state.desiredEnabled !== authUser.customClaims?.enabled || state.desiredAdmin !== authUser.customClaims?.admin ||
         state.membershipStatus !== state.user.membershipStatus || (state.accessReady && (authUser.disabled || !authUser.emailVerified));
       // Report UID and classifications only, never emails, credentials, claims or tokens.
-      console.log(JSON.stringify({userId: authUser.uid, mode: options.mode, exists: Boolean(state), drift, apply: options.apply}));
+      console.log(JSON.stringify({userId: authUser.uid, mode: options.mode, exists: Boolean(state), drift, apply: options.apply,
+        securityVersion: state?.securityVersion ?? null, syncStatus: state?.syncStatus ?? null,
+        accessReady: state?.accessReady === true, adminReady: state?.adminReady === true,
+        accountDisabled: authUser.disabled, verificationRequired: !authUser.emailVerified || Boolean(state?.verificationEmail)}));
       if (!options.apply) continue;
       if (options.mode === "bootstrap") {
         if (!(await getUserMembershipStatus({id: authUser.uid})).data.user) continue;

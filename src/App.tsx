@@ -126,7 +126,7 @@ function AppContent() {
     userData,
     isEnabled
   );
-  const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled });
+  const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled && sessionRecovery.status === "idle" });
 
   useEffect(() => {
     setMobileNavAnchorEl(null);
@@ -175,8 +175,8 @@ function AppContent() {
   const header = (
     <>
       <Header
-        user={user}
-        userData={userData}
+        user={sessionRecovery.status === "idle" ? user : null}
+        userData={sessionRecovery.status === "idle" ? userData : null}
         onAccountClick={() => navigate(ROUTES.ACCOUNT)}
         onProfileClick={() => navigate(ROUTES.PROFILE)}
         onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
@@ -189,14 +189,14 @@ function AppContent() {
       <MobileNavigationMenu
         anchorEl={mobileNavAnchorEl}
         onClose={() => setMobileNavAnchorEl(null)}
-        sections={navigationLinks.sections}
-        adminLinks={navigationLinks.admin}
+        sections={sessionRecovery.status === "idle" ? navigationLinks.sections : []}
+        adminLinks={sessionRecovery.status === "idle" ? navigationLinks.admin : []}
         pathname={location.pathname}
       />
     </>
   );
 
-  if (!isOnline) {
+  if (!isOnline && sessionRecovery.status === "idle") {
     return (
       <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -217,10 +217,11 @@ function AppContent() {
   if (sessionRecovery.status !== "idle" && !isPublicRoute) {
     const isRecovering = sessionRecovery.status === "recovering";
     const timedOut = sessionRecovery.failure === "request-timeout";
+    const pending = sessionRecovery.failure === "authorization-pending";
+    const accessCheckFailed = sessionRecovery.failure === "authorization-check-failed";
 
     return (
       <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
-        {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <Box sx={{ maxWidth: { sm: "640px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
             {isRecovering ? (
@@ -242,7 +243,11 @@ function AppContent() {
                   </Box>
                 }
               >
-                {timedOut
+                {pending
+                  ? "Your account access is being updated. Your private information is hidden. Try again shortly."
+                  : accessCheckFailed
+                  ? "Your account access could not be verified. Your private information is hidden. Try again or sign in again."
+                  : timedOut
                   ? "The request took too long after the app resumed. Try reconnecting your session."
                   : "Your session could not be refreshed. Try again or sign in again."}
               </Alert>

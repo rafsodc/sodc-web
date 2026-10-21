@@ -534,6 +534,34 @@
   {
     "connector": "api",
     "file": "admin-mutations.gql",
+    "operation": "MarkNotificationDeliverySkippedById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListLegacyBookingStaffNotificationDeliveries",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListLegacyApplicantStaffNotificationDeliveries",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "DeleteNotificationDeliveryIntegrationFixture",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
     "operation": "MarkNotificationDeliveryFailedById",
     "kind": "mutation",
     "classification": "service-only"

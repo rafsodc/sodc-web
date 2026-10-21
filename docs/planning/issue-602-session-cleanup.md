@@ -1,6 +1,6 @@
 # Issue #602: logout and account session cleanup
 
-Status: implemented and locally validated; draft PR awaiting review. Browser acceptance remains a release gate.
+Status: implemented, reviewed and merged via PR #660 into the integration branch at `1567b20`. All eight CI checks passed. Browser acceptance remains an unexecuted production release gate.
 
 - Issue: https://github.com/rafsodc/sodc-web/issues/602
 - Design and acceptance matrix: https://github.com/rafsodc/sodc-web/issues/602#issuecomment-6301903454
@@ -44,4 +44,4 @@ See [the local session browser guide](../testing/session-isolation.md) for exact
 
 The hard document replacement is a deliberate privacy boundary. An unexpected direct switch with memory-only persistence can require signing in again; initial login itself does not reload. Logout cannot reverse already accepted server writes, so old callbacks are fenced instead. Browser-engine BFCache behavior and the local stack still need recorded execution before production promotion.
 
-Keep PR #660 draft pending root review and browser release evidence. No new caching is introduced. Ship independently of the event tabs/navigation work.
+PR #660 passed root review and all eight CI checks, and merged into `codex/security-privacy-foundation` at `1567b20`. Browser acceptance is still unexecuted and remains a production promotion gate. No new caching is introduced. The event tabs/navigation work remains independent.

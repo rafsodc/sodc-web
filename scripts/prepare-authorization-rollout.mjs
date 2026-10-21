@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -42,6 +42,8 @@ export async function prepareAuthorizationRollout({repositoryRoot, output, proje
     throw new Error("An explicit --expires timestamp within the next 48 hours is required");
   }
   if (!path.isAbsolute(output ?? "") || !path.relative(repositoryRoot, output).startsWith(`..${path.sep}`)) throw new Error("--output must be an absolute new directory outside the checkout");
+  const [canonicalRoot, canonicalParent] = await Promise.all([realpath(repositoryRoot), realpath(path.dirname(output))]);
+  if (!path.relative(canonicalRoot, path.join(canonicalParent, path.basename(output))).startsWith(`..${path.sep}`)) throw new Error("--output symlink resolves inside the checkout");
   await mkdir(output); // Fail on any existing artifact; never overwrite a reviewed source tree.
   await cp(path.join(repositoryRoot, "dataconnect"), path.join(output, "dataconnect"), {recursive: true,
     filter: source => !source.split(path.sep).includes(".dataconnect")});

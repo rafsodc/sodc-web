@@ -1,3 +1,5 @@
+import { reportAuthorizationDenial } from "../auth/authorizationRecoveryEvents";
+
 export class SessionChangedError extends Error {
   constructor() {
     super("The account session has changed. Sign in again to continue.");
@@ -55,6 +57,7 @@ interface SessionRuntime {
   signOut: (options?: RetirementOptions) => Promise<void>;
 }
 let runtime: SessionRuntime | null = null;
+const suspendedSessions = new WeakSet<SessionLifecycle>();
 
 export function installSessionRuntime(next: SessionRuntime) {
   runtime = next;
@@ -75,11 +78,17 @@ export function isSessionCurrent(token: SessionToken) {
   return runtime?.lifecycle === token.lifecycle && current.phase === "active" &&
     current.generation === token.generation && current.uid === token.uid;
 }
+export function isPrivateSessionSuspended(token: SessionToken) {
+  return token.lifecycle !== null && suspendedSessions.has(token.lifecycle);
+}
+export function suspendPrivateSession(token: SessionToken) {
+  if (isSessionCurrent(token) && token.lifecycle) suspendedSessions.add(token.lifecycle);
+}
 export function assertSessionCurrent(token: SessionToken) {
-  if (!isSessionCurrent(token)) throw new SessionChangedError();
+  if (!isSessionCurrent(token) || isPrivateSessionSuspended(token)) throw new SessionChangedError();
 }
 export function assertSessionAvailable() {
-  if (runtime && runtime.lifecycle.getSnapshot().phase !== "active") throw new SessionChangedError();
+  if (runtime && (runtime.lifecycle.getSnapshot().phase !== "active" || suspendedSessions.has(runtime.lifecycle))) throw new SessionChangedError();
 }
 // Authentication workflows deliberately cross the first anonymous -> UID boundary.
 // Admit only that first identity; replacing an authenticated account retires instead.
@@ -98,6 +107,7 @@ export async function runSessionOperation<T>(operation: () => Promise<T>, token 
     return result;
   } catch (error) {
     assertSessionCurrent(token);
+    reportAuthorizationDenial(error, token);
     throw error;
   }
 }

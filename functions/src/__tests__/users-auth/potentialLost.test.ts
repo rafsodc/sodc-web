@@ -153,7 +153,7 @@ describe("potential lost review", () => {
     profileQuery.mockResolvedValue({ data: { user: { ...profile, membershipStatus: sdk.MembershipStatus.LOST } } });
     await expect(confirmPotentialLostMember.run(confirmation())).resolves.toEqual({ success: true });
     expect(mutation).not.toHaveBeenCalled();
-    expect(mocks.reconcile).toHaveBeenCalledWith("member", "LOST");
+    expect(mocks.reconcile).toHaveBeenCalledWith("member", "LOST", "reviewer");
   });
   it("keeps queries server-only and status/audit updates atomic", () => {
     const query = readFileSync(resolve(__dirname, "../../../../dataconnect/api/member-review.gql"), "utf8");

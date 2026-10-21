@@ -35,13 +35,14 @@ export function enabledClaimForMembershipStatus(
 export async function reconcileEnabledClaim(
   userId: string,
   membershipStatus: MembershipStatus,
+  actorId: string,
 ): Promise<EnabledClaimReconciliationResult> {
   const state = (await getUserSecurityState({ userId })).data.userSecurityState;
   if (!state || state.user.membershipStatus !== membershipStatus) throw new Error("SECURITY_PROFILE_CONFLICT");
   if (state.syncStatus === "PENDING") {
     await synchronizeUserSecurity(state.operationId);
   } else {
-    await transitionUserSecurity({ userId, actorId: userId, reason: "RECONCILE_AUTHORIZATION" });
+    await transitionUserSecurity({ userId, actorId, reason: "RECONCILE_AUTHORIZATION" });
   }
   const latest = (await getUserSecurityState({ userId })).data.userSecurityState;
   return { enabled: latest?.accessReady === true, updated: true };

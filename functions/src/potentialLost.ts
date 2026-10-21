@@ -84,7 +84,7 @@ export const confirmPotentialLostMember = onCall(
       if (!profile) throw new HttpsError("not-found", "Member not found");
       if (profile.membershipStatus === "LOST") {
         // Retrying a completed confirmation repairs a partial claim failure without another audit entry.
-        await reconcileEnabledClaim(userId, "LOST");
+        await reconcileEnabledClaim(userId, "LOST", request.auth!.uid);
         return { success: true };
       }
       const candidate = potentialLostCandidate(profile, auth);

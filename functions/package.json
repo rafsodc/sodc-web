@@ -5,7 +5,7 @@
     "generate:templates": "ts-node --project tsconfig.scripts.json scripts/generate-template-manifest.ts",
     "check:template-sync": "ts-node --project tsconfig.scripts.json scripts/check-template-sync.ts",
     "prebuild": "npm run generate:templates",
-    "build": "node scripts/clean-functions-build.mjs && tsc -p tsconfig.build.json && node scripts/verify-functions-build.mjs",
+    "build": "node scripts/clean-functions-build.mjs && tsc -p tsconfig.build.json && node scripts/verify-functions-build.mjs && node -e \"require('./lib/securityRepository.js')\"",
     "prebuild:watch": "node scripts/clean-functions-build.mjs",
     "build:watch": "tsc -p tsconfig.build.json --watch",
     "serve": "npm run build && firebase emulators:start --only functions",

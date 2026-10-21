@@ -8,6 +8,8 @@ Every protected client operation checks the caller's own state with `auth.uid`, 
 
 Functions await `requireEnabled`/`requireAdmin` before protected work. Their fresh DB checks are cached only within that one request. Downstream role bypasses use the resulting effective permissions. Backend consumers use explicit `Service*` NO_ACCESS reads or existing service operations rather than relying on an absent `auth.uid` in the Admin SDK. The authorization connector uses a separate named Firebase App because installed Admin SDK 13.10 caches Data Connect instances without the connector ID. This prevents accidentally selecting the client API connector for security operations.
 
+Staff-recipient selection and claimed sends also read fresh current security state, require ready matching profile/version eligibility and use `adminReady` for the admin bypass. A pending/revoked DB record cannot remain eligible from a still-true Auth mirror; the delivery ledger persists the definitive skip through #651.
+
 The shared API is `functions/src/currentAuthorizationTransitions.ts`:
 
 - `initializeUserSecurityState({userId, actorId, reason, allowAdminBootstrap?})` is an explicit migration/bootstrap operation. Only a separately authorised bootstrap imports an existing Auth admin role. Ordinary guards cannot call it. Initial unverified identities receive a durable exact-address verification hold.
@@ -91,6 +93,8 @@ The live suite requires an explicitly confirmed Dev/Beta project and site-wide N
 ```sh
 RUN_SECURITY_INTEGRATION=1 SECURITY_INTEGRATION_PROJECT=sodc-web-beta SECURITY_INTEGRATION_CONFIRM=sodc-web-beta SECURITY_INTEGRATION_API_KEY=<target-web-api-key> npm --prefix functions run test:security-integration
 ```
+
+If App Check is enforced on Auth/Data Connect, supply a valid target-project `SECURITY_INTEGRATION_APPCHECK_TOKEN` through the approved test attestation flow as well; do not weaken project enforcement to make the gate pass. The raw fixture Admin client explicitly selects the API connector so its cache cannot poison generated API operations.
 
 The same command with `-- --check` checks targeting without network or account changes. Running without opt-in fails before network. This live gate has **not been executed** in this PR; it remains mandatory after a non-production deployment. Local Data Connect emulator smoke separately verified CEL/current reads and writes, denied-write rollback, restriction/restoration, stale-version/admin rejection and multi-connector service compatibility. Emulator impersonation does not replace the signed-token gate.
 

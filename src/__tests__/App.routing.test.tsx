@@ -23,7 +23,7 @@ let profileReviewedAt: string | null = new Date().toISOString();
 let headerShouldThrow = false;
 let memberWelcomeShouldThrow = false;
 let sessionRecoveryStatus: "idle" | "recovering" | "failed" = "idle";
-let sessionRecoveryFailure: "refresh-failed" | "request-timeout" | null = null;
+let sessionRecoveryFailure: "refresh-failed" | "request-timeout" | "authorization-pending" | "authorization-check-failed" | null = null;
 let sessionRecoveryOnRecovered: (() => void | Promise<void>) | undefined;
 
 function purposeLink(purpose: "ACCESS" | "MODERATOR", id: string, name: string) {
@@ -385,6 +385,20 @@ describe("App routing", () => {
     await user.click(screen.getByRole("button", { name: "Try again" }));
     expect(mockRetrySession).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.SECTIONS);
+  });
+
+  it("keeps pending authorization private content and account navigation hidden with a visible retry", async () => {
+    signInEnabledUser({ admin: true });
+    sessionRecoveryStatus = "failed";
+    sessionRecoveryFailure = "authorization-pending";
+    const user = userEvent.setup();
+    renderApp([ROUTES.MANAGE_USERS]);
+    expect(screen.getByText(/account access is being updated/i)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Manage Users Page" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /profile|my bookings|account settings/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(mockRetrySession).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.MANAGE_USERS);
   });
 
   it("refreshes the member profile after session recovery", async () => {

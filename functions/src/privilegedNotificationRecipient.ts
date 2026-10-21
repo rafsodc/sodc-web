@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import { getUserMembershipStatus } from "@dataconnect/admin-generated";
+import { getUserSecurityState, type GetUserSecurityStateData } from "./securityRepository";
 import { resolveSectionAccess } from "./sectionAccess";
 import { isNonRestrictedStatus, type MembershipStatus } from "./validation";
 
@@ -13,6 +14,7 @@ export type PrivilegedRecipientEligibility =
   | { eligible: false; reason: RecipientIneligibleReason };
 
 export interface CurrentRecipientState {
+  security: GetUserSecurityStateData["userSecurityState"] | null;
   auth: {
     uid: string;
     disabled: boolean;
@@ -32,18 +34,19 @@ export class PrivilegedRecipientLookupError extends Error {
   }
 }
 
-/** Integration seam: #653 can add authoritative security state to this reader. */
+/** Fresh server-owned authority is required independently of the Auth claim mirror. */
 export async function readCurrentRecipientState(recipientUserId: string): Promise<CurrentRecipientState> {
-  const [authResult, profileResult] = await Promise.all([
+  const [authResult, securityResult, profileResult] = await Promise.all([
     admin.auth().getUser(recipientUserId).catch((error: unknown) => {
       if ((error as { code?: string })?.code === "auth/user-not-found") return null;
       throw new PrivilegedRecipientLookupError();
     }),
+    getUserSecurityState({userId: recipientUserId}).catch(() => {throw new PrivilegedRecipientLookupError();}),
     getUserMembershipStatus({ id: recipientUserId }).catch(() => {
       throw new PrivilegedRecipientLookupError();
     }),
   ]);
-  return { auth: authResult, profile: profileResult.data.user ?? null };
+  return { auth: authResult, profile: profileResult.data.user ?? null, security: securityResult.data.userSecurityState ?? null };
 }
 
 export interface PrivilegedRecipientDependencies {
@@ -64,7 +67,7 @@ export async function authorizePrivilegedNotificationRecipient(
     if (error instanceof PrivilegedRecipientLookupError) throw error;
     throw new PrivilegedRecipientLookupError();
   }
-  const { auth, profile } = state;
+  const { auth, profile, security } = state;
   if (!auth || auth.uid !== recipientUserId) return { eligible: false, reason: "RECIPIENT_NOT_FOUND" };
   if (auth.disabled) return { eligible: false, reason: "RECIPIENT_DISABLED" };
   if (!auth.emailVerified || !auth.email?.trim()) return { eligible: false, reason: "RECIPIENT_UNVERIFIED" };
@@ -73,10 +76,16 @@ export async function authorizePrivilegedNotificationRecipient(
   if (!isNonRestrictedStatus(profile.membershipStatus as MembershipStatus)) {
     return { eligible: false, reason: "RECIPIENT_RESTRICTED" };
   }
+  if (!security || security.syncStatus !== "READY" || !security.accessReady ||
+      security.verificationEmail || security.membershipStatus !== profile.membershipStatus ||
+      security.user.membershipStatus !== profile.membershipStatus ||
+      auth.customClaims?.securityVersion !== security.securityVersion) {
+    return {eligible: false, reason: "RECIPIENT_AUTHORITY_REVOKED"};
+  }
   if (profile.email?.trim().toLowerCase() !== auth.email.trim().toLowerCase()) {
     throw new PrivilegedRecipientLookupError("RECIPIENT_EMAIL_OUT_OF_SYNC");
   }
-  let authorized = auth.customClaims?.admin === true;
+  let authorized = security.adminReady && auth.customClaims?.admin === true;
   if (!authorized && scope.kind === "BOOKING") {
     try {
       authorized = await (dependencies.canModerate ?? (async (sectionId, uid) =>
