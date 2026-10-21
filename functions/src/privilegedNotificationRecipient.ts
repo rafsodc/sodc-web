@@ -71,33 +71,47 @@ export async function authorizePrivilegedNotificationRecipient(
   if (!auth || auth.uid !== recipientUserId) return { eligible: false, reason: "RECIPIENT_NOT_FOUND" };
   if (auth.disabled) return { eligible: false, reason: "RECIPIENT_DISABLED" };
   if (!auth.emailVerified || !auth.email?.trim()) return { eligible: false, reason: "RECIPIENT_UNVERIFIED" };
-  if (auth.customClaims?.enabled !== true) return { eligible: false, reason: "RECIPIENT_NOT_ENABLED" };
   if (!profile) return { eligible: false, reason: "RECIPIENT_PROFILE_MISSING" };
   if (!isNonRestrictedStatus(profile.membershipStatus as MembershipStatus)) {
     return { eligible: false, reason: "RECIPIENT_RESTRICTED" };
   }
-  if (!security || security.syncStatus !== "READY" || !security.accessReady ||
-      security.verificationEmail || security.membershipStatus !== profile.membershipStatus ||
-      security.user.membershipStatus !== profile.membershipStatus ||
-      auth.customClaims?.securityVersion !== security.securityVersion) {
+  // Desired flags never permit a send. They only distinguish a durable denial
+  // from work that can be rechecked after its pending grant/repair completes.
+  if (!security || security.userId !== recipientUserId || !security.desiredEnabled ||
+      security.verificationEmail || !isNonRestrictedStatus(security.membershipStatus) ||
+      security.membershipStatus !== security.user.membershipStatus ||
+      (security.adminReady && !security.desiredAdmin)) {
+    return {eligible: false, reason: "RECIPIENT_AUTHORITY_REVOKED"};
+  }
+  if (security.membershipStatus !== profile.membershipStatus) {
+    throw new PrivilegedRecipientLookupError("RECIPIENT_STATE_OUT_OF_SYNC");
+  }
+  if (security.syncStatus !== "PENDING" && (security.syncStatus !== "READY" || !security.accessReady)) {
     return {eligible: false, reason: "RECIPIENT_AUTHORITY_REVOKED"};
   }
   if (profile.email?.trim().toLowerCase() !== auth.email.trim().toLowerCase()) {
     throw new PrivilegedRecipientLookupError("RECIPIENT_EMAIL_OUT_OF_SYNC");
   }
-  let authorized = security.adminReady && auth.customClaims?.admin === true;
-  if (!authorized && scope.kind === "BOOKING") {
+  const pending = security.syncStatus === "PENDING";
+  const adminAuthority = security.desiredAdmin && (pending || security.adminReady);
+  let moderator = false;
+  // A section moderator does not depend on an unrelated global-admin mirror.
+  if (scope.kind === "BOOKING" && (!adminAuthority || auth.customClaims?.admin !== true)) {
     try {
-      authorized = await (dependencies.canModerate ?? (async (sectionId, uid) =>
+      moderator = await (dependencies.canModerate ?? (async (sectionId, uid) =>
         (await resolveSectionAccess(sectionId, uid)).canModerate))(scope.sectionId, recipientUserId);
     } catch (error) {
-      if ((error as { code?: string })?.code === "not-found") authorized = false;
+      if ((error as { code?: string })?.code === "not-found") moderator = false;
       else throw new PrivilegedRecipientLookupError();
     }
   }
-  return authorized
-    ? { eligible: true, recipientUserId, email: auth.email.trim().toLowerCase() }
-    : { eligible: false, reason: "RECIPIENT_AUTHORITY_REVOKED" };
+  if (!adminAuthority && !moderator) return {eligible: false, reason: "RECIPIENT_AUTHORITY_REVOKED"};
+  if (pending) throw new PrivilegedRecipientLookupError("RECIPIENT_AUTHORITY_PENDING");
+  if (auth.customClaims?.enabled !== true || auth.customClaims?.securityVersion !== security.securityVersion ||
+      (adminAuthority && !moderator && auth.customClaims?.admin !== true)) {
+    throw new PrivilegedRecipientLookupError("RECIPIENT_AUTH_MIRROR_OUT_OF_SYNC");
+  }
+  return { eligible: true, recipientUserId, email: auth.email.trim().toLowerCase() };
 }
 
 /** Definitive denials are removed from discovery; outages retain a UID for a retryable ledger attempt. */

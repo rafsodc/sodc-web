@@ -1,5 +1,4 @@
-import { resumeSecurityOperation, transitionUserSecurity, securityRequestAuthority, securityRequestOperationId } from "./currentAuthorizationTransitions";
-import { getUserSecurityState } from "./securityRepository";
+import { reconcileVerifiedEmailSecurity, securityRequestOperationId } from "./currentAuthorizationTransitions";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
@@ -342,13 +341,7 @@ export const reconcileMyEmail = onCall(
       }
       const email = validateEmail(user.email);
       await writeEmail(email, user.uid);
-      const state = (await getUserSecurityState({userId: user.uid})).data.userSecurityState;
-      if (state) {
-        const intent = {userId: user.uid, actorId: user.uid, reason: "VERIFIED_EMAIL_RECONCILIATION", releaseEmailVerification: true,
-          ...securityRequestAuthority(request, "SELF_VERIFICATION"), operationId};
-        if (!(await resumeSecurityOperation(intent)) && state.syncStatus === "READY" && state.user.membershipStatus === state.membershipStatus &&
-            (state.verificationEmail === email || (state.accessReady && !state.verificationEmail))) await transitionUserSecurity(intent);
-      }
+      await reconcileVerifiedEmailSecurity({userId: user.uid, email, operationId, actorSecurityVersion: request.auth!.token.securityVersion});
       return { success: true as const, email };
     }, {onMissingProfile: async () => {
       // Verified onboarding has no profile/authority to synchronize yet. This is

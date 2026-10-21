@@ -50,7 +50,7 @@ export default function PrivateSessionBoundary({ children, replaceDocument = rep
       }).finally(() => { signOutPromise = null; });
       return signOutPromise;
     };
-    const uninstall = installSessionRuntime({ lifecycle, retire, signOut: logout });
+    const uninstall = installSessionRuntime({ lifecycle, retire, signOut: logout, queryClient });
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (lifecycle.getSnapshot().phase !== "active") return;
       if (!lifecycle.observe(user?.uid ?? null)) {

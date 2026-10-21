@@ -50,11 +50,12 @@ describe("privileged delivery and recovery with fake provider and real ledger or
     const f = fixture(); f.sendAuthorized.mockRejectedValueOnce(new Error("provider unavailable"));
     expect(await f.deliver()).toMatchObject({ outcome: "failed" });
     f.current.auth!.customClaims!.admin = false; // no moderator authority
+    Object.assign(f.current.security!, {desiredEnabled: false, desiredAdmin: false, accessReady: false, adminReady: false});
     f.readCurrentState.mockImplementation(async () => ({ ...f.current, auth: { ...f.current.auth!, customClaims: { enabled: false } } }));
     f.advance();
     expect(await f.recover()).toMatchObject({ skipped: 1, recovered: 0, failed: 0 });
     const row = [...f.rows.values()][0];
-    expect(row).toMatchObject({ status: NotificationDeliveryStatus.SKIPPED, skipReason: "RECIPIENT_NOT_ENABLED", providerMessageId: null, sentAt: null });
+    expect(row).toMatchObject({ status: NotificationDeliveryStatus.SKIPPED, skipReason: "RECIPIENT_AUTHORITY_REVOKED", providerMessageId: null, sentAt: null });
     expect(row.skippedAt).toBe(STAFF_LATER);
     expect(await f.recover()).toMatchObject({ skipped: 1, recovered: 0 });
     expect(f.sendAuthorized).toHaveBeenCalledTimes(1);
@@ -62,12 +63,44 @@ describe("privileged delivery and recovery with fake provider and real ledger or
   it("failed send -> DB-first restriction with still-true Auth mirror -> recovery skips without another provider call", async () => {
     const f = fixture(); f.sendAuthorized.mockRejectedValueOnce(new Error("provider unavailable"));
     await f.deliver();
-    f.current.security!.accessReady = false; f.current.security!.syncStatus = "PENDING"; f.current.security!.securityVersion = 2;
+    Object.assign(f.current.security!, {desiredEnabled: false, accessReady: false, adminReady: false, syncStatus: "PENDING", securityVersion: 2});
     expect(f.current.auth!.customClaims).toMatchObject({enabled: true, admin: true, securityVersion: 1});
     f.advance();
     expect(await f.recover()).toMatchObject({skipped: 1, recovered: 0});
     expect([...f.rows.values()][0]).toMatchObject({status: NotificationDeliveryStatus.SKIPPED, skipReason: "RECIPIENT_AUTHORITY_REVOKED"});
     expect(f.sendAuthorized).toHaveBeenCalledTimes(1);
+  });
+  it.each(["pending", "version-lag", "enabled-lag"])("retries %s without sending, then sends the original UID exactly once after current readiness", async transient => {
+    const f = fixture();
+    f.current.security!.securityVersion = 2;
+    if (transient === "pending") Object.assign(f.current.security!, {syncStatus: "PENDING", accessReady: false, adminReady: false});
+    if (transient === "enabled-lag") f.current.auth!.customClaims!.enabled = false;
+    expect(await f.deliver()).toMatchObject({outcome: "failed"});
+    expect([...f.rows.values()][0].status).toBe(NotificationDeliveryStatus.FAILED);
+    expect(f.sendAuthorized).not.toHaveBeenCalled();
+
+    Object.assign(f.current.security!, {syncStatus: "READY", accessReady: true, adminReady: true});
+    Object.assign(f.current.auth!.customClaims!, {enabled: true, admin: true, securityVersion: 2});
+    f.advance();
+    expect(await f.recover()).toMatchObject({recovered: 1, skipped: 0});
+    expect(f.sendAuthorized).toHaveBeenCalledExactlyOnceWith("staff@example.com", "LIVE");
+    expect([...f.rows.values()][0]).toMatchObject({status: NotificationDeliveryStatus.SENT, recipientUserId: "staff-1", attemptCount: 2});
+    expect(await f.recover()).toMatchObject({alreadySent: 1});
+    expect(await f.deliver()).toMatchObject({outcome: "duplicate", reason: "already_sent"});
+    expect(f.sendAuthorized).toHaveBeenCalledOnce();
+  });
+  it("a deferred recipient revoked before recovery is terminally skipped and never resurrected by a later grant", async () => {
+    const f = fixture(); Object.assign(f.current.security!, {syncStatus: "PENDING", accessReady: false, adminReady: false, securityVersion: 2});
+    expect(await f.deliver()).toMatchObject({outcome: "failed"});
+    Object.assign(f.current.security!, {desiredEnabled: false, desiredAdmin: false, securityVersion: 3});
+    f.advance();
+    expect(await f.recover()).toMatchObject({skipped: 1, recovered: 0});
+    expect([...f.rows.values()][0]).toMatchObject({status: NotificationDeliveryStatus.SKIPPED, skipReason: "RECIPIENT_AUTHORITY_REVOKED"});
+    Object.assign(f.current.security!, {desiredEnabled: true, desiredAdmin: true, accessReady: true, adminReady: true, syncStatus: "READY", securityVersion: 4});
+    Object.assign(f.current.auth!.customClaims!, {enabled: true, admin: true, securityVersion: 4});
+    expect(await f.recover()).toMatchObject({skipped: 1, recovered: 0});
+    expect(await f.deliver()).toMatchObject({outcome: "skipped", reason: "already_skipped"});
+    expect(f.sendAuthorized).not.toHaveBeenCalled();
   });
   it("recovers an authorized original UID at its current address, then deduplicates after another email change", async () => {
     const f = fixture(); f.sendAuthorized.mockRejectedValueOnce(new Error("temporary")); await f.deliver();

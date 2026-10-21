@@ -1,7 +1,8 @@
 import { captureSession, isSessionCurrent, retirePrivateSession, signOutPrivateSession, suspendPrivateSession, SessionChangedError } from "./sessionLifecycle";
 import { classifyAuthorizationFailure } from "../auth/authorizationFailure";
 import { getMyAuthorizationStatus } from "../auth/authorizationStatus";
-import { subscribeAuthorizationDenials } from "../auth/authorizationRecoveryEvents";
+import { reportAuthorizationDenial, subscribeAuthorizationDenials } from "../auth/authorizationRecoveryEvents";
+import { authorizationUpdatePending, resumeAuthorizationReads, subscribeAuthorizationUpdates } from "../auth/authorizationUpdate";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "firebase/auth";
@@ -52,6 +53,7 @@ export function useSessionRecovery(
 
   const recover = useCallback((authorizationRequired = false): Promise<void> => {
     if (!user) return Promise.resolve();
+    if (authorizationUpdatePending(captureSession(user.uid))) return Promise.resolve();
     // Once a denial has left access masked, late errors cannot automatically
     // restart status checks. Only the visible retry may start another attempt.
     if (authorizationRequired && authorizationRequiredRef.current && !recoveryRef.current) return Promise.resolve();
@@ -126,6 +128,7 @@ export function useSessionRecovery(
         }
         if (!current()) return;
         if (recovery.authoritative) { await checkAuthority(); return; }
+        resumeAuthorizationReads(session);
         await onRecoveredRef.current?.();
         if (!current()) return;
         if (recovery.authoritative) { await checkAuthority(); return; }
@@ -199,29 +202,32 @@ export function useSessionRecovery(
 
     const queryTimers = new Map<string, ReturnType<typeof setTimeout>>();
     const mutationTimers = new Map<number, ReturnType<typeof setTimeout>>();
-    const authRecoveryAttempts = new Set<string>();
+    const authRecoveryAttempts = new Map<string, number>();
+    const legacyRecoveryAttempts = new Set<string>();
     const mutationRecoveryAttempts = new Set<number>();
 
     const syncQueryTimers = () => {
       if (currentUidRef.current !== user.uid || !isSessionCurrent(watchedSession)) return;
+      const ownUpdatePending = authorizationUpdatePending(watchedSession);
       const fetchingQueries = queryClient
         .getQueryCache()
         .getAll()
-        .filter((query) => query.state.fetchStatus === "fetching");
+        .filter((query) => query.meta?.sessionBoundary !== "capability" && query.state.fetchStatus === "fetching");
       const fetchingHashes = new Set(fetchingQueries.map((query) => query.queryHash));
 
       for (const [queryHash, timer] of queryTimers) {
-        if (!fetchingHashes.has(queryHash)) {
+        if (ownUpdatePending || !fetchingHashes.has(queryHash)) {
           clearTimeout(timer);
           queryTimers.delete(queryHash);
         }
       }
 
       for (const query of fetchingQueries) {
+        if (ownUpdatePending) continue;
         if (queryTimers.has(query.queryHash)) continue;
 
         const timer = setTimeout(() => {
-          if (currentUidRef.current !== user.uid || !isSessionCurrent(watchedSession) || authorizationRequiredRef.current) return;
+          if (currentUidRef.current !== user.uid || !isSessionCurrent(watchedSession) || authorizationRequiredRef.current || authorizationUpdatePending(watchedSession)) return;
           queryTimers.delete(query.queryHash);
           console.error("[session-recovery] protected query timed out", {
             queryHash: query.queryHash,
@@ -233,39 +239,50 @@ export function useSessionRecovery(
       }
 
       for (const query of queryClient.getQueryCache().getAll()) {
+        if (query.meta?.sessionBoundary === "capability") continue;
         if (query.state.status === "success") {
           authRecoveryAttempts.delete(query.queryHash);
+          legacyRecoveryAttempts.delete(query.queryHash);
         } else if (
           query.state.status === "error" &&
-          (classifyAuthorizationFailure(query.state.error) || isAuthenticationFailure(query.state.error)) &&
-          !authRecoveryAttempts.has(query.queryHash)
+          (classifyAuthorizationFailure(query.state.error) || isAuthenticationFailure(query.state.error))
         ) {
-          authRecoveryAttempts.add(query.queryHash);
-          void recover(Boolean(classifyAuthorizationFailure(query.state.error)));
+          if (classifyAuthorizationFailure(query.state.error)) {
+            if (authRecoveryAttempts.get(query.queryHash) === query.state.errorUpdateCount) continue;
+            authRecoveryAttempts.set(query.queryHash, query.state.errorUpdateCount);
+            reportAuthorizationDenial(query.state.error, watchedSession);
+          } else if (!legacyRecoveryAttempts.has(query.queryHash)) {
+            // The sole legacy read retry may fail too. Only a successful read
+            // resets its allowance; error counters must not create a retry loop.
+            legacyRecoveryAttempts.add(query.queryHash);
+            void recover();
+          }
         }
       }
     };
 
     const syncMutationTimers = () => {
       if (currentUidRef.current !== user.uid || !isSessionCurrent(watchedSession)) return;
+      const ownUpdatePending = authorizationUpdatePending(watchedSession);
       const pendingMutations = queryClient
         .getMutationCache()
         .getAll()
-        .filter((mutation) => mutation.state.status === "pending");
+        .filter((mutation) => mutation.meta?.sessionBoundary !== "capability" && mutation.state.status === "pending");
       const pendingIds = new Set(pendingMutations.map((mutation) => mutation.mutationId));
 
       for (const [mutationId, timer] of mutationTimers) {
-        if (!pendingIds.has(mutationId)) {
+        if (ownUpdatePending || !pendingIds.has(mutationId)) {
           clearTimeout(timer);
           mutationTimers.delete(mutationId);
         }
       }
 
       for (const mutation of pendingMutations) {
+        if (ownUpdatePending) continue;
         if (mutationTimers.has(mutation.mutationId)) continue;
 
         const timer = setTimeout(() => {
-          if (currentUidRef.current !== user.uid || !isSessionCurrent(watchedSession) || authorizationRequiredRef.current) return;
+          if (currentUidRef.current !== user.uid || !isSessionCurrent(watchedSession) || authorizationRequiredRef.current || authorizationUpdatePending(watchedSession)) return;
           mutationTimers.delete(mutation.mutationId);
           console.error("[session-recovery] protected mutation timed out", {
             mutationId: mutation.mutationId,
@@ -277,11 +294,13 @@ export function useSessionRecovery(
         mutationTimers.set(mutation.mutationId, timer);
       }
       for (const mutation of queryClient.getMutationCache().getAll()) {
+        if (mutation.meta?.sessionBoundary === "capability") continue;
         if (mutation.state.status === "error" &&
             (classifyAuthorizationFailure(mutation.state.error) || isAuthenticationFailure(mutation.state.error)) &&
             !mutationRecoveryAttempts.has(mutation.mutationId)) {
           mutationRecoveryAttempts.add(mutation.mutationId);
-          void recover(Boolean(classifyAuthorizationFailure(mutation.state.error)));
+          if (classifyAuthorizationFailure(mutation.state.error)) reportAuthorizationDenial(mutation.state.error, watchedSession);
+          else void recover();
         }
       }
     };
@@ -290,9 +309,11 @@ export function useSessionRecovery(
     syncMutationTimers();
     const unsubscribeQueries = queryClient.getQueryCache().subscribe(syncQueryTimers);
     const unsubscribeMutations = queryClient.getMutationCache().subscribe(syncMutationTimers);
+    const unsubscribeUpdates = subscribeAuthorizationUpdates(() => { syncQueryTimers(); syncMutationTimers(); });
     return () => {
       unsubscribeQueries();
       unsubscribeMutations();
+      unsubscribeUpdates();
       queryTimers.forEach(clearTimeout);
       mutationTimers.forEach(clearTimeout);
     };

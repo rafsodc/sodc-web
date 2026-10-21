@@ -981,20 +981,6 @@
   },
   {
     "connector": "api",
-    "file": "member-review.gql",
-    "operation": "ConfirmPotentialLostWithSecurityState",
-    "kind": "mutation",
-    "classification": "service-only"
-  },
-  {
-    "connector": "api",
-    "file": "member-review.gql",
-    "operation": "ConfirmPotentialLost",
-    "kind": "mutation",
-    "classification": "service-only"
-  },
-  {
-    "connector": "api",
     "file": "new-members-report.gql",
     "operation": "GetNewMemberReportMigration",
     "kind": "query",
@@ -1676,6 +1662,13 @@
     "connector": "authorization-service",
     "file": "security.gql",
     "operation": "InitializeUserSecurityState",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "InitializePendingEmailHold",
     "kind": "mutation",
     "classification": "service-only"
   },

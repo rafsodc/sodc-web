@@ -7,6 +7,7 @@ export type SecurityMutationAction = "grantAdmin" | "revokeAdmin" | "updateMembe
 type Input = Record<string, string | number | boolean | null>;
 
 const REFUSALS: Record<string, string> = {
+  MEMBERSHIP_STATUS_SAVED_REFRESH_FAILED: "Your membership status was saved, but your session could not be refreshed. Some other changes may still need saving. Retry to finish, or reload this page.",
   LAST_ADMIN_REQUIRED: "Keep at least one active, verified administrator. Give another eligible member administrator access before trying this change again.",
   ADMIN_SAFETY_RECOVERY_REQUIRED: "Administrator access needs recovery. Contact site support before trying this change again.",
   SECURITY_OPERATION_CONFLICT: "This request no longer matches the original change. Close and reopen the form before trying again.",

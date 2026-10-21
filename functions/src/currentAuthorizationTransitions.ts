@@ -57,8 +57,21 @@ async function replay(input: SecurityTransitionInput, operationId: string): Prom
   if (previous.userId !== input.userId || previous.intentHash !== securityIntentHash(input)) {
     throw new HttpsError("failed-precondition", "Security operation reference already used for another intent.", {code: "SECURITY_OPERATION_CONFLICT"});
   }
-  await synchronizeUserSecurity(operationId); return true;
+  assertNotSuperseded(previous.syncStatus);
+  await synchronizeRequestedOperation(operationId);
+  return true;
 }
+function assertNotSuperseded(status: string) {
+  if (status === "SUPERSEDED") throw new HttpsError("failed-precondition", "This security operation was superseded. Reopen the account and start a new action.", {code: "SECURITY_OPERATION_CONFLICT"});
+}
+async function synchronizeRequestedOperation(operationId: string): Promise<void> {
+  await synchronizeUserSecurity(operationId);
+  // Recovery itself can discover newer ownership. Scheduler synchronization
+  // stays quiet, while callers must not report an obsolete intent as successful.
+  const outcome = (await db.getSecurityTransition({operationId})).data.securityTransition;
+  if (outcome) assertNotSuperseded(outcome.syncStatus);
+}
+
 async function complete(transition: Transition) {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const current = (await db.getSecurityTransition({operationId: transition.operationId})).data.securityTransition;
@@ -171,6 +184,27 @@ export async function synchronizeUserSecurity(operationId: string): Promise<void
   } catch (error) {await db.recordSecuritySynchronizationFailure({operationId, errorCode: "AUTH_SYNCHRONIZATION_FAILED"}); throw error;}
 }
 
+/** Verified sign-in repairs only existing READY authority; it never creates a no-op intent. */
+export async function reconcileVerifiedEmailSecurity(input: {userId: string; email: string; operationId: string; actorSecurityVersion?: number}): Promise<void> {
+  const state = (await db.getUserSecurityState({userId: input.userId})).data.userSecurityState;
+  if (!state) return;
+  if (state.syncStatus === "READY" && state.accessReady && state.desiredEnabled && state.adminReady === state.desiredAdmin &&
+      !state.verificationEmail && state.membershipStatus === state.user.membershipStatus && isNonRestrictedStatus(state.user.membershipStatus as MembershipStatus)) {
+    // Fresh Auth/profile checks and mirror repair are bound to the current READY
+    // intent, independent of the admin singleton and of stale token claims.
+    await synchronizeUserSecurity(state.operationId);
+    return;
+  }
+  const intent: SecurityTransitionInput & {operationId: string} = {userId: input.userId, actorId: input.userId,
+    actorKind: "SELF_VERIFICATION", actorSecurityVersion: input.actorSecurityVersion, operationId: input.operationId,
+    reason: "VERIFIED_EMAIL_RECONCILIATION", releaseEmailVerification: true};
+  if (await replay(intent, input.operationId)) return;
+  if (state.syncStatus === "READY" && state.membershipStatus === state.user.membershipStatus && state.verificationEmail === input.email) {
+    if (!Number.isSafeInteger(input.actorSecurityVersion)) throw new HttpsError("unauthenticated", "Refresh your sign-in session.");
+    await transitionUserSecurity(intent);
+  }
+}
+
 export interface InitializeSecurityInput extends SecurityAuthority {userId: string; actorId: string; reason: string; operationId?: string; allowAdminBootstrap?: boolean}
 /** Explicit migration/initial approval only; missing authority never grants itself. */
 export async function initializeUserSecurityState(input: InitializeSecurityInput): Promise<void> {
@@ -208,7 +242,7 @@ export async function initializeUserSecurityState(input: InitializeSecurityInput
       if (conflict(error) && attempt < MAX_ATTEMPTS - 1) continue;
       mapped(error);
     }
-    await synchronizeUserSecurity(operationId); return;
+    await synchronizeRequestedOperation(operationId); return;
   }
 }
 
@@ -220,7 +254,30 @@ export async function transitionUserSecurity(input: SecurityTransitionInput): Pr
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     if (await replay(input, operationId)) return;
     const state = (await db.getUserSecurityState({userId: input.userId})).data.userSecurityState;
-    if (!state) throw new HttpsError("failed-precondition", "Current authorization must be initialized by an operator");
+    if (!state) {
+      // Post-cutover applicants have no authority row. Their email correction
+      // still needs a durable denial/hold before Auth can change: approval does
+      // not share the email lease and may be racing this insertion.
+      if (input.actorKind !== "ADMIN" || input.reason !== "EMAIL_REVERIFICATION" || !input.verificationEmail || !input.expectedEmail ||
+          input.admin !== undefined || input.membershipStatus !== undefined || input.authDisabled !== undefined || input.releaseEmailVerification) {
+        throw new HttpsError("failed-precondition", "Current authorization must be initialized by an operator");
+      }
+      const profile = (await getUserMembershipStatus({id: input.userId})).data.user;
+      if (!profile || profile.membershipStatus !== "PENDING") throw new HttpsError("failed-precondition", "Only a pending applicant can initialize an email verification hold.", {code: "EMAIL_CHANGE_CONFLICT"});
+      await admin.auth().getUser(input.userId);
+      const snapshot = await control();
+      try {
+        await db.initializePendingEmailHold({userId: input.userId, actorId: input.actorId, actorSecurityVersion: input.actorSecurityVersion!,
+          expectedControlVersion: snapshot.version, expectedProfileEmail: profile.email, verificationEmail: input.verificationEmail.trim().toLowerCase(),
+          operationId, reason: input.reason, intentHash});
+      } catch (error) {
+        if (await replay(input, operationId)) return;
+        if (conflict(error) && attempt < MAX_ATTEMPTS - 1) continue;
+        if (conflict(error)) throw new HttpsError("aborted", "Concurrent account changes require a retry.", {code: "SECURITY_CONFLICT_RETRY"});
+        mapped(error);
+      }
+      await synchronizeRequestedOperation(operationId); return;
+    }
     let user;
     try {user = await admin.auth().getUser(input.userId);}
     catch (error) {
@@ -257,7 +314,7 @@ export async function transitionUserSecurity(input: SecurityTransitionInput): Pr
       if (conflict(error)) throw new HttpsError("aborted", "Concurrent account changes require a retry.", {code: "SECURITY_CONFLICT_RETRY"});
       mapped(error);
     }
-    await synchronizeUserSecurity(operationId); return;
+    await synchronizeRequestedOperation(operationId); return;
   }
 }
 
@@ -314,7 +371,7 @@ export async function persistPotentialLostSecurity(input: SecurityTransitionInpu
       if (conflict(error) && attempt < MAX_ATTEMPTS - 1) continue;
       mapped(error);
     }
-    await synchronizeUserSecurity(input.operationId); return;
+    await synchronizeRequestedOperation(input.operationId); return;
   }
 }
 

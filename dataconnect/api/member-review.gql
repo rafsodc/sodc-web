@@ -12,53 +12,5 @@ query GetPotentialLostProfile($id: String!) @auth(level: NO_ACCESS) {
   }
 }
 
-mutation ConfirmPotentialLostWithSecurityState(
-  $expectedSecurityVersion: Int!, $nextSecurityVersion: Int!, $securityOperationId: String!, $desiredAdmin: Boolean!, $securityIntentHash: String!,
-  $userId: String!, $expectedStatus: MembershipStatus!, $expectedUpdatedAt: Timestamp!,
-  $expectedEmailDeliveryVersion: Int!, $reviewedBy: String!, $reasons: [String!]!,
-  $lastSignInTime: String, $lastActivityTime: String, $inactivitySince: String, $activitySource: String, $emailBounceCount: Int!
-) @auth(level: NO_ACCESS) @transaction {
-  userSecurityState_updateMany(where: {userId: {eq: $userId}, securityVersion: {eq: $expectedSecurityVersion}},
-    data: {securityVersion: $nextSecurityVersion, membershipStatus: LOST, desiredEnabled: false, desiredAdmin: $desiredAdmin,
-      accessReady: false, adminReady: false, operationId: $securityOperationId, syncStatus: PENDING, updatedAt_expr: "request.time"})
-    @check(expr: "this == 1", message: "SECURITY_STATE_CONFLICT")
-  securityTransition_insert(data: {operationId: $securityOperationId, userId: $userId, securityVersion: $nextSecurityVersion,
-    membershipStatus: LOST, desiredEnabled: false, desiredAdmin: $desiredAdmin, actorId: $reviewedBy, reason: "POTENTIAL_LOST", intentHash: $securityIntentHash, syncStatus: PENDING})
-  user_updateMany(
-    where: {
-      id: { eq: $userId }
-      membershipStatus: { eq: $expectedStatus }
-      updatedAt: { eq: $expectedUpdatedAt }
-      emailDeliveryVersion: { eq: $expectedEmailDeliveryVersion }
-    }
-    data: { membershipStatus: LOST, updatedAt_expr: "request.time", updatedBy: $reviewedBy }
-  ) @check(expr: "this == 1", message: "POTENTIAL_LOST_CONFLICT")
-  potentialLostReview_insert(data: {
-    userId: $userId, previousStatus: $expectedStatus, reasons: $reasons,
-    lastSignInTime: $lastSignInTime, lastActivityTime: $lastActivityTime,
-    inactivitySince: $inactivitySince, activitySource: $activitySource, emailBounceCount: $emailBounceCount, reviewedBy: $reviewedBy
-  })
-}
-
-# Compatibility for already-deployed Functions during the staged migration only.
-# New Functions exclusively call ConfirmPotentialLostWithSecurityState.
-mutation ConfirmPotentialLost(
-  $userId: String!, $expectedStatus: MembershipStatus!, $expectedUpdatedAt: Timestamp!,
-  $expectedEmailDeliveryVersion: Int!, $reviewedBy: String!, $reasons: [String!]!,
-  $lastSignInTime: String, $lastActivityTime: String, $inactivitySince: String, $activitySource: String, $emailBounceCount: Int!
-) @auth(level: NO_ACCESS) @transaction {
-  user_updateMany(
-    where: {
-      id: { eq: $userId }
-      membershipStatus: { eq: $expectedStatus }
-      updatedAt: { eq: $expectedUpdatedAt }
-      emailDeliveryVersion: { eq: $expectedEmailDeliveryVersion }
-    }
-    data: { membershipStatus: LOST, updatedAt_expr: "request.time", updatedBy: $reviewedBy }
-  ) @check(expr: "this == 1", message: "POTENTIAL_LOST_CONFLICT")
-  potentialLostReview_insert(data: {
-    userId: $userId, previousStatus: $expectedStatus, reasons: $reasons,
-    lastSignInTime: $lastSignInTime, lastActivityTime: $lastActivityTime,
-    inactivitySince: $inactivitySince, activitySource: $activitySource, emailBounceCount: $emailBounceCount, reviewedBy: $reviewedBy
-  })
-}
+# Readiness/status changes use ConfirmPotentialLostWithAdminSafety in the isolated
+# authorization-service connector. Legacy writers exist only in the explicit rollout artifact.

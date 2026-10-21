@@ -30,3 +30,5 @@ export const confirmPotentialLostWithAdminSafety = (variables: sdk.ConfirmPotent
 export const getAdminSafetyAudit = (variables: sdk.GetAdminSafetyAuditVariables) => sdk.getAdminSafetyAudit(getAuthorizationDataConnect(), variables);
 
 export const reconcileAdminSafetyControl = (variables: sdk.ReconcileAdminSafetyControlVariables) => sdk.reconcileAdminSafetyControl(getAuthorizationDataConnect(), variables);
+
+export const initializePendingEmailHold = (variables: sdk.InitializePendingEmailHoldVariables) => sdk.initializePendingEmailHold(getAuthorizationDataConnect(), variables);

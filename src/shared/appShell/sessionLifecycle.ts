@@ -1,4 +1,6 @@
 import { reportAuthorizationDenial } from "../auth/authorizationRecoveryEvents";
+import { authorizationReadEpoch, authorizationUpdatePending, privateReadsBlocked, waitForAuthorizationUpdate } from "../auth/authorizationUpdate";
+import type { QueryClient } from "@tanstack/react-query";
 
 export class SessionChangedError extends Error {
   constructor() {
@@ -55,6 +57,7 @@ interface SessionRuntime {
   lifecycle: SessionLifecycle;
   retire: (options?: RetirementOptions) => void;
   signOut: (options?: RetirementOptions) => Promise<void>;
+  queryClient?: QueryClient;
 }
 let runtime: SessionRuntime | null = null;
 const suspendedSessions = new WeakSet<SessionLifecycle>();
@@ -110,6 +113,36 @@ export async function runSessionOperation<T>(operation: () => Promise<T>, token 
     reportAuthorizationDenial(error, token);
     throw error;
   }
+}
+/** Reads wait for an expected own-authority update. Work started before that
+ * update is discarded even when the underlying SDK ignores cancellation. */
+export async function runSessionRead<T>(operation: () => Promise<T> | T, token = captureSession(), signal?: AbortSignal): Promise<T> {
+  await waitForAuthorizationUpdate(token);
+  assertSessionCurrent(token);
+  if (privateReadsBlocked(token) || signal?.aborted) throw new SessionChangedError();
+  const epoch = authorizationReadEpoch();
+  return runSessionOperation(async () => {
+    try {
+      const result = await operation();
+      if (epoch !== authorizationReadEpoch() || signal?.aborted) throw new SessionChangedError();
+      return result;
+    } catch (error) {
+      if (epoch !== authorizationReadEpoch() || signal?.aborted) {
+        if (isSessionCurrent(token) && (authorizationUpdatePending(token) || privateReadsBlocked(token))) reportAuthorizationDenial(error, token);
+        throw new SessionChangedError();
+      }
+      throw error;
+    }
+  }, token);
+}
+export async function cancelPrivateReads(token: SessionToken) {
+  assertSessionCurrent(token);
+  await runtime?.queryClient?.cancelQueries({ predicate: query => query.meta?.sessionBoundary !== "capability" });
+  assertSessionCurrent(token);
+}
+export async function refreshPrivateReadViews(token: SessionToken) {
+  assertSessionCurrent(token);
+  await runtime?.queryClient?.invalidateQueries({ predicate: query => query.meta?.sessionBoundary !== "capability", refetchType: "active" });
 }
 // Guest links are bearer capabilities independent of the signed-in UID. A first
 // sign-in must not invalidate them, but retiring the document still fences work.

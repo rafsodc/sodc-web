@@ -154,8 +154,8 @@ getGovNotifyDeliveryConfigurationRef.operationName = 'GetGovNotifyDeliveryConfig
 
 export function getGovNotifyDeliveryConfiguration(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getGovNotifyDeliveryConfigurationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getGovNotifyDeliveryConfigurationRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const listGovNotifyDeliveryModeAuditsRef = (dcOrVars, vars) => {
@@ -204,8 +204,8 @@ getNotifyReplyToConfigurationRef.operationName = 'GetNotifyReplyToConfiguration'
 
 export function getNotifyReplyToConfiguration(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getNotifyReplyToConfigurationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getNotifyReplyToConfigurationRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const listNotifyReplyToAuditsRef = (dcOrVars, vars) => {
@@ -350,8 +350,8 @@ getNotifyTemplateBindingsRef.operationName = 'GetNotifyTemplateBindings';
 
 export function getNotifyTemplateBindings(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getNotifyTemplateBindingsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getNotifyTemplateBindingsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const listNotifyTemplateBindingAuditsRef = (dcOrVars, vars) => {
@@ -1891,30 +1891,6 @@ export function getPotentialLostProfile(dcOrVars, varsOrOptions, options) {
   return executeQuery(getPotentialLostProfileRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
-export const confirmPotentialLostWithSecurityStateRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'ConfirmPotentialLostWithSecurityState', inputVars);
-}
-confirmPotentialLostWithSecurityStateRef.operationName = 'ConfirmPotentialLostWithSecurityState';
-
-export function confirmPotentialLostWithSecurityState(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(confirmPotentialLostWithSecurityStateRef(dcInstance, inputVars));
-}
-
-export const confirmPotentialLostRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'ConfirmPotentialLost', inputVars);
-}
-confirmPotentialLostRef.operationName = 'ConfirmPotentialLost';
-
-export function confirmPotentialLost(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(confirmPotentialLostRef(dcInstance, inputVars));
-}
-
 export const getNewMemberReportMigrationRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
@@ -1924,8 +1900,8 @@ getNewMemberReportMigrationRef.operationName = 'GetNewMemberReportMigration';
 
 export function getNewMemberReportMigration(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getNewMemberReportMigrationRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getNewMemberReportMigrationRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const listNewMemberReportEventsRef = (dcOrVars, vars) => {
@@ -2174,8 +2150,8 @@ getCurrentUserRef.operationName = 'GetCurrentUser';
 
 export function getCurrentUser(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getCurrentUserRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getCurrentUserRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const getUserByIdRef = (dcOrVars, vars) => {
@@ -2200,8 +2176,8 @@ listUsersRef.operationName = 'ListUsers';
 
 export function listUsers(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listUsersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(listUsersRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const listUserNamesByIdsRef = (dcOrVars, vars) => {
@@ -2226,8 +2202,8 @@ listSectionsRef.operationName = 'ListSections';
 
 export function listSections(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listSectionsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(listSectionsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const getSectionsForUserRef = (dc) => {
@@ -2239,8 +2215,8 @@ getSectionsForUserRef.operationName = 'GetSectionsForUser';
 
 export function getSectionsForUser(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getSectionsForUserRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getSectionsForUserRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const listUserGroupsRef = (dc) => {
@@ -2252,8 +2228,8 @@ listUserGroupsRef.operationName = 'ListUserGroups';
 
 export function listUserGroups(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listUserGroupsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(listUserGroupsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const getUserAccessGroupsRef = (dc) => {
@@ -2265,8 +2241,8 @@ getUserAccessGroupsRef.operationName = 'GetUserAccessGroups';
 
 export function getUserAccessGroups(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getUserAccessGroupsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getUserAccessGroupsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const checkUserProfileExistsRef = (dc) => {
@@ -2278,8 +2254,8 @@ checkUserProfileExistsRef.operationName = 'CheckUserProfileExists';
 
 export function checkUserProfileExists(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(checkUserProfileExistsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(checkUserProfileExistsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const getUserMembershipStatusRef = (dcOrVars, vars) => {
@@ -2382,8 +2358,8 @@ getAllUserGroupsWithStatusesRef.operationName = 'GetAllUserGroupsWithStatuses';
 
 export function getAllUserGroupsWithStatuses(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getAllUserGroupsWithStatusesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getAllUserGroupsWithStatusesRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const getSectionMembersRef = (dcOrVars, vars) => {
@@ -2421,8 +2397,8 @@ getMyBookingsRef.operationName = 'GetMyBookings';
 
 export function getMyBookings(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyBookingsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getMyBookingsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const getMyTicketOrderByIdRef = (dcOrVars, vars) => {
@@ -2447,8 +2423,8 @@ getMyTicketOrdersRef.operationName = 'GetMyTicketOrders';
 
 export function getMyTicketOrders(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyTicketOrdersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getMyTicketOrdersRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const getMyBookingPaymentAdjustmentsRef = (dc) => {
@@ -2460,8 +2436,8 @@ getMyBookingPaymentAdjustmentsRef.operationName = 'GetMyBookingPaymentAdjustment
 
 export function getMyBookingPaymentAdjustments(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyBookingPaymentAdjustmentsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getMyBookingPaymentAdjustmentsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const listEventBookingsForAdminRef = (dcOrVars, vars) => {
@@ -2512,8 +2488,8 @@ listOpenPaymentReconciliationExceptionsRef.operationName = 'ListOpenPaymentRecon
 
 export function listOpenPaymentReconciliationExceptions(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(listOpenPaymentReconciliationExceptionsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(listOpenPaymentReconciliationExceptionsRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const getSectionAnnouncementOptOutRef = (dcOrVars, vars) => {
@@ -2538,8 +2514,8 @@ getMyAnnouncementPreferencesRef.operationName = 'GetMyAnnouncementPreferences';
 
 export function getMyAnnouncementPreferences(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMyAnnouncementPreferencesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(getMyAnnouncementPreferencesRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const serviceGetUserByIdRef = (dcOrVars, vars) => {
@@ -2564,8 +2540,8 @@ serviceListUsersRef.operationName = 'ServiceListUsers';
 
 export function serviceListUsers(dcOrOptions, options) {
 
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(serviceListUsersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+  const { dc: dcInstance, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(serviceListUsersRef(dcInstance), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
 export const serviceListUserNamesByIdsRef = (dcOrVars, vars) => {

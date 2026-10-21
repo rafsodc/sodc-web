@@ -5,11 +5,11 @@ import * as logger from "firebase-functions/logger";
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), updateUser: vi.fn(), revokeRefreshTokens: vi.fn(),
   getUserById: vi.fn(), acquireUserEmailLease: vi.fn(), releaseUserEmailLease: vi.fn(), updateUserEmailFromAuth: vi.fn(),
-  enforceRateLimit: vi.fn(), requestEmailVerificationForUser: vi.fn(), transition: vi.fn(),
+  enforceRateLimit: vi.fn(), requestEmailVerificationForUser: vi.fn(), transition: vi.fn(), reconcile: vi.fn(),
 }));
 vi.mock("firebase-admin", () => ({ auth: () => mocks }));
 vi.mock("@dataconnect/admin-generated", () => ({...mocks, serviceGetUserById: mocks.getUserById}));
-vi.mock("../../currentAuthorizationTransitions", async original => ({...await original<typeof import("../../currentAuthorizationTransitions")>(), transitionUserSecurity: mocks.transition, resumeSecurityOperation: vi.fn(async () => false)}));
+vi.mock("../../currentAuthorizationTransitions", async original => ({...await original<typeof import("../../currentAuthorizationTransitions")>(), transitionUserSecurity: mocks.transition, reconcileVerifiedEmailSecurity: mocks.reconcile, resumeSecurityOperation: vi.fn(async () => false)}));
 vi.mock("../../rateLimiter", () => ({ enforceRateLimit: mocks.enforceRateLimit }));
 vi.mock("../../authEmailActions", async (original) => ({
   ...await original<typeof import("../../authEmailActions")>(),
@@ -186,6 +186,7 @@ describe("administrator email changes", () => {
       data: {operationId: "test-email-reconcile-operation"}, auth: { uid: "member", token: { securityVersion: 1,  email: "stale@example.org" } },
     } as Parameters<typeof reconcileMyEmail.run>[0]);
     expect(result).toEqual({ success: true, email: "verified-new@example.org" });
+    expect(mocks.reconcile).toHaveBeenCalledWith({userId: "member", email: "verified-new@example.org", operationId: "test-email-reconcile-operation", actorSecurityVersion: 1});
     expect(mocks.updateUserEmailFromAuth).toHaveBeenCalledWith(expect.objectContaining({ email: "verified-new@example.org", changedBy: "member" }));
   });
 
@@ -206,20 +207,8 @@ describe("administrator email changes", () => {
     expect(mocks.transition).toHaveBeenCalledOnce();
   });
 
-  it.each([null, "different@example.org", "old@example.org"])("does not self-enable without an exact intended verification hold: %s", async intended => {
-    account.email = "new@example.org";
-    vi.mocked(getUserSecurityState).mockResolvedValueOnce({data: {userSecurityState: {accessReady: false, syncStatus: "READY", membershipStatus: "REGULAR", user: {membershipStatus: "REGULAR"}, verificationEmail: intended}}} as never);
-    await reconcileMyEmail.run({data: {operationId: "test-email-reconcile-operation"}, auth: {uid: "member", token: {securityVersion: 1}}} as never);
-    expect(mocks.transition).not.toHaveBeenCalled();
-  });
-
-  it("releases an explicit initial or changed-address hold after fresh exact verification", async () => {
-    account.email = "new@example.org";
-    vi.mocked(getUserSecurityState).mockResolvedValueOnce({data: {userSecurityState: {accessReady: false, syncStatus: "READY", membershipStatus: "REGULAR", user: {membershipStatus: "REGULAR"}, verificationEmail: "new@example.org"}}} as never);
-    await reconcileMyEmail.run({data: {operationId: "test-email-reconcile-operation"}, auth: {uid: "member", token: {securityVersion: 1}}} as never);
-    expect(mocks.transition).toHaveBeenCalledWith(expect.objectContaining({userId: "member", actorId: "member", reason: "VERIFIED_EMAIL_RECONCILIATION", releaseEmailVerification: true, actorKind: "SELF_VERIFICATION"}));
-  });
-
+  // Exact-hold release, denial and replay use the real orchestrator in
+  // adminRoleSafety.test.ts rather than independently mocked transition calls.
   it("does not unverify a counted administrator when an obsolete email operation is replayed", async () => {
     vi.mocked(getUserSecurityState).mockImplementation(async ({userId}) => ({data: {userSecurityState: userId === "member"
       ? {operationId: "newer-operation", securityVersion: 3, verificationEmail: null, accessReady: true, adminReady: true}

@@ -7,9 +7,8 @@ import type { UserData } from "../../../types";
 import { withTimeout } from "../../../shared/utils/withTimeout";
 import { refreshToken } from "./useTokenRefresh";
 import { isAuthenticationFailure } from "../../../shared/auth/isAuthenticationFailure";
-import { reportAuthorizationDenial } from "../../../shared/auth/authorizationRecoveryEvents";
 import { classifyAuthorizationFailure } from "../../../shared/auth/authorizationFailure";
-import { captureSession, isSessionCurrent, isPrivateSessionSuspended } from "../../../shared/appShell/sessionLifecycle";
+import { captureSession, isSessionCurrent, isPrivateSessionSuspended, runSessionRead, SessionChangedError } from "../../../shared/appShell/sessionLifecycle";
 
 export const USER_DATA_REQUEST_TIMEOUT_MS = 30_000;
 interface ProfileState { uid: string | null; userData: UserData | null; loading: boolean; error: Error | null }
@@ -47,17 +46,18 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean,
       if (!enabled) { fetched.current = uid; return; }
       let result;
       try {
-        result = await withTimeout(executeQuery(getCurrentUserRef(dataConnect), force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined), requestTimeoutMs, "Loading the current user timed out");
+        result = await withTimeout(runSessionRead(() => executeQuery(getCurrentUserRef(dataConnect), force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined), token), requestTimeoutMs, "Loading the current user timed out");
       } catch (error) {
         if (!current()) return;
         // Explicit current-authority failures belong to the shared coordinator,
         // which checks own status before deciding to refresh, wait or sign out.
-        if (classifyAuthorizationFailure(error)) { reportAuthorizationDenial(error, token); return; }
+        if (classifyAuthorizationFailure(error)) return; // runSessionRead already signalled the coordinator.
+        if (error instanceof SessionChangedError) return;
         if (!isAuthenticationFailure(error)) throw error;
         // One bounded retry, still owned by the original identity/request.
         await refreshToken(firebaseUser);
         if (!current()) return;
-        result = await withTimeout(executeQuery(getCurrentUserRef(dataConnect), { fetchPolicy: QueryFetchPolicy.SERVER_ONLY }), requestTimeoutMs, "Retrying the current user request timed out");
+        result = await withTimeout(runSessionRead(() => executeQuery(getCurrentUserRef(dataConnect), { fetchPolicy: QueryFetchPolicy.SERVER_ONLY }), token), requestTimeoutMs, "Retrying the current user request timed out");
       }
       if (!current()) return;
       fetched.current = uid;
@@ -66,7 +66,7 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean,
       setState({ uid, userData: data?.id === uid ? data : null, loading: false, error: null });
     } catch (error) {
       if (!current()) return;
-      if (classifyAuthorizationFailure(error)) { reportAuthorizationDenial(error, token); return; }
+      if (classifyAuthorizationFailure(error)) return;
       fetched.current = uid;
       setState({ uid, userData: null, loading: false,
         error: !isAuthenticationFailure(error) && error instanceof Error && !error.message.includes("not found") ? error : null });

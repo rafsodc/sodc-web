@@ -986,18 +986,6 @@ export function getPotentialLostProfile(dcOrVarsOrOptions, varsOrOptions, option
   return dcInstance.executeQuery('GetPotentialLostProfile', inputVars, inputOpts);
 }
 
-export function confirmPotentialLostWithSecurityState(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('ConfirmPotentialLostWithSecurityState', inputVars, inputOpts);
-}
-
-export function confirmPotentialLost(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('ConfirmPotentialLost', inputVars, inputOpts);
-}
-
 export function getNewMemberReportMigration(dcOrOptions, options) {
   const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
   dcInstance.useGen(true);

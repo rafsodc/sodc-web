@@ -31,6 +31,7 @@ function GuestTicket({ token }: { token: string }) {
   const [saved, setSaved] = useState(false);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["guest-ticket", token],
+    meta: { sessionBoundary: "capability" },
     queryFn: () =>
       guestCall<GuestTicketData>("getOrganiserGuestTicket", { token }),
     retry: false,

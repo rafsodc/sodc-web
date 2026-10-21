@@ -3,6 +3,7 @@ import { httpsCallable } from "../sessionCallable";
 import type { MembershipStatus } from "@dataconnect/generated";
 import { functions } from "../../../config/firebase";
 import { extractDomainErrorCode, reportError } from "../../errors";
+import { withOwnMembershipStatusUpdate } from "../ownMembershipStatusUpdate";
 
 export interface UpdateUserEmailResult {
   success: true;
@@ -316,7 +317,9 @@ export async function updateMembershipStatus(
       UpdateMembershipStatusResponse
     >(functions, "updateMembershipStatus");
 
-    const result = await runSecurityMutation("updateMembershipStatus", { userId, newStatus }, updateMembershipStatusCallable);
+    const result = await withOwnMembershipStatusUpdate(userId,
+      () => runSecurityMutation("updateMembershipStatus", { userId, newStatus }, updateMembershipStatusCallable),
+      result => result.data.success);
     return { success: result.data.success };
   } catch (error: unknown) {
     reportError("callable.update-membership-status", error, { userId, newStatus });

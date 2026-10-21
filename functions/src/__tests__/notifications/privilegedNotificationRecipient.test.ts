@@ -24,10 +24,8 @@ describe("current privileged notification eligibility", () => {
     ["disabled", (s: CurrentRecipientState) => { s.auth!.disabled = true; }, "RECIPIENT_DISABLED"],
     ["unverified", (s: CurrentRecipientState) => { s.auth!.emailVerified = false; }, "RECIPIENT_UNVERIFIED"],
     ["email missing", (s: CurrentRecipientState) => { s.auth!.email = ""; }, "RECIPIENT_UNVERIFIED"],
-    ["enabled false", (s: CurrentRecipientState) => { s.auth!.customClaims!.enabled = false; }, "RECIPIENT_NOT_ENABLED"],
-    ["claims absent", (s: CurrentRecipientState) => { s.auth!.customClaims = undefined; }, "RECIPIENT_NOT_ENABLED"],
     ["profile missing", (s: CurrentRecipientState) => { s.profile = null; }, "RECIPIENT_PROFILE_MISSING"],
-    ["admin removed", (s: CurrentRecipientState) => { s.auth!.customClaims!.admin = false; }, "RECIPIENT_AUTHORITY_REVOKED"],
+    ["admin removed", (s: CurrentRecipientState) => { s.security!.desiredAdmin = false; s.security!.adminReady = false; }, "RECIPIENT_AUTHORITY_REVOKED"],
   ] as const)("rejects %s", async (_, change, reason) => {
     const current = state(); change(current);
     expect(await authorizePrivilegedNotificationRecipient("staff", adminScope, { readCurrentState: async () => current }))
@@ -41,13 +39,34 @@ describe("current privileged notification eligibility", () => {
   it.each([
     null,
     {...state().security!, accessReady: false},
-    {...state().security!, syncStatus: "PENDING"},
-    {...state().security!, securityVersion: 2},
+    {...state().security!, desiredEnabled: false, accessReady: false, adminReady: false, syncStatus: "PENDING"},
+    {...state().security!, desiredAdmin: false, accessReady: false, adminReady: false, syncStatus: "PENDING"},
     {...state().security!, verificationEmail: "new@example.com"},
-  ])("denies missing, pending, revoked or mismatched DB authority despite fresh enabled/admin Auth flags", async security => {
+  ])("terminally denies missing, restricted, held or revoked DB authority despite still-true Auth flags", async security => {
     const current = state(); current.security = security as never;
     expect(await authorizePrivilegedNotificationRecipient("staff", adminScope, {readCurrentState: async () => current}))
       .toEqual({eligible: false, reason: "RECIPIENT_AUTHORITY_REVOKED"});
+  });
+  it.each([
+    {enabled: false, admin: true, securityVersion: 1},
+    undefined,
+    {enabled: true, admin: false, securityVersion: 1},
+    {enabled: true, admin: true, securityVersion: 0},
+    {enabled: true, admin: true, securityVersion: 2},
+  ])("defers an otherwise ready grant while its Auth mirror is inconsistent: %s", async claims => {
+    const current = state(); current.auth!.customClaims = claims;
+    await expect(authorizePrivilegedNotificationRecipient("staff", adminScope, {readCurrentState: async () => current}))
+      .rejects.toMatchObject({code: "RECIPIENT_AUTH_MIRROR_OUT_OF_SYNC"});
+  });
+  it("defers a valid pending intent without treating its desired grant as current permission", async () => {
+    const current = state(); Object.assign(current.security!, {syncStatus: "PENDING", securityVersion: 2, accessReady: false, adminReady: false});
+    await expect(authorizePrivilegedNotificationRecipient("staff", adminScope, {readCurrentState: async () => current}))
+      .rejects.toMatchObject({code: "RECIPIENT_AUTHORITY_PENDING"});
+  });
+  it("defers mixed snapshots of two allowed profile statuses without sending", async () => {
+    const current = state(); current.profile!.membershipStatus = "RESERVE";
+    await expect(authorizePrivilegedNotificationRecipient("staff", adminScope, {readCurrentState: async () => current}))
+      .rejects.toMatchObject({code: "RECIPIENT_STATE_OUT_OF_SYNC"});
   });
   it("uses current DB admin readiness rather than a still-true Auth mirror for privileged mail", async () => {
     const current = state(); current.security!.adminReady = false;
@@ -56,6 +75,7 @@ describe("current privileged notification eligibility", () => {
   });
   it.each([true, false])("uses exact section moderator authority (allowed=%s)", async (allowed) => {
     const current = state(); current.auth!.customClaims!.admin = false;
+    current.security!.desiredAdmin = false; current.security!.adminReady = false;
     const canModerate = vi.fn(async () => allowed);
     const result = await authorizePrivilegedNotificationRecipient("staff", bookingScope, { readCurrentState: async () => current, canModerate });
     expect(result.eligible).toBe(allowed);
@@ -63,6 +83,7 @@ describe("current privileged notification eligibility", () => {
   });
   it("does not permit section moderators to receive applicant alerts", async () => {
     const current = state(); current.auth!.customClaims!.admin = false;
+    current.security!.desiredAdmin = false; current.security!.adminReady = false;
     const canModerate = vi.fn(async () => true);
     expect((await authorizePrivilegedNotificationRecipient("staff", adminScope, { readCurrentState: async () => current, canModerate })).eligible).toBe(false);
     expect(canModerate).not.toHaveBeenCalled();
@@ -80,6 +101,7 @@ describe("current privileged notification eligibility", () => {
   });
   it("distinguishes a missing section from a temporary scope lookup outage", async () => {
     const current = state(); current.auth!.customClaims!.admin = false;
+    current.security!.desiredAdmin = false; current.security!.adminReady = false;
     const readCurrentState = async () => current;
     expect((await authorizePrivilegedNotificationRecipient("staff", bookingScope, { readCurrentState,
       canModerate: async () => { throw { code: "not-found" }; } })).eligible).toBe(false);
@@ -99,6 +121,17 @@ describe("current privileged notification eligibility", () => {
     });
     expect(await selectPrivilegedNotificationRecipientIds(["ok", "ok", "denied", "outage"], adminScope, authorize))
       .toEqual(["ok", "outage"]);
+  });
+  it("retains transient pending/mirror UIDs during actual discovery while excluding a revoked UID", async () => {
+    const authorize = async (uid: string) => {
+      const current = state(); current.auth!.uid = uid; current.security!.userId = uid;
+      if (uid === "pending") Object.assign(current.security!, {syncStatus: "PENDING", accessReady: false, adminReady: false});
+      if (uid === "mirror") current.auth!.customClaims!.securityVersion = 0;
+      if (uid === "revoked") Object.assign(current.security!, {desiredAdmin: false, adminReady: false});
+      return authorizePrivilegedNotificationRecipient(uid, adminScope, {readCurrentState: async () => current});
+    };
+    expect(await selectPrivilegedNotificationRecipientIds(["pending", "mirror", "revoked"], adminScope, authorize))
+      .toEqual(["pending", "mirror"]);
   });
 });
 

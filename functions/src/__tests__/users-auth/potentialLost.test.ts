@@ -157,9 +157,11 @@ describe("potential lost review", () => {
   });
   it("keeps queries server-only and status/audit updates atomic", () => {
     const query = readFileSync(resolve(__dirname, "../../../../dataconnect/api/member-review.gql"), "utf8");
-    expect(query.match(/@auth\(level: NO_ACCESS\)/g)).toHaveLength(4);
-    expect(query).toContain("@transaction");
-    expect(query).toContain("message: \"POTENTIAL_LOST_CONFLICT\"");
-    expect(query).toContain("potentialLostReview_insert");
+    expect(query.match(/@auth\(level: NO_ACCESS\)/g)).toHaveLength(2);
+    expect(query).not.toContain("mutation ");
+    const write = readFileSync(resolve(__dirname, "../../../../dataconnect/authorization-service/security.gql"), "utf8").split("mutation ConfirmPotentialLostWithAdminSafety(")[1];
+    expect(write).toContain("@auth(level: NO_ACCESS) @transaction");
+    expect(write).toContain("message: \"POTENTIAL_LOST_CONFLICT\"");
+    expect(write).toContain("potentialLostReview_insert");
   });
 });
