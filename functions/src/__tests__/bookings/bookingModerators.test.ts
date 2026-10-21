@@ -2,20 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MembershipStatus, SectionUserGroupPurpose } from "@dataconnect/admin-generated";
 import * as admin from "@dataconnect/admin-generated";
 import * as helpers from "../../helpers";
-import { resolveBookingModeratorEmails } from "../../bookingModerators";
+import * as recipientPolicy from "../../privilegedNotificationRecipient";
+import { resolveBookingModeratorUserIds } from "../../bookingModerators";
 
 const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
 const mockListUsers = vi.spyOn(admin, "listUsers");
 const mockGetAdminUsers = vi.spyOn(helpers, "getAdminUsers");
 
-describe("resolveBookingModeratorEmails", () => {
+describe("resolveBookingModeratorUserIds", () => {
   beforeEach(() => {
     mockGetSectionMembers.mockReset();
     mockListUsers.mockReset();
     mockGetAdminUsers.mockReset();
+    vi.spyOn(recipientPolicy, "selectPrivilegedNotificationRecipientIds").mockImplementation(async (uids) => [...uids]);
   });
 
-  it("merges admin and organiser emails while excluding the booker", async () => {
+  it("merges stable admin, explicit and status-inherited organiser UIDs while excluding the booker", async () => {
     mockGetAdminUsers.mockResolvedValue([
       { uid: "admin-1", email: "admin@example.com" } as Awaited<ReturnType<typeof helpers.getAdminUsers>>[number],
     ]);
@@ -44,12 +46,13 @@ describe("resolveBookingModeratorEmails", () => {
       data: { users: [{ id: "status-mod", email: "statusmod@example.com", membershipStatus: MembershipStatus.REGULAR }] },
     } as Awaited<ReturnType<typeof admin.listUsers>>);
 
-    const emails = await resolveBookingModeratorEmails({
+    const emails = await resolveBookingModeratorUserIds({
       sectionId: "00000000-0000-4000-8000-000000000010",
       excludeUserId: "booker-1",
     });
 
-    expect(emails.sort()).toEqual(["admin@example.com", "mod@example.com", "statusmod@example.com"].sort());
-    expect(emails).not.toContain("booker@example.com");
+    expect(emails.sort()).toEqual(["admin-1", "mod-1", "status-mod"].sort());
+    expect(emails).not.toContain("booker-1");
+    expect(recipientPolicy.selectPrivilegedNotificationRecipientIds).toHaveBeenCalledWith(expect.any(Set), { kind: "BOOKING", sectionId: "00000000-0000-4000-8000-000000000010" });
   });
 });

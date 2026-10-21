@@ -5,6 +5,7 @@ import {
   getNotificationDeliveryByChannelAndKey,
   markNotificationDeliveryFailedById,
   markNotificationDeliverySentById,
+  markNotificationDeliverySkippedById,
   NotificationChannel,
   NotificationDeliveryStatus,
   GovNotifyDeliveryMode as DataConnectGovNotifyDeliveryMode,
@@ -24,6 +25,13 @@ const MAX_ERROR_CODE_LENGTH = 120;
 const MAX_ERROR_MESSAGE_LENGTH = 500;
 export const DEFAULT_NOTIFICATION_DELIVERY_LEASE_MS = 10 * 60 * 1000;
 
+export interface NotificationSkipResult {
+  outcome: "skipped";
+  reason: string;
+  providerMessageId?: never;
+  deliveryMode?: never;
+}
+
 export interface NotificationSendResult {
   providerMessageId?: string | null;
   deliveryMode?: GovNotifyDeliveryMode;
@@ -39,12 +47,15 @@ export interface SendNotificationOnceRequest {
   provider?: string | null;
   deliveryMode?: GovNotifyDeliveryMode;
   recoveryPayload?: NotificationRecoveryPayload;
-  send: (deliveryMode?: GovNotifyDeliveryMode) => Promise<NotificationSendResult | void>;
+  recipientUserId?: string;
+  /** Recovery already has the exact persisted, mode-scoped key. */
+  preserveDeliveryKey?: boolean;
+  send: (deliveryMode?: GovNotifyDeliveryMode, assertOwnership?: () => Promise<void>) => Promise<NotificationSendResult | NotificationSkipResult | void>;
 }
 
 export interface SendNotificationOnceResult {
-  outcome: "sent" | "duplicate" | "failed";
-  reason?: "already_sent" | "in_progress" | "send_failed";
+  outcome: "sent" | "duplicate" | "failed" | "skipped";
+  reason?: string;
   deliveryId?: UUIDString;
   attemptCount?: number;
 }
@@ -70,6 +81,8 @@ export interface NotificationDeliveryRepository {
     userId?: string | null;
     provider?: string | null;
     recoveryPayload?: string | null;
+    recipientUserId?: string;
+    deliveryMode?: GovNotifyDeliveryMode;
     attemptCount: number;
     lastAttemptedAt: string;
   }): Promise<NotificationDeliveryRecord>;
@@ -91,6 +104,13 @@ export interface NotificationDeliveryRepository {
     providerMessageId?: string | null;
     deliveryMode?: GovNotifyDeliveryMode | null;
   }): Promise<boolean>;
+  markSkipped(args: {
+    id: UUIDString;
+    attemptCount: number;
+    lastAttemptedAt: string;
+    skippedAt: string;
+    skipReason: string;
+  }): Promise<boolean>;
   markFailed(args: {
     id: UUIDString;
     attemptCount: number;
@@ -101,7 +121,7 @@ export interface NotificationDeliveryRepository {
   }): Promise<boolean>;
 }
 
-interface SendNotificationOnceDependencies {
+export interface SendNotificationOnceDependencies {
   repository?: NotificationDeliveryRepository;
   now?: () => string;
   leaseMs?: number;
@@ -136,6 +156,8 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       userId: args.userId ?? null,
       provider: args.provider ?? null,
       recoveryPayload: args.recoveryPayload ?? null,
+      recipientUserId: args.recipientUserId ?? null,
+      deliveryMode: args.deliveryMode as DataConnectGovNotifyDeliveryMode | undefined,
       attemptCount: args.attemptCount,
       lastAttemptedAt: args.lastAttemptedAt,
     });
@@ -172,6 +194,11 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       lastErrorMessage: null,
       deliveryMode: args.deliveryMode as DataConnectGovNotifyDeliveryMode | null | undefined,
     });
+    return completed.data.notificationDelivery_updateMany === 1;
+  },
+
+  async markSkipped(args) {
+    const completed = await markNotificationDeliverySkippedById(args);
     return completed.data.notificationDelivery_updateMany === 1;
   },
 
@@ -268,6 +295,9 @@ async function claimExistingNotificationDelivery(
   leaseMs: number,
   recoveryPayload: string | null
 ): Promise<SendNotificationOnceResult | { delivery: NotificationDeliveryRecord; attemptCount: number }> {
+  if (existing.status === NotificationDeliveryStatus.SKIPPED) {
+    return { outcome: "skipped", reason: "already_skipped", deliveryId: existing.id, attemptCount: existing.attemptCount };
+  }
   if (existing.status === NotificationDeliveryStatus.SENT) {
     return duplicateResult("already_sent", existing);
   }
@@ -307,6 +337,9 @@ async function claimExistingNotificationDelivery(
   if (!winner) {
     throw new Error(`Notification delivery claim for ${request.channel}:${request.deliveryKey} lost its row`);
   }
+  if (winner.status === NotificationDeliveryStatus.SKIPPED) {
+    return { outcome: "skipped", reason: "already_skipped", deliveryId: winner.id, attemptCount: winner.attemptCount };
+  }
   return winner.status === NotificationDeliveryStatus.SENT
     ? duplicateResult("already_sent", winner)
     : duplicateResult("in_progress", winner);
@@ -344,6 +377,8 @@ async function claimNotificationDelivery(
       userId: request.userId ?? null,
       provider: request.provider ?? null,
       recoveryPayload,
+      recipientUserId: request.recipientUserId,
+      deliveryMode: request.deliveryMode,
       attemptCount: 1,
       lastAttemptedAt: attemptStartedAt,
     });
@@ -381,7 +416,8 @@ export async function sendNotificationOnce(
   if (deliveryMode) {
     request = {
       ...request,
-      deliveryKey: govNotifyReferenceForMode(request.deliveryKey, deliveryMode),
+      deliveryKey: request.preserveDeliveryKey ? request.deliveryKey : govNotifyReferenceForMode(request.deliveryKey, deliveryMode),
+      deliveryMode,
       recoveryPayload: request.recoveryPayload
         ? { ...request.recoveryPayload, deliveryMode }
         : undefined,
@@ -407,15 +443,44 @@ export async function sendNotificationOnce(
   }
 
   try {
-    const sendResult = await request.send(deliveryMode);
+    const sendResult = await request.send(deliveryMode, async () => {
+      const current = await repository.getByChannelAndKey({ channel: request.channel, deliveryKey: request.deliveryKey });
+      if (!current || current.status !== NotificationDeliveryStatus.PENDING ||
+        current.attemptCount !== claimResult.attemptCount || current.lastAttemptedAt !== attemptStartedAt ||
+        isNotificationDeliveryLeaseExpired(current.lastAttemptedAt, now(), leaseMs)) {
+        throw Object.assign(new Error("Notification delivery lease is no longer owned"), { code: "NOTIFICATION_DELIVERY_OWNERSHIP_LOST" });
+      }
+    });
+    if (sendResult && "outcome" in sendResult && sendResult.outcome === "skipped") {
+      const completed = await repository.markSkipped({
+        id: claimResult.delivery.id,
+        attemptCount: claimResult.attemptCount,
+        lastAttemptedAt: attemptStartedAt,
+        skippedAt: now(),
+        skipReason: sendResult.reason.slice(0, MAX_ERROR_CODE_LENGTH),
+      });
+      if (completed) {
+        return { outcome: "skipped", reason: sendResult.reason,
+          deliveryId: claimResult.delivery.id, attemptCount: claimResult.attemptCount };
+      }
+      const current = await repository.getByChannelAndKey({ channel: request.channel, deliveryKey: request.deliveryKey });
+      if (current?.status === NotificationDeliveryStatus.SKIPPED) {
+        return { outcome: "skipped", reason: "already_skipped", deliveryId: current.id, attemptCount: current.attemptCount };
+      }
+      if (current?.status === NotificationDeliveryStatus.SENT) return duplicateResult("already_sent", current);
+      if (current && (current.attemptCount !== claimResult.attemptCount || current.lastAttemptedAt !== attemptStartedAt)) {
+        return duplicateResult("in_progress", current);
+      }
+      throw new Error("NOTIFICATION_SKIP_NOT_PERSISTED");
+    }
     const completed = await repository.markSent({
       id: claimResult.delivery.id,
       attemptCount: claimResult.attemptCount,
       lastAttemptedAt: attemptStartedAt,
       sentAt: now(),
       provider: request.provider ?? null,
-      providerMessageId: sendResult?.providerMessageId ?? null,
-      deliveryMode: sendResult?.deliveryMode ?? null,
+      providerMessageId: sendResult && "providerMessageId" in sendResult ? sendResult.providerMessageId ?? null : null,
+      deliveryMode: sendResult && "deliveryMode" in sendResult ? sendResult.deliveryMode ?? null : null,
     });
     if (!completed) {
       logger.warn("notification delivery sent after its lease was replaced", {
@@ -432,7 +497,22 @@ export async function sendNotificationOnce(
       attemptCount: claimResult.attemptCount,
     };
   } catch (error) {
+    if ((error as { code?: string })?.code === "NOTIFICATION_DELIVERY_OWNERSHIP_LOST") {
+      const current = await repository.getByChannelAndKey({ channel: request.channel, deliveryKey: request.deliveryKey });
+      if (current?.status === NotificationDeliveryStatus.SKIPPED) return {
+        outcome: "skipped", reason: "already_skipped", deliveryId: current.id, attemptCount: current.attemptCount,
+      };
+      if (current?.status === NotificationDeliveryStatus.SENT) return duplicateResult("already_sent", current);
+      if (current) return duplicateResult("in_progress", current);
+      return { outcome: "failed", reason: "ownership_lost" };
+    }
     const errorDetails = extractErrorDetails(error);
+    if (request.recipientUserId) {
+      // A provider exception can contain the entire private request. Staff ledgers/logs keep safe codes only.
+      const safeCode = (error as { code?: string })?.code;
+      errorDetails.code = typeof safeCode === "string" && /^[A-Z_]{1,120}$/.test(safeCode) ? safeCode : "PRIVILEGED_DELIVERY_FAILED";
+      errorDetails.message = "Privileged notification delivery failed";
+    }
     const completed = await repository.markFailed({
       id: claimResult.delivery.id,
       attemptCount: claimResult.attemptCount,

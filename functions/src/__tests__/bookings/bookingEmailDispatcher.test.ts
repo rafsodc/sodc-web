@@ -7,12 +7,17 @@ import {
   bookingConfirmationDeliveryKey,
   bookingPendingMemberDeliveryKey,
   bookingPendingModeratorDeliveryKey,
+  bookingPendingModeratorUidDeliveryKey,
   bookingRevisionDeliveryKey,
   bookingTotalMinorFromLines,
   buildTicketLinesSummary,
   formatBookingEventDateTime,
   notifyBookingConfirmationEmail,
+  notifyBookingPendingApprovalEmails,
 } from "../../bookingEmailDispatcher";
+import * as recipientPolicy from "../../privilegedNotificationRecipient";
+import * as legacyPolicy from "../../privilegedNotificationLegacy";
+import * as bookingModerators from "../../bookingModerators";
 import * as notificationDelivery from "../../notificationDelivery";
 
 const mockGetBooking = vi.spyOn(admin, "getBookingForNotification");
@@ -58,6 +63,7 @@ describe("bookingEmailDispatcher helpers", () => {
     expect(bookingPendingModeratorDeliveryKey("b1", "Mod@Example.com")).toBe(
       "booking-pending-mod:b1:mod@example.com"
     );
+    expect(bookingPendingModeratorUidDeliveryKey("b1", "Staff:One")).toBe("booking-pending-mod-v2:b1:Staff%3AOne");
     expect(bookingChangesRequestedDeliveryKey("b1")).toBe("booking-changes-requested:b1");
     expect(bookingApprovedDeliveryKey("b1")).toBe("booking-approved:b1");
   });
@@ -135,5 +141,35 @@ describe("notifyBookingConfirmationEmail", () => {
     const personalisation = sendEmail.mock.calls[0]?.[0]?.personalisation;
     expect(personalisation).not.toHaveProperty("memberDietaryNote");
     expect(personalisation.ticketLinesSummary).toContain("dietary: No nuts");
+  });
+});
+
+describe("staff booking disclosure boundary", () => {
+  const bookingId = "00000000-0000-4000-8000-000000000001";
+  const sendEmail = vi.fn(async () => ({ provider: "govuk_notify" as const, providerNotificationId: "fake" }));
+  beforeEach(() => {
+    mockGetBooking.mockResolvedValue({ data: { booking: { id: bookingId, revisionNumber: 1,
+      approvalStatus: "PENDING", accommodationRequested: false, booker: { id: "member", firstName: "Member", lastName: "One", email: "member@example.com" },
+      event: { id: bookingId, title: "Event", startDateTime: "2026-10-21T12:00:00Z", endDateTime: "2026-10-21T14:00:00Z", section: { id: "section-1", name: "Section" } }, lines: sampleLines } } } as never);
+    mockSendOnce.mockReset().mockResolvedValue({ outcome: "sent" }); sendEmail.mockClear();
+    vi.spyOn(legacyPolicy, "hasLegacyPrivilegedNotificationEvent").mockResolvedValue(false);
+    vi.spyOn(recipientPolicy, "authorizePrivilegedNotificationRecipient").mockResolvedValue({ eligible: false, reason: "RECIPIENT_AUTHORITY_REVOKED" });
+  });
+  it("does not let an explicit retry UID bypass the final current section check", async () => {
+    await notifyBookingPendingApprovalEmails({ bookingId, idempotencyKey: "submission", appBaseUrl: "https://app.example", recipientUserIds: ["former-staff"], getMailer: () => ({ sendEmail }) });
+    const member = mockSendOnce.mock.calls.find(([r]) => r.notificationType === "BOOKING_PENDING_APPROVAL_MEMBER")![0];
+    const staff = mockSendOnce.mock.calls.find(([r]) => r.notificationType === "BOOKING_PENDING_APPROVAL_MODERATOR")![0];
+    expect(staff).toMatchObject({ recipientUserId: "former-staff", userId: null,
+      recoveryPayload: { version: 2, recipientUserId: "former-staff", bookingId } });
+    expect(await staff.send("LIVE")).toMatchObject({ outcome: "skipped", reason: "RECIPIENT_AUTHORITY_REVOKED" });
+    expect(recipientPolicy.authorizePrivilegedNotificationRecipient).toHaveBeenCalledWith("former-staff", { kind: "BOOKING", sectionId: "section-1" });
+    await member.send("LIVE"); expect(sendEmail).toHaveBeenCalledOnce();
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ templateName: "bookingPendingApproval", to: "member@example.com" }));
+  });
+  it("preserves member acknowledgement when staff discovery fails", async () => {
+    vi.spyOn(bookingModerators, "resolveBookingModeratorUserIds").mockRejectedValueOnce(new Error("directory unavailable"));
+    await notifyBookingPendingApprovalEmails({ bookingId, idempotencyKey: "submission", appBaseUrl: "https://app.example", getMailer: () => ({ sendEmail }) });
+    expect(mockSendOnce).toHaveBeenCalledOnce();
+    await mockSendOnce.mock.calls[0][0].send("LIVE"); expect(sendEmail).toHaveBeenCalledOnce();
   });
 });
