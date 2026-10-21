@@ -2,111 +2,61 @@ import { useEffect } from "react";
 import { onIdTokenChanged, type User } from "firebase/auth";
 import { auth } from "../../../config/firebase";
 import { withTimeout } from "../../../shared/utils/withTimeout";
+import { captureSession, isSessionCurrent, assertSessionCurrent, type SessionToken } from "../../../shared/appShell/sessionLifecycle";
 
 export const TOKEN_REFRESH_TIMEOUT_MS = 15_000;
+interface Callback { uid: string; run: () => void; session: SessionToken }
+const callbacks = new Set<Callback>();
+let unsubscribe: (() => void) | null = null;
+let listenerUid: string | null = null;
+let lastToken: string | null = null;
+let refreshInFlight: { uid: string; session: SessionToken; promise: Promise<void> } | null = null;
 
-// Global singleton to ensure only one onIdTokenChanged listener exists
-let tokenRefreshSetup: {
-  unsubscribe: (() => void) | null;
-  callbacks: Set<() => void>;
-  currentUser: User | null;
-  lastNotifiedToken: string | null;
-} = {
-  unsubscribe: null,
-  callbacks: new Set(),
-  currentUser: null,
-  lastNotifiedToken: null,
-};
-
-let refreshInFlight: { uid: string; promise: Promise<void> } | null = null;
-
-function notifyTokenCallbacks(token: string) {
-  if (tokenRefreshSetup.lastNotifiedToken === token) return;
-  tokenRefreshSetup.lastNotifiedToken = token;
-  tokenRefreshSetup.callbacks.forEach((callback) => callback());
+function notify(token: string, session: SessionToken) {
+  if (!isSessionCurrent(session) || lastToken === token) return;
+  lastToken = token;
+  callbacks.forEach((callback) => {
+    if (callback.uid === session.uid && isSessionCurrent(callback.session)) callback.run();
+  });
 }
-
-/**
- * Hook to detect claim changes via onIdTokenChanged
- * Only refreshes when claims are actually updated server-side
- * Provides a manual refresh function for handling auth errors
- */
 export function useTokenRefresh(user: User | null, onTokenChange?: () => void) {
   useEffect(() => {
-    if (!onTokenChange) return;
-    tokenRefreshSetup.callbacks.add(onTokenChange);
-    return () => {
-      tokenRefreshSetup.callbacks.delete(onTokenChange);
-    };
-  }, [onTokenChange]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    // Only set up listener once (when currentUser is null or different)
-    if (tokenRefreshSetup.currentUser?.uid !== user.uid) {
-      // Clean up old setup if user changed
-      if (tokenRefreshSetup.unsubscribe) {
-        tokenRefreshSetup.unsubscribe();
-      }
-
-      // Listen for token changes (fires when claims are updated server-side)
-      tokenRefreshSetup.lastNotifiedToken = null;
-      const unsubscribe = onIdTokenChanged(auth, async (currentUser) => {
-        if (currentUser && currentUser.uid === user.uid) {
-          try {
-            // Read the token emitted by Firebase without forcing another refresh from
-            // inside the token-change listener.
-            const token = await currentUser.getIdToken();
-            notifyTokenCallbacks(token);
-          } catch (error) {
-            console.error("Error reading changed ID token:", error);
-          }
-        }
+    if (!user || !onTokenChange) return;
+    const session = captureSession(user.uid);
+    const callback = { uid: user.uid, run: onTokenChange, session };
+    callbacks.add(callback);
+    if (listenerUid !== user.uid || !unsubscribe) {
+      unsubscribe?.();
+      listenerUid = user.uid;
+      lastToken = null;
+      unsubscribe = onIdTokenChanged(auth, async (currentUser) => {
+        if (currentUser?.uid !== session.uid || !isSessionCurrent(session)) return;
+        try {
+          const token = await currentUser.getIdToken();
+          if (listenerUid === currentUser.uid) notify(token, session);
+        } catch { /* Claim readers expose a safe unresolved/denied state. */ }
       });
-
-      // Store setup
-      tokenRefreshSetup = {
-        unsubscribe,
-        callbacks: tokenRefreshSetup.callbacks,
-        currentUser: user,
-        lastNotifiedToken: tokenRefreshSetup.lastNotifiedToken,
-      };
     }
-  }, [user]);
-}
-
-/**
- * Manually refresh token (useful when handling auth errors)
- */
-export function refreshToken(
-  user: User | null,
-  timeoutMs = TOKEN_REFRESH_TIMEOUT_MS,
-): Promise<void> {
-  if (!user) return Promise.reject(new Error("No authenticated user to refresh"));
-
-  if (refreshInFlight?.uid === user.uid) {
-    return refreshInFlight.promise;
-  }
-
-  const promise = withTimeout(
-    user.getIdToken(true),
-    timeoutMs,
-    "Refreshing the authenticated session timed out",
-  )
-    .then((token) => notifyTokenCallbacks(token))
-    .catch((error) => {
-      console.error("Error refreshing token:", error);
-      throw error;
-    })
-    .finally(() => {
-      if (refreshInFlight?.promise === promise) {
+    return () => {
+      callbacks.delete(callback);
+      if (callbacks.size === 0) {
+        unsubscribe?.();
+        unsubscribe = null;
+        listenerUid = null;
+        lastToken = null;
         refreshInFlight = null;
       }
-    });
-
-  refreshInFlight = { uid: user.uid, promise };
+    };
+  }, [user, onTokenChange]);
+}
+export function refreshToken(user: User | null, timeoutMs = TOKEN_REFRESH_TIMEOUT_MS): Promise<void> {
+  if (!user) return Promise.reject(new Error("No authenticated user to refresh"));
+  const session = captureSession(user.uid);
+  try { assertSessionCurrent(session); } catch (error) { return Promise.reject(error); }
+  if (refreshInFlight?.uid === user.uid && isSessionCurrent(refreshInFlight.session)) return refreshInFlight.promise;
+  const promise = withTimeout(user.getIdToken(true), timeoutMs, "Refreshing the authenticated session timed out")
+    .then((token) => { assertSessionCurrent(session); notify(token, session); })
+    .finally(() => { if (refreshInFlight?.promise === promise) refreshInFlight = null; });
+  refreshInFlight = { uid: user.uid, session, promise };
   return promise;
 }

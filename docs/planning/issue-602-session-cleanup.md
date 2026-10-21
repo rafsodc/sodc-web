@@ -1,43 +1,46 @@
 # Issue #602: logout and account session cleanup
 
-Status: implementation not started. This document seeds the issue branch and draft PR.
+Status: implemented and locally validated; draft PR awaiting review. Browser acceptance remains a release gate.
 
 - Issue: https://github.com/rafsodc/sodc-web/issues/602
-- Detailed approach, acceptance criteria and test matrix: https://github.com/rafsodc/sodc-web/issues/602#issuecomment-6301903454
-- Parent tracking issue: https://github.com/rafsodc/sodc-web/issues/645
+- Design and acceptance matrix: https://github.com/rafsodc/sodc-web/issues/602#issuecomment-6301903454
+- Parent: https://github.com/rafsodc/sodc-web/issues/645
+- Draft PR: https://github.com/rafsodc/sodc-web/pull/660
 - PR target: `codex/security-privacy-foundation`
-- Shared baseline: `adc5033ee588bfb33b3df68bfe36128f6dc812c4` from `main`
 
-## Problem
+## Implemented behavior
 
-Private cached data and delayed callbacks can survive logout or an account change.
+A central document-session coordinator accepts initial restoration and the first anonymous sign-in, then permanently retires a document when its authenticated UID leaves or changes. It removes the private React tree synchronously, cancels/clears its provider-owned QueryClient and replaces the document. This discards Data Connect's internal cache without relying on the installed SDK's incomplete `terminate()` reset.
 
-## Proposed approach
+All existing logout entry points share the coordinator, including reauthentication, resignation and self-email changes. Failed logout keeps private data hidden and offers retry; a successful reset can carry a timestamp-only one-use confirmation. Device preference cookies and Firebase persistence are preserved.
 
-- Introduce one session coordinator above private hooks and screens. Retire the old private UI immediately when an authenticated identity leaves or changes, then replace the document to discard the installed Data Connect SDK cache and module state.
-- Unify logout entry points, scope the private QueryClient to the accepted session, and guard asynchronous results and follow-on actions with UID, session generation and request ownership.
-- Preserve initial sign-in/registration, safe public guest/auth-action URLs and deliberate device preferences. Handle failed sign-out and browser Back/Forward restoration explicitly.
+UID/generation/request guards cover profile/claims, token refresh, profile-existence checks, recovery, imperative SDK operations, callable responses and generated mutation-hook follow-ons. First sign-in/registration remain in the original anonymous document so memory-only Auth is usable. Same-UID refresh does not reload. Public guest capabilities survive first login; fragment changes invalidate old guest actions. Auth-action follow-ons retain their original account owner.
 
-## Acceptance criteria
+`pagehide` removes private snapshots and persisted `pageshow` restarts at the current same-origin URL. The public retirement/sign-out API is the integration seam for #653; current-authority enforcement remains separate.
 
-- [ ] Logout, direct account replacement and rapid A → null → B transitions cannot show A's data or privileges to B.
-- [ ] Old reads, mutations, claims, token refresh and finally callbacks cannot restore private state or act in a later session.
-- [ ] Every logout route shares the same boundary, and failed logout provides truthful recovery.
-- [ ] Initial restoration, first sign-in and registration work with normal and memory-only persistence; same-UID refresh does not reload.
-- [ ] Cross-tab transitions and browser history cannot reveal a private snapshot; public guest links and device preferences still work.
+## Acceptance and evidence
 
-## Test suite to implement
+- [x] Populated UID-free caches, A -> null/B and rapid replacement are fenced before a replacement account renders (state-machine/app integration tests).
+- [x] Late reads/mutations/claims/token success, error and finally work cannot restore private UI or launch later-session follow-ons (owned hook/operation tests).
+- [x] Central logout failure/retry and one-use confirmation are truthful; StrictMode does not duplicate logout/replacement.
+- [x] Initial anonymous sign-in, same-UID updates, pending profile StrictMode replay and existing sign-in/registration flows pass local regression checks.
+- [x] Public guest capability/hash isolation, persisted-page restart and device-cookie preservation pass local tests.
+- [ ] Real-browser cross-tab/BFCache/blocked-storage acceptance against disposable local emulator identities. The runner is provided but these scenarios have not been executed in this implementation session.
 
-- Add sessionLifecycle.test.ts and App.sessionIsolation.test.tsx with a real QueryClient, actual observer callbacks and controlled delayed reads/mutations.
-- Extend profile, claim, token refresh, recovery, auth/register and sign-out entry-point tests. Exercise owner mismatch and stale success/error/finally callbacks.
-- Add an unmocked installed-SDK boundary test; do not mistake TanStack clearing for complete Data Connect cache isolation.
-- Introduce an opt-in Playwright session-isolation suite for two disposable identities, blocked storage, multiple tabs and browser Back/Forward.
-- Run focused and full frontend tests, lint, coverage and build during implementation; record Dev/Beta browser evidence before promotion.
+Validation performed:
 
-The detailed issue comment distinguishes existing baseline results from new coverage still required. No new tests or application changes are included in this setup commit.
+- Complete frontend coverage run: **120 files / 944 tests passed**; statements **80.70%**, branches **76.91%**, functions **77.24%**, lines **82.03%**. All configured coverage thresholds passed.
+- The coverage run includes three local fixture destination guard tests; unsafe project/host input is rejected before Admin SDK loading or account creation.
+- Lint and production build passed. The build notes that the fallback dynamic Firebase import shares an existing static chunk; it completes successfully.
+- Browser discovery found three cases; a non-opted-in runner invocation reported **three skipped**, which is not browser acceptance evidence.
+- No emulators, seed accounts, cloud services, deployments or real member data were used.
 
-## Dependencies and delivery
+## Reproduce browser acceptance
 
-This issue can ship independently of #651, #653 and #654. Server-side token enforcement remains #653. Do not add new caching until the session boundary is proven.
+See [the local session browser guide](../testing/session-isolation.md) for exact dependency, emulator, demo seed and runner commands. The frontend emulator mode requires both Vite development mode and an explicit opt-in; production defaults remain cloud-backed. The runner refuses remote application targets and blocks remote HTTP/WebSocket traffic before submitting credentials. Seed commands refuse any project/endpoints other than the fixed demo/loopback stack.
 
-Keep this PR in draft until implementation, required tests and release evidence are complete. Update this plan and the PR description as implementation develops.
+## Limits and delivery
+
+The hard document replacement is a deliberate privacy boundary. An unexpected direct switch with memory-only persistence can require signing in again; initial login itself does not reload. Logout cannot reverse already accepted server writes, so old callbacks are fenced instead. Browser-engine BFCache behavior and the local stack still need recorded execution before production promotion.
+
+Keep PR #660 draft pending root review and browser release evidence. No new caching is introduced. Ship independently of the event tabs/navigation work.

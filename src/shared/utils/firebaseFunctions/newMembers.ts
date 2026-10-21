@@ -1,4 +1,4 @@
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "../sessionCallable";
 import { functions } from "../../../config/firebase";
 import type { NewMemberReport, NewMemberReportOptions, NewMemberReportSelection, NewMemberReportMembership } from "../../../../functions/src/shared/newMemberReport";
 

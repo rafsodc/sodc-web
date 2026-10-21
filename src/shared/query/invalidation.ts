@@ -1,11 +1,12 @@
+import { captureSession, assertSessionCurrent } from "../appShell/sessionLifecycle";
 import type { QueryClient } from "@tanstack/react-query";
-import type { UUIDString } from "@dataconnect/generated";
+import type { UUIDString } from "./sessionDataConnect";
 import {
   getMyBookingPaymentAdjustments,
   getMyBookings,
   getMyBookingsForEvent,
   getMyTicketOrders,
-} from "@dataconnect/generated";
+} from "./sessionDataConnect";
 import { QueryFetchPolicy } from "firebase/data-connect";
 import { dataConnect } from "../../config/firebase";
 
@@ -15,6 +16,7 @@ import { dataConnect } from "../../config/firebase";
  * place so direct SDK mutations and callable functions behave consistently.
  */
 export async function invalidateAnnouncementPreferences(queryClient: QueryClient) {
+  assertSessionCurrent(captureSession());
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["GetMyAnnouncementPreferences"] }),
     queryClient.invalidateQueries({ queryKey: ["GetSectionAnnouncementOptOut"] }),
@@ -22,6 +24,7 @@ export async function invalidateAnnouncementPreferences(queryClient: QueryClient
 }
 
 export async function invalidateUserSectionAccess(queryClient: QueryClient) {
+  assertSessionCurrent(captureSession());
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["GetUserAccessGroups"] }),
     queryClient.invalidateQueries({ queryKey: ["GetSectionsForUser"] }),
@@ -29,10 +32,12 @@ export async function invalidateUserSectionAccess(queryClient: QueryClient) {
 }
 
 export async function invalidateSectionsForUser(queryClient: QueryClient) {
+  assertSessionCurrent(captureSession());
   await queryClient.invalidateQueries({ queryKey: ["GetSectionsForUser"] });
 }
 
 export async function invalidateMyBookings(queryClient: QueryClient) {
+  assertSessionCurrent(captureSession());
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["GetMyBookings"] }),
     queryClient.invalidateQueries({ queryKey: ["GetMyBookingsForEvent"] }),
@@ -50,8 +55,11 @@ export async function refreshMyBookingsFromServer(
   queryClient: QueryClient,
   eventId: UUIDString
 ) {
+  const session = captureSession();
+  assertSessionCurrent(session);
   const serverOnly = { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } as const;
   const eventBookings = await getMyBookingsForEvent(dataConnect, { eventId }, serverOnly);
+  assertSessionCurrent(session);
   queryClient.setQueryData(["GetMyBookingsForEvent", { eventId }], { ...eventBookings.data });
 
   const [allBookings, ticketOrders, paymentAdjustments] = await Promise.all([
@@ -60,6 +68,7 @@ export async function refreshMyBookingsFromServer(
     getMyBookingPaymentAdjustments(dataConnect, serverOnly),
   ]);
 
+  assertSessionCurrent(session);
   queryClient.setQueryData(["GetMyBookings", null], { ...allBookings.data });
   queryClient.setQueryData(["GetMyTicketOrders", null], { ...ticketOrders.data });
   queryClient.setQueryData(

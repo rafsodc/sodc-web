@@ -21,9 +21,9 @@ import {
 import { dataConnect } from "../../../config/firebase";
 import { QueryFetchPolicy } from "firebase/data-connect";
 import ChangeUserEmailDialog from "./ChangeUserEmailDialog";
-import { queryClient } from "../../../shared/query/queryClient";
+import { useQueryClient } from "@tanstack/react-query";
 import type { SearchUser } from "../../../types";
-import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } from "../../../dataconnect-generated";
+import { getUserById, updateUser, type UpdateUserVariables, MembershipStatus } from "../../../shared/query/sessionDataConnect";
 import {
   MEMBERSHIP_STATUS_OPTIONS,
   MAX_MOBILE_NUMBER_LENGTH,
@@ -52,6 +52,7 @@ interface EditUserDialogProps {
 }
 
 export default function EditUserDialog({ open, user, onClose, onSave, onSuccess }: EditUserDialogProps) {
+  const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [loading, setLoading] = useState(false);

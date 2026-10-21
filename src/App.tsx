@@ -1,8 +1,8 @@
+import { signOutPrivateSession } from "./shared/appShell/sessionLifecycle";
 import { useEffect, useState, useCallback, useMemo, lazy, Suspense, type ReactElement } from "react";
 import { Box, Button, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { signOut } from "firebase/auth";
-import { auth, dataConnect } from "./config/firebase";
+import { dataConnect } from "./config/firebase";
 import { useUserData } from "./features/users/hooks/useUserData";
 import type { UserData } from "./types";
 import { useEnabledClaim } from "./features/users/hooks/useEnabledClaim";
@@ -97,16 +97,13 @@ function SectionFileRoute() {
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const handleLoggedOut = useCallback(() => {
-    navigate(ROUTES.ACCOUNT);
-  }, [navigate]);
   const {
     user,
     authInitialized,
     logoutSuccess,
     setLogoutSuccess,
     triggerEmailCheck,
-  } = useAppAuthSession(handleLoggedOut);
+  } = useAppAuthSession();
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
   const [mobileNavAnchorEl, setMobileNavAnchorEl] = useState<HTMLElement | null>(null);
@@ -169,11 +166,11 @@ function AppContent() {
   const handleSignInAgain = useCallback(async () => {
     const returnTo = `${location.pathname}${location.search}${location.hash}`;
     try {
-      await signOut(auth);
-    } finally {
-      navigate(accountSignInPath(returnTo), { replace: true });
+      await signOutPrivateSession({ returnTo });
+    } catch {
+      // The session boundary owns truthful sign-out failure and recovery.
     }
-  }, [location.hash, location.pathname, location.search, navigate]);
+  }, [location.hash, location.pathname, location.search]);
 
   const header = (
     <>

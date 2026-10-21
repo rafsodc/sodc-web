@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getDataConnect } from "firebase/data-connect";
-import { getFunctions } from "firebase/functions";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { getDataConnect, connectDataConnectEmulator } from "firebase/data-connect";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { connectorConfig } from "../dataconnect-generated";
 
@@ -38,8 +38,9 @@ export const functions = getFunctions(firebaseApp, "europe-west2");
 // environments without one behave exactly as before. Functions aren't enforcing App Check yet
 // (enforceAppCheck isn't set on any callable) — this just gets clients attaching valid tokens
 // so we can watch the App Check console's metrics before turning enforcement on server-side.
+const useLocalEmulators = import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATORS === "true";
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
-if (recaptchaSiteKey && typeof window !== "undefined") {
+if (!useLocalEmulators && recaptchaSiteKey && typeof window !== "undefined") {
   initializeAppCheck(firebaseApp, {
     provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,
@@ -48,6 +49,13 @@ if (recaptchaSiteKey && typeof window !== "undefined") {
 
 // Initialize Data Connect
 export const dataConnect = getDataConnect(connectorConfig);
+
+// Opt-in local acceptance environment. Production builds cannot enable this.
+if (useLocalEmulators) {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099");
+  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+  connectDataConnectEmulator(dataConnect, "127.0.0.1", 9399);
+}
 
 // Lazily initialised Analytics (optional)
 let analyticsPromise: Promise<Analytics | null> | null = null;

@@ -1,3 +1,4 @@
+import { runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
 import { useState } from "react";
 import { Button, Snackbar } from "@mui/material";
 import { NotificationsActive, NotificationsOff } from "@mui/icons-material";
@@ -33,9 +34,9 @@ export default function AnnouncementOptOutToggle({ sectionId }: AnnouncementOptO
     setBusy(true);
     try {
       if (isOptedOut) {
-        await optIn.mutateAsync({ sectionId });
+        await runSessionOperation(() => optIn.mutateAsync({ sectionId }));
       } else {
-        await optOut.mutateAsync({ sectionId });
+        await runSessionOperation(() => optOut.mutateAsync({ sectionId }));
       }
       queryClient.setQueryData(
         ["GetSectionAnnouncementOptOut", { sectionId }],
