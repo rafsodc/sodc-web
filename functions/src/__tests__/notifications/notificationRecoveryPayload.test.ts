@@ -65,3 +65,20 @@ describe("notification recovery payloads", () => {
     ).toThrow("newStatus is invalid");
   });
 });
+
+describe("UID-bound staff payload compatibility", () => {
+  it.each([
+    { version: 2, kind: "BOOKING_PENDING_MODERATOR", bookingId: "booking-1", recipientUserId: "staff-1" },
+    { version: 2, kind: "USER_PENDING_APPROVAL", userId: "applicant-1", emailVerified: true, recipientUserId: "staff-1", deliveryMode: "TEAM_TEST" },
+  ])("round trips $kind without an email identity", (payload) => {
+    expect(parseNotificationRecoveryPayload(JSON.stringify(payload))).toEqual(payload);
+  });
+  it.each([undefined, "", " ", " staff", "staff\n", "x".repeat(129)])("rejects invalid recipient UID %j", (recipientUserId) => {
+    expect(() => parseNotificationRecoveryPayload(JSON.stringify({ version: 2, kind: "USER_PENDING_APPROVAL",
+      userId: "applicant", emailVerified: true, recipientUserId }))).toThrow(NotificationRecoveryPayloadError);
+  });
+  it("keeps legacy email-only staff payloads distinguishable", () => {
+    expect(parseNotificationRecoveryPayload(JSON.stringify({ version: 1, kind: "USER_PENDING_APPROVAL",
+      userId: "applicant", emailVerified: true, recipientEmail: "old@example.com" }))).toMatchObject({ version: 1, recipientEmail: "old@example.com" });
+  });
+});

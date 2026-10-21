@@ -1718,12 +1718,17 @@ query GetNotificationDeliveryByChannelAndKey(
     deliveryKey
     notificationType
     recoveryPayload
+    recipientUserId
+    booking { id }
+    user { id }
     status
     provider
     providerMessageId
     attemptCount
     lastAttemptedAt
     sentAt
+    skippedAt
+    skipReason
     lastErrorCode
     lastErrorMessage
     createdAt
@@ -1750,6 +1755,9 @@ query ListFailedNotificationDeliveriesForRecovery(
     notificationType
     deliveryKey
     recoveryPayload
+    recipientUserId
+    booking { id }
+    user { id }
     status
     attemptCount
     lastAttemptedAt
@@ -1777,6 +1785,9 @@ query ListStalePendingNotificationDeliveriesForRecovery(
     notificationType
     deliveryKey
     recoveryPayload
+    recipientUserId
+    booking { id }
+    user { id }
     status
     attemptCount
     lastAttemptedAt
@@ -1789,6 +1800,8 @@ mutation CreateNotificationDelivery(
   $notificationType: String!
   $deliveryKey: String!
   $recoveryPayload: String
+  $recipientUserId: String
+  $deliveryMode: GovNotifyDeliveryMode
   $status: NotificationDeliveryStatus!
   $ticketOrderId: UUID
   $bookingId: UUID
@@ -1803,6 +1816,8 @@ mutation CreateNotificationDelivery(
       notificationType: $notificationType
       deliveryKey: $deliveryKey
       recoveryPayload: $recoveryPayload
+      recipientUserId: $recipientUserId
+      deliveryMode: $deliveryMode
       status: $status
       ticketOrderId: $ticketOrderId
       bookingId: $bookingId
@@ -1901,6 +1916,66 @@ mutation MarkNotificationDeliverySentById(
       updatedBy: "system"
     }
   )
+}
+
+# Terminal suppression is only owned by the current delivery lease.
+mutation MarkNotificationDeliverySkippedById(
+  $id: UUID!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+  $skippedAt: Timestamp!
+  $skipReason: String!
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: PENDING }
+      attemptCount: { eq: $attemptCount }
+      lastAttemptedAt: { eq: $lastAttemptedAt }
+    }
+    data: {
+      status: SKIPPED
+      skippedAt: $skippedAt
+      skipReason: $skipReason
+      sentAt: null
+      providerMessageId: null
+      lastErrorCode: null
+      lastErrorMessage: null
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+# A legacy row fences the whole old logical staff event during UID-key cutover.
+# Mode classification also checks historical payload/key suffixes in the caller.
+query ListLegacyBookingStaffNotificationDeliveries($bookingId: UUID!) @auth(level: NO_ACCESS) {
+  notificationDeliveries(where: {
+    notificationType: { eq: "BOOKING_PENDING_APPROVAL_MODERATOR" }
+    bookingId: { eq: $bookingId }
+    recipientUserId: { isNull: true }
+  }, limit: 1000) {
+    deliveryKey
+    deliveryMode
+    recoveryPayload
+  }
+}
+
+query ListLegacyApplicantStaffNotificationDeliveries($subjectUserId: String!) @auth(level: NO_ACCESS) {
+  notificationDeliveries(where: {
+    notificationType: { eq: "USER_PENDING_APPROVAL" }
+    userId: { eq: $subjectUserId }
+    recipientUserId: { isNull: true }
+  }, limit: 1000) {
+    deliveryKey
+    deliveryMode
+    recoveryPayload
+  }
+}
+
+# Restricted Admin SDK cleanup for synthetic non-production integration fixtures.
+mutation DeleteNotificationDeliveryIntegrationFixture($id: UUID!, $deliveryKey: String!) @auth(level: NO_ACCESS) {
+  notificationDelivery_deleteMany(where: { id: { eq: $id }, deliveryKey: { eq: $deliveryKey } })
 }
 
 mutation MarkNotificationDeliveryFailedById(

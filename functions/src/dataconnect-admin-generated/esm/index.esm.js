@@ -49,6 +49,7 @@ export const NotificationDeliveryStatus = {
   PENDING: "PENDING",
   SENT: "SENT",
   FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
 }
 
 export const NotifyDeliveryReceiptOutcome = {
@@ -599,6 +600,30 @@ export function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOption
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('MarkNotificationDeliverySentById', inputVars, inputOpts);
+}
+
+export function markNotificationDeliverySkippedById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationDeliverySkippedById', inputVars, inputOpts);
+}
+
+export function listLegacyBookingStaffNotificationDeliveries(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListLegacyBookingStaffNotificationDeliveries', inputVars, inputOpts);
+}
+
+export function listLegacyApplicantStaffNotificationDeliveries(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListLegacyApplicantStaffNotificationDeliveries', inputVars, inputOpts);
+}
+
+export function deleteNotificationDeliveryIntegrationFixture(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('DeleteNotificationDeliveryIntegrationFixture', inputVars, inputOpts);
 }
 
 export function markNotificationDeliveryFailedById(dcOrVarsOrOptions, varsOrOptions, options) {

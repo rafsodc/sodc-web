@@ -14,6 +14,7 @@ import {
   bookingConfirmationDeliveryKey,
   bookingPendingMemberDeliveryKey,
   bookingPendingModeratorDeliveryKey,
+  bookingPendingModeratorUidDeliveryKey,
   bookingRevisionDeliveryKey,
   notifyBookingChangesRequestedEmail,
   notifyBookingApprovedEmail,
@@ -29,6 +30,7 @@ import {
 import {
   notifyAdminsUserPendingApproval,
   pendingApprovalDeliveryKey,
+  pendingApprovalUidDeliveryKey,
 } from "./pendingApprovalAdminAlert";
 import {
   createGovNotifyTicketOrderLifecycleDispatcher,
@@ -91,7 +93,9 @@ export function notificationRecoveryIdentity(payload: NotificationRecoveryPayloa
     case "BOOKING_PENDING_MODERATOR":
       return {
         notificationType: "BOOKING_PENDING_APPROVAL_MODERATOR",
-        deliveryKey: bookingPendingModeratorDeliveryKey(payload.bookingId, payload.recipientEmail),
+        deliveryKey: payload.version === 2
+          ? bookingPendingModeratorUidDeliveryKey(payload.bookingId, payload.recipientUserId)
+          : bookingPendingModeratorDeliveryKey(payload.bookingId, payload.recipientEmail),
       };
     case "BOOKING_CHANGES_REQUESTED":
       return {
@@ -127,10 +131,9 @@ export function notificationRecoveryIdentity(payload: NotificationRecoveryPayloa
     case "USER_PENDING_APPROVAL":
       return {
         notificationType: "USER_PENDING_APPROVAL",
-        deliveryKey: pendingApprovalDeliveryKey(
-          payload.userId,
-          payload.recipientEmail
-        ),
+        deliveryKey: payload.version === 2
+          ? pendingApprovalUidDeliveryKey(payload.userId, payload.recipientUserId)
+          : pendingApprovalDeliveryKey(payload.userId, payload.recipientEmail),
       };
     case "PAYMENT_LIFECYCLE": {
       const notification: PaymentLifecycleNotification = {
@@ -174,6 +177,7 @@ type PaymentLifecycleRecoveryPayload = Extract<
 >;
 
 export interface NotificationRecoveryDispatcherDependencies {
+  sendNotification?: typeof sendNotificationOnce;
   notifyBookingConfirmation?: typeof notifyBookingConfirmationEmail;
   notifyBookingRevision?: typeof notifyBookingRevisionEmail;
   notifyBookingPending?: typeof notifyBookingPendingApprovalEmails;
@@ -236,6 +240,22 @@ export function createNotificationRecoveryDispatcher(
       throw new Error("Notification recovery payload does not match its ledger identity");
     }
 
+    if (payload.kind === "BOOKING_PENDING_MODERATOR" || payload.kind === "USER_PENDING_APPROVAL") {
+      if (payload.version === 1) {
+        await (dependencies.sendNotification ?? sendNotificationOnce)({
+          channel: candidate.channel, notificationType: candidate.notificationType,
+          deliveryKey: candidate.deliveryKey, preserveDeliveryKey: true,
+          recoveryPayload: payload,
+          send: async () => ({ outcome: "skipped", reason: "LEGACY_RECIPIENT_IDENTITY_UNVERIFIABLE" }),
+        });
+        return;
+      }
+      if (candidate.recipientUserId !== payload.recipientUserId ||
+        (payload.kind === "BOOKING_PENDING_MODERATOR" ? candidate.subjectBookingId !== payload.bookingId : candidate.subjectUserId !== payload.userId)) {
+        throw new Error("Privileged recovery recipient or subject does not match its ledger identity");
+      }
+    }
+
     switch (payload.kind) {
       case "BOOKING_CONFIRMATION":
         await (dependencies.notifyBookingConfirmation ?? notifyBookingConfirmationEmail)({
@@ -258,7 +278,7 @@ export function createNotificationRecoveryDispatcher(
         await (dependencies.notifyBookingPending ?? notifyBookingPendingApprovalEmails)({
           bookingId: payload.bookingId,
           idempotencyKey: payload.idempotencyKey,
-          recipientEmails: [],
+          recipientUserIds: [],
           appBaseUrl,
           deliveryMode: payload.deliveryMode,
         });
@@ -267,7 +287,8 @@ export function createNotificationRecoveryDispatcher(
         await (dependencies.notifyBookingPending ?? notifyBookingPendingApprovalEmails)({
           bookingId: payload.bookingId,
           idempotencyKey: `recovery:${payload.bookingId}`,
-          recipientEmails: [payload.recipientEmail],
+          recipientUserIds: [payload.version === 2 ? payload.recipientUserId : ""],
+          recoveryDeliveryKey: candidate.deliveryKey,
           notifyMember: false,
           appBaseUrl,
           deliveryMode: payload.deliveryMode,
@@ -300,7 +321,8 @@ export function createNotificationRecoveryDispatcher(
         await (dependencies.notifyPendingApproval ?? notifyAdminsUserPendingApproval)({
           userId: payload.userId,
           emailVerified: payload.emailVerified,
-          recipientEmails: [payload.recipientEmail],
+          recipientUserIds: [payload.version === 2 ? payload.recipientUserId : ""],
+          recoveryDeliveryKey: candidate.deliveryKey,
           appBaseUrl,
           deliveryMode: payload.deliveryMode,
         });
@@ -347,6 +369,9 @@ function mapRecoveryRow(row: {
   attemptCount: number;
   lastAttemptedAt?: string | null;
   createdAt: string;
+  recipientUserId?: string | null;
+  booking?: { id: string } | null;
+  user?: { id: string } | null;
 }): RecoverableNotificationDelivery {
   return {
     id: row.id,
@@ -358,6 +383,9 @@ function mapRecoveryRow(row: {
     attemptCount: row.attemptCount,
     lastAttemptedAt: row.lastAttemptedAt ?? null,
     createdAt: row.createdAt,
+    recipientUserId: row.recipientUserId ?? null,
+    subjectBookingId: row.booking?.id ?? null,
+    subjectUserId: row.user?.id ?? null,
   };
 }
 

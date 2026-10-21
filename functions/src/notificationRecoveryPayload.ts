@@ -22,7 +22,15 @@ interface VersionedRecoveryPayload {
   deliveryMode?: GovNotifyDeliveryMode;
 }
 
+interface PrivilegedRecoveryPayload {
+  version: 2;
+  deliveryMode?: GovNotifyDeliveryMode;
+  recipientUserId: string;
+}
+
 export type NotificationRecoveryPayload =
+  | (PrivilegedRecoveryPayload & { kind: "BOOKING_PENDING_MODERATOR"; bookingId: UUIDString })
+  | (PrivilegedRecoveryPayload & { kind: "USER_PENDING_APPROVAL"; userId: string; emailVerified: boolean })
   | (VersionedRecoveryPayload & {
       kind: "BOOKING_CONFIRMATION";
       bookingId: UUIDString;
@@ -121,6 +129,14 @@ function string(value: unknown, field: string): string {
   return value;
 }
 
+function recipientUid(value: unknown): string {
+  const uid = string(value, "recipientUserId");
+  if (uid.length > 128 || uid.trim() !== uid || [...uid].some((char) => char.charCodeAt(0) <= 32 || char.charCodeAt(0) === 127)) {
+    throw new NotificationRecoveryPayloadError("recipientUserId is invalid");
+  }
+  return uid;
+}
+
 function text(value: unknown, field: string): string {
   if (typeof value !== "string") {
     throw new NotificationRecoveryPayloadError(`${field} must be a string`);
@@ -194,7 +210,8 @@ export function parseNotificationRecoveryPayload(
   }
 
   const payload = record(parsed, "recovery payload");
-  if (payload.version !== NOTIFICATION_RECOVERY_PAYLOAD_VERSION) {
+  if (payload.version !== NOTIFICATION_RECOVERY_PAYLOAD_VERSION &&
+    !(payload.version === 2 && ["BOOKING_PENDING_MODERATOR", "USER_PENDING_APPROVAL"].includes(String(payload.kind)))) {
     throw new NotificationRecoveryPayloadError("Recovery payload version is unsupported");
   }
   const base = {
@@ -241,6 +258,11 @@ export function parseNotificationRecoveryPayload(
         idempotencyKey: string(payload.idempotencyKey, "idempotencyKey"),
       };
     case "BOOKING_PENDING_MODERATOR":
+      if (payload.version === 2) return {
+        version: 2, deliveryMode: base.deliveryMode, kind,
+        bookingId: string(payload.bookingId, "bookingId") as UUIDString,
+        recipientUserId: recipientUid(payload.recipientUserId),
+      };
       return {
         ...base,
         kind,
@@ -271,6 +293,12 @@ export function parseNotificationRecoveryPayload(
         newStatus: enumValue(payload.newStatus, MEMBERSHIP_STATUSES, "newStatus"),
       };
     case "USER_PENDING_APPROVAL":
+      if (payload.version === 2) return {
+        version: 2, deliveryMode: base.deliveryMode, kind,
+        userId: string(payload.userId, "userId"),
+        emailVerified: boolean(payload.emailVerified, "emailVerified"),
+        recipientUserId: recipientUid(payload.recipientUserId),
+      };
       return {
         ...base,
         kind,

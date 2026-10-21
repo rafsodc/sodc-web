@@ -23,11 +23,15 @@ export interface RecoverableNotificationDelivery {
   attemptCount: number;
   lastAttemptedAt: string | null;
   createdAt: string;
+  recipientUserId?: string | null;
+  subjectBookingId?: string | null;
+  subjectUserId?: string | null;
 }
 
 export interface NotificationRecoveryBatchSummary {
   scanned: number;
   recovered: number;
+  skipped: number;
   failed: number;
   inProgress: number;
   alreadySent: number;
@@ -59,6 +63,7 @@ function emptySummary(): NotificationRecoveryBatchSummary {
   return {
     scanned: 0,
     recovered: 0,
+    skipped: 0,
     failed: 0,
     inProgress: 0,
     alreadySent: 0,
@@ -106,6 +111,10 @@ export async function runNotificationRecoveryBatch(
 
   for (const candidate of dependencies.candidates.slice(0, batchLimit)) {
     summary.scanned += 1;
+    if (candidate.status === NotificationDeliveryStatus.SKIPPED) {
+      summary.skipped += 1;
+      continue;
+    }
     if (candidate.status === NotificationDeliveryStatus.SENT) {
       summary.alreadySent += 1;
       continue;
@@ -154,7 +163,9 @@ export async function runNotificationRecoveryBatch(
     try {
       await dependencies.dispatch(candidate, payload);
       const current = await dependencies.getCurrent(candidate);
-      if (current?.status === NotificationDeliveryStatus.SENT) {
+      if (current?.status === NotificationDeliveryStatus.SKIPPED) {
+        summary.skipped += 1;
+      } else if (current?.status === NotificationDeliveryStatus.SENT) {
         summary.recovered += 1;
       } else if (current?.status === NotificationDeliveryStatus.PENDING) {
         summary.inProgress += 1;
