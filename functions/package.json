@@ -15,6 +15,7 @@
     "logs": "firebase functions:log",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:admin-safety-integration": "node scripts/run-admin-safety-integration.mjs",
     "test:security-integration": "node scripts/run-security-integration.mjs",
     "test:watch": "vitest",
     "test:notification-integration": "node scripts/run-notification-integration.mjs",

@@ -1,5 +1,6 @@
-import { captureSession, isSessionCurrent, runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
-import { useEffect, useState, type FormEvent } from "react";
+import { securityMutationError } from "../../../shared/utils/securityMutation";
+import { captureSession, isSessionCurrent } from "../../../shared/appShell/sessionLifecycle";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import {
   Alert,
@@ -15,7 +16,6 @@ import {
   applyActionCode,
   checkActionCode,
   confirmPasswordReset,
-  reload,
   verifyPasswordResetCode,
 } from "firebase/auth";
 import { auth } from "../../../config/firebase";
@@ -24,7 +24,7 @@ import {
   PASSWORD_POLICY_HELPER_TEXT,
   validateNewPassword,
 } from "../utils/passwordValidation";
-import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
+import { reconcileVerifiedIdentity, reloadOwnIdentity } from "../utils/reconcileVerifiedIdentity";
 import { reportError, toAuthUserFacingError } from "../../../shared/errors";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 
@@ -46,9 +46,17 @@ export default function AuthActionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const actionRequestGuard = useLatestRequestGuard();
+  const [accountCheckRequired, setAccountCheckRequired] = useState(false);
+  const [checkingAccount, setCheckingAccount] = useState(false);
+  const retryAccountCheck = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     const requestToken = actionRequestGuard.start();
+    retryAccountCheck.current = null;
+    setState("checking");
+    setError(null);
+    setAccountCheckRequired(false);
+    setCheckingAccount(false);
     if (
       !["resetPassword", "verifyEmail", "verifyAndChangeEmail"].includes(mode ?? "") ||
       !oobCode
@@ -60,9 +68,27 @@ export default function AuthActionPage() {
       };
     }
 
+    const owner = auth.currentUser;
+    const session = captureSession(owner?.uid ?? null);
+    const ownsAccount = () => Boolean(owner && auth.currentUser?.uid === owner.uid && isSessionCurrent(session) && actionRequestGuard.isCurrent(requestToken));
+    const checkVerifiedAccount = async () => {
+      if (!owner || !ownsAccount()) return;
+      setCheckingAccount(true);
+      try {
+        await reloadOwnIdentity(owner, session, ownsAccount);
+        if (!ownsAccount() || !owner.emailVerified) return;
+        await reconcileVerifiedIdentity(owner, session, ownsAccount);
+        if (!ownsAccount()) return;
+        setAccountCheckRequired(false);
+        setError(null);
+      } catch (reconciliationError) {
+        if (!ownsAccount()) return;
+        reportError("auth.action.reconcile-email", reconciliationError);
+        setAccountCheckRequired(true);
+        setError(securityMutationError(reconciliationError, "Your email is verified, but account access could not be updated. Try the account check again."));
+      } finally { if (ownsAccount()) setCheckingAccount(false); }
+    };
     const completeAction = async () => {
-      const owner = auth.currentUser;
-      const session = captureSession(owner?.uid ?? null);
       if (mode === "resetPassword") {
         await verifyPasswordResetCode(auth, oobCode);
         if (actionRequestGuard.isCurrent(requestToken)) setState("ready");
@@ -75,25 +101,18 @@ export default function AuthActionPage() {
       if (!actionRequestGuard.isCurrent(requestToken)) return;
       // A public capability must never refresh/reconcile a different account
       // which appeared while its one-time code was being applied.
-      if (owner && auth.currentUser?.uid === owner.uid && isSessionCurrent(session)) {
-        await runSessionOperation(() => reload(owner), session);
-        await runSessionOperation(() => owner.getIdToken(true), session);
-        if (mode === "verifyAndChangeEmail") {
-          try {
-            await reconcileMyEmail();
-          } catch (reconciliationError) {
-            reportError("auth.action.reconcile-email", reconciliationError);
-            // Sign-in also retries reconciliation; do not turn a successfully
-            // applied one-time action into a misleading invalid-link state.
-          }
-        }
+      if (owner) {
+        if (!ownsAccount()) return;
+        retryAccountCheck.current = checkVerifiedAccount;
+        await checkVerifiedAccount();
+        if (!ownsAccount()) return;
       }
       if (actionRequestGuard.isCurrent(requestToken)) setState("complete");
     };
 
     void completeAction().catch((actionError: unknown) => {
       reportError("auth.action.apply", actionError, { mode: mode ?? "missing" });
-      if (actionRequestGuard.isCurrent(requestToken)) {
+      if (actionRequestGuard.isCurrent(requestToken) && (!owner || ownsAccount())) {
         const context = mode === "resetPassword" ? "password-reset" : "email-action";
         setError(toAuthUserFacingError(actionError, context).message);
         setState("invalid");
@@ -203,7 +222,10 @@ export default function AuthActionPage() {
                   ? "Your email address has been changed."
                 : "Your password has been reset."}
             </Alert>
-            <Button component={RouterLink} to={ROUTES.ACCOUNT} variant="contained">
+            {accountCheckRequired ? <Button variant="contained" disabled={checkingAccount} onClick={() => void retryAccountCheck.current?.()}>
+              {checkingAccount ? "Checking account…" : "Retry account check"}
+            </Button> : null}
+            <Button component={RouterLink} to={ROUTES.ACCOUNT} variant="contained" disabled={accountCheckRequired || checkingAccount}>
               {mode !== "resetPassword" && auth.currentUser ? "Continue" : "Sign in"}
             </Button>
           </>

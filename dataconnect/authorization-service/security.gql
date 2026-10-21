@@ -2,12 +2,12 @@
 query GetUserSecurityState($userId: String!) @auth(level: NO_ACCESS) {
   userSecurityState(key: {userId: $userId}) {
     userId securityVersion membershipStatus desiredEnabled desiredAdmin verificationEmail accessReady adminReady operationId syncStatus
-    user { membershipStatus }
+    user { membershipStatus email }
   }
 }
 query GetSecurityTransition($operationId: String!) @auth(level: NO_ACCESS) {
   securityTransition(key: {operationId: $operationId}) {
-    operationId userId securityVersion membershipStatus desiredEnabled desiredAdmin authDisabled verificationEmail intentHash actorId reason syncStatus attempts
+    operationId userId securityVersion membershipStatus desiredEnabled desiredAdmin authDisabled verificationEmail intentHash actorId actorKind actorSecurityVersion noOp startedControlVersion completedControlVersion startedAdminDelta completedAdminDelta reason syncStatus attempts
   }
 }
 query ListPendingSecurityTransitions($limit: Int!) @auth(level: NO_ACCESS) {
@@ -16,46 +16,89 @@ query ListPendingSecurityTransitions($limit: Int!) @auth(level: NO_ACCESS) {
   }
 }
 mutation InitializeUserSecurityState(
+  $expectedControlVersion: Int!, $actorKind: SecurityActorKind!, $actorSecurityVersion: Int,
   $userId: String!, $membershipStatus: MembershipStatus!, $desiredEnabled: Boolean!, $desiredAdmin: Boolean!,
   $verificationEmail: String, $operationId: String!, $actorId: String!, $reason: String!, $intentHash: String!
 ) @auth(level: NO_ACCESS) @transaction {
-  query @redact {
-    user(id: $userId) @check(expr: "this != null && this.membershipStatus == vars.membershipStatus", message: "SECURITY_STATE_CONFLICT") { membershipStatus }
+  query @redact @check(expr: "vars.actorKind == 'OPERATOR' || (vars.actorKind == 'ADMIN' && response.query.control.status == 'READY' && !vars.desiredAdmin)", message: "SECURITY_ACTOR_REVOKED") @check(expr: "vars.actorKind == 'OPERATOR' || vars.actorKind == 'DRIFT' || (response.query.actor != null && response.query.actor.securityVersion == vars.actorSecurityVersion && ((vars.actorKind == 'ADMIN' && response.query.actor.accessReady && response.query.actor.adminReady && response.query.actor.syncStatus == 'READY' && response.query.actor.membershipStatus == response.query.actor.user.membershipStatus && response.query.actor.membershipStatus in ['REGULAR','RESERVE','RETIRED','INDUSTRY','CIVIL_SERVICE']) || (vars.actorKind == 'SELF' && vars.actorId == vars.userId && response.query.actor.accessReady && response.query.actor.syncStatus == 'READY' && response.query.actor.membershipStatus == response.query.actor.user.membershipStatus && response.query.actor.membershipStatus in ['REGULAR','RESERVE','RETIRED','INDUSTRY','CIVIL_SERVICE']) || (vars.actorKind == 'SELF_VERIFICATION' && vars.actorId == vars.userId && response.query.actor.syncStatus == 'READY' && (response.query.actor.verificationEmail != null || response.query.actor.accessReady))))", message: "SECURITY_ACTOR_REVOKED") {
+    actor: userSecurityState(key: {userId: $actorId}) {securityVersion accessReady adminReady syncStatus membershipStatus verificationEmail user {membershipStatus}}
+    control: adminSafetyControl(key: {id: "site-wide"}) @check(expr: "this != null && this.version == vars.expectedControlVersion", message: "ADMIN_CONTROL_CONFLICT") {version readyAdminCount status}
+    target: userSecurityState(key: {userId: $userId}) {securityVersion membershipStatus desiredAdmin desiredEnabled verificationEmail accessReady adminReady syncStatus operationId user {membershipStatus}}
+    user(id: $userId) @check(expr: "this != null && this.membershipStatus == vars.membershipStatus", message: "SECURITY_PROFILE_CONFLICT") {membershipStatus}
   }
-  userSecurityState_insert(data: { userId: $userId, securityVersion: 1, membershipStatus: $membershipStatus,
-    desiredEnabled: $desiredEnabled, desiredAdmin: $desiredAdmin, verificationEmail: $verificationEmail, accessReady: false, adminReady: false,
-    operationId: $operationId, syncStatus: PENDING })
-  securityTransition_insert(data: { operationId: $operationId, userId: $userId, securityVersion: 1,
+
+  adminSafetyControl_updateMany(where: {id: {eq: "site-wide"}, version: {eq: $expectedControlVersion}}, data: {version_update: {inc: 1}, updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "ADMIN_CONTROL_CONFLICT")
+  userSecurityState_insert(data: {userId: $userId, securityVersion: 1, membershipStatus: $membershipStatus,
+    desiredEnabled: $desiredEnabled, desiredAdmin: $desiredAdmin, verificationEmail: $verificationEmail,
+    accessReady: false, adminReady: false, operationId: $operationId, syncStatus: PENDING})
+  securityTransition_insert(data: {operationId: $operationId, userId: $userId, securityVersion: 1,
     membershipStatus: $membershipStatus, desiredEnabled: $desiredEnabled, desiredAdmin: $desiredAdmin, verificationEmail: $verificationEmail,
-    intentHash: $intentHash, actorId: $actorId, reason: $reason, syncStatus: PENDING })
+    intentHash: $intentHash, actorId: $actorId, actorKind: $actorKind, actorSecurityVersion: $actorSecurityVersion,
+    startedControlVersion_expr: "vars.expectedControlVersion + 1", reason: $reason, syncStatus: PENDING})
 }
 mutation BeginSecurityTransition(
+  $expectedControlVersion: Int!, $actorKind: SecurityActorKind!, $actorSecurityVersion: Int,
   $userId: String!, $expectedVersion: Int!, $nextVersion: Int!, $expectedMembershipStatus: MembershipStatus!,
   $membershipStatus: MembershipStatus!, $desiredEnabled: Boolean!, $desiredAdmin: Boolean!, $authDisabled: Boolean, $verificationEmail: String,
   $operationId: String!, $actorId: String!, $reason: String!, $intentHash: String!
 ) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.target != null && response.query.target.securityVersion == vars.expectedVersion && vars.nextVersion == vars.expectedVersion + 1", message: "SECURITY_STATE_CONFLICT")
+    @check(expr: "response.query.control.status == 'READY' || vars.actorKind in ['OPERATOR','DRIFT']", message: "ADMIN_SAFETY_RECOVERY_REQUIRED")
+    @check(expr: "!response.query.target.adminReady || response.query.control.readyAdminCount > 1 || vars.actorKind == 'DRIFT'", message: "LAST_ADMIN_REQUIRED")
+    @check(expr: "vars.actorKind != 'DRIFT' || (!vars.desiredEnabled && vars.desiredAdmin == response.query.target.desiredAdmin && vars.authDisabled == null && vars.membershipStatus == response.query.target.user.membershipStatus)", message: "SECURITY_DRIFT_INVALID")
+    @check(expr: "!(vars.desiredAdmin && vars.membershipStatus in ['PENDING','LOST','RESIGNED','DECEASED']) || vars.actorKind == 'DRIFT'", message: "ADMIN_RESTRICTED_STATUS")
+    @check(expr: "vars.actorKind != 'SELF' || (vars.desiredAdmin == response.query.target.desiredAdmin && vars.authDisabled == null && vars.verificationEmail == response.query.target.verificationEmail && (!vars.desiredAdmin || vars.membershipStatus != 'RESIGNED'))", message: "SECURITY_ACTOR_REVOKED")
+    @check(expr: "vars.actorKind != 'SELF_VERIFICATION' || (response.query.target.verificationEmail != null && vars.desiredAdmin == response.query.target.desiredAdmin && vars.membershipStatus == response.query.target.membershipStatus && vars.authDisabled == null && vars.verificationEmail == null)", message: "SECURITY_ACTOR_REVOKED") @check(expr: "vars.actorKind == 'OPERATOR' || vars.actorKind == 'DRIFT' || (response.query.actor != null && response.query.actor.securityVersion == vars.actorSecurityVersion && ((vars.actorKind == 'ADMIN' && response.query.actor.accessReady && response.query.actor.adminReady && response.query.actor.syncStatus == 'READY' && response.query.actor.membershipStatus == response.query.actor.user.membershipStatus && response.query.actor.membershipStatus in ['REGULAR','RESERVE','RETIRED','INDUSTRY','CIVIL_SERVICE']) || (vars.actorKind == 'SELF' && vars.actorId == vars.userId && response.query.actor.accessReady && response.query.actor.syncStatus == 'READY' && response.query.actor.membershipStatus == response.query.actor.user.membershipStatus && response.query.actor.membershipStatus in ['REGULAR','RESERVE','RETIRED','INDUSTRY','CIVIL_SERVICE']) || (vars.actorKind == 'SELF_VERIFICATION' && vars.actorId == vars.userId && response.query.actor.syncStatus == 'READY' && (response.query.actor.verificationEmail != null || response.query.actor.accessReady))))", message: "SECURITY_ACTOR_REVOKED") {
+    actor: userSecurityState(key: {userId: $actorId}) {securityVersion accessReady adminReady syncStatus membershipStatus verificationEmail user {membershipStatus}}
+    control: adminSafetyControl(key: {id: "site-wide"}) @check(expr: "this != null && this.version == vars.expectedControlVersion", message: "ADMIN_CONTROL_CONFLICT") {version readyAdminCount status}
+    target: userSecurityState(key: {userId: $userId}) {securityVersion membershipStatus desiredAdmin desiredEnabled verificationEmail accessReady adminReady syncStatus operationId user {membershipStatus}}
+  }
+
+  adminSafetyControl_updateMany(where: {id: {eq: "site-wide"}, version: {eq: $expectedControlVersion}},
+    data: {version_update: {inc: 1}, readyAdminCount_expr: "response.query.target.adminReady && response.query.control.readyAdminCount > 0 ? response.query.control.readyAdminCount - 1 : response.query.control.readyAdminCount",
+      status_expr: "vars.actorKind == 'DRIFT' && response.query.control.readyAdminCount <= 1 && response.query.target.adminReady ? 'RECOVERY_REQUIRED' : response.query.control.status", updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "ADMIN_CONTROL_CONFLICT")
   userSecurityState_updateMany(where: {userId: {eq: $userId}, securityVersion: {eq: $expectedVersion}},
     data: {securityVersion: $nextVersion, membershipStatus: $membershipStatus, desiredEnabled: $desiredEnabled,
       desiredAdmin: $desiredAdmin, verificationEmail: $verificationEmail, accessReady: false, adminReady: false, operationId: $operationId,
       syncStatus: PENDING, updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "SECURITY_STATE_CONFLICT")
   user_updateMany(where: {id: {eq: $userId}, membershipStatus: {eq: $expectedMembershipStatus}},
-    data: {membershipStatus: $membershipStatus, updatedAt_expr: "request.time", updatedBy: $actorId})
-    @check(expr: "this == 1", message: "SECURITY_PROFILE_CONFLICT")
+    data: {membershipStatus: $membershipStatus, updatedAt_expr: "request.time", updatedBy: $actorId}) @check(expr: "this == 1", message: "SECURITY_PROFILE_CONFLICT")
   securityTransition_insert(data: {operationId: $operationId, userId: $userId, securityVersion: $nextVersion,
-    membershipStatus: $membershipStatus, desiredEnabled: $desiredEnabled, desiredAdmin: $desiredAdmin,
-    authDisabled: $authDisabled, verificationEmail: $verificationEmail, intentHash: $intentHash, actorId: $actorId, reason: $reason, syncStatus: PENDING})
+    membershipStatus: $membershipStatus, desiredEnabled: $desiredEnabled, desiredAdmin: $desiredAdmin, authDisabled: $authDisabled,
+    verificationEmail: $verificationEmail, intentHash: $intentHash, actorId: $actorId, actorKind: $actorKind, actorSecurityVersion: $actorSecurityVersion,
+    startedControlVersion_expr: "vars.expectedControlVersion + 1", startedAdminDelta_expr: "response.query.target.adminReady ? -1 : 0", reason: $reason, syncStatus: PENDING})
+}
+mutation RecordSecurityNoop(
+  $expectedControlVersion: Int!, $actorKind: SecurityActorKind!, $actorSecurityVersion: Int,
+  $userId: String!, $expectedVersion: Int!, $membershipStatus: MembershipStatus!, $desiredEnabled: Boolean!, $desiredAdmin: Boolean!, $verificationEmail: String,
+  $operationId: String!, $actorId: String!, $reason: String!, $intentHash: String!
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.target != null && response.query.target.securityVersion == vars.expectedVersion && response.query.target.syncStatus == 'READY' && response.query.target.membershipStatus == vars.membershipStatus && response.query.target.user.membershipStatus == vars.membershipStatus && response.query.target.desiredEnabled == vars.desiredEnabled && response.query.target.accessReady == vars.desiredEnabled && response.query.target.adminReady == (vars.desiredEnabled && vars.desiredAdmin) && response.query.target.desiredAdmin == vars.desiredAdmin && response.query.target.verificationEmail == vars.verificationEmail", message: "SECURITY_STATE_CONFLICT")
+    @check(expr: "response.query.control.status == 'READY' || vars.actorKind == 'OPERATOR'", message: "ADMIN_SAFETY_RECOVERY_REQUIRED") @check(expr: "vars.actorKind == 'OPERATOR' || vars.actorKind == 'DRIFT' || (response.query.actor != null && response.query.actor.securityVersion == vars.actorSecurityVersion && ((vars.actorKind == 'ADMIN' && response.query.actor.accessReady && response.query.actor.adminReady && response.query.actor.syncStatus == 'READY' && response.query.actor.membershipStatus == response.query.actor.user.membershipStatus && response.query.actor.membershipStatus in ['REGULAR','RESERVE','RETIRED','INDUSTRY','CIVIL_SERVICE']) || (vars.actorKind == 'SELF' && vars.actorId == vars.userId && response.query.actor.accessReady && response.query.actor.syncStatus == 'READY' && response.query.actor.membershipStatus == response.query.actor.user.membershipStatus && response.query.actor.membershipStatus in ['REGULAR','RESERVE','RETIRED','INDUSTRY','CIVIL_SERVICE']) || (vars.actorKind == 'SELF_VERIFICATION' && vars.actorId == vars.userId && response.query.actor.syncStatus == 'READY' && (response.query.actor.verificationEmail != null || response.query.actor.accessReady))))", message: "SECURITY_ACTOR_REVOKED") {
+    actor: userSecurityState(key: {userId: $actorId}) {securityVersion accessReady adminReady syncStatus membershipStatus verificationEmail user {membershipStatus}}
+    control: adminSafetyControl(key: {id: "site-wide"}) @check(expr: "this != null && this.version == vars.expectedControlVersion", message: "ADMIN_CONTROL_CONFLICT") {version readyAdminCount status}
+    target: userSecurityState(key: {userId: $userId}) {securityVersion membershipStatus desiredAdmin desiredEnabled verificationEmail accessReady adminReady syncStatus operationId user {membershipStatus}}
+  }
+
+  adminSafetyControl_updateMany(where: {id: {eq: "site-wide"}, version: {eq: $expectedControlVersion}}, data: {version_update: {inc: 1}, updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "ADMIN_CONTROL_CONFLICT")
+  securityTransition_insert(data: {operationId: $operationId, userId: $userId, securityVersion: $expectedVersion,
+    membershipStatus: $membershipStatus, desiredEnabled: $desiredEnabled, desiredAdmin: $desiredAdmin, verificationEmail: $verificationEmail,
+    intentHash: $intentHash, actorId: $actorId, actorKind: $actorKind, actorSecurityVersion: $actorSecurityVersion,
+    noOp: true, startedControlVersion_expr: "vars.expectedControlVersion + 1", completedControlVersion_expr: "vars.expectedControlVersion + 1", reason: $reason, syncStatus: READY})
 }
 mutation CompleteSecurityTransition(
-  $userId: String!, $securityVersion: Int!, $operationId: String!, $membershipStatus: MembershipStatus!,
+  $expectedControlVersion: Int!, $userId: String!, $securityVersion: Int!, $operationId: String!, $membershipStatus: MembershipStatus!,
   $accessReady: Boolean!, $adminReady: Boolean!
 ) @auth(level: NO_ACCESS) @transaction {
   query @redact {
+    control: adminSafetyControl(key: {id: "site-wide"}) @check(expr: "this != null && this.version == vars.expectedControlVersion", message: "ADMIN_CONTROL_CONFLICT") {version readyAdminCount}
+    transition: securityTransition(key: {operationId: $operationId}) @check(expr: "this != null && this.syncStatus == 'PENDING' && this.userId == vars.userId && this.securityVersion == vars.securityVersion && this.membershipStatus == vars.membershipStatus && this.desiredEnabled == vars.accessReady && (this.desiredEnabled && this.desiredAdmin) == vars.adminReady", message: "SECURITY_STATE_CONFLICT") {syncStatus userId securityVersion membershipStatus desiredEnabled desiredAdmin}
     user(id: $userId) @check(expr: "this != null && this.membershipStatus == vars.membershipStatus", message: "SECURITY_PROFILE_CONFLICT") {membershipStatus}
   }
-  userSecurityState_updateMany(where: {userId: {eq: $userId}, securityVersion: {eq: $securityVersion}, operationId: {eq: $operationId}, syncStatus: {eq: PENDING}},
-    data: {accessReady: $accessReady, adminReady: $adminReady, syncStatus: READY, updatedAt_expr: "request.time"})
-    @check(expr: "this == 1", message: "SECURITY_STATE_CONFLICT")
-  securityTransition_update(key: {operationId: $operationId}, data: {syncStatus: READY, lastError: null, updatedAt_expr: "request.time"})
+  adminSafetyControl_updateMany(where: {id: {eq: "site-wide"}, version: {eq: $expectedControlVersion}}, data: {version_update: {inc: 1}, readyAdminCount_expr: "response.query.control.readyAdminCount + (vars.adminReady ? 1 : 0)", updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "ADMIN_CONTROL_CONFLICT")
+  userSecurityState_updateMany(where: {userId: {eq: $userId}, securityVersion: {eq: $securityVersion}, operationId: {eq: $operationId}, syncStatus: {eq: PENDING}, adminReady: {eq: false}},
+    data: {accessReady: $accessReady, adminReady: $adminReady, syncStatus: READY, updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "SECURITY_STATE_CONFLICT")
+  securityTransition_updateMany(where: {operationId: {eq: $operationId}, syncStatus: {eq: PENDING}}, data: {syncStatus: READY, lastError: null, completedControlVersion_expr: "vars.expectedControlVersion + 1", completedAdminDelta_expr: "vars.adminReady ? 1 : 0", updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "SECURITY_STATE_CONFLICT")
 }
 mutation RecordSecuritySynchronizationFailure($operationId: String!, $errorCode: String!) @auth(level: NO_ACCESS) {
   securityTransition_updateMany(where: {operationId: {eq: $operationId}, syncStatus: {eq: PENDING}},
@@ -69,4 +112,78 @@ mutation SupersedeSecurityTransition($operationId: String!) @auth(level: NO_ACCE
 
 query ListSecurityStatesForReconciliation($limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
   userSecurityStates(orderBy: {userId: ASC}, limit: $limit, offset: $offset) {userId operationId}
+}
+
+query GetAdminSafetyControl @auth(level: NO_ACCESS) {
+  adminSafetyControl(key: {id: "site-wide"}) {id version readyAdminCount status}
+}
+query ListReadyAdministrators @auth(level: NO_ACCESS) {
+  userSecurityStates(where: {adminReady: {eq: true}}, orderBy: {userId: ASC}, limit: 1001) {
+    userId securityVersion membershipStatus desiredEnabled desiredAdmin verificationEmail accessReady adminReady operationId syncStatus user {membershipStatus email}
+  }
+}
+mutation CreateAdminSafetyControl($intentHash: String!, $operationId: String!, $actorId: String!, $reason: String!, $readyAdminCount: Int!) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.roster.size() < 1001 && response.query.roster.size() == vars.readyAdminCount", message: "ADMIN_ROSTER_CONFLICT") {
+    roster: userSecurityStates(where: {adminReady: {eq: true}}, limit: 1001) {userId}
+  }
+  adminSafetyControl_insert(data: {id: "site-wide", version: 1, readyAdminCount: $readyAdminCount, status: BOOTSTRAP})
+  adminSafetyAudit_insert(data: {operationId: $operationId, actorId: $actorId, reason: $reason, action: "CREATE", intentHash: $intentHash, controlVersion: 1, readyAdminCount: $readyAdminCount})
+}
+mutation ActivateAdminSafetyControl($intentHash: String!, $expectedControlVersion: Int!, $operationId: String!, $actorId: String!, $reason: String!) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.roster.size() > 0 && response.query.roster.size() < 1001 && response.query.roster.size() == response.query.control.readyAdminCount && response.query.roster.all(s, s.accessReady && s.syncStatus == 'READY' && s.desiredEnabled && s.desiredAdmin && s.verificationEmail == null && s.membershipStatus == s.user.membershipStatus && s.membershipStatus in ['REGULAR','RESERVE','RETIRED','INDUSTRY','CIVIL_SERVICE'])", message: "ADMIN_ROSTER_CONFLICT") {
+    control: adminSafetyControl(key: {id: "site-wide"}) @check(expr: "this != null && this.version == vars.expectedControlVersion", message: "ADMIN_CONTROL_CONFLICT") {readyAdminCount version}
+    roster: userSecurityStates(where: {adminReady: {eq: true}}, limit: 1001) {accessReady syncStatus desiredEnabled desiredAdmin verificationEmail membershipStatus user {membershipStatus}}
+  }
+  adminSafetyControl_updateMany(where: {id: {eq: "site-wide"}, version: {eq: $expectedControlVersion}}, data: {version_update: {inc: 1}, status: READY, updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "ADMIN_CONTROL_CONFLICT")
+  adminSafetyAudit_insert(data: {operationId: $operationId, actorId: $actorId, reason: $reason, action: "ACTIVATE", intentHash: $intentHash, controlVersion_expr: "vars.expectedControlVersion + 1", readyAdminCount_expr: "response.query.control.readyAdminCount"})
+}
+
+mutation ConfirmPotentialLostWithAdminSafety(
+  $expectedControlVersion: Int!, $actorSecurityVersion: Int!,
+  $expectedSecurityVersion: Int!, $nextSecurityVersion: Int!, $securityOperationId: String!, $desiredAdmin: Boolean!, $securityIntentHash: String!,
+  $userId: String!, $expectedStatus: MembershipStatus!, $expectedUpdatedAt: Timestamp!,
+  $expectedEmailDeliveryVersion: Int!, $reviewedBy: String!, $reasons: [String!]!,
+  $lastSignInTime: String, $lastActivityTime: String, $inactivitySince: String, $activitySource: String, $emailBounceCount: Int!
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact {
+    actor: userSecurityState(key: {userId: $reviewedBy}) @check(expr: "this != null && this.accessReady && this.adminReady && this.syncStatus == 'READY' && this.securityVersion == vars.actorSecurityVersion && this.membershipStatus == this.user.membershipStatus && this.membershipStatus in ['REGULAR','RESERVE','RETIRED','INDUSTRY','CIVIL_SERVICE']", message: "SECURITY_ACTOR_REVOKED") {accessReady adminReady syncStatus securityVersion membershipStatus user {membershipStatus}}
+    control: adminSafetyControl(key: {id: "site-wide"}) @check(expr: "this != null && this.version == vars.expectedControlVersion && this.status == 'READY'", message: "ADMIN_CONTROL_CONFLICT") {version status}
+    target: userSecurityState(key: {userId: $userId}) @check(expr: "this != null && !this.desiredAdmin && !this.adminReady && !vars.desiredAdmin && this.securityVersion == vars.expectedSecurityVersion && vars.nextSecurityVersion == vars.expectedSecurityVersion + 1", message: "SECURITY_STATE_CONFLICT") {desiredAdmin adminReady securityVersion}
+  }
+  adminSafetyControl_updateMany(where: {id: {eq: "site-wide"}, version: {eq: $expectedControlVersion}}, data: {version_update: {inc: 1}, updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "ADMIN_CONTROL_CONFLICT")
+
+  userSecurityState_updateMany(where: {userId: {eq: $userId}, securityVersion: {eq: $expectedSecurityVersion}},
+    data: {securityVersion: $nextSecurityVersion, membershipStatus: LOST, desiredEnabled: false, desiredAdmin: $desiredAdmin,
+      accessReady: false, adminReady: false, operationId: $securityOperationId, syncStatus: PENDING, updatedAt_expr: "request.time"})
+    @check(expr: "this == 1", message: "SECURITY_STATE_CONFLICT")
+  securityTransition_insert(data: {operationId: $securityOperationId, userId: $userId, securityVersion: $nextSecurityVersion,
+    membershipStatus: LOST, desiredEnabled: false, desiredAdmin: $desiredAdmin, actorId: $reviewedBy, reason: "POTENTIAL_LOST", intentHash: $securityIntentHash, actorKind: ADMIN, actorSecurityVersion: $actorSecurityVersion, startedControlVersion_expr: "vars.expectedControlVersion + 1", syncStatus: PENDING})
+  user_updateMany(
+    where: {
+      id: { eq: $userId }
+      membershipStatus: { eq: $expectedStatus }
+      updatedAt: { eq: $expectedUpdatedAt }
+      emailDeliveryVersion: { eq: $expectedEmailDeliveryVersion }
+    }
+    data: { membershipStatus: LOST, updatedAt_expr: "request.time", updatedBy: $reviewedBy }
+  ) @check(expr: "this == 1", message: "POTENTIAL_LOST_CONFLICT")
+  potentialLostReview_insert(data: {
+    userId: $userId, previousStatus: $expectedStatus, reasons: $reasons,
+    lastSignInTime: $lastSignInTime, lastActivityTime: $lastActivityTime,
+    inactivitySince: $inactivitySince, activitySource: $activitySource, emailBounceCount: $emailBounceCount, reviewedBy: $reviewedBy
+  })
+}
+
+
+query GetAdminSafetyAudit($operationId: String!) @auth(level: NO_ACCESS) {
+  adminSafetyAudit(key: {operationId: $operationId}) {operationId actorId reason action intentHash controlVersion readyAdminCount}
+}
+
+mutation ReconcileAdminSafetyControl($intentHash: String!, $expectedControlVersion: Int!, $operationId: String!, $actorId: String!, $reason: String!, $readyAdminCount: Int!) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.roster.size() < 1001 && response.query.roster.size() == vars.readyAdminCount && response.query.roster.all(s, s.accessReady && s.syncStatus == 'READY' && s.desiredEnabled && s.desiredAdmin && s.verificationEmail == null && s.membershipStatus == s.user.membershipStatus && s.membershipStatus in ['REGULAR','RESERVE','RETIRED','INDUSTRY','CIVIL_SERVICE'])", message: "ADMIN_ROSTER_CONFLICT") {
+    control: adminSafetyControl(key: {id: "site-wide"}) @check(expr: "this != null && this.version == vars.expectedControlVersion", message: "ADMIN_CONTROL_CONFLICT") {version}
+    roster: userSecurityStates(where: {adminReady: {eq: true}}, limit: 1001) {accessReady syncStatus desiredEnabled desiredAdmin verificationEmail membershipStatus user {membershipStatus}}
+  }
+  adminSafetyControl_updateMany(where: {id: {eq: "site-wide"}, version: {eq: $expectedControlVersion}}, data: {version_update: {inc: 1}, readyAdminCount: $readyAdminCount, status_expr: "vars.readyAdminCount == 0 ? 'RECOVERY_REQUIRED' : 'BOOTSTRAP'", updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "ADMIN_CONTROL_CONFLICT")
+  adminSafetyAudit_insert(data: {operationId: $operationId, actorId: $actorId, reason: $reason, action: "RECOUNT", intentHash: $intentHash, controlVersion_expr: "vars.expectedControlVersion + 1", readyAdminCount: $readyAdminCount})
 }

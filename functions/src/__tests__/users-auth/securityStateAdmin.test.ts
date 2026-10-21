@@ -10,6 +10,6 @@ describe("security operator targeting", () => {
   it("requires independent project confirmation and audit attribution for writes", () => {
     const args = ["--project", "sodc-web-beta", "--user", "fixture", "--mode", "disable", "--apply"];
     expect(() => parseSecurityAdminArguments(args)).toThrow("Writes require");
-    expect(parseSecurityAdminArguments([...args, "--confirm-project", "sodc-web-beta", "--actor", "operator", "--reason", "Approved restriction"])).toMatchObject({apply: true});
+    expect(parseSecurityAdminArguments([...args, "--confirm-project", "sodc-web-beta", "--actor", "operator", "--reason", "Approved restriction", "--operation-id", "operator-restriction-reference"])).toMatchObject({apply: true});
   });
 });

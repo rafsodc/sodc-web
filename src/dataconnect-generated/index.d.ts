@@ -232,6 +232,16 @@ export interface AdminOptOutSectionAnnouncementVariables {
   sectionId: UUIDString;
 }
 
+export interface AdminSafetyAudit_Key {
+  operationId: string;
+  __typename?: 'AdminSafetyAudit_Key';
+}
+
+export interface AdminSafetyControl_Key {
+  id: string;
+  __typename?: 'AdminSafetyControl_Key';
+}
+
 export interface AnnouncementRecipient_Key {
   id: UUIDString;
   __typename?: 'AnnouncementRecipient_Key';

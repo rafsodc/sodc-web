@@ -7,6 +7,11 @@ export type UUIDString = string;
 export type Int64String = string;
 export type DateString = string;
 
+export enum AdminSafetyStatus {
+  BOOTSTRAP = "BOOTSTRAP",
+  READY = "READY",
+  RECOVERY_REQUIRED = "RECOVERY_REQUIRED",
+}
 export enum MembershipStatus {
   PENDING = "PENDING",
   REGULAR = "REGULAR",
@@ -18,10 +23,40 @@ export enum MembershipStatus {
   LOST = "LOST",
   DECEASED = "DECEASED",
 }
+export enum SecurityActorKind {
+  ADMIN = "ADMIN",
+  SELF = "SELF",
+  SELF_VERIFICATION = "SELF_VERIFICATION",
+  OPERATOR = "OPERATOR",
+  DRIFT = "DRIFT",
+}
 export enum SecuritySyncStatus {
   PENDING = "PENDING",
   READY = "READY",
   SUPERSEDED = "SUPERSEDED",
+}
+
+export interface ActivateAdminSafetyControlData {
+  adminSafetyControl_updateMany: number;
+  adminSafetyAudit_insert: AdminSafetyAudit_Key;
+}
+
+export interface ActivateAdminSafetyControlVariables {
+  intentHash: string;
+  expectedControlVersion: number;
+  operationId: string;
+  actorId: string;
+  reason: string;
+}
+
+export interface AdminSafetyAudit_Key {
+  operationId: string;
+  __typename?: 'AdminSafetyAudit_Key';
+}
+
+export interface AdminSafetyControl_Key {
+  id: string;
+  __typename?: 'AdminSafetyControl_Key';
 }
 
 export interface AnnouncementRecipient_Key {
@@ -35,12 +70,16 @@ export interface AnnouncementSend_Key {
 }
 
 export interface BeginSecurityTransitionData {
+  adminSafetyControl_updateMany: number;
   userSecurityState_updateMany: number;
   user_updateMany: number;
   securityTransition_insert: SecurityTransition_Key;
 }
 
 export interface BeginSecurityTransitionVariables {
+  expectedControlVersion: number;
+  actorKind: SecurityActorKind;
+  actorSecurityVersion?: number | null;
   userId: string;
   expectedVersion: number;
   nextVersion: number;
@@ -96,11 +135,13 @@ export interface CallableRateLimitBucket_Key {
 }
 
 export interface CompleteSecurityTransitionData {
+  adminSafetyControl_updateMany: number;
   userSecurityState_updateMany: number;
-  securityTransition_update?: SecurityTransition_Key | null;
+  securityTransition_updateMany: number;
 }
 
 export interface CompleteSecurityTransitionVariables {
+  expectedControlVersion: number;
   userId: string;
   securityVersion: number;
   operationId: string;
@@ -109,9 +150,76 @@ export interface CompleteSecurityTransitionVariables {
   adminReady: boolean;
 }
 
+export interface ConfirmPotentialLostWithAdminSafetyData {
+  adminSafetyControl_updateMany: number;
+  userSecurityState_updateMany: number;
+  securityTransition_insert: SecurityTransition_Key;
+  user_updateMany: number;
+  potentialLostReview_insert: PotentialLostReview_Key;
+}
+
+export interface ConfirmPotentialLostWithAdminSafetyVariables {
+  expectedControlVersion: number;
+  actorSecurityVersion: number;
+  expectedSecurityVersion: number;
+  nextSecurityVersion: number;
+  securityOperationId: string;
+  desiredAdmin: boolean;
+  securityIntentHash: string;
+  userId: string;
+  expectedStatus: MembershipStatus;
+  expectedUpdatedAt: TimestampString;
+  expectedEmailDeliveryVersion: number;
+  reviewedBy: string;
+  reasons: string[];
+  lastSignInTime?: string | null;
+  lastActivityTime?: string | null;
+  inactivitySince?: string | null;
+  activitySource?: string | null;
+  emailBounceCount: number;
+}
+
+export interface CreateAdminSafetyControlData {
+  adminSafetyControl_insert: AdminSafetyControl_Key;
+  adminSafetyAudit_insert: AdminSafetyAudit_Key;
+}
+
+export interface CreateAdminSafetyControlVariables {
+  intentHash: string;
+  operationId: string;
+  actorId: string;
+  reason: string;
+  readyAdminCount: number;
+}
+
 export interface Event_Key {
   id: UUIDString;
   __typename?: 'Event_Key';
+}
+
+export interface GetAdminSafetyAuditData {
+  adminSafetyAudit?: {
+    operationId: string;
+    actorId: string;
+    reason: string;
+    action: string;
+    intentHash: string;
+    controlVersion: number;
+    readyAdminCount: number;
+  } & AdminSafetyAudit_Key;
+}
+
+export interface GetAdminSafetyAuditVariables {
+  operationId: string;
+}
+
+export interface GetAdminSafetyControlData {
+  adminSafetyControl?: {
+    id: string;
+    version: number;
+    readyAdminCount: number;
+    status: AdminSafetyStatus;
+  } & AdminSafetyControl_Key;
 }
 
 export interface GetSecurityTransitionData {
@@ -126,6 +234,13 @@ export interface GetSecurityTransitionData {
     verificationEmail?: string | null;
     intentHash: string;
     actorId: string;
+    actorKind: SecurityActorKind;
+    actorSecurityVersion?: number | null;
+    noOp: boolean;
+    startedControlVersion?: number | null;
+    completedControlVersion?: number | null;
+    startedAdminDelta: number;
+    completedAdminDelta: number;
     reason: string;
     syncStatus: SecuritySyncStatus;
     attempts: number;
@@ -150,6 +265,7 @@ export interface GetUserSecurityStateData {
     syncStatus: SecuritySyncStatus;
     user: {
       membershipStatus: MembershipStatus;
+      email: string;
     };
   } & UserSecurityState_Key;
 }
@@ -169,11 +285,15 @@ export interface GovNotifyDeliveryModeAudit_Key {
 }
 
 export interface InitializeUserSecurityStateData {
+  adminSafetyControl_updateMany: number;
   userSecurityState_insert: UserSecurityState_Key;
   securityTransition_insert: SecurityTransition_Key;
 }
 
 export interface InitializeUserSecurityStateVariables {
+  expectedControlVersion: number;
+  actorKind: SecurityActorKind;
+  actorSecurityVersion?: number | null;
   userId: string;
   membershipStatus: MembershipStatus;
   desiredEnabled: boolean;
@@ -199,6 +319,25 @@ export interface ListPendingSecurityTransitionsData {
 
 export interface ListPendingSecurityTransitionsVariables {
   limit: number;
+}
+
+export interface ListReadyAdministratorsData {
+  userSecurityStates: ({
+    userId: string;
+    securityVersion: number;
+    membershipStatus: MembershipStatus;
+    desiredEnabled: boolean;
+    desiredAdmin: boolean;
+    verificationEmail?: string | null;
+    accessReady: boolean;
+    adminReady: boolean;
+    operationId: string;
+    syncStatus: SecuritySyncStatus;
+    user: {
+      membershipStatus: MembershipStatus;
+      email: string;
+    };
+  } & UserSecurityState_Key)[];
 }
 
 export interface ListSecurityStatesForReconciliationData {
@@ -281,6 +420,41 @@ export interface PaymentWebhookEvent_Key {
 export interface PotentialLostReview_Key {
   id: UUIDString;
   __typename?: 'PotentialLostReview_Key';
+}
+
+export interface ReconcileAdminSafetyControlData {
+  adminSafetyControl_updateMany: number;
+  adminSafetyAudit_insert: AdminSafetyAudit_Key;
+}
+
+export interface ReconcileAdminSafetyControlVariables {
+  intentHash: string;
+  expectedControlVersion: number;
+  operationId: string;
+  actorId: string;
+  reason: string;
+  readyAdminCount: number;
+}
+
+export interface RecordSecurityNoopData {
+  adminSafetyControl_updateMany: number;
+  securityTransition_insert: SecurityTransition_Key;
+}
+
+export interface RecordSecurityNoopVariables {
+  expectedControlVersion: number;
+  actorKind: SecurityActorKind;
+  actorSecurityVersion?: number | null;
+  userId: string;
+  expectedVersion: number;
+  membershipStatus: MembershipStatus;
+  desiredEnabled: boolean;
+  desiredAdmin: boolean;
+  verificationEmail?: string | null;
+  operationId: string;
+  actorId: string;
+  reason: string;
+  intentHash: string;
 }
 
 export interface RecordSecuritySynchronizationFailureData {
@@ -388,6 +562,11 @@ export function beginSecurityTransition(dc: DataConnect, vars: BeginSecurityTran
 /** Generated Node Admin SDK operation action function for the 'BeginSecurityTransition' Mutation. Allow users to pass in custom DataConnect instances. */
 export function beginSecurityTransition(vars: BeginSecurityTransitionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<BeginSecurityTransitionData>>;
 
+/** Generated Node Admin SDK operation action function for the 'RecordSecurityNoop' Mutation. Allow users to execute without passing in DataConnect. */
+export function recordSecurityNoop(dc: DataConnect, vars: RecordSecurityNoopVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordSecurityNoopData>>;
+/** Generated Node Admin SDK operation action function for the 'RecordSecurityNoop' Mutation. Allow users to pass in custom DataConnect instances. */
+export function recordSecurityNoop(vars: RecordSecurityNoopVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordSecurityNoopData>>;
+
 /** Generated Node Admin SDK operation action function for the 'CompleteSecurityTransition' Mutation. Allow users to execute without passing in DataConnect. */
 export function completeSecurityTransition(dc: DataConnect, vars: CompleteSecurityTransitionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CompleteSecurityTransitionData>>;
 /** Generated Node Admin SDK operation action function for the 'CompleteSecurityTransition' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -407,4 +586,39 @@ export function supersedeSecurityTransition(vars: SupersedeSecurityTransitionVar
 export function listSecurityStatesForReconciliation(dc: DataConnect, vars: ListSecurityStatesForReconciliationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSecurityStatesForReconciliationData>>;
 /** Generated Node Admin SDK operation action function for the 'ListSecurityStatesForReconciliation' Query. Allow users to pass in custom DataConnect instances. */
 export function listSecurityStatesForReconciliation(vars: ListSecurityStatesForReconciliationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSecurityStatesForReconciliationData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAdminSafetyControl' Query. Allow users to execute without passing in DataConnect. */
+export function getAdminSafetyControl(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAdminSafetyControlData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAdminSafetyControl' Query. Allow users to pass in custom DataConnect instances. */
+export function getAdminSafetyControl(options?: OperationOptions): Promise<ExecuteOperationResponse<GetAdminSafetyControlData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListReadyAdministrators' Query. Allow users to execute without passing in DataConnect. */
+export function listReadyAdministrators(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListReadyAdministratorsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListReadyAdministrators' Query. Allow users to pass in custom DataConnect instances. */
+export function listReadyAdministrators(options?: OperationOptions): Promise<ExecuteOperationResponse<ListReadyAdministratorsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'CreateAdminSafetyControl' Mutation. Allow users to execute without passing in DataConnect. */
+export function createAdminSafetyControl(dc: DataConnect, vars: CreateAdminSafetyControlVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAdminSafetyControlData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateAdminSafetyControl' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createAdminSafetyControl(vars: CreateAdminSafetyControlVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateAdminSafetyControlData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ActivateAdminSafetyControl' Mutation. Allow users to execute without passing in DataConnect. */
+export function activateAdminSafetyControl(dc: DataConnect, vars: ActivateAdminSafetyControlVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ActivateAdminSafetyControlData>>;
+/** Generated Node Admin SDK operation action function for the 'ActivateAdminSafetyControl' Mutation. Allow users to pass in custom DataConnect instances. */
+export function activateAdminSafetyControl(vars: ActivateAdminSafetyControlVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ActivateAdminSafetyControlData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLostWithAdminSafety' Mutation. Allow users to execute without passing in DataConnect. */
+export function confirmPotentialLostWithAdminSafety(dc: DataConnect, vars: ConfirmPotentialLostWithAdminSafetyVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostWithAdminSafetyData>>;
+/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLostWithAdminSafety' Mutation. Allow users to pass in custom DataConnect instances. */
+export function confirmPotentialLostWithAdminSafety(vars: ConfirmPotentialLostWithAdminSafetyVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostWithAdminSafetyData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetAdminSafetyAudit' Query. Allow users to execute without passing in DataConnect. */
+export function getAdminSafetyAudit(dc: DataConnect, vars: GetAdminSafetyAuditVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAdminSafetyAuditData>>;
+/** Generated Node Admin SDK operation action function for the 'GetAdminSafetyAudit' Query. Allow users to pass in custom DataConnect instances. */
+export function getAdminSafetyAudit(vars: GetAdminSafetyAuditVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAdminSafetyAuditData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ReconcileAdminSafetyControl' Mutation. Allow users to execute without passing in DataConnect. */
+export function reconcileAdminSafetyControl(dc: DataConnect, vars: ReconcileAdminSafetyControlVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReconcileAdminSafetyControlData>>;
+/** Generated Node Admin SDK operation action function for the 'ReconcileAdminSafetyControl' Mutation. Allow users to pass in custom DataConnect instances. */
+export function reconcileAdminSafetyControl(vars: ReconcileAdminSafetyControlVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReconcileAdminSafetyControlData>>;
 

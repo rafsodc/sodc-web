@@ -21,7 +21,7 @@ describe("current-authorization boundary inventory", () => {
     expect(repository).not.toContain("from \"./security-admin-generated\"");
     for (const operation of read("dataconnect/authorization-service/security.gql").matchAll(/^(?:query|mutation) (\w+)/gm)) {
       const name = operation[1][0].toLowerCase() + operation[1].slice(1);
-      expect(repository, name).toContain(`sdk.${name}(getAuthorizationDataConnect(), variables)`);
+      expect(repository, name).toMatch(new RegExp(`sdk\\.${name}\\(getAuthorizationDataConnect\\(\\)(?:, variables)?\\)`));
     }
   });
   it("awaits every member/admin guard and limits raw token role reads to boundary modules", () => {

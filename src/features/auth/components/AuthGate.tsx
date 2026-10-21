@@ -1,4 +1,5 @@
-import { acceptAuthenticatedIdentity, assertSessionAvailable, assertSessionCurrent } from "../../../shared/appShell/sessionLifecycle";
+import { securityMutationError } from "../../../shared/utils/securityMutation";
+import { acceptAuthenticatedIdentity, assertSessionAvailable, captureSession, isSessionCurrent, runSessionOperation, type SessionToken } from "../../../shared/appShell/sessionLifecycle";
 import { useEffect, useState } from "react";
 import { Link as RouterLink, Navigate } from "react-router-dom";
 import {
@@ -20,7 +21,9 @@ import EmailVerificationMessage from "./EmailVerificationMessage";
 import OnboardingShell from "./OnboardingShell";
 import { ROUTES } from "../../../constants";
 import { canAttemptSignIn } from "../utils/passwordValidation";
-import { reconcileMyEmail } from "../../../shared/utils/firebaseFunctions";
+import { assertVerifiedIdentityOwner, reconcileVerifiedIdentity, VERIFIED_IDENTITY_TIMEOUT_MS } from "../utils/reconcileVerifiedIdentity";
+import { withTimeout } from "../../../shared/utils/withTimeout";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 import { reportError, toAuthUserFacingError } from "../../../shared/errors";
 
 interface AuthGateProps {
@@ -37,6 +40,7 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const signInRequests = useLatestRequestGuard();
 
   const { isEnabled, isEnabledClaimResolved } = useEnabledClaim(user);
 
@@ -48,35 +52,59 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
     return () => unsub();
   }, []);
 
+  async function completeVerifiedSignIn(owner: User, session: SessionToken, request: number) {
+    const current = () => signInRequests.isCurrent(request);
+    await reconcileVerifiedIdentity(owner, session, current);
+    assertVerifiedIdentityOwner(owner, session, current);
+    setPassword("");
+    setError(null);
+    onRegisterComplete?.();
+  }
+
+  async function retryVerifiedAccount() {
+    if (!user) return;
+    const owner = user;
+    const request = signInRequests.start();
+    const session = captureSession(owner.uid);
+    const current = () => signInRequests.isCurrent(request) && isSessionCurrent(session) && auth.currentUser?.uid === owner.uid;
+    setSubmitting(true);
+    try { await completeVerifiedSignIn(owner, session, request); }
+    catch (caught) {
+      if (!current()) return;
+      reportError("auth.sign-in.reconcile-email", caught);
+      setError(securityMutationError(caught, "Your verified account could not be updated. Try the account check again."));
+    } finally { if (current()) setSubmitting(false); }
+  }
+
   async function handleSignIn() {
+    const request = signInRequests.start();
+    const initialSession = captureSession();
+    let owner: User | null = null;
+    let session: SessionToken | null = null;
+    const current = () => signInRequests.isCurrent(request) && (owner && session
+      ? isSessionCurrent(session) && auth.currentUser?.uid === owner.uid
+      : isSessionCurrent(initialSession));
     setError(null);
     setSubmitting(true);
     try {
       assertSessionAvailable();
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const session = acceptAuthenticatedIdentity(userCredential.user.uid);
-      await userCredential.user.getIdToken(true);
-      assertSessionCurrent(session);
-      if (userCredential.user.emailVerified) {
-        try {
-          await reconcileMyEmail();
-        } catch (reconciliationError) {
-          reportError("auth.sign-in.reconcile-email", reconciliationError);
-          // Accounts without a Data Connect profile have nothing to reconcile;
-          // a later sign-in retries after profile creation.
-        }
+      if (!signInRequests.isCurrent(request) || auth.currentUser?.uid !== userCredential.user.uid) return;
+      owner = userCredential.user;
+      session = acceptAuthenticatedIdentity(owner.uid);
+      if (owner.emailVerified) {
+        await completeVerifiedSignIn(owner, session, request);
+      } else {
+        await withTimeout(runSessionOperation(() => owner!.getIdToken(true), session), VERIFIED_IDENTITY_TIMEOUT_MS, "Refreshing sign-in timed out");
+        assertVerifiedIdentityOwner(owner, session, () => signInRequests.isCurrent(request));
+        setPassword("");
+        onRegisterComplete?.();
       }
-      assertSessionCurrent(session);
-      setPassword("");
-      if (onRegisterComplete) {
-        onRegisterComplete();
-      }
-    } catch (e: unknown) {
-      reportError("auth.sign-in", e);
-      setError(toAuthUserFacingError(e, "sign-in").message);
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (caught: unknown) {
+      if (!current()) return;
+      reportError("auth.sign-in", caught);
+      setError(owner?.emailVerified ? securityMutationError(caught, "Your verified account could not be updated. Try the account check again.") : toAuthUserFacingError(caught, "sign-in").message);
+    } finally { if (current()) setSubmitting(false); }
   }
 
   if (initialising) {
@@ -88,6 +116,12 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
   }
 
   if (user) {
+    if (user.emailVerified && (error || submitting)) {
+      return <Stack spacing={2}>
+        {error ? <Alert severity="warning">{error}</Alert> : <CircularProgress aria-label="Checking verified account" />}
+        {error ? <Button variant="contained" disabled={submitting} onClick={() => void retryVerifiedAccount()}>Retry account check</Button> : null}
+      </Stack>;
+    }
     if (!user.emailVerified) {
       return (
         <OnboardingShell activeStep="verify">

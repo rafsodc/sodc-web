@@ -1,3 +1,4 @@
+import { securityMutationError } from "../../../shared/utils/securityMutation";
 import { captureSession, isSessionCurrent, runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 import { useEffect, useRef, useState } from "react";
@@ -9,8 +10,10 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { reload, type User } from "firebase/auth";
+import type { User } from "firebase/auth";
 import { requestEmailVerification } from "../../../shared/utils/firebaseFunctions";
+import { auth } from "../../../config/firebase";
+import { reconcileVerifiedIdentity, reloadOwnIdentity } from "../utils/reconcileVerifiedIdentity";
 import { reportError, toAuthUserFacingError } from "../../../shared/errors";
 
 interface EmailVerificationMessageProps {
@@ -56,7 +59,7 @@ export default function EmailVerificationMessage({
     } catch (error) {
       if (!current()) return;
       reportError("auth.email-verification.resend", error);
-      setError(toAuthUserFacingError(error, "email-verification").message);
+      setError(securityMutationError(error, toAuthUserFacingError(error, "email-verification").message));
     } finally {
       if (current()) setSending(false);
     }
@@ -65,22 +68,22 @@ export default function EmailVerificationMessage({
   const checkVerification = async () => {
     const request = checks.start();
     const session = captureSession(user.uid);
-    const current = () => checks.isCurrent(request) && isSessionCurrent(session);
+    const current = () => checks.isCurrent(request) && isSessionCurrent(session) && auth.currentUser?.uid === user.uid;
     setChecking(true);
     setError(null);
     try {
-      await runSessionOperation(() => reload(user), session);
+      await reloadOwnIdentity(user, session, current);
       if (!current()) return;
-      await runSessionOperation(() => user.getIdToken(true), session);
+      if (!user.emailVerified) { setError("Email not yet verified. Please check your inbox and click the verification link."); return; }
+      await reconcileVerifiedIdentity(user, session, current);
       if (!current()) return;
       await new Promise((resolve) => setTimeout(resolve, 100));
       if (!current()) return;
-      if (user.emailVerified) await onVerified?.();
-      else setError("Email not yet verified. Please check your inbox and click the verification link.");
+      await onVerified?.();
     } catch (error) {
       if (!current()) return;
       reportError("auth.email-verification.check", error);
-      setError(toAuthUserFacingError(error, "email-verification").message);
+      setError(securityMutationError(error, toAuthUserFacingError(error, "email-verification").message));
     } finally {
       if (current()) setChecking(false);
     }

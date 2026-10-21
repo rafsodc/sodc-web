@@ -42,6 +42,15 @@ describe("potential lost admin list", () => {
     expect(await screen.findByText(/The change could not be confirmed/)).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
+  it("explains authoritative administrator-safety refusal without a success message", async () => {
+    confirm.mockRejectedValue({ details: { code: "ADMIN_SAFETY_RECOVERY_REQUIRED" } });
+    render(<PotentialLostMembers />);
+    fireEvent.click(await screen.findByRole("button", { name: "Mark as Lost" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Lost" }));
+    expect(await screen.findByText(/Administrator access needs recovery/)).toBeInTheDocument();
+    expect(screen.queryByText(/has been marked as Lost/)).not.toBeInTheDocument();
+  });
+
   it("disables changes when the existing membership rules forbid them", async () => {
     list.mockResolvedValue({ members: [{ ...member, canConfirm: false, blockedReason: "Administrator accounts are protected", lastSignInTime: null, lastActivityTime: null, activitySource: "ACCOUNT_CREATED" }] });
     render(<PotentialLostMembers />);

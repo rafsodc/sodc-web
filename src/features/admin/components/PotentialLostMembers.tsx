@@ -1,3 +1,4 @@
+import { securityMutationError } from "../../../shared/utils/securityMutation";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import { listPotentialLostMembers, confirmPotentialLostMember, type PotentialLostMember } from "../../../shared/utils/firebaseFunctions/potentialLost";
@@ -34,9 +35,9 @@ export default function PotentialLostMembers() {
       setMessage(`${selected.firstName} ${selected.lastName} has been marked as Lost.`);
       setSelected(null);
       await refresh();
-    } catch {
+    } catch (error) {
       setSelected(null);
-      setError("The change could not be confirmed. Refresh the list and review the member again; their details may have changed.");
+      setError(securityMutationError(error, "The change could not be confirmed. Refresh the list and review the member again; their details may have changed."));
     } finally { setSaving(false); }
   };
   const filtered = members.filter((member) => `${member.firstName} ${member.lastName} ${member.email}`.toLowerCase().includes(search.trim().toLowerCase()));
