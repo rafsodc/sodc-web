@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { captureSession, isSessionCurrent, runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -13,7 +15,7 @@ import {
 } from "@mui/material";
 import { dataConnect } from "../../../config/firebase";
 import { mutationRef, QueryFetchPolicy } from "firebase/data-connect";
-import { checkUserProfileExists, MembershipStatus } from "@dataconnect/generated";
+import { checkUserProfileExists, MembershipStatus } from "../../../shared/query/sessionDataConnect";
 import { validateUserForm } from "../../users/utils/userHelpers";
 import {
   MAX_MOBILE_NUMBER_LENGTH,
@@ -56,7 +58,14 @@ export default function ProfileCompletion({
     setEmail(userEmail);
   }, [userEmail]);
 
+  const completionRequests = useLatestRequestGuard();
+  const completionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (completionTimer.current) clearTimeout(completionTimer.current);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
+    const request = completionRequests.start();
     e.preventDefault();
     setError(null);
     setSuccess(false);
@@ -81,6 +90,7 @@ export default function ProfileCompletion({
         return;
       }
 
+      const session = captureSession(currentUser.uid);
       // Use CreateUserProfile mutation which doesn't require enabled claim
       // Note: This mutation will be available in generated SDK after schema deployment
       // For now, using mutationRef directly
@@ -128,13 +138,14 @@ export default function ProfileCompletion({
             "Profile saved but account status could not be updated. Please try again or contact support."
         );
       }
-      await currentUser.getIdToken(true);
+      await runSessionOperation(() => currentUser.getIdToken(true), session);
+      if (!completionRequests.isCurrent(request) || !isSessionCurrent(session)) return;
 
       setSuccess(true);
       if (onComplete) {
         // Wait a moment to show success message, then call onComplete
-        setTimeout(() => {
-          onComplete();
+        completionTimer.current = setTimeout(() => {
+          if (completionRequests.isCurrent(request) && isSessionCurrent(session)) onComplete();
         }, 1500);
       }
     } catch (err: unknown) {

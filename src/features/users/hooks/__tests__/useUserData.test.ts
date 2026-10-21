@@ -121,7 +121,7 @@ describe("useUserData", () => {
     vi.mocked(dataConnect.executeQuery)
       .mockRejectedValueOnce({ code: "dataconnect/unauthorized" })
       .mockResolvedValueOnce({ data: { user: mockUserData } } as any);
-    const user = enabledUser("retry-user");
+    const user = enabledUser();
 
     const { result } = renderHook(() => useUserData(user, true));
 
@@ -207,4 +207,53 @@ describe("useUserData", () => {
       { fetchPolicy: "SERVER_ONLY" },
     );
   });
+  it("clears populated data on logout and ignores an old response after B starts", async () => {
+    const a = enabledUser("A");
+    const b = enabledUser("B");
+    let resolveA!: (value: unknown) => void;
+    let resolveB!: (value: unknown) => void;
+    vi.mocked(dataConnect.executeQuery).mockImplementationOnce(() => new Promise((resolve) => { resolveA = resolve; }) as any)
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveB = resolve; }) as any);
+    const { result, rerender } = renderHook(({ user }) => useUserData(user, true), { initialProps: { user: a as typeof a | null } });
+    await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalledOnce());
+    rerender({ user: null });
+    expect(result.current.userData).toBeNull();
+    expect(result.current.loading).toBe(false);
+    rerender({ user: b });
+    await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalledTimes(2));
+    await act(async () => resolveA({ data: { user: { ...mockUserData, id: "A" } } }));
+    expect(result.current.userData).toBeNull();
+    expect(result.current.loading).toBe(true);
+    await act(async () => resolveB({ data: { user: { ...mockUserData, id: "B" } } }));
+    expect(result.current.userData?.id).toBe("B");
+    rerender({ user: null });
+    expect(result.current).toMatchObject({ userData: null, loading: false, error: null });
+  });
+  it("never displays a profile returned for another UID", async () => {
+    vi.mocked(dataConnect.executeQuery).mockResolvedValue({ data: { user: mockUserData } } as any);
+    const user = enabledUser("different-owner");
+    const { result } = renderHook(() => useUserData(user, true));
+    await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalled());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.userData).toBeNull();
+  });
+
+  it("restarts a pending initial request when StrictMode replays effects", async () => {
+    const claims: Array<(value: any) => void> = [];
+    let resolveProfile!: (value: unknown) => void;
+    const user = createMockUser({ uid: "A", getIdTokenResult: vi.fn(() => new Promise<any>((resolve) => claims.push(resolve))) });
+    vi.mocked(dataConnect.executeQuery).mockImplementation(() => new Promise((resolve) => { resolveProfile = resolve; }) as any);
+    const { result } = renderHook(() => useUserData(user, true), {
+      reactStrictMode: true,
+    });
+    await waitFor(() => expect(user.getIdTokenResult).toHaveBeenCalledTimes(2));
+    await act(async () => claims[1]!({ claims: { enabled: true } }));
+    await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalledOnce());
+    await act(async () => claims[0]!({ claims: { enabled: true } }));
+    expect(dataConnect.executeQuery).toHaveBeenCalledOnce();
+    await act(async () => resolveProfile({ data: { user: { ...mockUserData, id: "A" } } }));
+    expect(result.current.userData?.id).toBe("A");
+    expect(result.current.loading).toBe(false);
+  });
+
 });

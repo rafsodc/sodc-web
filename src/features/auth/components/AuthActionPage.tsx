@@ -1,3 +1,4 @@
+import { captureSession, isSessionCurrent, runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import {
@@ -60,6 +61,8 @@ export default function AuthActionPage() {
     }
 
     const completeAction = async () => {
+      const owner = auth.currentUser;
+      const session = captureSession(owner?.uid ?? null);
       if (mode === "resetPassword") {
         await verifyPasswordResetCode(auth, oobCode);
         if (actionRequestGuard.isCurrent(requestToken)) setState("ready");
@@ -67,10 +70,14 @@ export default function AuthActionPage() {
       }
 
       await checkActionCode(auth, oobCode);
+      if (!actionRequestGuard.isCurrent(requestToken)) return;
       await applyActionCode(auth, oobCode);
-      if (auth.currentUser) {
-        await reload(auth.currentUser);
-        await auth.currentUser.getIdToken(true);
+      if (!actionRequestGuard.isCurrent(requestToken)) return;
+      // A public capability must never refresh/reconcile a different account
+      // which appeared while its one-time code was being applied.
+      if (owner && auth.currentUser?.uid === owner.uid && isSessionCurrent(session)) {
+        await runSessionOperation(() => reload(owner), session);
+        await runSessionOperation(() => owner.getIdToken(true), session);
         if (mode === "verifyAndChangeEmail") {
           try {
             await reconcileMyEmail();
@@ -100,6 +107,7 @@ export default function AuthActionPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    const requestToken = actionRequestGuard.start();
     setError(null);
     if (password !== confirmation) {
       setError("Passwords do not match.");
@@ -109,11 +117,13 @@ export default function AuthActionPage() {
     setSubmitting(true);
     try {
       const validation = await validateNewPassword(auth, password);
+      if (!actionRequestGuard.isCurrent(requestToken)) return;
       if (!validation.isValid) {
         setError(validation.error ?? "Choose a stronger password.");
         return;
       }
       await confirmPasswordReset(auth, oobCode, password);
+      if (!actionRequestGuard.isCurrent(requestToken)) return;
       setPassword("");
       setConfirmation("");
       setState("complete");
@@ -121,7 +131,7 @@ export default function AuthActionPage() {
       reportError("auth.password-reset.complete", completionError);
       setError(toAuthUserFacingError(completionError, "password-reset").message);
     } finally {
-      setSubmitting(false);
+      if (actionRequestGuard.isCurrent(requestToken)) setSubmitting(false);
     }
   };
 

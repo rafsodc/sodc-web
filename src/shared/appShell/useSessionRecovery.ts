@@ -1,3 +1,4 @@
+import { captureSession, isSessionCurrent } from "./sessionLifecycle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "firebase/auth";
@@ -38,6 +39,8 @@ export function useSessionRecovery(
   const inactiveAtRef = useRef<number | null>(null);
   const recoveryRef = useRef<{ id: symbol; promise: Promise<void> } | null>(null);
   const recoveryGenerationRef = useRef(0);
+  const currentUidRef = useRef(user?.uid);
+  currentUidRef.current = user?.uid;
 
   useEffect(() => {
     onRecoveredRef.current = options.onRecovered;
@@ -47,6 +50,8 @@ export function useSessionRecovery(
     if (!user) return;
     if (recoveryRef.current) return recoveryRef.current.promise;
 
+    const session = captureSession(user.uid);
+    if (!isSessionCurrent(session)) return;
     const generation = recoveryGenerationRef.current;
     const recoveryId = Symbol("session-recovery");
     const operation = (async () => {
@@ -57,17 +62,18 @@ export function useSessionRecovery(
         // Data Connect does not consume TanStack Query's AbortSignal, but cancelling
         // still ensures a late result from the stale promise is ignored.
         await queryClient.cancelQueries({ type: "active" });
+        if (!isSessionCurrent(session)) return;
         await refreshToken(user);
-        if (generation !== recoveryGenerationRef.current) return;
+        if (generation !== recoveryGenerationRef.current || currentUidRef.current !== user.uid || !isSessionCurrent(session)) return;
         await onRecoveredRef.current?.();
-        if (generation !== recoveryGenerationRef.current) return;
+        if (generation !== recoveryGenerationRef.current || currentUidRef.current !== user.uid || !isSessionCurrent(session)) return;
 
         // Do not await refetches here: the query watchdog below owns their bounded
         // loading time and can offer recovery if the replacement transport also stalls.
         void queryClient.invalidateQueries({ type: "active" });
         setState(INITIAL_STATE);
       } catch (error) {
-        if (generation !== recoveryGenerationRef.current) return;
+        if (generation !== recoveryGenerationRef.current || currentUidRef.current !== user.uid || !isSessionCurrent(session)) return;
         const timedOut = error instanceof OperationTimeoutError;
         console.error(
           timedOut
@@ -133,12 +139,14 @@ export function useSessionRecovery(
 
   useEffect(() => {
     if (!user) return;
+    const watchedSession = captureSession(user.uid);
 
     const queryTimers = new Map<string, ReturnType<typeof setTimeout>>();
     const mutationTimers = new Map<number, ReturnType<typeof setTimeout>>();
     const authRecoveryAttempts = new Set<string>();
 
     const syncQueryTimers = () => {
+      if (currentUidRef.current !== user.uid || !isSessionCurrent(watchedSession)) return;
       const fetchingQueries = queryClient
         .getQueryCache()
         .getAll()
@@ -156,6 +164,7 @@ export function useSessionRecovery(
         if (queryTimers.has(query.queryHash)) continue;
 
         const timer = setTimeout(() => {
+          if (currentUidRef.current !== user.uid || !isSessionCurrent(watchedSession)) return;
           queryTimers.delete(query.queryHash);
           console.error("[session-recovery] protected query timed out", {
             queryHash: query.queryHash,
@@ -181,6 +190,7 @@ export function useSessionRecovery(
     };
 
     const syncMutationTimers = () => {
+      if (currentUidRef.current !== user.uid || !isSessionCurrent(watchedSession)) return;
       const pendingMutations = queryClient
         .getMutationCache()
         .getAll()
@@ -198,6 +208,7 @@ export function useSessionRecovery(
         if (mutationTimers.has(mutation.mutationId)) continue;
 
         const timer = setTimeout(() => {
+          if (currentUidRef.current !== user.uid || !isSessionCurrent(watchedSession)) return;
           mutationTimers.delete(mutation.mutationId);
           console.error("[session-recovery] protected mutation timed out", {
             mutationId: mutation.mutationId,
