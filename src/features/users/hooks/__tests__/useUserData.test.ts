@@ -1,10 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { useUserData } from "../useUserData";
 import { createMockUser } from "../../../../test-utils/mocks/firebase";
 import * as dataConnect from "firebase/data-connect";
 import { subscribeAuthorizationDenials } from "../../../../shared/auth/authorizationRecoveryEvents";
 import { getCurrentUserRef } from "@dataconnect/generated";
+import { captureSession, createSessionLifecycle, installSessionRuntime, suspendPrivateSession, type SessionToken } from "../../../../shared/appShell/sessionLifecycle";
+import { beginAuthorizationUpdate, resumeAuthorizationReads } from "../../../../shared/auth/authorizationUpdate";
+
+const mockAuth = vi.hoisted(() => ({ currentUser: null as { uid: string } | null }));
 
 vi.mock("firebase/data-connect", () => ({
   executeQuery: vi.fn(),
@@ -17,8 +21,9 @@ vi.mock("@dataconnect/generated", () => ({
   getCurrentUserRef: vi.fn(),
 }));
 
-vi.mock("../../../config/firebase", () => ({
+vi.mock("../../../../config/firebase", () => ({
   dataConnect: {},
+  auth: mockAuth,
 }));
 
 const mockRef = {};
@@ -47,9 +52,35 @@ function disabledUser(uid = "test-uid") {
   });
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+  return { promise, resolve, reject };
+}
+let uninstallRuntime: (() => void) | undefined;
+let activeSession: SessionToken | undefined;
+let pendingUpdate: ReturnType<typeof beginAuthorizationUpdate> | undefined;
+function installOwnedSession(uid = "test-uid") {
+  const lifecycle = createSessionLifecycle();
+  lifecycle.observe(uid);
+  mockAuth.currentUser = { uid };
+  uninstallRuntime = installSessionRuntime({ lifecycle, retire: () => lifecycle.retire(), signOut: async () => lifecycle.retire() });
+  activeSession = captureSession(uid);
+  return lifecycle;
+}
+afterEach(() => {
+  pendingUpdate?.finish(false);
+  if (activeSession) resumeAuthorizationReads(activeSession);
+  uninstallRuntime?.();
+  pendingUpdate = undefined; activeSession = undefined; uninstallRuntime = undefined;
+  mockAuth.currentUser = null;
+});
+
 describe("useUserData", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(dataConnect.executeQuery).mockReset();
     vi.mocked(getCurrentUserRef).mockReturnValue(mockRef as any);
   });
 
@@ -270,6 +301,123 @@ describe("useUserData", () => {
     await act(async () => resolveProfile({ data: { user: { ...mockUserData, id: "A" } } }));
     expect(result.current.userData?.id).toBe("A");
     expect(result.current.loading).toBe(false);
+  });
+
+  it.each(["before", "after", "unsettled"] as const)("resumes only the interrupted own-profile read when the old result settles %s handoff completion", async timing => {
+    installOwnedSession();
+    const oldRead = deferred<unknown>();
+    const freshRead = deferred<unknown>();
+    vi.mocked(dataConnect.executeQuery).mockReturnValueOnce(oldRead.promise as never).mockReturnValueOnce(freshRead.promise as never);
+    const user = enabledUser();
+    const { result } = renderHook(() => useUserData(user, true));
+    await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalledOnce());
+    act(() => { pendingUpdate = beginAuthorizationUpdate(activeSession!); });
+    if (timing === "before") await act(async () => oldRead.resolve({ data: { user: mockUserData } }));
+    expect(dataConnect.executeQuery).toHaveBeenCalledOnce();
+    act(() => pendingUpdate!.finish(true));
+    // This read must start without waiting for the old unabortable promise.
+    await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalledTimes(2));
+    expect(dataConnect.executeQuery).toHaveBeenLastCalledWith(mockRef, { fetchPolicy: "SERVER_ONLY" });
+    expect(result.current.userData).toBeNull();
+    expect(result.current.loading).toBe(true);
+    await act(async () => freshRead.resolve({ data: { user: { ...mockUserData, membershipStatus: "RESERVE" } } }));
+    expect(result.current.userData?.membershipStatus).toBe("RESERVE");
+    expect(result.current.loading).toBe(false);
+    if (timing !== "before") await act(async () => oldRead.resolve({ data: { user: mockUserData } }));
+    expect(result.current.userData?.membershipStatus).toBe("RESERVE");
+    // A later update does not turn this hook into an unconditional background poll.
+    act(() => { pendingUpdate = beginAuthorizationUpdate(activeSession!); pendingUpdate.finish(true); });
+    expect(dataConnect.executeQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits for explicit recovery after a committed change cannot refresh", async () => {
+    installOwnedSession();
+    const oldRead = deferred<unknown>();
+    vi.mocked(dataConnect.executeQuery).mockReturnValueOnce(oldRead.promise as never)
+      .mockResolvedValue({ data: { user: { ...mockUserData, membershipStatus: "RESERVE" } } } as never);
+    const user = enabledUser();
+    const { result } = renderHook(() => useUserData(user, true));
+    await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalledOnce());
+    act(() => { pendingUpdate = beginAuthorizationUpdate(activeSession!); pendingUpdate.finish(false, true); });
+    await act(async () => oldRead.resolve({ data: { user: mockUserData } }));
+    expect(dataConnect.executeQuery).toHaveBeenCalledOnce();
+    expect(result.current.userData).toBeNull();
+    act(() => resumeAuthorizationReads(activeSession!));
+    await waitFor(() => expect(result.current.userData?.membershipStatus).toBe("RESERVE"));
+    expect(dataConnect.executeQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it("resumes an interrupted load if the write fails without leaving a read fence", async () => {
+    installOwnedSession();
+    const oldRead = deferred<unknown>();
+    vi.mocked(dataConnect.executeQuery).mockReturnValueOnce(oldRead.promise as never)
+      .mockResolvedValue({ data: { user: mockUserData } } as never);
+    const user = enabledUser();
+    const { result } = renderHook(() => useUserData(user, true));
+    await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalledOnce());
+    act(() => { pendingUpdate = beginAuthorizationUpdate(activeSession!); pendingUpdate.finish(false); });
+    await waitFor(() => expect(result.current.userData).toEqual(mockUserData));
+    expect(dataConnect.executeQuery).toHaveBeenCalledTimes(2);
+    await act(async () => oldRead.resolve({ data: { user: mockUserData } }));
+  });
+
+  it.each(["logout", "replacement", "retirement", "disabled", "suspended", "unmount"])("does not restart interrupted work after %s", async departure => {
+    const lifecycle = installOwnedSession();
+    const oldRead = deferred<unknown>();
+    vi.mocked(dataConnect.executeQuery).mockReturnValue(oldRead.promise as never);
+    const user = enabledUser();
+    const { result, rerender, unmount } = renderHook(({ owner, enabled }) => useUserData(owner, enabled),
+      {initialProps: {owner: user as typeof user | null, enabled: true}});
+    await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalledOnce());
+    act(() => { pendingUpdate = beginAuthorizationUpdate(activeSession!); });
+    if (departure === "logout") { mockAuth.currentUser = null; lifecycle.observe(null); rerender({owner: null, enabled: true}); }
+    if (departure === "replacement") { mockAuth.currentUser = {uid: "B"}; lifecycle.observe("B"); rerender({owner: enabledUser("B"), enabled: true}); }
+    if (departure === "retirement") lifecycle.retire();
+    if (departure === "disabled") rerender({owner: user, enabled: false});
+    if (departure === "suspended") suspendPrivateSession(activeSession!);
+    if (departure === "unmount") unmount();
+    act(() => pendingUpdate!.finish(true));
+    await act(async () => oldRead.resolve({data: {user: mockUserData}}));
+    expect(dataConnect.executeQuery).toHaveBeenCalledOnce();
+    expect(result.current.userData).toBeNull();
+  });
+
+  it("restarts a claims lookup interrupted when the hook mounts during the handoff", async () => {
+    installOwnedSession();
+    act(() => { pendingUpdate = beginAuthorizationUpdate(activeSession!); });
+    const oldClaims = deferred<unknown>();
+    const user = enabledUser();
+    vi.mocked(user.getIdTokenResult).mockReturnValueOnce(oldClaims.promise as never);
+    vi.mocked(dataConnect.executeQuery).mockResolvedValue({data: {user: mockUserData}} as never);
+    const { result } = renderHook(() => useUserData(user, true));
+    await waitFor(() => expect(user.getIdTokenResult).toHaveBeenCalledOnce());
+    expect(dataConnect.executeQuery).not.toHaveBeenCalled();
+    act(() => pendingUpdate!.finish(true));
+    await waitFor(() => expect(result.current.userData).toEqual(mockUserData));
+    expect(dataConnect.executeQuery).toHaveBeenCalledOnce();
+    expect(dataConnect.executeQuery).toHaveBeenLastCalledWith(mockRef, {fetchPolicy: "SERVER_ONLY"});
+    await act(async () => oldClaims.resolve({claims: {enabled: true}}));
+    expect(dataConnect.executeQuery).toHaveBeenCalledOnce();
+  });
+
+  it("does not recover an obsolete denial after the replacement profile has loaded", async () => {
+    installOwnedSession();
+    const oldRead = deferred<unknown>();
+    vi.mocked(dataConnect.executeQuery).mockReturnValueOnce(oldRead.promise as never)
+      .mockResolvedValue({data: {user: {...mockUserData, membershipStatus: "RESERVE"}}} as never);
+    const denied = vi.fn();
+    const unsubscribe = subscribeAuthorizationDenials(denied);
+    try {
+      const user = enabledUser();
+      const { result } = renderHook(() => useUserData(user, true));
+      await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalledOnce());
+      act(() => { pendingUpdate = beginAuthorizationUpdate(activeSession!); pendingUpdate.finish(true); });
+      await waitFor(() => expect(result.current.userData?.membershipStatus).toBe("RESERVE"));
+      await act(async () => oldRead.reject(new Error("ACCESS_REVOKED")));
+      expect(result.current.userData?.membershipStatus).toBe("RESERVE");
+      expect(denied).not.toHaveBeenCalled();
+      expect(dataConnect.executeQuery).toHaveBeenCalledTimes(2);
+    } finally { unsubscribe(); }
   });
 
 });
