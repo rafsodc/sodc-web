@@ -41,7 +41,7 @@ describe("GOV.UK Notify delivery mode contracts", () => {
     expect(announcements).toContain("effectiveDeliveryMode");
     expect(delivery).toContain("govNotifyReferenceForMode");
     expect(transactionalDelivery).toContain(
-      "deliveryKey: govNotifyReferenceForMode(request.deliveryKey, deliveryMode)",
+      "govNotifyReferenceForMode(request.deliveryKey, deliveryMode)",
     );
   });
 });

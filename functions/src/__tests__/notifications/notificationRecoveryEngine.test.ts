@@ -89,6 +89,12 @@ function recoveryHarness(initial: MutableDelivery, send: () => Promise<void>) {
       stored.providerMessageId = args.providerMessageId;
       return true;
     },
+    async markSkipped(args) {
+      if (stored.status !== NotificationDeliveryStatus.PENDING || stored.attemptCount !== args.attemptCount ||
+        stored.lastAttemptedAt !== args.lastAttemptedAt) return false;
+      stored.status = NotificationDeliveryStatus.SKIPPED;
+      return true;
+    },
     async markFailed(args) {
       if (
         stored.status !== NotificationDeliveryStatus.PENDING ||

@@ -57,18 +57,19 @@ describe("notification recovery dispatch routing", () => {
     const notifyBookingPending = vi.fn(async () => undefined);
     const dispatch = createNotificationRecoveryDispatcher(APP_BASE_URL, { notifyBookingPending });
     const payload: NotificationRecoveryPayload = {
-      version: 1,
+      version: 2,
       kind: "BOOKING_PENDING_MODERATOR",
       bookingId: "77777777-7777-4777-8777-777777777777",
-      recipientEmail: "moderator@example.com",
+      recipientUserId: "original-moderator",
     };
 
-    await dispatch(candidate(payload), payload);
+    await dispatch({ ...candidate(payload), recipientUserId: payload.recipientUserId, subjectBookingId: payload.bookingId }, payload);
 
     expect(notifyBookingPending).toHaveBeenCalledWith({
       bookingId: payload.bookingId,
       idempotencyKey: `recovery:${payload.bookingId}`,
-      recipientEmails: [payload.recipientEmail],
+      recipientUserIds: [payload.recipientUserId],
+      recoveryDeliveryKey: candidate(payload).deliveryKey,
       notifyMember: false,
       appBaseUrl: APP_BASE_URL,
       deliveryMode: undefined,
@@ -117,5 +118,33 @@ describe("notification recovery dispatch routing", () => {
       "does not match its ledger identity"
     );
     expect(notifyBookingConfirmation).not.toHaveBeenCalled();
+  });
+});
+
+describe("applicant privileged recovery identity", () => {
+  const payload = { version: 2, kind: "USER_PENDING_APPROVAL", userId: "applicant", emailVerified: true, recipientUserId: "original-admin" } as const;
+  it("keeps the applicant subject separate and only retries the original staff UID", async () => {
+    const notifyPendingApproval = vi.fn(async () => undefined);
+    const dispatch = createNotificationRecoveryDispatcher(APP_BASE_URL, { notifyPendingApproval });
+    const row = { ...candidate(payload), recipientUserId: "original-admin", subjectUserId: "applicant" };
+    await dispatch(row, payload);
+    expect(notifyPendingApproval).toHaveBeenCalledWith({ userId: "applicant", emailVerified: true,
+      recipientUserIds: ["original-admin"], recoveryDeliveryKey: row.deliveryKey, appBaseUrl: APP_BASE_URL, deliveryMode: undefined });
+  });
+  it.each([{ recipientUserId: "replacement-admin", subjectUserId: "applicant" }, { recipientUserId: "original-admin", subjectUserId: "other-applicant" }])("rejects mismatched applicant/recipient ledger metadata", async (metadata) => {
+      const notifyPendingApproval = vi.fn(async () => undefined);
+      const dispatch = createNotificationRecoveryDispatcher(APP_BASE_URL, { notifyPendingApproval });
+      await expect(dispatch({ ...candidate(payload), ...metadata }, payload)).rejects.toThrow(/ledger identity/);
+      expect(notifyPendingApproval).not.toHaveBeenCalled();
+    });
+  it("terminal-skips an email-only applicant recovery without interpreting that email as a current UID", async () => {
+    const old = { version: 1, kind: "USER_PENDING_APPROVAL", userId: "applicant", emailVerified: true, recipientEmail: "reassigned@example.com" } as const;
+    const notifyPendingApproval = vi.fn(async () => undefined);
+    const sendNotification = vi.fn(async (request) => {
+      expect(await request.send()).toMatchObject({ outcome: "skipped", reason: "LEGACY_RECIPIENT_IDENTITY_UNVERIFIABLE" });
+      return { outcome: "skipped" as const };
+    });
+    await createNotificationRecoveryDispatcher(APP_BASE_URL, { notifyPendingApproval, sendNotification })(candidate(old), old);
+    expect(notifyPendingApproval).not.toHaveBeenCalled(); expect(sendNotification).toHaveBeenCalledOnce();
   });
 });

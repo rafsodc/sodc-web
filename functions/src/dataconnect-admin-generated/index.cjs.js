@@ -55,6 +55,7 @@ const NotificationDeliveryStatus = {
   PENDING: "PENDING",
   SENT: "SENT",
   FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
 }
 exports.NotificationDeliveryStatus = NotificationDeliveryStatus;
 
@@ -697,6 +698,34 @@ function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOptions, opti
   return dcInstance.executeMutation('MarkNotificationDeliverySentById', inputVars, inputOpts);
 }
 exports.markNotificationDeliverySentById = markNotificationDeliverySentById;
+
+function markNotificationDeliverySkippedById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationDeliverySkippedById', inputVars, inputOpts);
+}
+exports.markNotificationDeliverySkippedById = markNotificationDeliverySkippedById;
+
+function listLegacyBookingStaffNotificationDeliveries(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListLegacyBookingStaffNotificationDeliveries', inputVars, inputOpts);
+}
+exports.listLegacyBookingStaffNotificationDeliveries = listLegacyBookingStaffNotificationDeliveries;
+
+function listLegacyApplicantStaffNotificationDeliveries(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListLegacyApplicantStaffNotificationDeliveries', inputVars, inputOpts);
+}
+exports.listLegacyApplicantStaffNotificationDeliveries = listLegacyApplicantStaffNotificationDeliveries;
+
+function deleteNotificationDeliveryIntegrationFixture(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('DeleteNotificationDeliveryIntegrationFixture', inputVars, inputOpts);
+}
+exports.deleteNotificationDeliveryIntegrationFixture = deleteNotificationDeliveryIntegrationFixture;
 
 function markNotificationDeliveryFailedById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
