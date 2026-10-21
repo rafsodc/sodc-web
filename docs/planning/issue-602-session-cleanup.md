@@ -31,6 +31,7 @@ Validation performed:
 
 - Complete frontend coverage run: **120 files / 944 tests passed**; statements **80.70%**, branches **76.91%**, functions **77.24%**, lines **82.03%**. All configured coverage thresholds passed.
 - The coverage run includes three local fixture destination guard tests; unsafe project/host input is rejected before Admin SDK loading or account creation.
+- After merging integration commit `7bcca76084833770f11615f43922d02987e15298` (#651), lint, production build and the same complete frontend coverage suite passed again. Affected Functions notification/dispatcher/cross-cutting contract checks also passed: **31 files / 287 tests**.
 - Lint and production build passed. The build notes that the fallback dynamic Firebase import shares an existing static chunk; it completes successfully.
 - Browser discovery found three cases; a non-opted-in runner invocation reported **three skipped**, which is not browser acceptance evidence.
 - No emulators, seed accounts, cloud services, deployments or real member data were used.
