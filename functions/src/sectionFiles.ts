@@ -1,3 +1,4 @@
+import { currentAuthorization } from "./currentAuthorization";
 import { createHash, randomUUID } from "node:crypto";
 import { getStorage } from "firebase-admin/storage";
 import * as logger from "firebase-functions/logger";
@@ -204,15 +205,15 @@ function validateFileSignature(bytes: Buffer, contentType: string): void {
   }
 }
 
-function requestContext(
+async function requestContext(
   request: CallableRequest,
   rateLimitName: RateLimitedCallableName,
 ): Promise<{ uid: string; isAdmin: boolean }> {
-  requireEnabled(request);
+  await requireEnabled(request);
   const uid = request.auth!.uid;
   return enforceRateLimit(rateLimitName, uid).then(() => ({
     uid,
-    isAdmin: request.auth!.token.admin === true,
+    isAdmin: currentAuthorization(request).isAdmin,
   }));
 }
 

@@ -63,7 +63,7 @@ export async function fetchStripeArtifactsForOrder(args: {
 export const getMyTicketOrderStripeArtifactsBatch = onCall(
   { region: FUNCTIONS_REGION, secrets: [stripeSecret] },
   async (request) => {
-    requireEnabled(request);
+    await requireEnabled(request);
     const uid = request.auth!.uid;
     await enforceRateLimit("getMyTicketOrderStripeArtifactsBatch", uid);
     const orderIds = Array.isArray(request.data?.orderIds)

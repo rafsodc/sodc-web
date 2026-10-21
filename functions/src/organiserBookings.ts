@@ -1,3 +1,4 @@
+import { currentAuthorization } from "./currentAuthorization";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getEventByIdForCallable, getSectionByIdForCallable, getUserMembershipStatus, getUserUserGroupsForAdmin, getBookingsForBookerAndEvent } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
@@ -22,11 +23,11 @@ export async function requireManagedBookingEvent(eventId: string, actorId: strin
 /** Only organisers can read another user's booking and eligibility for this event. */
 export const getManagedBookingContext = onCall({ region: FUNCTIONS_REGION }, async (request) => {
   try {
-    requireEnabled(request);
+    await requireEnabled(request);
     await enforceRateLimit("getManagedBookingContext", request.auth!.uid);
     const eventId = validateUUID(requireString(request.data?.eventId, "eventId"));
     const bookerId = managedBookerId(request.data?.bookerId);
-    const event = await requireManagedBookingEvent(eventId, request.auth!.uid, request.auth!.token.admin === true);
+    const event = await requireManagedBookingEvent(eventId, request.auth!.uid, currentAuthorization(request).isAdmin);
     const [profile, groups, section, bookings] = await Promise.all([
       getUserMembershipStatus({ id: bookerId }),
       getUserUserGroupsForAdmin({ userId: bookerId }),

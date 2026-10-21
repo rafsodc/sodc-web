@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { initializeUserSecurityState } from "../src/currentAuthorizationTransitions";
 /**
  * CLI script to call devResetAndSeed function.
  * 
@@ -41,7 +42,7 @@
 import * as admin from "firebase-admin";
 import * as readline from "readline";
 import {
-  listUsers as dcListUsers,
+  serviceListUsers as dcListUsers,
   deleteUser as dcDeleteUser,
   createUser,
   MembershipStatus,
@@ -320,6 +321,7 @@ async function main() {
     try {
       console.log("\n🔄 Creating user profile...");
       await createUser(mutationVars);
+      await initializeUserSecurityState({userId: userRecord.uid, actorId: "dev-reset", reason: "DEV_BOOTSTRAP", allowAdminBootstrap: true});
       console.log("✅ User created successfully");
     } catch (error: any) {
       console.error("\n❌ Error creating user profile:", error?.message);

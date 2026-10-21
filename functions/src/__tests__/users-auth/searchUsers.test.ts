@@ -16,7 +16,7 @@ vi.mock("firebase-functions/logger", () => ({
   error: vi.fn(),
 }));
 
-const mockDcListUsers = vi.spyOn(admin, "listUsers");
+const mockDcListUsers = vi.spyOn(admin, "serviceListUsers");
 const mockListAllAuthUsers = vi.spyOn(helpers, "listAllAuthUsers");
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
 const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
@@ -31,7 +31,7 @@ const handler = searchUsers as unknown as Handler;
 
 function adminRequest(data: Record<string, unknown> = {}) {
   return {
-    auth: { uid: "admin-uid", token: { admin: true, enabled: true } },
+    auth: { uid: "admin-uid", token: { admin: true, enabled: true, securityVersion: 1 } },
     data: { searchTerm: "alice", ...data },
   };
 }

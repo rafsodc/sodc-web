@@ -1,3 +1,4 @@
+import { currentAuthorization } from "./currentAuthorization";
 import { ticketPreferences } from "./ticketPreferences";
 import { handleOrganiserGuestStripeEvent } from "./organiserGuestPayments";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
@@ -55,13 +56,13 @@ function details(data: Record<string, unknown>) {
   };
 }
 async function moderate(request: CallableRequest, eventId: string) {
-  requireEnabled(request);
+  await requireEnabled(request);
   const { data } = await db.getOrganiserGuestEvent({ eventId });
   if (!data.event) throw new HttpsError("not-found", "Event not found");
   await requireSectionModerator(
     data.event.section.id,
     request.auth!.uid,
-    request.auth!.token.admin === true,
+    currentAuthorization(request).isAdmin,
   );
   return data.event;
 }
@@ -185,7 +186,7 @@ export const getOrganiserGuestList = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
     try {
-      requireEnabled(request);
+      await requireEnabled(request);
       await enforceRateLimit("getOrganiserGuestList", request.auth!.uid);
       const eventId = validateUUID(
         requireString(request.data?.eventId, "eventId"),
@@ -201,7 +202,7 @@ export const getOrganiserGuestList = onCall(
       const ids = Array.from(new Set(guests.flatMap((guest) => guest.sitNextToUserIds)));
       const names = new Map<string, string>();
       for (let offset = 0; offset < ids.length; offset += 100) {
-        const { data } = await db.listUserNamesByIds({ ids: ids.slice(offset, offset + 100) });
+        const { data } = await db.serviceListUserNamesByIds({ ids: ids.slice(offset, offset + 100) });
         for (const user of data.users) names.set(user.id, `${user.firstName} ${user.lastName}`.trim());
       }
       return {
@@ -223,7 +224,7 @@ export const manageOrganiserGuest = onCall(
   { region: FUNCTIONS_REGION, secrets: [stripeSecret] },
   async (request) => {
     try {
-      requireEnabled(request);
+      await requireEnabled(request);
       await enforceRateLimit("manageOrganiserGuest", request.auth!.uid);
       const eventId = validateUUID(
         requireString(request.data?.eventId, "eventId"),

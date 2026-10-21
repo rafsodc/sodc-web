@@ -1,0 +1,72 @@
+# Service-only operations are deployed before protected client connector gates.
+query GetUserSecurityState($userId: String!) @auth(level: NO_ACCESS) {
+  userSecurityState(key: {userId: $userId}) {
+    userId securityVersion membershipStatus desiredEnabled desiredAdmin verificationEmail accessReady adminReady operationId syncStatus
+    user { membershipStatus }
+  }
+}
+query GetSecurityTransition($operationId: String!) @auth(level: NO_ACCESS) {
+  securityTransition(key: {operationId: $operationId}) {
+    operationId userId securityVersion membershipStatus desiredEnabled desiredAdmin authDisabled verificationEmail intentHash actorId reason syncStatus attempts
+  }
+}
+query ListPendingSecurityTransitions($limit: Int!) @auth(level: NO_ACCESS) {
+  securityTransitions(where: {syncStatus: {eq: PENDING}}, orderBy: {updatedAt: ASC}, limit: $limit) {
+    operationId
+  }
+}
+mutation InitializeUserSecurityState(
+  $userId: String!, $membershipStatus: MembershipStatus!, $desiredEnabled: Boolean!, $desiredAdmin: Boolean!,
+  $verificationEmail: String, $operationId: String!, $actorId: String!, $reason: String!, $intentHash: String!
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact {
+    user(id: $userId) @check(expr: "this != null && this.membershipStatus == vars.membershipStatus", message: "SECURITY_STATE_CONFLICT") { membershipStatus }
+  }
+  userSecurityState_insert(data: { userId: $userId, securityVersion: 1, membershipStatus: $membershipStatus,
+    desiredEnabled: $desiredEnabled, desiredAdmin: $desiredAdmin, verificationEmail: $verificationEmail, accessReady: false, adminReady: false,
+    operationId: $operationId, syncStatus: PENDING })
+  securityTransition_insert(data: { operationId: $operationId, userId: $userId, securityVersion: 1,
+    membershipStatus: $membershipStatus, desiredEnabled: $desiredEnabled, desiredAdmin: $desiredAdmin, verificationEmail: $verificationEmail,
+    intentHash: $intentHash, actorId: $actorId, reason: $reason, syncStatus: PENDING })
+}
+mutation BeginSecurityTransition(
+  $userId: String!, $expectedVersion: Int!, $nextVersion: Int!, $expectedMembershipStatus: MembershipStatus!,
+  $membershipStatus: MembershipStatus!, $desiredEnabled: Boolean!, $desiredAdmin: Boolean!, $authDisabled: Boolean, $verificationEmail: String,
+  $operationId: String!, $actorId: String!, $reason: String!, $intentHash: String!
+) @auth(level: NO_ACCESS) @transaction {
+  userSecurityState_updateMany(where: {userId: {eq: $userId}, securityVersion: {eq: $expectedVersion}},
+    data: {securityVersion: $nextVersion, membershipStatus: $membershipStatus, desiredEnabled: $desiredEnabled,
+      desiredAdmin: $desiredAdmin, verificationEmail: $verificationEmail, accessReady: false, adminReady: false, operationId: $operationId,
+      syncStatus: PENDING, updatedAt_expr: "request.time"}) @check(expr: "this == 1", message: "SECURITY_STATE_CONFLICT")
+  user_updateMany(where: {id: {eq: $userId}, membershipStatus: {eq: $expectedMembershipStatus}},
+    data: {membershipStatus: $membershipStatus, updatedAt_expr: "request.time", updatedBy: $actorId})
+    @check(expr: "this == 1", message: "SECURITY_PROFILE_CONFLICT")
+  securityTransition_insert(data: {operationId: $operationId, userId: $userId, securityVersion: $nextVersion,
+    membershipStatus: $membershipStatus, desiredEnabled: $desiredEnabled, desiredAdmin: $desiredAdmin,
+    authDisabled: $authDisabled, verificationEmail: $verificationEmail, intentHash: $intentHash, actorId: $actorId, reason: $reason, syncStatus: PENDING})
+}
+mutation CompleteSecurityTransition(
+  $userId: String!, $securityVersion: Int!, $operationId: String!, $membershipStatus: MembershipStatus!,
+  $accessReady: Boolean!, $adminReady: Boolean!
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact {
+    user(id: $userId) @check(expr: "this != null && this.membershipStatus == vars.membershipStatus", message: "SECURITY_PROFILE_CONFLICT") {membershipStatus}
+  }
+  userSecurityState_updateMany(where: {userId: {eq: $userId}, securityVersion: {eq: $securityVersion}, operationId: {eq: $operationId}, syncStatus: {eq: PENDING}},
+    data: {accessReady: $accessReady, adminReady: $adminReady, syncStatus: READY, updatedAt_expr: "request.time"})
+    @check(expr: "this == 1", message: "SECURITY_STATE_CONFLICT")
+  securityTransition_update(key: {operationId: $operationId}, data: {syncStatus: READY, lastError: null, updatedAt_expr: "request.time"})
+}
+mutation RecordSecuritySynchronizationFailure($operationId: String!, $errorCode: String!) @auth(level: NO_ACCESS) {
+  securityTransition_updateMany(where: {operationId: {eq: $operationId}, syncStatus: {eq: PENDING}},
+    data: {lastError: $errorCode, attempts_update: {inc: 1}, updatedAt_expr: "request.time"})
+}
+
+mutation SupersedeSecurityTransition($operationId: String!) @auth(level: NO_ACCESS) {
+  securityTransition_updateMany(where: {operationId: {eq: $operationId}, syncStatus: {eq: PENDING}},
+    data: {syncStatus: SUPERSEDED, lastError: null, updatedAt_expr: "request.time"})
+}
+
+query ListSecurityStatesForReconciliation($limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
+  userSecurityStates(orderBy: {userId: ASC}, limit: $limit, offset: $offset) {userId operationId}
+}

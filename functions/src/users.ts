@@ -1,7 +1,8 @@
+import { getUserSecurityState } from "./securityRepository";
 import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import { listUsers as dcListUsers, type MembershipStatus } from "@dataconnect/admin-generated";
+import { serviceListUsers as dcListUsers, type MembershipStatus } from "@dataconnect/admin-generated";
 import { requireAuth, requireAdmin, requireString, validateStringLength, MAX_NAME_LENGTH, mapUserRecord, handleFunctionError, listAllAuthUsers } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
 import { FUNCTIONS_REGION } from "./constants";
@@ -69,7 +70,7 @@ export const updateDisplayName = onCall(
 export const updateUserDisplayName = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-  requireAdmin(request);
+  await requireAdmin(request);
   await enforceRateLimit("updateUserDisplayName", request.auth!.uid);
   const userId = requireString(request.data.userId, "userId");
   const displayName = validateStringLength(
@@ -94,7 +95,7 @@ export const updateUserDisplayName = onCall(
 export const searchUsers = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-  requireAdmin(request);
+  await requireAdmin(request);
   await enforceRateLimit("searchUsers", request.auth!.uid);
   const searchTerm = requireString(request.data.searchTerm, "searchTerm");
   const page = request.data.page || 1;
@@ -153,7 +154,7 @@ function formatClaimValue(value: unknown): string {
 export const listUsersWithoutDataConnectProfile = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-    requireAdmin(request);
+    await requireAdmin(request);
     await enforceRateLimit("listUsersWithoutDataConnectProfile", request.auth!.uid);
 
     try {
@@ -210,7 +211,7 @@ export const listUsersWithoutDataConnectProfile = onCall(
 export const listUsersPendingApproval = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-    requireAdmin(request);
+    await requireAdmin(request);
     await enforceRateLimit("listUsersPendingApproval", request.auth!.uid);
 
     try {
@@ -289,11 +290,11 @@ export const syncPendingUserClaims = onCall(
         return { success: true };
       }
 
-      await admin.auth().setCustomUserClaims(uid, {
-        ...currentClaims,
-        enabled: false,
-      });
-      logger.info(`syncPendingUserClaims: enabled=false for uid=${uid}`);
+      // Profile creation is PENDING and has no member authority. Existing security
+      // state belongs to the transition service and must not be rewritten here.
+      if ((await getUserSecurityState({userId: uid})).data.userSecurityState) return {success: true};
+      await admin.auth().setCustomUserClaims(uid, { ...currentClaims, enabled: false });
+      logger.info(`syncPendingUserClaims: onboarding disabled for uid=${uid}`);
 
       // No-ops unless this call is what actually put the user into the approval queue
       // (verified email + profile submitted + awaiting approval) — see #271.

@@ -214,7 +214,7 @@ function optionalReason(value: unknown): string | undefined {
 export const getTemplateSyncStatus = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<{ results: TemplateSyncResult[] }> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     await enforceRateLimit("getTemplateSyncStatus", request.auth!.uid);
     try {
       return { results: await computeTemplateSyncResults() };
@@ -227,7 +227,7 @@ export const getTemplateSyncStatus = onCall(
 export const setNotifyTemplateBinding = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<{ results: TemplateSyncResult[] }> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     await enforceRateLimit("setNotifyTemplateBinding", request.auth!.uid);
 
     const templateKey = requireString(request.data?.templateKey, "templateKey");
@@ -289,7 +289,7 @@ export const setNotifyTemplateBinding = onCall(
 export const moveAllNotifyTemplateBindingsToLatestVersion = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<{ results: TemplateSyncResult[] }> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     await enforceRateLimit("moveAllNotifyTemplateBindingsToLatestVersion", request.auth!.uid);
 
     try {

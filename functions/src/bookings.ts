@@ -1,3 +1,4 @@
+import { currentAuthorization } from "./currentAuthorization";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { randomUUID } from "node:crypto";
@@ -294,7 +295,7 @@ function bookingSubmissionOutcome(approvalStatus: BookingApprovalStatus) {
  * Requires `idempotencyKey` (UUID) per submit attempt; enforced in DB via (event, booker, key) uniqueness.
  */
 export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] }, async (request) => {
-  requireEnabled(request);
+  await requireEnabled(request);
   const actorId = request.auth!.uid;
   const organiserBooking = request.data?.bookerId !== undefined;
   const uid = organiserBooking ? managedBookerId(request.data.bookerId) : actorId;
@@ -322,7 +323,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
   await enforceRateLimit("submitEventBookingReplayLookup", actorId);
   // Authorise before reading another user's replay.
   if (organiserBooking) {
-    await requireManagedBookingEvent(eventId, actorId, request.auth!.token.admin === true);
+    await requireManagedBookingEvent(eventId, actorId, currentAuthorization(request).isAdmin);
   }
   const replayLookup = await getBookingReplayForBookerEventKey({
     bookerId: uid,

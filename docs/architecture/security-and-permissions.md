@@ -52,9 +52,9 @@ Guard helpers in `functions/src/helpers.ts`:
 - `requireAuth(request)`:
   - rejects unauthenticated requests.
 - `requireEnabled(request)`:
-  - requires authenticated caller with `enabled: true`.
+  - awaits current ready authority, eligible profile status and exact token version, with `enabled: true` as an additional restrictive check.
 - `requireAdmin(request)`:
-  - requires authenticated caller with both `admin: true` and `enabled: true`.
+  - awaits the same current-state check plus `adminReady`, with both `admin: true` and `enabled: true` as additional restrictive checks.
   - an admin claim never bypasses account revocation.
 
 Typical usage:
@@ -65,20 +65,15 @@ Typical usage:
 - Admin-only operations: `requireAdmin`, which also enforces `enabled: true`.
 - A caller with `admin: true` but `enabled !== true` is rejected; admin status is not an access-revocation bypass.
 
-The Data Connect membership status is the source of truth for the `enabled` claim,
-including for users who retain an `admin` claim. Restricted statuses always reconcile
-to `enabled: false`. Status changes use fail-closed cross-system write ordering, and an
-admin can repair drift by re-submitting the stored status. Notify-derived `LOST`
-transitions reuse the durable receipt retry when claim reconciliation fails. See
-[Enabled-claim reconciliation](../operations/enabled-claim-reconciliation.md) for the
-status mapping, failure modes, and recovery procedure.
+Member/admin access now requires server-owned `UserSecurityState`, ready current profile eligibility and an exact `securityVersion` in addition to restrictive Auth claims. Direct connector operations use redacted current-state lookups; protected mutations check before writes in a transaction. Functions await fresh current-state guards and use effective permissions for downstream bypasses. See [Current authorization and migration](../operations/current-authorization.md) for the durable transition contract, full operation inventory, staged rollout, operator path and capability limits. Auth claims alone cannot grant access, and refresh-token revocation alone does not recall an already-issued token.
 
-The only callable entry points intentionally using authentication without an enabled claim are pre-approval setup flows:
+The callable entry points intentionally using authentication without an enabled claim are explicit onboarding and own-session exceptions:
 
 - `updateDisplayName`, used while establishing the account profile.
 - `syncPendingUserClaims`, used to reconcile the pre-approval Auth/profile state.
 - `requestEmailVerification`, which derives the recipient from Firebase Auth and
   sends no member data to the caller.
+- `getMyAuthorizationStatus`, which returns only current own-session ready/role/version metadata, never member data; it cannot initialize/grant access or release a verification hold.
 - `reconcileMyEmail`, which copies the signed-in user's verified Firebase Auth
   address to only their own Data Connect profile.
 

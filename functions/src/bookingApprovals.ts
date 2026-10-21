@@ -128,7 +128,7 @@ export function resolveBookingApprovalReview(args: {
 export const reviewBookingRevision = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request) => {
-    requireAdmin(request);
+    await requireAdmin(request);
     const reviewerId = request.auth!.uid;
     await enforceRateLimit("reviewBookingRevision", reviewerId);
 

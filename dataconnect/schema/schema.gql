@@ -880,3 +880,41 @@ type OrganiserGuestAudit @table {
   actor: String!
   occurredAt: Timestamp! @default(expr: "request.time")
 }
+
+
+# Current authorization is owned by trusted services, never a client profile mutation.
+# Ready flags deny access while Auth synchronization is pending or failed.
+enum SecuritySyncStatus { PENDING READY SUPERSEDED }
+type UserSecurityState @table(key: ["user"]) {
+  user: User!
+  securityVersion: Int!
+  membershipStatus: MembershipStatus!
+  desiredEnabled: Boolean!
+  desiredAdmin: Boolean!
+  verificationEmail: String
+  accessReady: Boolean!
+  adminReady: Boolean!
+  operationId: String!
+  syncStatus: SecuritySyncStatus!
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type SecurityTransition @table(key: ["operationId"]) {
+  operationId: String!
+  userId: String!
+  securityVersion: Int!
+  membershipStatus: MembershipStatus!
+  desiredEnabled: Boolean!
+  desiredAdmin: Boolean!
+  # null preserves the Auth disabled flag; operator transitions explicitly set it.
+  authDisabled: Boolean
+  verificationEmail: String
+  intentHash: String!
+  actorId: String!
+  reason: String!
+  syncStatus: SecuritySyncStatus!
+  attempts: Int! @default(value: 0)
+  lastError: String
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}

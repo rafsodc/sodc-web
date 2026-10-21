@@ -10,7 +10,7 @@ import {
   summarizeServiceBackground,
 } from "../../pendingApprovalAdminAlert";
 
-const mockGetUserById = vi.spyOn(dc, "getUserById");
+const mockGetUserById = vi.spyOn(dc, "serviceGetUserById");
 const mockGetAdminUsers = vi.spyOn(helpers, "getAdminUsers");
 const mockSendOnce = vi.spyOn(notificationDelivery, "sendNotificationOnce");
 

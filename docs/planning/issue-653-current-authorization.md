@@ -1,6 +1,6 @@
 # Issue #653: enforcement of issued-token revocation
 
-Status: implementation not started. This document seeds the issue branch and draft PR.
+Status: implemented for review; non-production signed-token gate and combined #602/#651/#654 integration/release evidence remain pending. No deployment or live account/data changes have been made.
 
 - Issue: https://github.com/rafsodc/sodc-web/issues/653
 - Detailed approach, acceptance criteria and test matrix: https://github.com/rafsodc/sodc-web/issues/653#issuecomment-6301906956
@@ -38,10 +38,10 @@ An already-issued token can retain access after stored enabled/admin claims are 
 - Retain a real signed JWT in memory before revocation, then reuse its exact bytes against deployed callable and client connector read/write endpoints. Verify no side effect and measure denial latency; repeat restore/regrant and partial-failure cases.
 - Regenerate SDKs and run full frontend/Functions tests, lint, coverage and builds. Record real-token Dev/Beta release evidence.
 
-The detailed issue comment distinguishes existing baseline results from new coverage still required. No new tests or application changes are included in this setup commit.
+Implementation, rollout and validation details: [current authorization runbook](../operations/current-authorization.md). The real-token release gate is isolated from normal mocked suites and remains unexecuted until the reviewed non-production deployment is available.
 
 ## Dependencies and delivery
 
-Agree the shared state and transition contract with #654 before implementation. #602 and #651 can proceed independently. Schema/service operations precede dependent Functions and Hosting; remove temporary legacy compatibility before closing.
+The concrete shared state/transition contract is implemented and documented for #654. #602 and #651 can proceed independently. Schema/service operations precede dependent Functions and Hosting; remove temporary legacy compatibility before closing.
 
 Keep this PR in draft until implementation, required tests and release evidence are complete. Update this plan and the PR description as implementation develops.

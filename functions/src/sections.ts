@@ -1,3 +1,4 @@
+import { currentAuthorization } from "./currentAuthorization";
 import * as firebaseAdmin from "firebase-admin";
 import { hasCurrentProfileReview } from "./memberReviewRules";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
@@ -5,13 +6,13 @@ import * as logger from "firebase-functions/logger";
 import { requireEnabled, requireString, handleFunctionError } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
 import {
-  getSectionById,
+  serviceGetSectionById as getSectionById,
   getSectionMembers,
-  getEventsForSection,
-  getEventById,
-  getUserAccessGroupsById,
+  serviceGetEventsForSection as getEventsForSection,
+  serviceGetEventById as getEventById,
+  serviceGetUserAccessGroupsById as getUserAccessGroupsById,
   getUserMembershipStatus,
-  listUsers,
+  serviceListUsers as listUsers,
   searchSectionMemberCandidates,
   SectionType,
   TicketAudience,
@@ -190,7 +191,7 @@ async function loadSectionMemberPopulation(
 export const getSectionMembersMerged = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-    requireEnabled(request);
+    await requireEnabled(request);
     await enforceRateLimit("getSectionMembersMerged", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const callerUid = request.auth!.uid;
@@ -287,7 +288,7 @@ export interface SectionMemberSearchResult {
 export const searchSectionMembers = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-    requireEnabled(request);
+    await requireEnabled(request);
     await enforceRateLimit("searchSectionMembers", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const searchTerm = typeof request.data?.searchTerm === "string" ? request.data.searchTerm.trim() : "";
@@ -299,9 +300,9 @@ export const searchSectionMembers = onCall(
     const callerUid = request.auth!.uid;
 
     try {
-      const scope = await loadSectionMemberSearchScope(sectionId, callerUid, request.auth!.token.admin === true);
+      const scope = await loadSectionMemberSearchScope(sectionId, callerUid, currentAuthorization(request).isAdmin);
       const forBooking = request.data?.forBooking === true;
-      if (forBooking) await requireSectionModerator(sectionId, callerUid, request.auth!.token.admin === true);
+      if (forBooking) await requireSectionModerator(sectionId, callerUid, currentAuthorization(request).isAdmin);
       if (!searchTerm && includeIds.size === 0) {
         return { members: [], hasMore: false };
       }
@@ -369,10 +370,10 @@ export interface SectionForUserResponse {
 export const getSectionForUser = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<SectionForUserResponse> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const callerUid = request.auth!.uid;
-    const callerIsAdmin = request.auth!.token?.admin === true;
+    const callerIsAdmin = currentAuthorization(request).isAdmin;
 
     try {
       const { section, hasAccess, canModerate } = await resolveSectionAccess(sectionId, callerUid);
@@ -395,10 +396,10 @@ export interface SectionEventsForUserResponse {
 export const getSectionEventsForUser = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<SectionEventsForUserResponse> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const callerUid = request.auth!.uid;
-    const callerIsAdmin = request.auth!.token?.admin === true;
+    const callerIsAdmin = currentAuthorization(request).isAdmin;
 
     try {
       const { hasAccess } = await resolveSectionAccess(sectionId, callerUid);
@@ -422,10 +423,10 @@ export interface EventForUserResponse {
 export const getEventForUser = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<EventForUserResponse> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     const eventId = requireString(request.data?.eventId, "eventId");
     const callerUid = request.auth!.uid;
-    const callerIsAdmin = request.auth!.token?.admin === true;
+    const callerIsAdmin = currentAuthorization(request).isAdmin;
 
     try {
       const eventResult = await getEventById({ id: eventId });

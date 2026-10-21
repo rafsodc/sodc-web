@@ -33,7 +33,7 @@ function event(start = "2020-01-01", end = "2021-01-01", maxGuests = 2) {
   return { id: eventId, section: { id: sectionId }, bookingStartDateTime: start, bookingEndDateTime: end, maxGuestsWithoutModeratorApproval: maxGuests, ticketTypes };
 }
 function request(overrides: Record<string, unknown> = {}, actor = "organiser", admin = false) {
-  return { auth: { uid: actor, token: { enabled: true, admin } }, data: {
+  return { auth: { uid: actor, token: { enabled: true, securityVersion: 1, admin } }, data: {
     eventId, bookerId: "member", idempotencyKey: key, lines: [{ ticketTypeId: memberId, sortOrder: 0 }], ...overrides,
   } };
 }

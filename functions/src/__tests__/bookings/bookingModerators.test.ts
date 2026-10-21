@@ -5,7 +5,7 @@ import * as helpers from "../../helpers";
 import { resolveBookingModeratorEmails } from "../../bookingModerators";
 
 const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
-const mockListUsers = vi.spyOn(admin, "listUsers");
+const mockListUsers = vi.spyOn(admin, "serviceListUsers");
 const mockGetAdminUsers = vi.spyOn(helpers, "getAdminUsers");
 
 describe("resolveBookingModeratorEmails", () => {

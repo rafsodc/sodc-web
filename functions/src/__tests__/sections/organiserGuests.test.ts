@@ -72,7 +72,7 @@ function request(data: Record<string, unknown>, authenticated = false) {
   return {
     data,
     ...(authenticated
-      ? { auth: { uid: "organiser", token: { enabled: true } } }
+      ? { auth: { uid: "organiser", token: { enabled: true, securityVersion: 1 } } }
       : {}),
   } as Parameters<typeof manageOrganiserGuest.run>[0];
 }
@@ -312,7 +312,7 @@ describe("organiser guest capability and permissions", () => {
   });
   it("resolves selected seating user IDs to current names in organiser reports", async () => {
     vi.spyOn(db, "listOrganiserGuests").mockResolvedValue({ data: { organiserGuests: [{ ...base, sitNextToUserIds: ["user-alex", "missing-user"] }] } } as never);
-    const names = vi.spyOn(db, "listUserNamesByIds").mockResolvedValue({ data: { users: [{ id: "user-alex", firstName: "Alex", lastName: "Member" }] } });
+    const names = vi.spyOn(db, "serviceListUserNamesByIds").mockResolvedValue({ data: { users: [{ id: "user-alex", firstName: "Alex", lastName: "Member" }] } });
     const result = await getOrganiserGuestList.run(request({ eventId: id }, true));
     expect(result.guests[0]).toMatchObject({ sitNextToUserIds: ["user-alex", "missing-user"], seatingPreferences: ["Alex Member", "Unavailable member"] });
     expect(names).toHaveBeenCalledWith({ ids: ["user-alex", "missing-user"] });

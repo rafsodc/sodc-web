@@ -409,6 +409,32 @@ export interface ConfirmPotentialLostVariables {
   emailBounceCount: number;
 }
 
+export interface ConfirmPotentialLostWithSecurityStateData {
+  userSecurityState_updateMany: number;
+  securityTransition_insert: SecurityTransition_Key;
+  user_updateMany: number;
+  potentialLostReview_insert: PotentialLostReview_Key;
+}
+
+export interface ConfirmPotentialLostWithSecurityStateVariables {
+  expectedSecurityVersion: number;
+  nextSecurityVersion: number;
+  securityOperationId: string;
+  desiredAdmin: boolean;
+  securityIntentHash: string;
+  userId: string;
+  expectedStatus: MembershipStatus;
+  expectedUpdatedAt: TimestampString;
+  expectedEmailDeliveryVersion: number;
+  reviewedBy: string;
+  reasons: string[];
+  lastSignInTime?: string | null;
+  lastActivityTime?: string | null;
+  inactivitySince?: string | null;
+  activitySource?: string | null;
+  emailBounceCount: number;
+}
+
 export interface ConfirmProfileReviewData {
   user_update?: User_Key | null;
 }
@@ -3868,6 +3894,314 @@ export interface Section_Key {
   __typename?: 'Section_Key';
 }
 
+export interface SecurityTransition_Key {
+  operationId: string;
+  __typename?: 'SecurityTransition_Key';
+}
+
+export interface ServiceGetEventByIdData {
+  event?: {
+    id: UUIDString;
+    section: {
+      id: UUIDString;
+    } & Section_Key;
+    title: string;
+    location?: string | null;
+    guestOfHonour?: string | null;
+    sponsors?: string | null;
+    details?: string | null;
+    startDateTime: TimestampString;
+    endDateTime: TimestampString;
+    bookingStartDateTime: TimestampString;
+    bookingEndDateTime: TimestampString;
+    maxGuestsWithoutModeratorApproval: number;
+    ticketTypes: ({
+      id: UUIDString;
+      title: string;
+      description?: string | null;
+      audience: TicketAudience;
+      price: number;
+      includesDinner: boolean;
+      includesSymposium: boolean;
+      sortOrder: number;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+    } & TicketType_Key)[];
+  } & Event_Key;
+}
+
+export interface ServiceGetEventByIdVariables {
+  id: UUIDString;
+}
+
+export interface ServiceGetEventsForSectionData {
+  section?: {
+    id: UUIDString;
+    events: ({
+      id: UUIDString;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+    } & Event_Key)[];
+  } & Section_Key;
+}
+
+export interface ServiceGetEventsForSectionVariables {
+  sectionId: UUIDString;
+}
+
+export interface ServiceGetSectionByIdData {
+  section?: {
+    id: UUIDString;
+    name: string;
+    type: SectionType;
+    description?: string | null;
+    isOpenForRegistration?: boolean | null;
+    allowedUserGroups?: UUIDString[] | null;
+    purposeLinks: ({
+      purposes?: SectionUserGroupPurpose[] | null;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+        subscribable?: boolean | null;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+    })[];
+  } & Section_Key;
+}
+
+export interface ServiceGetSectionByIdVariables {
+  id: UUIDString;
+}
+
+export interface ServiceGetUserAccessGroupsByIdData {
+  user?: {
+    id: string;
+    userGroups: ({
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+      } & UserGroup_Key;
+    })[];
+  } & User_Key;
+}
+
+export interface ServiceGetUserAccessGroupsByIdVariables {
+  userId: string;
+}
+
+export interface ServiceGetUserByIdData {
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
+    membershipStatus: MembershipStatus;
+    requestedMembershipStatus?: MembershipStatus | null;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
+  } & User_Key;
+}
+
+export interface ServiceGetUserByIdVariables {
+  id: string;
+}
+
+export interface ServiceGetUserGroupByIdData {
+  userGroup?: {
+    id: UUIDString;
+    name: string;
+    description?: string | null;
+    membershipStatuses?: MembershipStatus[] | null;
+    subscribable?: boolean | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
+    users: ({
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        membershipStatus: MembershipStatus;
+      } & User_Key;
+    })[];
+    purposeLinks: ({
+      purposes?: SectionUserGroupPurpose[] | null;
+      section: {
+        id: UUIDString;
+        name: string;
+        type: SectionType;
+        description?: string | null;
+      } & Section_Key;
+    })[];
+  } & UserGroup_Key;
+}
+
+export interface ServiceGetUserGroupByIdVariables {
+  id: UUIDString;
+}
+
+export interface ServiceListEventBookingsForAdminData {
+  event?: {
+    id: UUIDString;
+    bookingTicketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+    } & TicketOrder_Key)[];
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
+      approvalReviewedBy?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+      revisionGroupId: UUIDString;
+      revisionNumber: number;
+      supersededAt?: TimestampString | null;
+      supersedesBooking?: {
+        id: UUIDString;
+        revisionNumber: number;
+      } & Booking_Key;
+      clientSubmissionKey?: string | null;
+      sitNextToUserIds?: string[] | null;
+      accommodationRequested: boolean;
+      accommodationNote?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      createdBy?: string | null;
+      updatedBy?: string | null;
+      booker: {
+        rank?: string | null;
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        membershipStatus: MembershipStatus;
+      } & User_Key;
+      lines: ({
+        id: UUIDString;
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        bookingPlace: {
+          id: UUIDString;
+          attendanceVersion: number;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceDietaryNote?: string | null;
+          attendanceAccommodationRequested?: boolean | null;
+          attendanceAccommodationNote?: string | null;
+          attendanceSitNextToUserIds?: string[] | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+            audience: TicketAudience;
+            includesDinner: boolean;
+            includesSymposium: boolean;
+          } & TicketType_Key;
+          paymentAllocations: ({
+            id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            ticketOrderId: UUIDString;
+          } & BookingPlacePaymentAllocation_Key)[];
+        } & BookingPlace_Key;
+        guestUser?: {
+          rank?: string | null;
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+          membershipStatus: MembershipStatus;
+        } & User_Key;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+          audience: TicketAudience;
+          price: number;
+          includesDinner: boolean;
+          includesSymposium: boolean;
+        } & TicketType_Key;
+      } & BookingLine_Key)[];
+    } & Booking_Key)[];
+  } & Event_Key;
+}
+
+export interface ServiceListEventBookingsForAdminVariables {
+  eventId: UUIDString;
+}
+
+export interface ServiceListUserNamesByIdsData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+
+export interface ServiceListUserNamesByIdsVariables {
+  ids: string[];
+}
+
+export interface ServiceListUsersData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
+    membershipStatus: MembershipStatus;
+    requestedMembershipStatus?: MembershipStatus | null;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
+  } & User_Key)[];
+}
+
 export interface SetNotifyTemplateReplyToOverrideData {
   notifyTemplateReplyToOverride_upsert: NotifyTemplateReplyToOverride_Key;
   notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
@@ -4295,6 +4629,11 @@ export interface UpsertUserVariables {
 export interface UserGroup_Key {
   id: UUIDString;
   __typename?: 'UserGroup_Key';
+}
+
+export interface UserSecurityState_Key {
+  userId: string;
+  __typename?: 'UserSecurityState_Key';
 }
 
 export interface UserUserGroup_Key {
@@ -4988,6 +5327,11 @@ export function getPotentialLostProfile(dc: DataConnect, vars: GetPotentialLostP
 /** Generated Node Admin SDK operation action function for the 'GetPotentialLostProfile' Query. Allow users to pass in custom DataConnect instances. */
 export function getPotentialLostProfile(vars: GetPotentialLostProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPotentialLostProfileData>>;
 
+/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLostWithSecurityState' Mutation. Allow users to execute without passing in DataConnect. */
+export function confirmPotentialLostWithSecurityState(dc: DataConnect, vars: ConfirmPotentialLostWithSecurityStateVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostWithSecurityStateData>>;
+/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLostWithSecurityState' Mutation. Allow users to pass in custom DataConnect instances. */
+export function confirmPotentialLostWithSecurityState(vars: ConfirmPotentialLostWithSecurityStateVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostWithSecurityStateData>>;
+
 /** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLost' Mutation. Allow users to execute without passing in DataConnect. */
 export function confirmPotentialLost(dc: DataConnect, vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
 /** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLost' Mutation. Allow users to pass in custom DataConnect instances. */
@@ -5237,6 +5581,51 @@ export function getSectionAnnouncementOptOut(vars: GetSectionAnnouncementOptOutV
 export function getMyAnnouncementPreferences(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyAnnouncementPreferencesData>>;
 /** Generated Node Admin SDK operation action function for the 'GetMyAnnouncementPreferences' Query. Allow users to pass in custom DataConnect instances. */
 export function getMyAnnouncementPreferences(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyAnnouncementPreferencesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserById' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetUserById(dc: DataConnect, vars: ServiceGetUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserById' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetUserById(vars: ServiceGetUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceListUsers' Query. Allow users to execute without passing in DataConnect. */
+export function serviceListUsers(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListUsersData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceListUsers' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceListUsers(options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListUsersData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceListUserNamesByIds' Query. Allow users to execute without passing in DataConnect. */
+export function serviceListUserNamesByIds(dc: DataConnect, vars: ServiceListUserNamesByIdsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListUserNamesByIdsData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceListUserNamesByIds' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceListUserNamesByIds(vars: ServiceListUserNamesByIdsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListUserNamesByIdsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserAccessGroupsById' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetUserAccessGroupsById(dc: DataConnect, vars: ServiceGetUserAccessGroupsByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserAccessGroupsByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserAccessGroupsById' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetUserAccessGroupsById(vars: ServiceGetUserAccessGroupsByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserAccessGroupsByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetEventsForSection' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetEventsForSection(dc: DataConnect, vars: ServiceGetEventsForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetEventsForSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetEventsForSection' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetEventsForSection(vars: ServiceGetEventsForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetEventsForSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetEventById' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetEventById(dc: DataConnect, vars: ServiceGetEventByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetEventByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetEventById' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetEventById(vars: ServiceGetEventByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetEventByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetSectionById' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetSectionById(dc: DataConnect, vars: ServiceGetSectionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetSectionByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetSectionById' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetSectionById(vars: ServiceGetSectionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetSectionByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserGroupById' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetUserGroupById(dc: DataConnect, vars: ServiceGetUserGroupByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserGroupByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserGroupById' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetUserGroupById(vars: ServiceGetUserGroupByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserGroupByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceListEventBookingsForAdmin' Query. Allow users to execute without passing in DataConnect. */
+export function serviceListEventBookingsForAdmin(dc: DataConnect, vars: ServiceListEventBookingsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListEventBookingsForAdminData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceListEventBookingsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceListEventBookingsForAdmin(vars: ServiceListEventBookingsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListEventBookingsForAdminData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetTicketAttendanceForManagement' Query. Allow users to execute without passing in DataConnect. */
 export function getTicketAttendanceForManagement(dc: DataConnect, vars: GetTicketAttendanceForManagementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketAttendanceForManagementData>>;

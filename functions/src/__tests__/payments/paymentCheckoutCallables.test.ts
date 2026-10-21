@@ -67,7 +67,7 @@ const ticketHandler = createTicketCheckoutSession as unknown as Handler;
 const eventHandler = createEventBookingCheckoutSession as unknown as Handler;
 
 function enabledRequest(data: Record<string, unknown>) {
-  return { auth: { uid: USER_ID, token: { enabled: true } }, data };
+  return { auth: { uid: USER_ID, token: { enabled: true, securityVersion: 1 } }, data };
 }
 
 function ticketType(price = 50) {

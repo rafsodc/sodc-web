@@ -8,6 +8,7 @@ export default defineConfig([
     "coverage",
     "lib",
     "src/dataconnect-admin-generated",
+    "src/security-admin-generated",
     "src/generatedEmailTemplateManifest.ts",
   ]),
   js.configs.recommended,

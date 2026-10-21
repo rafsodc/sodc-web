@@ -1,0 +1,305 @@
+# Trusted backend reads; caller authorization is enforced before invoking these operations.
+query ServiceGetUserById($id: String!) @auth(level: NO_ACCESS) {
+  user(id: $id) {
+    id
+    firstName
+    lastName
+    email
+    serviceNumber
+    mobileNumber
+    postNominals
+    membershipStatus
+    requestedMembershipStatus
+    isRegular
+    isReserve
+    isCivilServant
+    isIndustry
+    rank
+    shareContactInfo
+    announcementOptOutAll
+    legacyPasswordMigrated
+    profileReviewedAt
+    createdAt
+    updatedAt
+    createdBy
+    updatedBy
+  }
+}
+
+# List all users (admin only - admins must also be enabled)
+
+query ServiceListUsers @auth(level: NO_ACCESS) {
+  # Without an explicit limit, Data Connect silently caps this at its default
+  # of 100 rows -- confirmed live against production, where it truncated the
+  # User Groups and Audit Logs admin views to the first 100 of 918 members
+  # with no error. 5000 gives headroom well past current membership; move to
+  # real server-side pagination before membership approaches that ceiling.
+  users(limit: 5000) {
+    id
+    firstName
+    lastName
+    email
+    serviceNumber
+    mobileNumber
+    postNominals
+    membershipStatus
+    requestedMembershipStatus
+    isRegular
+    isReserve
+    isCivilServant
+    isIndustry
+    rank
+    shareContactInfo
+    announcementOptOutAll
+    legacyPasswordMigrated
+    profileReviewedAt
+    createdAt
+    updatedAt
+    createdBy
+    updatedBy
+  }
+}
+
+# Resolve the user IDs stored in booking seating preferences without loading
+# every member profile into the event admin surface.
+
+query ServiceListUserNamesByIds($ids: [String!]!) @auth(level: NO_ACCESS) {
+  users(where: { id: { in: $ids } }, limit: 5000) {
+    id
+    firstName
+    lastName
+  }
+}
+
+# SODC Section and Access Group Queries
+
+# Get all sections (admin only - admins must also be enabled)
+
+query ServiceGetUserAccessGroupsById($userId: String!) @auth(level: NO_ACCESS) {
+  user(id: $userId) {
+    id
+    userGroups: userUserGroups_on_user {
+      userGroup {
+        id
+        name
+        description
+      }
+    }
+  }
+}
+
+# Admin only — accepts an arbitrary sectionId with no relationship check. Non-admin members
+# go through the getSectionEventsForUser callable, which checks their actual section access
+# server-side before calling this same query with admin SDK credentials.
+
+query ServiceGetEventsForSection($sectionId: UUID!) @auth(level: NO_ACCESS) {
+  section(id: $sectionId) {
+    id
+    events: events_on_section(orderBy: { startDateTime: ASC }) {
+      id
+      title
+      location
+      guestOfHonour
+      sponsors
+      details
+      startDateTime
+      endDateTime
+      bookingStartDateTime
+      bookingEndDateTime
+      maxGuestsWithoutModeratorApproval
+    }
+  }
+}
+
+# Admin only — see GetEventsForSection. Non-admin members go through getEventForUser.
+
+query ServiceGetEventById($id: UUID!) @auth(level: NO_ACCESS) {
+  event(id: $id) {
+    id
+    section {
+      id
+    }
+    title
+    location
+    guestOfHonour
+    sponsors
+    details
+    startDateTime
+    endDateTime
+    bookingStartDateTime
+    bookingEndDateTime
+    maxGuestsWithoutModeratorApproval
+    ticketTypes: ticketTypes_on_event(orderBy: { sortOrder: ASC }) {
+      id
+      title
+      description
+      audience
+      price
+      includesDinner
+      includesSymposium
+      sortOrder
+      userGroup {
+        id
+        name
+        membershipStatuses
+      }
+    }
+  }
+}
+
+# Admin only — see GetEventsForSection. Non-admin members go through getSectionForUser.
+
+query ServiceGetSectionById($id: UUID!) @auth(level: NO_ACCESS) {
+  section(id: $id) {
+    id
+    name
+    type
+    description
+    isOpenForRegistration
+    allowedUserGroups
+    purposeLinks: sectionUserGroupPurposeLinks_on_section {
+      purposes
+      userGroup {
+        id
+        name
+        description
+        subscribable
+        membershipStatuses
+      }
+    }
+  }
+}
+
+# Get user group by ID with users and sections (admin only)
+
+query ServiceGetUserGroupById($id: UUID!) @auth(level: NO_ACCESS) {
+  userGroup(id: $id) {
+    id
+    name
+    description
+    membershipStatuses
+    subscribable
+    createdAt
+    updatedAt
+    createdBy
+    updatedBy
+    users: userUserGroups_on_userGroup {
+      user {
+        id
+        firstName
+        lastName
+        email
+        membershipStatus
+      }
+    }
+    purposeLinks: sectionUserGroupPurposeLinks_on_userGroup {
+      purposes
+      section {
+        id
+        name
+        type
+        description
+      }
+    }
+  }
+}
+
+# Get all user groups with membership statuses (SDK only - for membership status change logic)
+
+query ServiceListEventBookingsForAdmin($eventId: UUID!) @auth(level: NO_ACCESS) {
+  event(id: $eventId) {
+    id
+    # Keep the allocation/order join in one consistent snapshot while avoiding the
+    # overlong deeply nested SQL alias described below.
+    bookingTicketOrders: ticketOrders_on_event(limit: 5000) {
+      id
+      status
+    }
+    # Data Connect silently defaults unbounded relations to 100 rows. This graph
+    # feeds the organiser attendee table and its CSV export, so use the same
+    # admin-report ceiling as ticket orders. Add server-side pagination before
+    # an event can approach this limit.
+    bookings: bookings_on_event(limit: 5000) {
+      id
+      status
+      approvalStatus
+      approvalReviewedAt
+      approvalNote
+      approvalReviewedBy {
+        id
+        firstName
+        lastName
+      }
+      revisionGroupId
+      revisionNumber
+      supersededAt
+      supersedesBooking {
+        id
+        revisionNumber
+      }
+      clientSubmissionKey
+      sitNextToUserIds
+      accommodationRequested
+      accommodationNote
+      createdAt
+      updatedAt
+      createdBy
+      updatedBy
+      booker {
+        rank
+        id
+        firstName
+        lastName
+        email
+        membershipStatus
+      }
+      lines: bookingLines_on_booking {
+        id
+        sortOrder
+        guestDisplayName
+        dietaryNote
+        bookingPlace {
+          id
+          attendanceVersion
+          attendanceRemoved
+          attendanceName
+          attendanceDietaryNote
+          attendanceAccommodationRequested
+          attendanceAccommodationNote
+          attendanceSitNextToUserIds
+          attendanceTicketType { id title audience includesDinner includesSymposium }
+
+          # Keep order status as a sibling selection (see ListTicketOrdersForAdmin,
+          # fetched alongside this query). Nesting TicketOrder below
+          # Booking -> BookingLine -> BookingPlace -> BookingPlacePaymentAllocation
+          # produces PostgreSQL aliases that collide after its 63-character limit.
+          paymentAllocations: bookingPlacePaymentAllocations_on_bookingPlace {
+            id
+            allocatedAmountMinor
+            refundedAmountMinor
+            ticketOrderId
+          }
+        }
+        guestUser {
+          rank
+          id
+          firstName
+          lastName
+          email
+          membershipStatus
+        }
+        ticketType {
+          id
+          title
+          audience
+          price
+          includesDinner
+          includesSymposium
+        }
+      }
+    }
+  }
+}
+
+# Admin: list ticket payment orders for event-level observability.
+

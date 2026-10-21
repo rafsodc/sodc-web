@@ -15,12 +15,14 @@
     "logs": "firebase functions:log",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:security-integration": "node scripts/run-security-integration.mjs",
     "test:watch": "vitest",
     "dev-reset": "ts-node --project tsconfig.scripts.json scripts/cli-dev-reset.ts",
     "legacy-user-import": "ts-node --project tsconfig.scripts.json scripts/legacy-user-import.ts",
     "legacy-user-postflight": "ts-node --project tsconfig.scripts.json scripts/legacy-user-postflight.ts",
     "legacy-user-preflight-review": "ts-node --project tsconfig.scripts.json scripts/legacy-user-preflight-review.ts",
-    "legacy-bcrypt-pilot": "ts-node --project tsconfig.scripts.json scripts/legacy-bcrypt-pilot.ts"
+    "legacy-bcrypt-pilot": "ts-node --project tsconfig.scripts.json scripts/legacy-bcrypt-pilot.ts",
+    "security-state-admin": "ts-node --project tsconfig.scripts.json scripts/security-state-admin.ts"
   },
   "engines": {
     "node": "24"
@@ -28,6 +30,7 @@
   "main": "lib/index.js",
   "dependencies": {
     "@dataconnect/admin-generated": "file:src/dataconnect-admin-generated",
+    "@dataconnect/security-admin-generated": "file:src/security-admin-generated",
     "firebase-admin": "^13.10.0",
     "firebase-functions": "^7.2.5",
     "google-auth-library": "^10.9.0",

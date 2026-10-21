@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { verifyAuthorizationMigration } from "./check-authorization-migration.mjs";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -42,6 +43,7 @@ async function main() {
   ]);
   const projectId = validateFirebaseAlias(firebaseRc, environment);
   const gitSha = runCommand("git", ["rev-parse", "HEAD"], true).stdout.trim();
+  await verifyAuthorizationMigration(repositoryRoot, {projectId, gitSha});
   const viteMode = deploymentCheckConfig.environments?.[environment]?.viteMode;
   if (!viteMode) {
     throw new Error(`config/deployment-check.json has no viteMode configured for "${environment}".`);

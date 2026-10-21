@@ -4,6 +4,8 @@ Tracked in [GitHub issue #193](https://github.com/rafsodc/sodc-web/issues/193).
 
 This document describes how we run **three isolated Firebase-backed environments** without relying on local emulators for day-to-day development. Each environment is a **separate Firebase (Google Cloud) project** so Auth, Data Connect, Cloud Functions, and Hosting stay segregated.
 
+Before the first release containing #653 into **each** project, complete the staged [current-authorization migration](./current-authorization.md#one-time-migration-in-each-project). The default strict connector cannot safely be deployed before additive service operations, backfill and compatible Functions. Normal deploy/preflight commands require the one-time project/migration receipt.
+
 For the first deployment into a newly created production project, complete the
 [new production instance provisioning runbook](./new-production-instance.md)
 before using the promotion process below.

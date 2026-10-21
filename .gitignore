@@ -34,3 +34,6 @@ dist-ssr
 *.sw?
 coverage/
 functions/coverage/
+
+# Local Data Connect PostgreSQL emulator state
+dataconnect/.dataconnect/

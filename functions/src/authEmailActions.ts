@@ -1,3 +1,5 @@
+import { transitionUserSecurity } from "./currentAuthorizationTransitions";
+import { getUserSecurityState } from "./securityRepository";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
@@ -281,7 +283,7 @@ export const requestEmailVerification = onCall(
 export const requestEmailChange = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<{ success: true }> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     requireRecentAuthentication(request.auth!.token.auth_time);
     await enforceRateLimit("requestEmailChange", request.auth!.uid);
     const newEmail = validateEmail(
@@ -339,6 +341,10 @@ export const reconcileMyEmail = onCall(
       }
       const email = validateEmail(user.email);
       await writeEmail(email, user.uid);
+      const state = (await getUserSecurityState({userId: user.uid})).data.userSecurityState;
+      if (state && !state.accessReady && state.syncStatus === "READY" && state.user.membershipStatus === state.membershipStatus && state.verificationEmail === email) {
+        await transitionUserSecurity({userId: user.uid, actorId: user.uid, reason: "VERIFIED_EMAIL_RECONCILIATION", releaseEmailVerification: true});
+      }
       return { success: true, email };
     });
   },

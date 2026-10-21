@@ -1,7 +1,7 @@
 import { HttpsError } from "firebase-functions/v2/https";
 import {
-  getSectionById,
-  getUserAccessGroupsById,
+  serviceGetSectionById as getSectionById,
+  serviceGetUserAccessGroupsById as getUserAccessGroupsById,
   getUserMembershipStatus,
   type GetSectionByIdData,
 } from "@dataconnect/admin-generated";
