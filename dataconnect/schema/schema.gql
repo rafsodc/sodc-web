@@ -84,6 +84,7 @@ enum NotificationDeliveryStatus {
   PENDING
   SENT
   FAILED
+  SKIPPED
 }
 
 enum GovNotifyDeliveryMode {
@@ -652,6 +653,8 @@ type NotificationDelivery @table @unique(fields: ["channel", "deliveryKey"]) {
   channel: NotificationChannel!
   notificationType: String!
   deliveryKey: String!
+  # Staff recipient identity is independent of the booking/applicant subject.
+  recipientUserId: String
   # Versioned minimal domain context used by the scheduled recovery dispatcher.
   recoveryPayload: String
   status: NotificationDeliveryStatus! @default(value: PENDING)
@@ -664,6 +667,8 @@ type NotificationDelivery @table @unique(fields: ["channel", "deliveryKey"]) {
   attemptCount: Int! @default(value: 1)
   lastAttemptedAt: Timestamp
   sentAt: Timestamp
+  skippedAt: Timestamp
+  skipReason: String
   lastErrorCode: String
   lastErrorMessage: String
   # HasAudit fields

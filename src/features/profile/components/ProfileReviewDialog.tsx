@@ -1,3 +1,4 @@
+import { runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -21,7 +22,7 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { confirmProfileReview, MembershipStatus } from "@dataconnect/generated";
+import { confirmProfileReview, MembershipStatus } from "../../../shared/query/sessionDataConnect";
 import {
   useGetMyAnnouncementPreferences,
   useOptInSectionAnnouncement,
@@ -139,8 +140,8 @@ export default function ProfileReviewDialog({
         const stored = storedOptOutIds.has(section.id);
         const requested = sectionOptOutIds.has(section.id);
         if (stored === requested) continue;
-        if (requested) await optOutSection.mutateAsync({ sectionId: section.id });
-        else await optInSection.mutateAsync({ sectionId: section.id });
+        if (requested) await runSessionOperation(() => optOutSection.mutateAsync({ sectionId: section.id }));
+        else await runSessionOperation(() => optInSection.mutateAsync({ sectionId: section.id }));
       }
 
       const currentStatus = userData.membershipStatus || null;

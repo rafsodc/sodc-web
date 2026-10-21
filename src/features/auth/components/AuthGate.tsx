@@ -1,3 +1,4 @@
+import { acceptAuthenticatedIdentity, assertSessionAvailable, assertSessionCurrent } from "../../../shared/appShell/sessionLifecycle";
 import { useEffect, useState } from "react";
 import { Link as RouterLink, Navigate } from "react-router-dom";
 import {
@@ -51,8 +52,11 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
     setError(null);
     setSubmitting(true);
     try {
+      assertSessionAvailable();
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const session = acceptAuthenticatedIdentity(userCredential.user.uid);
       await userCredential.user.getIdToken(true);
+      assertSessionCurrent(session);
       if (userCredential.user.emailVerified) {
         try {
           await reconcileMyEmail();
@@ -62,6 +66,7 @@ export default function AuthGate({ userData, onRegisterComplete, onProfileComple
           // a later sign-in retries after profile creation.
         }
       }
+      assertSessionCurrent(session);
       setPassword("");
       if (onRegisterComplete) {
         onRegisterComplete();

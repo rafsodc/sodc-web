@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { queryClient } from "../queryClient";
+import { createAppQueryClient } from "../queryClient";
+const queryClient = createAppQueryClient();
 
 describe("queryClient retry policy", () => {
   it("does not retry authentication failures before session recovery", async () => {

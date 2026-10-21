@@ -49,6 +49,7 @@ export const NotificationDeliveryStatus = {
   PENDING: "PENDING",
   SENT: "SENT",
   FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
 }
 
 export const NotifyDeliveryReceiptOutcome = {
@@ -1085,6 +1086,56 @@ markNotificationDeliverySentByIdRef.operationName = 'MarkNotificationDeliverySen
 export function markNotificationDeliverySentById(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(markNotificationDeliverySentByIdRef(dcInstance, inputVars));
+}
+
+export const markNotificationDeliverySkippedByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliverySkippedById', inputVars);
+}
+markNotificationDeliverySkippedByIdRef.operationName = 'MarkNotificationDeliverySkippedById';
+
+export function markNotificationDeliverySkippedById(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(markNotificationDeliverySkippedByIdRef(dcInstance, inputVars));
+}
+
+export const listLegacyBookingStaffNotificationDeliveriesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListLegacyBookingStaffNotificationDeliveries', inputVars);
+}
+listLegacyBookingStaffNotificationDeliveriesRef.operationName = 'ListLegacyBookingStaffNotificationDeliveries';
+
+export function listLegacyBookingStaffNotificationDeliveries(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listLegacyBookingStaffNotificationDeliveriesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const listLegacyApplicantStaffNotificationDeliveriesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListLegacyApplicantStaffNotificationDeliveries', inputVars);
+}
+listLegacyApplicantStaffNotificationDeliveriesRef.operationName = 'ListLegacyApplicantStaffNotificationDeliveries';
+
+export function listLegacyApplicantStaffNotificationDeliveries(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listLegacyApplicantStaffNotificationDeliveriesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const deleteNotificationDeliveryIntegrationFixtureRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteNotificationDeliveryIntegrationFixture', inputVars);
+}
+deleteNotificationDeliveryIntegrationFixtureRef.operationName = 'DeleteNotificationDeliveryIntegrationFixture';
+
+export function deleteNotificationDeliveryIntegrationFixture(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(deleteNotificationDeliveryIntegrationFixtureRef(dcInstance, inputVars));
 }
 
 export const markNotificationDeliveryFailedByIdRef = (dcOrVars, vars) => {

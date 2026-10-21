@@ -1,6 +1,7 @@
 import { getSectionMembers, serviceListUsers as listUsers, SectionUserGroupPurpose } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
 import { getAdminUsers } from "./helpers";
+import { selectPrivilegedNotificationRecipientIds } from "./privilegedNotificationRecipient";
 
 function linkHasPurpose(
   purposes: SectionUserGroupPurpose[] | null | undefined,
@@ -9,23 +10,22 @@ function linkHasPurpose(
   return purposes?.includes(target) ?? false;
 }
 
-/** Resolve deduplicated organiser/admin recipients for booking approval alerts. */
-export async function resolveBookingModeratorEmails(args: {
+/** Resolve deduplicated organiser/admin UID recipients for booking approval alerts. */
+export async function resolveBookingModeratorUserIds(args: {
   sectionId: UUIDString;
   excludeUserId?: string;
 }): Promise<string[]> {
-  const emails = new Set<string>();
+  const userIds = new Set<string>();
 
   const admins = await getAdminUsers();
   for (const adminUser of admins) {
-    if (!adminUser.email) continue;
     if (args.excludeUserId && adminUser.uid === args.excludeUserId) continue;
-    emails.add(adminUser.email.trim().toLowerCase());
+    userIds.add(adminUser.uid);
   }
 
   const sectionResult = await getSectionMembers({ sectionId: args.sectionId });
   const section = sectionResult.data?.section;
-  if (!section) return Array.from(emails);
+  if (!section) return [];
 
   const moderatorLinks = (section.purposeLinks ?? []).filter((link) =>
     linkHasPurpose(link.purposes, SectionUserGroupPurpose.MODERATOR)
@@ -37,7 +37,7 @@ export async function resolveBookingModeratorEmails(args: {
     for (const userGroup of group.users ?? []) {
       const user = userGroup.user;
       if (args.excludeUserId && user.id === args.excludeUserId) continue;
-      if (user.email) emails.add(user.email.trim().toLowerCase());
+      userIds.add(user.id);
     }
   }
 
@@ -45,11 +45,11 @@ export async function resolveBookingModeratorEmails(args: {
     const listResult = await listUsers();
     for (const user of listResult.data?.users ?? []) {
       if (args.excludeUserId && user.id === args.excludeUserId) continue;
-      if (statuses.has(user.membershipStatus) && user.email) {
-        emails.add(user.email.trim().toLowerCase());
+      if (statuses.has(user.membershipStatus)) {
+        userIds.add(user.id);
       }
     }
   }
 
-  return Array.from(emails);
+  return selectPrivilegedNotificationRecipientIds(userIds, { kind: "BOOKING", sectionId: args.sectionId });
 }

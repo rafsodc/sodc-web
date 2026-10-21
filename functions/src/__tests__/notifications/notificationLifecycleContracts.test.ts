@@ -66,7 +66,7 @@ describe("notification lifecycle contracts", () => {
       const source = readFunctionSource(fileName);
       const requests = [
         ...source.matchAll(
-          /(?:sendNotificationOnce|notificationSender)\(\{([\s\S]*?)\bsend:\s*async/g
+          /(?:sendNotificationOnce|notificationSender|sendPrivilegedNotification)\(\{([\s\S]*?)\b(?:send|sendAuthorized):\s*async/g
         ),
       ];
       expect(requests.length, `${fileName} must send at least one notification`).toBeGreaterThan(0);
@@ -76,5 +76,17 @@ describe("notification lifecycle contracts", () => {
         );
       }
     }
+  });
+});
+
+describe("staff skip source contracts", () => {
+  it("makes SKIPPED terminal with complete lease CAS and excludes it from retry queries", () => {
+    const operations = fs.readFileSync(path.resolve(process.cwd(), "..", "dataconnect", "api", "admin-mutations.gql"), "utf8");
+    const skip = operations.slice(operations.indexOf("mutation MarkNotificationDeliverySkippedById"), operations.indexOf("query ListLegacyBookingStaffNotificationDeliveries"));
+    for (const guard of ["status: { eq: PENDING }", "attemptCount: { eq: $attemptCount }", "lastAttemptedAt: { eq: $lastAttemptedAt }"]) expect(skip).toContain(guard);
+    for (const field of ["status: SKIPPED", "sentAt: null", "providerMessageId: null", "skippedAt: $skippedAt", "skipReason: $skipReason"]) expect(skip).toContain(field);
+    const queries = operations.slice(operations.indexOf("query ListFailedNotificationDeliveriesForRecovery"), operations.indexOf("mutation CreateNotificationDelivery"));
+    expect(queries).toContain("status: { eq: FAILED }"); expect(queries).toContain("status: { eq: PENDING }");
+    expect(queries).not.toContain("SKIPPED");
   });
 });

@@ -57,6 +57,7 @@ export enum NotificationDeliveryStatus {
   PENDING = "PENDING",
   SENT = "SENT",
   FAILED = "FAILED",
+  SKIPPED = "SKIPPED",
 };
 
 export enum NotifyDeliveryReceiptOutcome {
@@ -624,6 +625,8 @@ export interface CreateNotificationDeliveryVariables {
   notificationType: string;
   deliveryKey: string;
   recoveryPayload?: string | null;
+  recipientUserId?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode | null;
   status: NotificationDeliveryStatus;
   ticketOrderId?: UUIDString | null;
   bookingId?: UUIDString | null;
@@ -829,6 +832,15 @@ export interface DeleteEventData {
 
 export interface DeleteEventVariables {
   id: UUIDString;
+}
+
+export interface DeleteNotificationDeliveryIntegrationFixtureData {
+  notificationDelivery_deleteMany: number;
+}
+
+export interface DeleteNotificationDeliveryIntegrationFixtureVariables {
+  id: UUIDString;
+  deliveryKey: string;
 }
 
 export interface DeleteSectionData {
@@ -1964,12 +1976,21 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     deliveryKey: string;
     notificationType: string;
     recoveryPayload?: string | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
     status: NotificationDeliveryStatus;
     provider?: string | null;
     providerMessageId?: string | null;
     attemptCount: number;
     lastAttemptedAt?: TimestampString | null;
     sentAt?: TimestampString | null;
+    skippedAt?: TimestampString | null;
+    skipReason?: string | null;
     lastErrorCode?: string | null;
     lastErrorMessage?: string | null;
     createdAt: TimestampString;
@@ -3006,6 +3027,13 @@ export interface ListFailedNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
     status: NotificationDeliveryStatus;
     attemptCount: number;
     lastAttemptedAt?: TimestampString | null;
@@ -3033,6 +3061,30 @@ export interface ListGovNotifyDeliveryModeAuditsData {
 
 export interface ListGovNotifyDeliveryModeAuditsVariables {
   limit: number;
+}
+
+export interface ListLegacyApplicantStaffNotificationDeliveriesData {
+  notificationDeliveries: ({
+    deliveryKey: string;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recoveryPayload?: string | null;
+  })[];
+}
+
+export interface ListLegacyApplicantStaffNotificationDeliveriesVariables {
+  subjectUserId: string;
+}
+
+export interface ListLegacyBookingStaffNotificationDeliveriesData {
+  notificationDeliveries: ({
+    deliveryKey: string;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recoveryPayload?: string | null;
+  })[];
+}
+
+export interface ListLegacyBookingStaffNotificationDeliveriesVariables {
+  bookingId: UUIDString;
 }
 
 export interface ListLegacyUserIdentitiesByBatchData {
@@ -3363,6 +3415,13 @@ export interface ListStalePendingNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
     status: NotificationDeliveryStatus;
     attemptCount: number;
     lastAttemptedAt?: TimestampString | null;
@@ -3530,6 +3589,18 @@ export interface MarkNotificationDeliverySentByIdVariables {
   lastErrorCode?: string | null;
   lastErrorMessage?: string | null;
   deliveryMode?: GovNotifyDeliveryMode | null;
+}
+
+export interface MarkNotificationDeliverySkippedByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface MarkNotificationDeliverySkippedByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  skippedAt: TimestampString;
+  skipReason: string;
 }
 
 export interface MarkNotifyDeliveryReceiptFailedData {
@@ -5580,6 +5651,54 @@ export const markNotificationDeliverySentByIdRef: MarkNotificationDeliverySentBy
 
 export function markNotificationDeliverySentById(vars: MarkNotificationDeliverySentByIdVariables): MutationPromise<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
 export function markNotificationDeliverySentById(dc: DataConnect, vars: MarkNotificationDeliverySentByIdVariables): MutationPromise<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
+
+interface MarkNotificationDeliverySkippedByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotificationDeliverySkippedByIdVariables): MutationRef<MarkNotificationDeliverySkippedByIdData, MarkNotificationDeliverySkippedByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkNotificationDeliverySkippedByIdVariables): MutationRef<MarkNotificationDeliverySkippedByIdData, MarkNotificationDeliverySkippedByIdVariables>;
+  operationName: string;
+}
+export const markNotificationDeliverySkippedByIdRef: MarkNotificationDeliverySkippedByIdRef;
+
+export function markNotificationDeliverySkippedById(vars: MarkNotificationDeliverySkippedByIdVariables): MutationPromise<MarkNotificationDeliverySkippedByIdData, MarkNotificationDeliverySkippedByIdVariables>;
+export function markNotificationDeliverySkippedById(dc: DataConnect, vars: MarkNotificationDeliverySkippedByIdVariables): MutationPromise<MarkNotificationDeliverySkippedByIdData, MarkNotificationDeliverySkippedByIdVariables>;
+
+interface ListLegacyBookingStaffNotificationDeliveriesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListLegacyBookingStaffNotificationDeliveriesVariables): QueryRef<ListLegacyBookingStaffNotificationDeliveriesData, ListLegacyBookingStaffNotificationDeliveriesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListLegacyBookingStaffNotificationDeliveriesVariables): QueryRef<ListLegacyBookingStaffNotificationDeliveriesData, ListLegacyBookingStaffNotificationDeliveriesVariables>;
+  operationName: string;
+}
+export const listLegacyBookingStaffNotificationDeliveriesRef: ListLegacyBookingStaffNotificationDeliveriesRef;
+
+export function listLegacyBookingStaffNotificationDeliveries(vars: ListLegacyBookingStaffNotificationDeliveriesVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyBookingStaffNotificationDeliveriesData, ListLegacyBookingStaffNotificationDeliveriesVariables>;
+export function listLegacyBookingStaffNotificationDeliveries(dc: DataConnect, vars: ListLegacyBookingStaffNotificationDeliveriesVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyBookingStaffNotificationDeliveriesData, ListLegacyBookingStaffNotificationDeliveriesVariables>;
+
+interface ListLegacyApplicantStaffNotificationDeliveriesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListLegacyApplicantStaffNotificationDeliveriesVariables): QueryRef<ListLegacyApplicantStaffNotificationDeliveriesData, ListLegacyApplicantStaffNotificationDeliveriesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListLegacyApplicantStaffNotificationDeliveriesVariables): QueryRef<ListLegacyApplicantStaffNotificationDeliveriesData, ListLegacyApplicantStaffNotificationDeliveriesVariables>;
+  operationName: string;
+}
+export const listLegacyApplicantStaffNotificationDeliveriesRef: ListLegacyApplicantStaffNotificationDeliveriesRef;
+
+export function listLegacyApplicantStaffNotificationDeliveries(vars: ListLegacyApplicantStaffNotificationDeliveriesVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyApplicantStaffNotificationDeliveriesData, ListLegacyApplicantStaffNotificationDeliveriesVariables>;
+export function listLegacyApplicantStaffNotificationDeliveries(dc: DataConnect, vars: ListLegacyApplicantStaffNotificationDeliveriesVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyApplicantStaffNotificationDeliveriesData, ListLegacyApplicantStaffNotificationDeliveriesVariables>;
+
+interface DeleteNotificationDeliveryIntegrationFixtureRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: DeleteNotificationDeliveryIntegrationFixtureVariables): MutationRef<DeleteNotificationDeliveryIntegrationFixtureData, DeleteNotificationDeliveryIntegrationFixtureVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: DeleteNotificationDeliveryIntegrationFixtureVariables): MutationRef<DeleteNotificationDeliveryIntegrationFixtureData, DeleteNotificationDeliveryIntegrationFixtureVariables>;
+  operationName: string;
+}
+export const deleteNotificationDeliveryIntegrationFixtureRef: DeleteNotificationDeliveryIntegrationFixtureRef;
+
+export function deleteNotificationDeliveryIntegrationFixture(vars: DeleteNotificationDeliveryIntegrationFixtureVariables): MutationPromise<DeleteNotificationDeliveryIntegrationFixtureData, DeleteNotificationDeliveryIntegrationFixtureVariables>;
+export function deleteNotificationDeliveryIntegrationFixture(dc: DataConnect, vars: DeleteNotificationDeliveryIntegrationFixtureVariables): MutationPromise<DeleteNotificationDeliveryIntegrationFixtureData, DeleteNotificationDeliveryIntegrationFixtureVariables>;
 
 interface MarkNotificationDeliveryFailedByIdRef {
   /* Allow users to create refs without passing in DataConnect */

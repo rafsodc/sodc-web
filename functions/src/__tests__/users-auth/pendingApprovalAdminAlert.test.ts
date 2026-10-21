@@ -3,10 +3,13 @@ import type { UserRecord } from "firebase-admin/auth";
 import * as dc from "@dataconnect/admin-generated";
 import { MembershipStatus } from "@dataconnect/admin-generated";
 import * as helpers from "../../helpers";
+import * as recipientPolicy from "../../privilegedNotificationRecipient";
+import * as legacyPolicy from "../../privilegedNotificationLegacy";
 import * as notificationDelivery from "../../notificationDelivery";
 import {
   notifyAdminsUserPendingApproval,
   pendingApprovalDeliveryKey,
+  pendingApprovalUidDeliveryKey,
   summarizeServiceBackground,
 } from "../../pendingApprovalAdminAlert";
 
@@ -45,7 +48,7 @@ function profile(overrides: Partial<{
 }
 
 function mockAdminUser(email: string) {
-  return { uid: `admin-${email}`, email } as unknown as UserRecord & { email: string };
+  return { uid: email.split("@")[0], email } as unknown as UserRecord & { email: string };
 }
 
 describe("summarizeServiceBackground", () => {
@@ -75,6 +78,11 @@ describe("notifyAdminsUserPendingApproval", () => {
     mockGetAdminUsers.mockReset();
     mockSendOnce.mockReset();
     mockSendOnce.mockResolvedValue({ outcome: "sent" });
+    vi.spyOn(recipientPolicy, "selectPrivilegedNotificationRecipientIds").mockImplementation(async (uids) => [...uids]);
+    vi.spyOn(recipientPolicy, "authorizePrivilegedNotificationRecipient").mockImplementation(async (uid) => ({
+      eligible: true, recipientUserId: uid, email: `${uid}@example.com`,
+    }));
+    vi.spyOn(legacyPolicy, "hasLegacyPrivilegedNotificationEvent").mockResolvedValue(false);
   });
 
   it("does nothing when the user has no Data Connect profile yet", async () => {
@@ -128,13 +136,15 @@ describe("notifyAdminsUserPendingApproval", () => {
 
     expect(mockSendOnce).toHaveBeenCalledTimes(2);
     expect(mockSendOnce.mock.calls.map((c) => c[0].deliveryKey)).toEqual([
-      pendingApprovalDeliveryKey(userId, "admin1@example.com"),
-      pendingApprovalDeliveryKey(userId, "admin2@example.com"),
+      pendingApprovalUidDeliveryKey(userId, "admin1"),
+      pendingApprovalUidDeliveryKey(userId, "admin2"),
     ]);
     expect(mockSendOnce.mock.calls[0][0].notificationType).toBe("USER_PENDING_APPROVAL");
+    expect(mockSendOnce.mock.calls[0][0]).toMatchObject({ userId, recipientUserId: "admin1",
+      recoveryPayload: { version: 2, userId, recipientUserId: "admin1" } });
 
-    await mockSendOnce.mock.calls[0][0].send();
-    await mockSendOnce.mock.calls[1][0].send();
+    await mockSendOnce.mock.calls[0][0].send("LIVE");
+    await mockSendOnce.mock.calls[1][0].send("LIVE");
     expect(sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         templateName: "newUserPendingApprovalAlert",
@@ -150,7 +160,7 @@ describe("notifyAdminsUserPendingApproval", () => {
     const references = sendEmail.mock.calls.map(([request]) => request.reference);
     expect(new Set(references)).toHaveLength(2);
     for (const reference of references) {
-      expect(reference).toMatch(/^PENDING_APPROVAL:[0-9a-f-]+:[0-9a-f]{24}$/);
+      expect(reference).toMatch(/^pending-approval-v2:[0-9a-f-]+:admin[12]$/);
     }
   });
 
@@ -164,4 +174,23 @@ describe("notifyAdminsUserPendingApproval", () => {
 
     expect(mockSendOnce).not.toHaveBeenCalled();
   });
+});
+
+describe("applicant alert final authorization", () => {
+  it("rechecks an explicit recovered UID and does not call the provider after admin revocation", async () => {
+    mockGetUserById.mockResolvedValue({ data: { user: profile() } } as never);
+    mockSendOnce.mockReset().mockResolvedValue({ outcome: "sent" });
+    vi.mocked(legacyPolicy.hasLegacyPrivilegedNotificationEvent).mockResolvedValue(false);
+    vi.mocked(recipientPolicy.authorizePrivilegedNotificationRecipient).mockResolvedValue({ eligible: false, reason: "RECIPIENT_AUTHORITY_REVOKED" });
+    const sendEmail = vi.fn();
+    await notifyAdminsUserPendingApproval({ userId, emailVerified: true, appBaseUrl: "https://app.example",
+      recipientUserIds: ["former-admin"], getMailer: () => ({ sendEmail }) });
+    expect(await mockSendOnce.mock.calls[0][0].send("LIVE")).toEqual({ outcome: "skipped", reason: "RECIPIENT_AUTHORITY_REVOKED" });
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+});
+
+it("UID delivery keys keep subject/recipient boundaries and case distinct", () => {
+  expect(pendingApprovalUidDeliveryKey("a:b", "c")).not.toBe(pendingApprovalUidDeliveryKey("a", "b:c"));
+  expect(pendingApprovalUidDeliveryKey("applicant", "Staff")).not.toBe(pendingApprovalUidDeliveryKey("applicant", "staff"));
 });

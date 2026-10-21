@@ -132,6 +132,15 @@ function createRepository(initialRecords: StoredDelivery[] = []): {
       return true;
     },
 
+    async markSkipped(args) {
+      const record = getById(args.id);
+      if (record.status !== NotificationDeliveryStatus.PENDING || record.attemptCount !== args.attemptCount ||
+        record.lastAttemptedAt !== args.lastAttemptedAt) return false;
+      record.status = NotificationDeliveryStatus.SKIPPED;
+      record.providerMessageId = null;
+      return true;
+    },
+
     async markFailed(args) {
       const record = getById(args.id);
       if (
@@ -257,7 +266,7 @@ describe("notificationDelivery", () => {
     expect(parseNotificationRecoveryPayload(record!.recoveryPayload!)).toMatchObject({
       deliveryMode: "SIMULATION",
     });
-    expect(send).toHaveBeenCalledWith("SIMULATION");
+    expect(send).toHaveBeenCalledWith("SIMULATION", expect.any(Function));
   });
 
   it("applies the runtime ceiling before claiming a GOV.UK Notify delivery", async () => {
@@ -303,7 +312,7 @@ describe("notificationDelivery", () => {
     expect(parseNotificationRecoveryPayload(record!.recoveryPayload!)).toMatchObject({
       deliveryMode: "TEAM_TEST",
     });
-    expect(send).toHaveBeenCalledWith("TEAM_TEST");
+    expect(send).toHaveBeenCalledWith("TEAM_TEST", expect.any(Function));
   });
 
   it("skips duplicates that were already sent", async () => {
@@ -506,5 +515,49 @@ describe("notificationDelivery", () => {
     };
     expect(loggedMetadata.errorCode?.length ?? 0).toBeLessThanOrEqual(120);
     expect(loggedMetadata.errorMessage?.length ?? 0).toBeLessThanOrEqual(500);
+  });
+});
+
+describe("terminal suppression ownership", () => {
+  const request = { channel: NotificationChannel.EMAIL, notificationType: "STAFF_ALERT", deliveryKey: "staff-key",
+    recipientUserId: "staff", send: async () => ({ outcome: "skipped" as const, reason: "RECIPIENT_DISABLED" }) };
+  it("persists suppression once and never reclaims a terminal skip", async () => {
+    const { repository, records } = createRepository();
+    const send = vi.fn(request.send);
+    expect(await sendNotificationOnce({ ...request, send }, { repository, now: () => "2026-10-21T10:00:00Z" }))
+      .toMatchObject({ outcome: "skipped", reason: "RECIPIENT_DISABLED" });
+    expect(await sendNotificationOnce({ ...request, send }, { repository, now: () => "2026-10-21T11:00:00Z" }))
+      .toMatchObject({ outcome: "skipped", reason: "already_skipped", attemptCount: 1 });
+    expect(send).toHaveBeenCalledOnce();
+    expect([...records.values()][0]).toMatchObject({ status: "SKIPPED", providerMessageId: null });
+  });
+  it("does not report a skip when its conditional completion did not persist", async () => {
+    const { repository, records } = createRepository();
+    repository.markSkipped = vi.fn(async () => false);
+    expect(await sendNotificationOnce(request, { repository, now: () => "2026-10-21T10:00:00Z" })).toMatchObject({ outcome: "failed" });
+    expect([...records.values()][0].status).toBe("FAILED");
+  });
+  it("does not overwrite a newer owner's lease after losing a skip CAS", async () => {
+    const { repository, records } = createRepository();
+    repository.markSkipped = vi.fn(async () => {
+      const row = [...records.values()][0]; row.attemptCount += 1; row.lastAttemptedAt = "2026-10-21T11:00:00Z";
+      return false;
+    });
+    expect(await sendNotificationOnce(request, { repository, now: () => "2026-10-21T10:00:00Z" }))
+      .toMatchObject({ outcome: "duplicate", reason: "in_progress", attemptCount: 2 });
+    expect([...records.values()][0].status).toBe("PENDING");
+  });
+  it("fails closed without pretending an outage writing SKIPPED completed the ledger", async () => {
+    const { repository, records } = createRepository();
+    repository.markSkipped = vi.fn(async () => { throw new Error("database down"); });
+    expect(await sendNotificationOnce(request, { repository, now: () => "2026-10-21T10:00:00Z" })).toMatchObject({ outcome: "failed" });
+    expect([...records.values()][0].status).toBe("FAILED");
+  });
+  it("only one concurrent stale recovery evaluates a suppressed callback", async () => {
+    const { repository } = createRepository([{ id: "delivery-1", channel: NotificationChannel.EMAIL, deliveryKey: "staff-key",
+      status: NotificationDeliveryStatus.PENDING, attemptCount: 1, lastAttemptedAt: "2026-10-21T08:00:00Z" }]);
+    const send = vi.fn(request.send);
+    const results = await Promise.all([1, 2].map(() => sendNotificationOnce({ ...request, send }, { repository, now: () => "2026-10-21T10:00:00Z" })));
+    expect(send).toHaveBeenCalledOnce(); expect(results.some((r) => r.outcome === "skipped")).toBe(true);
   });
 });

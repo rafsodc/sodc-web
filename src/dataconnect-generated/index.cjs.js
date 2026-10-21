@@ -55,6 +55,7 @@ const NotificationDeliveryStatus = {
   PENDING: "PENDING",
   SENT: "SENT",
   FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
 }
 exports.NotificationDeliveryStatus = NotificationDeliveryStatus;
 
@@ -1258,6 +1259,64 @@ exports.markNotificationDeliverySentByIdRef = markNotificationDeliverySentByIdRe
 exports.markNotificationDeliverySentById = function markNotificationDeliverySentById(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(markNotificationDeliverySentByIdRef(dcInstance, inputVars));
+}
+;
+
+const markNotificationDeliverySkippedByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'MarkNotificationDeliverySkippedById', inputVars);
+}
+markNotificationDeliverySkippedByIdRef.operationName = 'MarkNotificationDeliverySkippedById';
+exports.markNotificationDeliverySkippedByIdRef = markNotificationDeliverySkippedByIdRef;
+
+exports.markNotificationDeliverySkippedById = function markNotificationDeliverySkippedById(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(markNotificationDeliverySkippedByIdRef(dcInstance, inputVars));
+}
+;
+
+const listLegacyBookingStaffNotificationDeliveriesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListLegacyBookingStaffNotificationDeliveries', inputVars);
+}
+listLegacyBookingStaffNotificationDeliveriesRef.operationName = 'ListLegacyBookingStaffNotificationDeliveries';
+exports.listLegacyBookingStaffNotificationDeliveriesRef = listLegacyBookingStaffNotificationDeliveriesRef;
+
+exports.listLegacyBookingStaffNotificationDeliveries = function listLegacyBookingStaffNotificationDeliveries(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listLegacyBookingStaffNotificationDeliveriesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const listLegacyApplicantStaffNotificationDeliveriesRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListLegacyApplicantStaffNotificationDeliveries', inputVars);
+}
+listLegacyApplicantStaffNotificationDeliveriesRef.operationName = 'ListLegacyApplicantStaffNotificationDeliveries';
+exports.listLegacyApplicantStaffNotificationDeliveriesRef = listLegacyApplicantStaffNotificationDeliveriesRef;
+
+exports.listLegacyApplicantStaffNotificationDeliveries = function listLegacyApplicantStaffNotificationDeliveries(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listLegacyApplicantStaffNotificationDeliveriesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
+const deleteNotificationDeliveryIntegrationFixtureRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteNotificationDeliveryIntegrationFixture', inputVars);
+}
+deleteNotificationDeliveryIntegrationFixtureRef.operationName = 'DeleteNotificationDeliveryIntegrationFixture';
+exports.deleteNotificationDeliveryIntegrationFixtureRef = deleteNotificationDeliveryIntegrationFixtureRef;
+
+exports.deleteNotificationDeliveryIntegrationFixture = function deleteNotificationDeliveryIntegrationFixture(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(deleteNotificationDeliveryIntegrationFixtureRef(dcInstance, inputVars));
 }
 ;
 
