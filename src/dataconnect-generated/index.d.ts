@@ -57,6 +57,7 @@ export enum NotificationDeliveryStatus {
   PENDING = "PENDING",
   SENT = "SENT",
   FAILED = "FAILED",
+  SKIPPED = "SKIPPED",
 };
 
 export enum NotifyDeliveryReceiptOutcome {
@@ -431,6 +432,32 @@ export interface ConfirmPotentialLostVariables {
   emailBounceCount: number;
 }
 
+export interface ConfirmPotentialLostWithSecurityStateData {
+  userSecurityState_updateMany: number;
+  securityTransition_insert: SecurityTransition_Key;
+  user_updateMany: number;
+  potentialLostReview_insert: PotentialLostReview_Key;
+}
+
+export interface ConfirmPotentialLostWithSecurityStateVariables {
+  expectedSecurityVersion: number;
+  nextSecurityVersion: number;
+  securityOperationId: string;
+  desiredAdmin: boolean;
+  securityIntentHash: string;
+  userId: string;
+  expectedStatus: MembershipStatus;
+  expectedUpdatedAt: TimestampString;
+  expectedEmailDeliveryVersion: number;
+  reviewedBy: string;
+  reasons: string[];
+  lastSignInTime?: string | null;
+  lastActivityTime?: string | null;
+  inactivitySince?: string | null;
+  activitySource?: string | null;
+  emailBounceCount: number;
+}
+
 export interface ConfirmProfileReviewData {
   user_update?: User_Key | null;
 }
@@ -598,6 +625,8 @@ export interface CreateNotificationDeliveryVariables {
   notificationType: string;
   deliveryKey: string;
   recoveryPayload?: string | null;
+  recipientUserId?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode | null;
   status: NotificationDeliveryStatus;
   ticketOrderId?: UUIDString | null;
   bookingId?: UUIDString | null;
@@ -803,6 +832,15 @@ export interface DeleteEventData {
 
 export interface DeleteEventVariables {
   id: UUIDString;
+}
+
+export interface DeleteNotificationDeliveryIntegrationFixtureData {
+  notificationDelivery_deleteMany: number;
+}
+
+export interface DeleteNotificationDeliveryIntegrationFixtureVariables {
+  id: UUIDString;
+  deliveryKey: string;
 }
 
 export interface DeleteSectionData {
@@ -1938,12 +1976,21 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     deliveryKey: string;
     notificationType: string;
     recoveryPayload?: string | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
     status: NotificationDeliveryStatus;
     provider?: string | null;
     providerMessageId?: string | null;
     attemptCount: number;
     lastAttemptedAt?: TimestampString | null;
     sentAt?: TimestampString | null;
+    skippedAt?: TimestampString | null;
+    skipReason?: string | null;
     lastErrorCode?: string | null;
     lastErrorMessage?: string | null;
     createdAt: TimestampString;
@@ -2980,6 +3027,13 @@ export interface ListFailedNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
     status: NotificationDeliveryStatus;
     attemptCount: number;
     lastAttemptedAt?: TimestampString | null;
@@ -3007,6 +3061,30 @@ export interface ListGovNotifyDeliveryModeAuditsData {
 
 export interface ListGovNotifyDeliveryModeAuditsVariables {
   limit: number;
+}
+
+export interface ListLegacyApplicantStaffNotificationDeliveriesData {
+  notificationDeliveries: ({
+    deliveryKey: string;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recoveryPayload?: string | null;
+  })[];
+}
+
+export interface ListLegacyApplicantStaffNotificationDeliveriesVariables {
+  subjectUserId: string;
+}
+
+export interface ListLegacyBookingStaffNotificationDeliveriesData {
+  notificationDeliveries: ({
+    deliveryKey: string;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recoveryPayload?: string | null;
+  })[];
+}
+
+export interface ListLegacyBookingStaffNotificationDeliveriesVariables {
+  bookingId: UUIDString;
 }
 
 export interface ListLegacyUserIdentitiesByBatchData {
@@ -3337,6 +3415,13 @@ export interface ListStalePendingNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
     status: NotificationDeliveryStatus;
     attemptCount: number;
     lastAttemptedAt?: TimestampString | null;
@@ -3504,6 +3589,18 @@ export interface MarkNotificationDeliverySentByIdVariables {
   lastErrorCode?: string | null;
   lastErrorMessage?: string | null;
   deliveryMode?: GovNotifyDeliveryMode | null;
+}
+
+export interface MarkNotificationDeliverySkippedByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface MarkNotificationDeliverySkippedByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  skippedAt: TimestampString;
+  skipReason: string;
 }
 
 export interface MarkNotifyDeliveryReceiptFailedData {
@@ -3888,6 +3985,314 @@ export interface SectionUserGroupPurposeLink_Key {
 export interface Section_Key {
   id: UUIDString;
   __typename?: 'Section_Key';
+}
+
+export interface SecurityTransition_Key {
+  operationId: string;
+  __typename?: 'SecurityTransition_Key';
+}
+
+export interface ServiceGetEventByIdData {
+  event?: {
+    id: UUIDString;
+    section: {
+      id: UUIDString;
+    } & Section_Key;
+    title: string;
+    location?: string | null;
+    guestOfHonour?: string | null;
+    sponsors?: string | null;
+    details?: string | null;
+    startDateTime: TimestampString;
+    endDateTime: TimestampString;
+    bookingStartDateTime: TimestampString;
+    bookingEndDateTime: TimestampString;
+    maxGuestsWithoutModeratorApproval: number;
+    ticketTypes: ({
+      id: UUIDString;
+      title: string;
+      description?: string | null;
+      audience: TicketAudience;
+      price: number;
+      includesDinner: boolean;
+      includesSymposium: boolean;
+      sortOrder: number;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+    } & TicketType_Key)[];
+  } & Event_Key;
+}
+
+export interface ServiceGetEventByIdVariables {
+  id: UUIDString;
+}
+
+export interface ServiceGetEventsForSectionData {
+  section?: {
+    id: UUIDString;
+    events: ({
+      id: UUIDString;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+    } & Event_Key)[];
+  } & Section_Key;
+}
+
+export interface ServiceGetEventsForSectionVariables {
+  sectionId: UUIDString;
+}
+
+export interface ServiceGetSectionByIdData {
+  section?: {
+    id: UUIDString;
+    name: string;
+    type: SectionType;
+    description?: string | null;
+    isOpenForRegistration?: boolean | null;
+    allowedUserGroups?: UUIDString[] | null;
+    purposeLinks: ({
+      purposes?: SectionUserGroupPurpose[] | null;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+        subscribable?: boolean | null;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+    })[];
+  } & Section_Key;
+}
+
+export interface ServiceGetSectionByIdVariables {
+  id: UUIDString;
+}
+
+export interface ServiceGetUserAccessGroupsByIdData {
+  user?: {
+    id: string;
+    userGroups: ({
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+      } & UserGroup_Key;
+    })[];
+  } & User_Key;
+}
+
+export interface ServiceGetUserAccessGroupsByIdVariables {
+  userId: string;
+}
+
+export interface ServiceGetUserByIdData {
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
+    membershipStatus: MembershipStatus;
+    requestedMembershipStatus?: MembershipStatus | null;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
+  } & User_Key;
+}
+
+export interface ServiceGetUserByIdVariables {
+  id: string;
+}
+
+export interface ServiceGetUserGroupByIdData {
+  userGroup?: {
+    id: UUIDString;
+    name: string;
+    description?: string | null;
+    membershipStatuses?: MembershipStatus[] | null;
+    subscribable?: boolean | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
+    users: ({
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        membershipStatus: MembershipStatus;
+      } & User_Key;
+    })[];
+    purposeLinks: ({
+      purposes?: SectionUserGroupPurpose[] | null;
+      section: {
+        id: UUIDString;
+        name: string;
+        type: SectionType;
+        description?: string | null;
+      } & Section_Key;
+    })[];
+  } & UserGroup_Key;
+}
+
+export interface ServiceGetUserGroupByIdVariables {
+  id: UUIDString;
+}
+
+export interface ServiceListEventBookingsForAdminData {
+  event?: {
+    id: UUIDString;
+    bookingTicketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+    } & TicketOrder_Key)[];
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
+      approvalReviewedBy?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+      revisionGroupId: UUIDString;
+      revisionNumber: number;
+      supersededAt?: TimestampString | null;
+      supersedesBooking?: {
+        id: UUIDString;
+        revisionNumber: number;
+      } & Booking_Key;
+      clientSubmissionKey?: string | null;
+      sitNextToUserIds?: string[] | null;
+      accommodationRequested: boolean;
+      accommodationNote?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      createdBy?: string | null;
+      updatedBy?: string | null;
+      booker: {
+        rank?: string | null;
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        membershipStatus: MembershipStatus;
+      } & User_Key;
+      lines: ({
+        id: UUIDString;
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        bookingPlace: {
+          id: UUIDString;
+          attendanceVersion: number;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceDietaryNote?: string | null;
+          attendanceAccommodationRequested?: boolean | null;
+          attendanceAccommodationNote?: string | null;
+          attendanceSitNextToUserIds?: string[] | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+            audience: TicketAudience;
+            includesDinner: boolean;
+            includesSymposium: boolean;
+          } & TicketType_Key;
+          paymentAllocations: ({
+            id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            ticketOrderId: UUIDString;
+          } & BookingPlacePaymentAllocation_Key)[];
+        } & BookingPlace_Key;
+        guestUser?: {
+          rank?: string | null;
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+          membershipStatus: MembershipStatus;
+        } & User_Key;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+          audience: TicketAudience;
+          price: number;
+          includesDinner: boolean;
+          includesSymposium: boolean;
+        } & TicketType_Key;
+      } & BookingLine_Key)[];
+    } & Booking_Key)[];
+  } & Event_Key;
+}
+
+export interface ServiceListEventBookingsForAdminVariables {
+  eventId: UUIDString;
+}
+
+export interface ServiceListUserNamesByIdsData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+
+export interface ServiceListUserNamesByIdsVariables {
+  ids: string[];
+}
+
+export interface ServiceListUsersData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
+    membershipStatus: MembershipStatus;
+    requestedMembershipStatus?: MembershipStatus | null;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
+  } & User_Key)[];
 }
 
 export interface SetNotifyTemplateReplyToOverrideData {
@@ -4317,6 +4722,11 @@ export interface UpsertUserVariables {
 export interface UserGroup_Key {
   id: UUIDString;
   __typename?: 'UserGroup_Key';
+}
+
+export interface UserSecurityState_Key {
+  userId: string;
+  __typename?: 'UserSecurityState_Key';
 }
 
 export interface UserUserGroup_Key {
@@ -5242,6 +5652,54 @@ export const markNotificationDeliverySentByIdRef: MarkNotificationDeliverySentBy
 export function markNotificationDeliverySentById(vars: MarkNotificationDeliverySentByIdVariables): MutationPromise<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
 export function markNotificationDeliverySentById(dc: DataConnect, vars: MarkNotificationDeliverySentByIdVariables): MutationPromise<MarkNotificationDeliverySentByIdData, MarkNotificationDeliverySentByIdVariables>;
 
+interface MarkNotificationDeliverySkippedByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotificationDeliverySkippedByIdVariables): MutationRef<MarkNotificationDeliverySkippedByIdData, MarkNotificationDeliverySkippedByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: MarkNotificationDeliverySkippedByIdVariables): MutationRef<MarkNotificationDeliverySkippedByIdData, MarkNotificationDeliverySkippedByIdVariables>;
+  operationName: string;
+}
+export const markNotificationDeliverySkippedByIdRef: MarkNotificationDeliverySkippedByIdRef;
+
+export function markNotificationDeliverySkippedById(vars: MarkNotificationDeliverySkippedByIdVariables): MutationPromise<MarkNotificationDeliverySkippedByIdData, MarkNotificationDeliverySkippedByIdVariables>;
+export function markNotificationDeliverySkippedById(dc: DataConnect, vars: MarkNotificationDeliverySkippedByIdVariables): MutationPromise<MarkNotificationDeliverySkippedByIdData, MarkNotificationDeliverySkippedByIdVariables>;
+
+interface ListLegacyBookingStaffNotificationDeliveriesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListLegacyBookingStaffNotificationDeliveriesVariables): QueryRef<ListLegacyBookingStaffNotificationDeliveriesData, ListLegacyBookingStaffNotificationDeliveriesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListLegacyBookingStaffNotificationDeliveriesVariables): QueryRef<ListLegacyBookingStaffNotificationDeliveriesData, ListLegacyBookingStaffNotificationDeliveriesVariables>;
+  operationName: string;
+}
+export const listLegacyBookingStaffNotificationDeliveriesRef: ListLegacyBookingStaffNotificationDeliveriesRef;
+
+export function listLegacyBookingStaffNotificationDeliveries(vars: ListLegacyBookingStaffNotificationDeliveriesVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyBookingStaffNotificationDeliveriesData, ListLegacyBookingStaffNotificationDeliveriesVariables>;
+export function listLegacyBookingStaffNotificationDeliveries(dc: DataConnect, vars: ListLegacyBookingStaffNotificationDeliveriesVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyBookingStaffNotificationDeliveriesData, ListLegacyBookingStaffNotificationDeliveriesVariables>;
+
+interface ListLegacyApplicantStaffNotificationDeliveriesRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListLegacyApplicantStaffNotificationDeliveriesVariables): QueryRef<ListLegacyApplicantStaffNotificationDeliveriesData, ListLegacyApplicantStaffNotificationDeliveriesVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListLegacyApplicantStaffNotificationDeliveriesVariables): QueryRef<ListLegacyApplicantStaffNotificationDeliveriesData, ListLegacyApplicantStaffNotificationDeliveriesVariables>;
+  operationName: string;
+}
+export const listLegacyApplicantStaffNotificationDeliveriesRef: ListLegacyApplicantStaffNotificationDeliveriesRef;
+
+export function listLegacyApplicantStaffNotificationDeliveries(vars: ListLegacyApplicantStaffNotificationDeliveriesVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyApplicantStaffNotificationDeliveriesData, ListLegacyApplicantStaffNotificationDeliveriesVariables>;
+export function listLegacyApplicantStaffNotificationDeliveries(dc: DataConnect, vars: ListLegacyApplicantStaffNotificationDeliveriesVariables, options?: ExecuteQueryOptions): QueryPromise<ListLegacyApplicantStaffNotificationDeliveriesData, ListLegacyApplicantStaffNotificationDeliveriesVariables>;
+
+interface DeleteNotificationDeliveryIntegrationFixtureRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: DeleteNotificationDeliveryIntegrationFixtureVariables): MutationRef<DeleteNotificationDeliveryIntegrationFixtureData, DeleteNotificationDeliveryIntegrationFixtureVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: DeleteNotificationDeliveryIntegrationFixtureVariables): MutationRef<DeleteNotificationDeliveryIntegrationFixtureData, DeleteNotificationDeliveryIntegrationFixtureVariables>;
+  operationName: string;
+}
+export const deleteNotificationDeliveryIntegrationFixtureRef: DeleteNotificationDeliveryIntegrationFixtureRef;
+
+export function deleteNotificationDeliveryIntegrationFixture(vars: DeleteNotificationDeliveryIntegrationFixtureVariables): MutationPromise<DeleteNotificationDeliveryIntegrationFixtureData, DeleteNotificationDeliveryIntegrationFixtureVariables>;
+export function deleteNotificationDeliveryIntegrationFixture(dc: DataConnect, vars: DeleteNotificationDeliveryIntegrationFixtureVariables): MutationPromise<DeleteNotificationDeliveryIntegrationFixtureData, DeleteNotificationDeliveryIntegrationFixtureVariables>;
+
 interface MarkNotificationDeliveryFailedByIdRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: MarkNotificationDeliveryFailedByIdVariables): MutationRef<MarkNotificationDeliveryFailedByIdData, MarkNotificationDeliveryFailedByIdVariables>;
@@ -5962,6 +6420,18 @@ export const getPotentialLostProfileRef: GetPotentialLostProfileRef;
 export function getPotentialLostProfile(vars: GetPotentialLostProfileVariables, options?: ExecuteQueryOptions): QueryPromise<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
 export function getPotentialLostProfile(dc: DataConnect, vars: GetPotentialLostProfileVariables, options?: ExecuteQueryOptions): QueryPromise<GetPotentialLostProfileData, GetPotentialLostProfileVariables>;
 
+interface ConfirmPotentialLostWithSecurityStateRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ConfirmPotentialLostWithSecurityStateVariables): MutationRef<ConfirmPotentialLostWithSecurityStateData, ConfirmPotentialLostWithSecurityStateVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ConfirmPotentialLostWithSecurityStateVariables): MutationRef<ConfirmPotentialLostWithSecurityStateData, ConfirmPotentialLostWithSecurityStateVariables>;
+  operationName: string;
+}
+export const confirmPotentialLostWithSecurityStateRef: ConfirmPotentialLostWithSecurityStateRef;
+
+export function confirmPotentialLostWithSecurityState(vars: ConfirmPotentialLostWithSecurityStateVariables): MutationPromise<ConfirmPotentialLostWithSecurityStateData, ConfirmPotentialLostWithSecurityStateVariables>;
+export function confirmPotentialLostWithSecurityState(dc: DataConnect, vars: ConfirmPotentialLostWithSecurityStateVariables): MutationPromise<ConfirmPotentialLostWithSecurityStateData, ConfirmPotentialLostWithSecurityStateVariables>;
+
 interface ConfirmPotentialLostRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: ConfirmPotentialLostVariables): MutationRef<ConfirmPotentialLostData, ConfirmPotentialLostVariables>;
@@ -6561,6 +7031,114 @@ export const getMyAnnouncementPreferencesRef: GetMyAnnouncementPreferencesRef;
 
 export function getMyAnnouncementPreferences(options?: ExecuteQueryOptions): QueryPromise<GetMyAnnouncementPreferencesData, undefined>;
 export function getMyAnnouncementPreferences(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetMyAnnouncementPreferencesData, undefined>;
+
+interface ServiceGetUserByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ServiceGetUserByIdVariables): QueryRef<ServiceGetUserByIdData, ServiceGetUserByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ServiceGetUserByIdVariables): QueryRef<ServiceGetUserByIdData, ServiceGetUserByIdVariables>;
+  operationName: string;
+}
+export const serviceGetUserByIdRef: ServiceGetUserByIdRef;
+
+export function serviceGetUserById(vars: ServiceGetUserByIdVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetUserByIdData, ServiceGetUserByIdVariables>;
+export function serviceGetUserById(dc: DataConnect, vars: ServiceGetUserByIdVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetUserByIdData, ServiceGetUserByIdVariables>;
+
+interface ServiceListUsersRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): QueryRef<ServiceListUsersData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): QueryRef<ServiceListUsersData, undefined>;
+  operationName: string;
+}
+export const serviceListUsersRef: ServiceListUsersRef;
+
+export function serviceListUsers(options?: ExecuteQueryOptions): QueryPromise<ServiceListUsersData, undefined>;
+export function serviceListUsers(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<ServiceListUsersData, undefined>;
+
+interface ServiceListUserNamesByIdsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ServiceListUserNamesByIdsVariables): QueryRef<ServiceListUserNamesByIdsData, ServiceListUserNamesByIdsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ServiceListUserNamesByIdsVariables): QueryRef<ServiceListUserNamesByIdsData, ServiceListUserNamesByIdsVariables>;
+  operationName: string;
+}
+export const serviceListUserNamesByIdsRef: ServiceListUserNamesByIdsRef;
+
+export function serviceListUserNamesByIds(vars: ServiceListUserNamesByIdsVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceListUserNamesByIdsData, ServiceListUserNamesByIdsVariables>;
+export function serviceListUserNamesByIds(dc: DataConnect, vars: ServiceListUserNamesByIdsVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceListUserNamesByIdsData, ServiceListUserNamesByIdsVariables>;
+
+interface ServiceGetUserAccessGroupsByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ServiceGetUserAccessGroupsByIdVariables): QueryRef<ServiceGetUserAccessGroupsByIdData, ServiceGetUserAccessGroupsByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ServiceGetUserAccessGroupsByIdVariables): QueryRef<ServiceGetUserAccessGroupsByIdData, ServiceGetUserAccessGroupsByIdVariables>;
+  operationName: string;
+}
+export const serviceGetUserAccessGroupsByIdRef: ServiceGetUserAccessGroupsByIdRef;
+
+export function serviceGetUserAccessGroupsById(vars: ServiceGetUserAccessGroupsByIdVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetUserAccessGroupsByIdData, ServiceGetUserAccessGroupsByIdVariables>;
+export function serviceGetUserAccessGroupsById(dc: DataConnect, vars: ServiceGetUserAccessGroupsByIdVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetUserAccessGroupsByIdData, ServiceGetUserAccessGroupsByIdVariables>;
+
+interface ServiceGetEventsForSectionRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ServiceGetEventsForSectionVariables): QueryRef<ServiceGetEventsForSectionData, ServiceGetEventsForSectionVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ServiceGetEventsForSectionVariables): QueryRef<ServiceGetEventsForSectionData, ServiceGetEventsForSectionVariables>;
+  operationName: string;
+}
+export const serviceGetEventsForSectionRef: ServiceGetEventsForSectionRef;
+
+export function serviceGetEventsForSection(vars: ServiceGetEventsForSectionVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetEventsForSectionData, ServiceGetEventsForSectionVariables>;
+export function serviceGetEventsForSection(dc: DataConnect, vars: ServiceGetEventsForSectionVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetEventsForSectionData, ServiceGetEventsForSectionVariables>;
+
+interface ServiceGetEventByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ServiceGetEventByIdVariables): QueryRef<ServiceGetEventByIdData, ServiceGetEventByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ServiceGetEventByIdVariables): QueryRef<ServiceGetEventByIdData, ServiceGetEventByIdVariables>;
+  operationName: string;
+}
+export const serviceGetEventByIdRef: ServiceGetEventByIdRef;
+
+export function serviceGetEventById(vars: ServiceGetEventByIdVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetEventByIdData, ServiceGetEventByIdVariables>;
+export function serviceGetEventById(dc: DataConnect, vars: ServiceGetEventByIdVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetEventByIdData, ServiceGetEventByIdVariables>;
+
+interface ServiceGetSectionByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ServiceGetSectionByIdVariables): QueryRef<ServiceGetSectionByIdData, ServiceGetSectionByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ServiceGetSectionByIdVariables): QueryRef<ServiceGetSectionByIdData, ServiceGetSectionByIdVariables>;
+  operationName: string;
+}
+export const serviceGetSectionByIdRef: ServiceGetSectionByIdRef;
+
+export function serviceGetSectionById(vars: ServiceGetSectionByIdVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetSectionByIdData, ServiceGetSectionByIdVariables>;
+export function serviceGetSectionById(dc: DataConnect, vars: ServiceGetSectionByIdVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetSectionByIdData, ServiceGetSectionByIdVariables>;
+
+interface ServiceGetUserGroupByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ServiceGetUserGroupByIdVariables): QueryRef<ServiceGetUserGroupByIdData, ServiceGetUserGroupByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ServiceGetUserGroupByIdVariables): QueryRef<ServiceGetUserGroupByIdData, ServiceGetUserGroupByIdVariables>;
+  operationName: string;
+}
+export const serviceGetUserGroupByIdRef: ServiceGetUserGroupByIdRef;
+
+export function serviceGetUserGroupById(vars: ServiceGetUserGroupByIdVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetUserGroupByIdData, ServiceGetUserGroupByIdVariables>;
+export function serviceGetUserGroupById(dc: DataConnect, vars: ServiceGetUserGroupByIdVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceGetUserGroupByIdData, ServiceGetUserGroupByIdVariables>;
+
+interface ServiceListEventBookingsForAdminRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ServiceListEventBookingsForAdminVariables): QueryRef<ServiceListEventBookingsForAdminData, ServiceListEventBookingsForAdminVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ServiceListEventBookingsForAdminVariables): QueryRef<ServiceListEventBookingsForAdminData, ServiceListEventBookingsForAdminVariables>;
+  operationName: string;
+}
+export const serviceListEventBookingsForAdminRef: ServiceListEventBookingsForAdminRef;
+
+export function serviceListEventBookingsForAdmin(vars: ServiceListEventBookingsForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceListEventBookingsForAdminData, ServiceListEventBookingsForAdminVariables>;
+export function serviceListEventBookingsForAdmin(dc: DataConnect, vars: ServiceListEventBookingsForAdminVariables, options?: ExecuteQueryOptions): QueryPromise<ServiceListEventBookingsForAdminData, ServiceListEventBookingsForAdminVariables>;
 
 interface GetTicketAttendanceForManagementRef {
   /* Allow users to create refs without passing in DataConnect */

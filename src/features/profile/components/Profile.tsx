@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { dataConnect } from "../../../config/firebase";
-import { upsertUser, type UpsertUserVariables, MembershipStatus } from "@dataconnect/generated";
+import { upsertUser, type UpsertUserVariables, MembershipStatus } from "../../../shared/query/sessionDataConnect";
 import type { UserData } from "../../../types";
 import { updateDisplayName, updateMembershipStatus } from "../../../shared/utils/firebaseFunctions";
 import {

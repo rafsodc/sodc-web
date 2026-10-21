@@ -1,4 +1,4 @@
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "../sessionCallable";
 import { functions } from "../../../config/firebase";
 
 export async function requestPasswordResetEmail(email: string): Promise<void> {

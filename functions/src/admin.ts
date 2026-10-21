@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import * as admin from "firebase-admin";
+import { transitionUserSecurity } from "./currentAuthorizationTransitions";
+import { getUserSecurityState } from "./securityRepository";
 import { requireAdmin, requireString, getAdminUsers, mapUserRecord, handleFunctionError } from "./helpers";
 import { getUserMembershipStatus } from "@dataconnect/admin-generated";
 import { isRestrictedStatus, type MembershipStatus } from "./validation";
@@ -14,7 +15,7 @@ import { enforceRateLimit } from "./rateLimiter";
 export const grantAdmin = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-  requireAdmin(request);
+  await requireAdmin(request);
   await enforceRateLimit("grantAdmin", request.auth!.uid);
   const uid = requireString(request.data.uid, "uid");
 
@@ -30,18 +31,7 @@ export const grantAdmin = onCall(
       );
     }
 
-    // Get current user to preserve existing claims
-    const userRecord = await admin.auth().getUser(uid);
-    const currentClaims = userRecord.customClaims || {};
-    
-    // Update claims, ensuring enabled is true for admins
-    const updatedClaims = {
-      ...currentClaims,
-      admin: true,
-      enabled: true, // Admins must always be enabled
-    };
-    
-    await admin.auth().setCustomUserClaims(uid, updatedClaims);
+    await transitionUserSecurity({ userId: uid, actorId: request.auth!.uid, admin: true, reason: "GRANT_ADMIN" });
     logger.info(`Admin claim set for uid=${uid} by caller=${request.auth!.uid}`);
     return { success: true, message: `Admin claim set for uid=${uid}` };
   } catch (e: any) {
@@ -56,7 +46,7 @@ export const grantAdmin = onCall(
 export const revokeAdmin = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-  requireAdmin(request);
+  await requireAdmin(request);
   await enforceRateLimit("revokeAdmin", request.auth!.uid);
   const uid = requireString(request.data.uid, "uid");
 
@@ -67,14 +57,9 @@ export const revokeAdmin = onCall(
       throw new HttpsError("failed-precondition", "Cannot remove the last admin. At least one admin must remain.");
     }
 
-    const targetUser = await admin.auth().getUser(uid);
-    const targetUserClaims = targetUser.customClaims || {};
-    if (targetUserClaims.admin !== true) {
-      throw new HttpsError("failed-precondition", "User is not an admin");
-    }
-
-    const { admin: _removed, ...remainingClaims } = targetUserClaims;
-    await admin.auth().setCustomUserClaims(uid, { ...remainingClaims, admin: false });
+    const target = (await getUserSecurityState({userId: uid})).data.userSecurityState;
+    if (!target?.desiredAdmin) throw new HttpsError("failed-precondition", "User is not an admin");
+    await transitionUserSecurity({ userId: uid, actorId: request.auth!.uid, admin: false, reason: "REVOKE_ADMIN" });
     logger.info(`Admin claim removed for uid=${uid} by caller=${request.auth!.uid}`);
     return { success: true, message: `Admin claim removed for uid=${uid}` };
   } catch (e: any) {
@@ -89,7 +74,7 @@ export const revokeAdmin = onCall(
 export const listAdminUsers = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-  requireAdmin(request);
+  await requireAdmin(request);
   await enforceRateLimit("listAdminUsers", request.auth!.uid);
 
   try {

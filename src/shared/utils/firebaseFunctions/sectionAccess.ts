@@ -1,4 +1,4 @@
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "../sessionCallable";
 import type { GetEventByIdData, GetEventsForSectionData, GetSectionByIdData } from "@dataconnect/generated";
 import { functions } from "../../../config/firebase";
 import { toCanonicalUuid } from "../uuid";

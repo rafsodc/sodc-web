@@ -1,3 +1,4 @@
+import { transitionUserSecurity } from "./currentAuthorizationTransitions";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
@@ -15,7 +16,7 @@ function errorCode(error: unknown): string {
 export const updateUserEmail = onCall(
   { region: FUNCTIONS_REGION, timeoutSeconds: 60, secrets: [...govNotifySecrets] },
   async (request) => {
-    requireAdmin(request);
+    await requireAdmin(request);
     const actorUid = request.auth!.uid;
     const userId = requireString(request.data?.userId, "userId");
     const email = validateEmail(requireString(request.data?.email, "email"));
@@ -37,6 +38,7 @@ export const updateUserEmail = onCall(
         const changed = currentEmail !== email;
         try {
           if (changed) {
+            await transitionUserSecurity({userId, actorId: actorUid, reason: "EMAIL_REVERIFICATION", verificationEmail: email});
             user = await admin.auth().updateUser(userId, { email, emailVerified: false });
           }
           // Repeat revocation on an unverified retry, including recovery after a

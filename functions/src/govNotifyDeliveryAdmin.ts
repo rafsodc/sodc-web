@@ -54,7 +54,7 @@ async function readAdminConfiguration(): Promise<GovNotifyDeliveryAdminConfigura
 export const getGovNotifyDeliveryAdminConfiguration = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<GovNotifyDeliveryAdminConfiguration> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     return readAdminConfiguration();
   },
 );
@@ -62,7 +62,7 @@ export const getGovNotifyDeliveryAdminConfiguration = onCall(
 export const updateGovNotifyDeliveryMode = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<GovNotifyDeliveryAdminConfiguration> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     let newMode: GovNotifyDeliveryMode;
     try {
       newMode = parseGovNotifyDeliveryMode(request.data?.mode, "mode");

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { captureSession, isSessionCurrent, runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -25,41 +27,62 @@ export default function EmailVerificationMessage({
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
+  const checks = useLatestRequestGuard();
+  const resends = useLatestRequestGuard();
+  const sentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setChecking(false);
+    setSending(false);
+    setSent(false);
+    setError(null);
+    return () => {
+      checks.invalidate();
+      resends.invalidate();
+      if (sentTimer.current) clearTimeout(sentTimer.current);
+    };
+  }, [user.uid, checks, resends]);
+
   const handleResend = async () => {
+    const request = resends.start();
+    const session = captureSession(user.uid);
+    const current = () => resends.isCurrent(request) && isSessionCurrent(session);
     setError(null);
     setSending(true);
     try {
-      await requestEmailVerification();
+      await runSessionOperation(() => requestEmailVerification(), session);
+      if (!current()) return;
       setSent(true);
-      setTimeout(() => setSent(false), 60_000);
-    } catch (e: unknown) {
-      reportError("auth.email-verification.resend", e);
-      setError(toAuthUserFacingError(e, "email-verification").message);
+      sentTimer.current = setTimeout(() => { if (current()) setSent(false); }, 60_000);
+    } catch (error) {
+      if (!current()) return;
+      reportError("auth.email-verification.resend", error);
+      setError(toAuthUserFacingError(error, "email-verification").message);
     } finally {
-      setSending(false);
+      if (current()) setSending(false);
     }
   };
 
   const checkVerification = async () => {
+    const request = checks.start();
+    const session = captureSession(user.uid);
+    const current = () => checks.isCurrent(request) && isSessionCurrent(session);
     setChecking(true);
     setError(null);
     try {
-      await reload(user);
-      await user.getIdToken(true);
+      await runSessionOperation(() => reload(user), session);
+      if (!current()) return;
+      await runSessionOperation(() => user.getIdToken(true), session);
+      if (!current()) return;
       await new Promise((resolve) => setTimeout(resolve, 100));
-
-      if (user.emailVerified) {
-        if (onVerified) {
-          await onVerified();
-        }
-      } else {
-        setError("Email not yet verified. Please check your inbox and click the verification link.");
-      }
-    } catch (verificationError) {
-      reportError("auth.email-verification.check", verificationError);
-      setError(toAuthUserFacingError(verificationError, "email-verification").message);
+      if (!current()) return;
+      if (user.emailVerified) await onVerified?.();
+      else setError("Email not yet verified. Please check your inbox and click the verification link.");
+    } catch (error) {
+      if (!current()) return;
+      reportError("auth.email-verification.check", error);
+      setError(toAuthUserFacingError(error, "email-verification").message);
     } finally {
-      setChecking(false);
+      if (current()) setChecking(false);
     }
   };
 

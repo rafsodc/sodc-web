@@ -1,8 +1,8 @@
+import { signOutPrivateSession } from "./shared/appShell/sessionLifecycle";
 import { useEffect, useState, useCallback, useMemo, lazy, Suspense, type ReactElement } from "react";
 import { Box, Button, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { signOut } from "firebase/auth";
-import { auth, dataConnect } from "./config/firebase";
+import { dataConnect } from "./config/firebase";
 import { useUserData } from "./features/users/hooks/useUserData";
 import type { UserData } from "./types";
 import { useEnabledClaim } from "./features/users/hooks/useEnabledClaim";
@@ -97,16 +97,13 @@ function SectionFileRoute() {
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const handleLoggedOut = useCallback(() => {
-    navigate(ROUTES.ACCOUNT);
-  }, [navigate]);
   const {
     user,
     authInitialized,
     logoutSuccess,
     setLogoutSuccess,
     triggerEmailCheck,
-  } = useAppAuthSession(handleLoggedOut);
+  } = useAppAuthSession();
   const { checkoutQueryState, dismissCheckoutStatus } = useCheckoutQueryState(location, navigate);
   const isOnline = useOnlineStatus();
   const [mobileNavAnchorEl, setMobileNavAnchorEl] = useState<HTMLElement | null>(null);
@@ -129,7 +126,7 @@ function AppContent() {
     userData,
     isEnabled
   );
-  const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled });
+  const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled && sessionRecovery.status === "idle" });
 
   useEffect(() => {
     setMobileNavAnchorEl(null);
@@ -169,17 +166,17 @@ function AppContent() {
   const handleSignInAgain = useCallback(async () => {
     const returnTo = `${location.pathname}${location.search}${location.hash}`;
     try {
-      await signOut(auth);
-    } finally {
-      navigate(accountSignInPath(returnTo), { replace: true });
+      await signOutPrivateSession({ returnTo });
+    } catch {
+      // The session boundary owns truthful sign-out failure and recovery.
     }
-  }, [location.hash, location.pathname, location.search, navigate]);
+  }, [location.hash, location.pathname, location.search]);
 
   const header = (
     <>
       <Header
-        user={user}
-        userData={userData}
+        user={sessionRecovery.status === "idle" ? user : null}
+        userData={sessionRecovery.status === "idle" ? userData : null}
         onAccountClick={() => navigate(ROUTES.ACCOUNT)}
         onProfileClick={() => navigate(ROUTES.PROFILE)}
         onAccountSettingsClick={() => navigate(ROUTES.ACCOUNT_SETTINGS)}
@@ -192,14 +189,14 @@ function AppContent() {
       <MobileNavigationMenu
         anchorEl={mobileNavAnchorEl}
         onClose={() => setMobileNavAnchorEl(null)}
-        sections={navigationLinks.sections}
-        adminLinks={navigationLinks.admin}
+        sections={sessionRecovery.status === "idle" ? navigationLinks.sections : []}
+        adminLinks={sessionRecovery.status === "idle" ? navigationLinks.admin : []}
         pathname={location.pathname}
       />
     </>
   );
 
-  if (!isOnline) {
+  if (!isOnline && sessionRecovery.status === "idle") {
     return (
       <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
         {header}
@@ -220,10 +217,11 @@ function AppContent() {
   if (sessionRecovery.status !== "idle" && !isPublicRoute) {
     const isRecovering = sessionRecovery.status === "recovering";
     const timedOut = sessionRecovery.failure === "request-timeout";
+    const pending = sessionRecovery.failure === "authorization-pending";
+    const accessCheckFailed = sessionRecovery.failure === "authorization-check-failed";
 
     return (
       <Box sx={{ flexGrow: 1, width: "100%", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
-        {header}
         <Box component="main" sx={{ flexGrow: 1, width: "100%", pt: 12, pb: 4 }}>
           <Box sx={{ maxWidth: { sm: "640px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
             {isRecovering ? (
@@ -245,7 +243,11 @@ function AppContent() {
                   </Box>
                 }
               >
-                {timedOut
+                {pending
+                  ? "Your account access is being updated. Your private information is hidden. Try again shortly."
+                  : accessCheckFailed
+                  ? "Your account access could not be verified. Your private information is hidden. Try again or sign in again."
+                  : timedOut
                   ? "The request took too long after the app resumed. Try reconnecting your session."
                   : "Your session could not be refreshed. Try again or sign in again."}
               </Alert>

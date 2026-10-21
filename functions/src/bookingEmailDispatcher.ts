@@ -7,7 +7,6 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import {
   createConfiguredGovNotifyMailer,
   GOV_NOTIFY_PROVIDER,
-  recipientScopedNotifyReference,
 } from "./mailer";
 import { sanitizeMailerError } from "./mailerErrors";
 import {
@@ -18,7 +17,8 @@ import {
 import { sendNotificationOnce } from "./notificationDelivery";
 import type { BookingPaymentDelta } from "./bookingPaymentAdjustments";
 import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
-import { resolveBookingModeratorEmails } from "./bookingModerators";
+import { resolveBookingModeratorUserIds } from "./bookingModerators";
+import { sendPrivilegedNotification } from "./privilegedNotificationDelivery";
 
 export const BOOKING_MAIL_TEMPLATE_KEYS = [
   "bookingConfirmation",
@@ -174,6 +174,10 @@ export function bookingPendingModeratorDeliveryKey(bookingId: string, moderatorE
   return `booking-pending-mod:${bookingId}:${moderatorEmail.trim().toLowerCase()}`;
 }
 
+export function bookingPendingModeratorUidDeliveryKey(bookingId: string, recipientUserId: string): string {
+  return `booking-pending-mod-v2:${bookingId}:${encodeURIComponent(recipientUserId)}`;
+}
+
 export function bookingChangesRequestedDeliveryKey(bookingId: string): string {
   return `booking-changes-requested:${bookingId}`;
 }
@@ -327,7 +331,8 @@ export async function notifyBookingPendingApprovalEmails(args: {
   bookingId: UUIDString;
   idempotencyKey: string;
   appBaseUrl: string;
-  recipientEmails?: readonly string[];
+  recipientUserIds?: readonly string[];
+  recoveryDeliveryKey?: string;
   notifyMember?: boolean;
   getMailer?: () => ReturnType<typeof createBookingMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
@@ -379,9 +384,9 @@ export async function notifyBookingPendingApprovalEmails(args: {
       }
     }
 
-    const recipients = args.recipientEmails
-      ? Array.from(new Set(args.recipientEmails.map((email) => email.trim().toLowerCase()).filter(Boolean)))
-      : await resolveBookingModeratorEmails({
+    const recipients = args.recipientUserIds
+      ? Array.from(new Set(args.recipientUserIds))
+      : await resolveBookingModeratorUserIds({
           sectionId: booking.event.section.id,
           excludeUserId: booking.booker.id,
         });
@@ -394,41 +399,36 @@ export async function notifyBookingPendingApprovalEmails(args: {
       ticketLinesSummary: buildTicketLinesSummary(booking.lines),
       moderationUrl: `${base}/admin/sections`,
     };
-    for (const recipientEmail of recipients) {
+    for (const recipientUserId of recipients) {
       try {
-        await sendNotificationOnce({
+        await sendPrivilegedNotification({
           channel: NotificationChannel.EMAIL,
           notificationType: "BOOKING_PENDING_APPROVAL_MODERATOR",
-          deliveryKey: bookingPendingModeratorDeliveryKey(args.bookingId, recipientEmail),
+          deliveryKey: args.recoveryDeliveryKey ?? bookingPendingModeratorUidDeliveryKey(args.bookingId, recipientUserId),
+          preserveDeliveryKey: Boolean(args.recoveryDeliveryKey),
           bookingId: args.bookingId,
           userId: null,
+          recipientUserId,
+          scope: { kind: "BOOKING", sectionId: booking.event.section.id },
+          event: { kind: "BOOKING", bookingId: args.bookingId },
           provider: GOV_NOTIFY_PROVIDER,
           deliveryMode: args.deliveryMode,
-          recoveryPayload: {
-            version: 1,
-            kind: "BOOKING_PENDING_MODERATOR",
-            bookingId: args.bookingId,
-            recipientEmail,
-          },
-          send: async (deliveryMode) => {
+          recoveryPayload: { version: 2, kind: "BOOKING_PENDING_MODERATOR", bookingId: args.bookingId, recipientUserId },
+          sendAuthorized: async (email, deliveryMode) => {
             const result = await mailer.sendEmail({
               templateName: "bookingPendingApprovalModerator",
-              to: recipientEmail,
+              to: email,
               personalisation: moderatorPersonalisation,
-              reference: recipientScopedNotifyReference(`BOOKING_PENDING_MODERATOR:${args.bookingId}`, recipientEmail),
+              reference: bookingPendingModeratorUidDeliveryKey(args.bookingId, recipientUserId),
               requestedDeliveryMode: deliveryMode,
             });
-            return {
-              providerMessageId: result.providerNotificationId ?? null,
-              deliveryMode: result.deliveryMode?.effectiveMode,
-            };
+            return { providerMessageId: result.providerNotificationId ?? null,
+              deliveryMode: result.deliveryMode?.effectiveMode };
           },
         });
       } catch (error) {
         logger.error("booking pending moderator email failed", {
-          bookingId: args.bookingId,
-          recipientEmail,
-          error: sanitizeMailerError(error),
+          bookingId: args.bookingId, recipientUserId, errorType: error instanceof Error ? error.name : typeof error,
         });
       }
     }

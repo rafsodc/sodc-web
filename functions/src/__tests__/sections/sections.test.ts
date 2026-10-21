@@ -12,13 +12,13 @@ import {
 const { mockGetUsers } = vi.hoisted(() => ({ mockGetUsers: vi.fn() }));
 vi.mock("firebase-admin", () => ({ auth: () => ({ getUsers: mockGetUsers }) }));
 
-const mockGetSectionById = vi.spyOn(admin, "getSectionById");
-const mockGetUserAccessGroupsById = vi.spyOn(admin, "getUserAccessGroupsById");
+const mockGetSectionById = vi.spyOn(admin, "serviceGetSectionById");
+const mockGetUserAccessGroupsById = vi.spyOn(admin, "serviceGetUserAccessGroupsById");
 const mockGetUserMembershipStatus = vi.spyOn(admin, "getUserMembershipStatus");
-const mockGetEventsForSection = vi.spyOn(admin, "getEventsForSection");
-const mockGetEventById = vi.spyOn(admin, "getEventById");
+const mockGetEventsForSection = vi.spyOn(admin, "serviceGetEventsForSection");
+const mockGetEventById = vi.spyOn(admin, "serviceGetEventById");
 const mockGetSectionMembers = vi.spyOn(admin, "getSectionMembers");
-const mockListUsers = vi.spyOn(admin, "listUsers");
+const mockListUsers = vi.spyOn(admin, "serviceListUsers");
 const mockSearchSectionMemberCandidates = vi.spyOn(admin, "searchSectionMemberCandidates");
 const mockConsumeCallableRateLimit = vi.spyOn(admin, "consumeCallableRateLimit");
 const mockEnsureCallableRateLimitBucket = vi.spyOn(admin, "ensureCallableRateLimitBucket");
@@ -41,7 +41,7 @@ function callAs<T>(
   enabled = true
 ): Promise<T> {
   return fn.run({
-    auth: { uid, token: { admin: isAdmin, enabled } },
+    auth: { uid, token: { securityVersion: 1,  admin: isAdmin, enabled } },
     data,
   });
 }

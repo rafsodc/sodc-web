@@ -8,12 +8,13 @@ export default defineConfig([
     "coverage",
     "lib",
     "src/dataconnect-admin-generated",
+    "src/security-admin-generated",
     "src/generatedEmailTemplateManifest.ts",
   ]),
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["src/**/*.ts", "scripts/**/*.ts"],
+    files: ["src/**/*.ts", "scripts/**/*.{ts,mjs}"],
     languageOptions: {
       ecmaVersion: 2022,
       globals: globals.node,

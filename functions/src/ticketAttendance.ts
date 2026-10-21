@@ -1,6 +1,7 @@
+import { currentAuthorization } from "./currentAuthorization";
 import { ticketPreferences } from "./ticketPreferences";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { getAttendeeEventSection, listUserNamesByIds, listEventBookingsForAdmin, getEventById, getTicketAttendanceForManagement, getAttendanceTicketType, updateTicketAttendance } from "@dataconnect/admin-generated";
+import { getAttendeeEventSection, serviceListUserNamesByIds as listUserNamesByIds, serviceListEventBookingsForAdmin as listEventBookingsForAdmin, serviceGetEventById as getEventById, getTicketAttendanceForManagement, getAttendanceTicketType, updateTicketAttendance } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
 import { requireEnabled, requireString, validateUUID, handleFunctionError } from "./helpers";
 import { requireSectionModerator } from "./sectionAccess";
@@ -15,7 +16,7 @@ function text(value: unknown, label: string, max: number, required = false): str
 
 export const manageTicketAttendance = onCall({ region: FUNCTIONS_REGION }, async (request) => {
   try {
-    requireEnabled(request);
+    await requireEnabled(request);
     const id = validateUUID(requireString(request.data?.id, "id"));
     const eventId = validateUUID(requireString(request.data?.eventId, "eventId"));
     const { action, version } = request.data;
@@ -25,7 +26,7 @@ export const manageTicketAttendance = onCall({ region: FUNCTIONS_REGION }, async
     await enforceRateLimit("manageTicketAttendance", request.auth!.uid);
     const line = (await getTicketAttendanceForManagement({ id })).data.bookingLine;
     if (!line || validateUUID(line.booking.event.id) !== eventId) throw new HttpsError("not-found", "Ticket not found");
-    await requireSectionModerator(line.booking.event.section.id, request.auth!.uid, request.auth!.token.admin === true);
+    await requireSectionModerator(line.booking.event.section.id, request.auth!.uid, currentAuthorization(request).isAdmin);
     if (line.booking.supersededAt || !["SUBMITTED", "CONFIRMED"].includes(line.booking.status) ||
         !["NOT_REQUIRED", "APPROVED"].includes(line.booking.approvalStatus) || line.bookingPlace.attendanceRemoved !== (action === "restore") ||
         line.bookingPlace.attendanceVersion !== version) {
@@ -62,12 +63,12 @@ export const manageTicketAttendance = onCall({ region: FUNCTIONS_REGION }, async
 // use the admin-only browser connector queries directly.
 export const getManagedEventTickets = onCall({ region: FUNCTIONS_REGION }, async (request) => {
   try {
-    requireEnabled(request);
+    await requireEnabled(request);
     const eventId = validateUUID(requireString(request.data?.eventId, "eventId"));
     await enforceRateLimit("getManagedEventTickets", request.auth!.uid);
     const event = (await getAttendeeEventSection({ eventId })).data.event;
     if (!event) throw new HttpsError("not-found", "Event not found");
-    await requireSectionModerator(event.section.id, request.auth!.uid, request.auth!.token.admin === true);
+    await requireSectionModerator(event.section.id, request.auth!.uid, currentAuthorization(request).isAdmin);
     const [bookings, detail] = await Promise.all([
       listEventBookingsForAdmin({ eventId }), getEventById({ id: eventId }),
     ]);

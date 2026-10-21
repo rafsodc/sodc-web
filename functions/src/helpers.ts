@@ -2,6 +2,7 @@ import { HttpsError } from "firebase-functions/v2/https";
 import type { CallableRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
+import { requireCurrentAuthorization } from "./currentAuthorization";
 
 /**
  * Ensures the request is authenticated
@@ -15,11 +16,12 @@ export function requireAuth(request: CallableRequest): void {
 /**
  * Requires the Firebase Auth user to have the `enabled` custom claim (matches Data Connect USER_ACCESS).
  */
-export function requireEnabled(request: CallableRequest): void {
+export async function requireEnabled(request: CallableRequest): Promise<void> {
   requireAuth(request);
   if (request.auth!.token.enabled !== true) {
-    throw new HttpsError("permission-denied", "Account must be enabled");
+    throw new HttpsError("permission-denied", "Account must be enabled", { code: "ACCESS_REVOKED" });
   }
+  await requireCurrentAuthorization(request);
 }
 
 /**
@@ -27,7 +29,7 @@ export function requireEnabled(request: CallableRequest): void {
  * An admin claim never bypasses account revocation: admin callables use the
  * same enabled-account boundary as member and moderator surfaces.
  */
-export function requireAdmin(request: CallableRequest): void {
+export async function requireAdmin(request: CallableRequest): Promise<void> {
   requireAuth(request);
   if (request.auth!.token.admin !== true) {
     throw new HttpsError("permission-denied", "Admins only");
@@ -35,6 +37,7 @@ export function requireAdmin(request: CallableRequest): void {
   if (request.auth!.token.enabled !== true) {
     throw new HttpsError("permission-denied", "Account must be enabled");
   }
+  await requireCurrentAuthorization(request, true);
 }
 
 /**

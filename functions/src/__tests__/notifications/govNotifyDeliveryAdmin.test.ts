@@ -10,7 +10,7 @@ const listAudits = vi.spyOn(admin, "listGovNotifyDeliveryModeAudits");
 const changeMode = vi.spyOn(admin, "changeGovNotifyDeliveryMode");
 
 const adminRequest = (data: Record<string, unknown> = {}) => ({
-  auth: { uid: "admin-1", token: { admin: true, enabled: true } },
+  auth: { uid: "admin-1", token: { admin: true, enabled: true, securityVersion: 1 } },
   data,
 });
 
@@ -34,7 +34,7 @@ beforeEach(() => {
 describe("GOV.UK Notify delivery administration", () => {
   it("rejects a non-admin reader", async () => {
     await expect(getGovNotifyDeliveryAdminConfiguration.run({
-      auth: { uid: "member-1", token: { admin: false, enabled: true } },
+      auth: { uid: "member-1", token: { admin: false, enabled: true, securityVersion: 1 } },
       data: {},
     } as never)).rejects.toMatchObject({ code: "permission-denied" });
   });

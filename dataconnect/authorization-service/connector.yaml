@@ -1,0 +1,6 @@
+connectorId: authorization-service
+generate:
+  adminNodeSdk:
+    - outputDir: ../../functions/src/security-admin-generated
+      package: "@dataconnect/security-admin-generated"
+      packageJsonDir: ../../functions

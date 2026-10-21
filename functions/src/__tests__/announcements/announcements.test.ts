@@ -29,7 +29,7 @@ import { unsubscribeSecret } from "../../unsubscribe";
 
 const mockGetAnnouncementSendById = vi.spyOn(admin, "getAnnouncementSendById");
 const mockGetAnnouncementSendRecipientPage = vi.spyOn(admin, "getAnnouncementSendRecipientPage");
-const mockGetSectionById = vi.spyOn(admin, "getSectionById");
+const mockGetSectionById = vi.spyOn(admin, "serviceGetSectionById");
 const mockGetAnnouncementAudienceSection = vi.spyOn(admin, "getAnnouncementAudienceSection");
 const mockGetAnnouncementAudiencePurposeLinks = vi.spyOn(admin, "getAnnouncementAudiencePurposeLinksPaged");
 const mockGetAnnouncementExplicitMembers = vi.spyOn(admin, "getAnnouncementExplicitMembersPaged");
@@ -84,7 +84,7 @@ const sendIdForSectionB = "00000000-0000-4000-8000-0000000000b1";
 
 function callAsAdmin(data: Record<string, unknown>) {
   return getAnnouncementSendRecipients.run({
-    auth: { uid: "admin-1", token: { admin: true, enabled: true } },
+    auth: { uid: "admin-1", token: { admin: true, enabled: true, securityVersion: 1 } },
     data,
   } as unknown as Parameters<typeof getAnnouncementSendRecipients.run>[0]);
 }
@@ -288,7 +288,7 @@ describe("sendSectionAnnouncement asynchronous durable enqueue", () => {
     });
 
     const call = () => sendSectionAnnouncement.run({
-      auth: { uid: "admin-1", token: { admin: true, enabled: true } },
+      auth: { uid: "admin-1", token: { admin: true, enabled: true, securityVersion: 1 } },
       data: {
         sectionId: sectionAId,
         templateUuid: "template-1",
@@ -343,7 +343,7 @@ describe("announcement callable enabled-account boundary", () => {
     for (const callable of announcementCallables) {
       await expect(
         callable.run({
-          auth: { uid: "disabled-user", token: { admin: isAdmin, enabled: false } },
+          auth: { uid: "disabled-user", token: { securityVersion: 1,  admin: isAdmin, enabled: false } },
           data: {},
         } as never)
       ).rejects.toMatchObject({ code: "permission-denied", message: "Account must be enabled" });
@@ -375,7 +375,7 @@ describe("announcement preparation recovery", () => {
       seenTaskIds.add(id);
     });
     const call = (attemptId: string) => retryAnnouncementPreparation.run({
-      auth: { uid: "admin-1", token: { admin: true, enabled: true } },
+      auth: { uid: "admin-1", token: { admin: true, enabled: true, securityVersion: 1 } },
       data: { sectionId: sectionBId, sendId: sendIdForSectionB, attemptId },
     } as never);
 
@@ -423,7 +423,7 @@ describe("getAnnouncementSendHistory progress", () => {
     } as never);
 
     const result = await getAnnouncementSendHistory.run({
-      auth: { uid: "admin-1", token: { admin: true, enabled: true } },
+      auth: { uid: "admin-1", token: { admin: true, enabled: true, securityVersion: 1 } },
       data: { sectionId: sectionBId },
     } as never);
 
@@ -442,7 +442,7 @@ describe("getAnnouncementSendHistory progress", () => {
     mockGetAnnouncementProgressSummary.mockRejectedValue(new Error("second page unavailable"));
 
     const result = await getAnnouncementSendHistory.run({
-      auth: { uid: "admin-1", token: { admin: true, enabled: true } },
+      auth: { uid: "admin-1", token: { admin: true, enabled: true, securityVersion: 1 } },
       data: { sectionId: sectionBId },
     } as never);
 
@@ -854,7 +854,7 @@ describe("attendee announcement preview and durable send", () => {
     skippedRecipients: [{ userId: "missing:2", firstName: "Missing", lastName: "Contact", email: "", reason: "missing_contact" }],
     preview: { eventTitle: "Dinner", fingerprint: "fingerprint", matchedTicketCount: 2, recipients: [{ name: "Guest One", email: "guest@example.com" }], skipped: [{ name: "Missing Contact", email: "", reason: "missing_contact" }] },
   };
-  const call = (overrides = {}) => sendSectionAnnouncement.run({ auth: { uid: "admin-1", token: { enabled: true, admin: true } }, data: {
+  const call = (overrides = {}) => sendSectionAnnouncement.run({ auth: { uid: "admin-1", token: { enabled: true, securityVersion: 1, admin: true } }, data: {
     sectionId: sectionAId, templateUuid: "template-1", requestId, deliveryMode: "LIVE", eventAudience, audienceFingerprint: "fingerprint", ...overrides,
   } } as never);
   beforeEach(() => {
@@ -909,12 +909,12 @@ describe("attendee announcement preview and durable send", () => {
   });
   it("previews only after authorization", async () => {
     const data = { sectionId: sectionAId, eventAudience };
-    await expect(previewEventAnnouncementAudience.run({ auth: { uid: "admin-1", token: { enabled: true, admin: true } }, data } as never)).resolves.toEqual(resolution.preview);
+    await expect(previewEventAnnouncementAudience.run({ auth: { uid: "admin-1", token: { enabled: true, securityVersion: 1, admin: true } }, data } as never)).resolves.toEqual(resolution.preview);
     await expect(previewEventAnnouncementAudience.run({ data } as never)).rejects.toMatchObject({ code: "unauthenticated" });
     mockGetSectionById.mockResolvedValue({ data: { section: { purposeLinks: [] } } } as never);
-    vi.spyOn(admin, "getUserAccessGroupsById").mockResolvedValue({ data: { user: { userGroups: [] } } } as never);
+    vi.spyOn(admin, "serviceGetUserAccessGroupsById").mockResolvedValue({ data: { user: { userGroups: [] } } } as never);
     vi.spyOn(admin, "getUserMembershipStatus").mockResolvedValue({ data: { user: { membershipStatus: "REGULAR" } } } as never);
-    await expect(previewEventAnnouncementAudience.run({ auth: { uid: "member", token: { enabled: true } }, data } as never)).rejects.toMatchObject({ code: "permission-denied" });
+    await expect(previewEventAnnouncementAudience.run({ auth: { uid: "member", token: { enabled: true, securityVersion: 1 } }, data } as never)).rejects.toMatchObject({ code: "permission-denied" });
     expect(eventAudiences.resolveEventAnnouncementAudience).toHaveBeenCalledOnce();
   });
 });

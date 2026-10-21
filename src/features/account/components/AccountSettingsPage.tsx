@@ -1,3 +1,5 @@
+import { runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
+import { signOutPrivateSession } from "../../../shared/appShell/sessionLifecycle";
 import { useMemo, useState } from "react";
 import {
   Alert,
@@ -26,13 +28,12 @@ import {
   useOptInSectionAnnouncement,
   useUpdateAnnouncementOptOutAll,
 } from "@dataconnect/generated/react";
-import { upsertUser, type UpsertUserVariables } from "@dataconnect/generated";
+import { upsertUser, type UpsertUserVariables } from "../../../shared/query/sessionDataConnect";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link as RouterLink } from "react-router-dom";
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
-  signOut,
   updatePassword,
   type User,
 } from "firebase/auth";
@@ -102,7 +103,7 @@ function AnnouncementPreferencesList() {
     setGlobalOverride(newOptOut);
     setGlobalBusy(true);
     try {
-      await updateGlobalOptOut.mutateAsync({ announcementOptOutAll: newOptOut });
+      await runSessionOperation(() => updateGlobalOptOut.mutateAsync({ announcementOptOutAll: newOptOut }));
       queryClient.setQueryData(
         ["GetMyAnnouncementPreferences", null],
         (old: typeof data) =>
@@ -130,9 +131,9 @@ function AnnouncementPreferencesList() {
     setBusy(sectionId);
     try {
       if (currentlyOptedOut) {
-        await optIn.mutateAsync({ sectionId });
+        await runSessionOperation(() => optIn.mutateAsync({ sectionId }));
       } else {
-        await optOut.mutateAsync({ sectionId });
+        await runSessionOperation(() => optOut.mutateAsync({ sectionId }));
       }
       queryClient.setQueryData(
         ["GetMyAnnouncementPreferences", null],
@@ -287,7 +288,7 @@ export default function AccountSettingsPage({
 
     setPasswordSubmitting(true);
     try {
-      const passwordValidation = await validateNewPassword(auth, newPassword);
+      const passwordValidation = await runSessionOperation(() => validateNewPassword(auth, newPassword));
       if (!passwordValidation.isValid) {
         setPasswordError(
           passwordValidation.error ?? "Password does not meet the current requirements",
@@ -295,8 +296,8 @@ export default function AccountSettingsPage({
         return;
       }
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
-      await reauthenticateWithCredential(user, credential);
-      await updatePassword(user, newPassword);
+      await runSessionOperation(() => reauthenticateWithCredential(user, credential));
+      await runSessionOperation(() => updatePassword(user, newPassword));
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -330,8 +331,8 @@ export default function AccountSettingsPage({
     setEmailSubmitting(true);
     try {
       const credential = EmailAuthProvider.credential(user.email, emailCurrentPassword);
-      await reauthenticateWithCredential(user, credential);
-      await user.getIdToken(true);
+      await runSessionOperation(() => reauthenticateWithCredential(user, credential));
+      await runSessionOperation(() => user.getIdToken(true));
       await requestEmailChange(normalized);
       setNewEmail("");
       setEmailCurrentPassword("");
@@ -399,7 +400,7 @@ export default function AccountSettingsPage({
         return;
       }
       setResignDialogOpen(false);
-      await signOut(auth);
+      await signOutPrivateSession();
     } catch (error) {
       reportError("account.membership-resignation", error);
       setResignError(toProfileUserFacingError(error, "resignation").message);

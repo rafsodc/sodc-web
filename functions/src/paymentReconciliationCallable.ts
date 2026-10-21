@@ -9,7 +9,7 @@ import { enforceRateLimit } from "./rateLimiter";
 export const reconcileMyCheckoutSessionOrders = onCall(
   { region: FUNCTIONS_REGION, secrets: [stripeSecret] },
   async (request) => {
-    requireEnabled(request);
+    await requireEnabled(request);
     const uid = request.auth!.uid;
     await enforceRateLimit("reconcileMyCheckoutSessionOrders", uid);
     const orderId = validateUUID(String(request.data?.orderId), "orderId") as UUIDString;

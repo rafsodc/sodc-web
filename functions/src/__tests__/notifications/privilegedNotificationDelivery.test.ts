@@ -1,0 +1,172 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { NotificationDeliveryStatus, NotificationChannel } from "@dataconnect/admin-generated";
+import { sendPrivilegedNotification } from "../../privilegedNotificationDelivery";
+import { authorizePrivilegedNotificationRecipient, PrivilegedRecipientLookupError, type CurrentRecipientState } from "../../privilegedNotificationRecipient";
+import { sendNotificationOnce } from "../../notificationDelivery";
+import { createNotificationRecoveryDispatcher, notificationRecoveryIdentity } from "../../notificationRecovery";
+import { runNotificationRecoveryBatch } from "../../notificationRecoveryEngine";
+import { resolveRuntimeGovNotifyDeliveryMode } from "../../govNotifyDeliveryConfiguration";
+import { govNotifyReferenceForMode } from "../../govNotifyDeliveryMode";
+import type { NotificationRecoveryPayload } from "../../notificationRecoveryPayload";
+import { notificationTestRepository, STAFF_BOOKING_ID, STAFF_NOW, STAFF_LATER, STAFF_CHANNEL } from "./notificationTestRepository";
+
+vi.mock("../../govNotifyDeliveryConfiguration", () => ({ resolveRuntimeGovNotifyDeliveryMode: vi.fn(async (mode = "LIVE") => ({ effectiveMode: mode })) }));
+
+afterEach(() => {
+  vi.mocked(resolveRuntimeGovNotifyDeliveryMode).mockImplementation(async (requestedMode = "LIVE") => ({
+    requestedMode, siteMode: "LIVE", effectiveMode: requestedMode,
+  }));
+});
+
+const payload = { version: 2, kind: "BOOKING_PENDING_MODERATOR", bookingId: STAFF_BOOKING_ID, recipientUserId: "staff-1", deliveryMode: "LIVE" } as const;
+function fixture() {
+  const store = notificationTestRepository();
+  let now = STAFF_NOW;
+  const current: CurrentRecipientState = { auth: { uid: "staff-1", disabled: false, emailVerified: true, email: "staff@example.com",
+    customClaims: { enabled: true, admin: true, securityVersion: 1 } }, profile: { email: "staff@example.com", membershipStatus: "REGULAR" }, security: {userId: "staff-1", securityVersion: 1, membershipStatus: "REGULAR", desiredEnabled: true, desiredAdmin: true, accessReady: true, adminReady: true, verificationEmail: null, operationId: "op-1", syncStatus: "READY", user: {membershipStatus: "REGULAR"}} };
+  const readCurrentState = vi.fn(async () => current);
+  const authorize = (uid: string, scope: Parameters<typeof authorizePrivilegedNotificationRecipient>[1]) =>
+    authorizePrivilegedNotificationRecipient(uid, scope, { readCurrentState });
+  const sendAuthorized = vi.fn(async (_email: string) => ({ providerMessageId: "fake-provider-id" }));
+  const hasLegacyEvent = vi.fn(async () => false);
+  const deliver = (key?: string, recoveredPayload: typeof payload = payload) => sendPrivilegedNotification({
+    channel: STAFF_CHANNEL, notificationType: "BOOKING_PENDING_APPROVAL_MODERATOR",
+    deliveryKey: key ?? notificationRecoveryIdentity(recoveredPayload).deliveryKey, preserveDeliveryKey: Boolean(key),
+    recipientUserId: recoveredPayload.recipientUserId, bookingId: recoveredPayload.bookingId,
+    recoveryPayload: recoveredPayload, deliveryMode: recoveredPayload.deliveryMode, provider: "govuk_notify",
+    scope: { kind: "BOOKING", sectionId: "section-1" }, event: { kind: "BOOKING", bookingId: recoveredPayload.bookingId }, sendAuthorized,
+  }, { authorize, hasLegacyEvent, delivery: { repository: store.repository, now: () => now } });
+  const dispatcher = createNotificationRecoveryDispatcher("https://app.example", {
+    notifyBookingPending: async (args) => { expect(args.recipientUserIds).toEqual(["staff-1"]); expect(args.notifyMember).toBe(false); await deliver(args.recoveryDeliveryKey); },
+    sendNotification: (request) => sendNotificationOnce(request, { repository: store.repository, now: () => now }),
+  });
+  const recover = () => runNotificationRecoveryBatch({ candidates: [...store.rows.values()].map((r) => ({ ...r })), now,
+    dispatch: dispatcher, getCurrent: async (candidate) => ({ ...store.rows.get(candidate.deliveryKey)! }) });
+  return { ...store, current, readCurrentState, sendAuthorized, hasLegacyEvent, deliver, recover, dispatcher, advance: (time = STAFF_LATER) => { now = time; } };
+}
+
+describe("privileged delivery and recovery with fake provider and real ledger orchestration", () => {
+  it("failed send -> role revocation -> recovery persists skip -> later recovery never sends", async () => {
+    const f = fixture(); f.sendAuthorized.mockRejectedValueOnce(new Error("provider unavailable"));
+    expect(await f.deliver()).toMatchObject({ outcome: "failed" });
+    f.current.auth!.customClaims!.admin = false; // no moderator authority
+    f.readCurrentState.mockImplementation(async () => ({ ...f.current, auth: { ...f.current.auth!, customClaims: { enabled: false } } }));
+    f.advance();
+    expect(await f.recover()).toMatchObject({ skipped: 1, recovered: 0, failed: 0 });
+    const row = [...f.rows.values()][0];
+    expect(row).toMatchObject({ status: NotificationDeliveryStatus.SKIPPED, skipReason: "RECIPIENT_NOT_ENABLED", providerMessageId: null, sentAt: null });
+    expect(row.skippedAt).toBe(STAFF_LATER);
+    expect(await f.recover()).toMatchObject({ skipped: 1, recovered: 0 });
+    expect(f.sendAuthorized).toHaveBeenCalledTimes(1);
+  });
+  it("failed send -> DB-first restriction with still-true Auth mirror -> recovery skips without another provider call", async () => {
+    const f = fixture(); f.sendAuthorized.mockRejectedValueOnce(new Error("provider unavailable"));
+    await f.deliver();
+    f.current.security!.accessReady = false; f.current.security!.syncStatus = "PENDING"; f.current.security!.securityVersion = 2;
+    expect(f.current.auth!.customClaims).toMatchObject({enabled: true, admin: true, securityVersion: 1});
+    f.advance();
+    expect(await f.recover()).toMatchObject({skipped: 1, recovered: 0});
+    expect([...f.rows.values()][0]).toMatchObject({status: NotificationDeliveryStatus.SKIPPED, skipReason: "RECIPIENT_AUTHORITY_REVOKED"});
+    expect(f.sendAuthorized).toHaveBeenCalledTimes(1);
+  });
+  it("recovers an authorized original UID at its current address, then deduplicates after another email change", async () => {
+    const f = fixture(); f.sendAuthorized.mockRejectedValueOnce(new Error("temporary")); await f.deliver();
+    f.current.auth!.email = "new@example.com"; f.current.profile!.email = "new@example.com"; f.advance();
+    expect(await f.recover()).toMatchObject({ recovered: 1, skipped: 0 });
+    expect(f.sendAuthorized).toHaveBeenLastCalledWith("new@example.com", "LIVE");
+    f.current.auth!.email = "third@example.com"; f.current.profile!.email = "third@example.com";
+    expect(await f.deliver()).toMatchObject({ outcome: "duplicate", reason: "already_sent" });
+    expect(f.rows.size).toBe(1); expect(f.sendAuthorized).toHaveBeenCalledTimes(2);
+  });
+  it("keeps authorization outages retryable and never passes their details to a provider", async () => {
+    const f = fixture(); f.readCurrentState.mockRejectedValueOnce(new PrivilegedRecipientLookupError());
+    expect(await f.deliver()).toMatchObject({ outcome: "failed" });
+    expect([...f.rows.values()][0].lastErrorCode).toBe("RECIPIENT_AUTHORIZATION_LOOKUP_FAILED");
+    expect(f.sendAuthorized).not.toHaveBeenCalled(); f.advance();
+    expect(await f.recover()).toMatchObject({ recovered: 1 });
+  });
+  it("legacy-event fencing suppresses UID replacements but leaves a member acknowledgement deliverable", async () => {
+    const f = fixture(); f.hasLegacyEvent.mockResolvedValue(true);
+    expect(await f.deliver()).toMatchObject({ outcome: "skipped", reason: "LEGACY_EVENT_ALREADY_RECORDED" });
+    const memberProvider = vi.fn(async () => ({ providerMessageId: "member-receipt" }));
+    expect(await sendNotificationOnce({ channel: NotificationChannel.EMAIL, notificationType: "BOOKING_PENDING_APPROVAL_MEMBER",
+      deliveryKey: "member-key", send: memberProvider }, { repository: f.repository, now: () => STAFF_NOW })).toMatchObject({ outcome: "sent" });
+    expect(f.sendAuthorized).not.toHaveBeenCalled(); expect(memberProvider).toHaveBeenCalledOnce();
+  });
+  it.each(["SENT", "FAILED", "PENDING"] as const)("legacy %s email-only recovery never looks up or retargets the old address", async (status) => {
+    const f = fixture();
+    const oldPayload: NotificationRecoveryPayload = { version: 1, kind: "BOOKING_PENDING_MODERATOR", bookingId: STAFF_BOOKING_ID,
+      recipientEmail: "reassigned@example.com", deliveryMode: "LIVE" };
+    const identity = notificationRecoveryIdentity(oldPayload);
+    const key = govNotifyReferenceForMode(identity.deliveryKey, "LIVE");
+    f.rows.set(key, { id: STAFF_BOOKING_ID, channel: STAFF_CHANNEL, notificationType: identity.notificationType, deliveryKey: key,
+      recoveryPayload: JSON.stringify(oldPayload), status: NotificationDeliveryStatus[status], attemptCount: 1, createdAt: STAFF_NOW, lastAttemptedAt: STAFF_NOW });
+    f.advance(); await f.recover();
+    expect(f.rows.get(key)!.status).toBe(status === "SENT" ? "SENT" : "SKIPPED");
+    expect(f.readCurrentState).not.toHaveBeenCalled(); expect(f.sendAuthorized).not.toHaveBeenCalled();
+  });
+  it.each(["recipient", "subject", "type", "key"])("rejects a mismatched v2 ledger %s before any provider call", async (mismatch) => {
+    const f = fixture(); await f.deliver();
+    const row = { ...[...f.rows.values()][0] };
+    if (mismatch === "recipient") row.recipientUserId = "another-user";
+    if (mismatch === "subject") row.subjectBookingId = "another-booking";
+    if (mismatch === "type") row.notificationType = "USER_PENDING_APPROVAL";
+    if (mismatch === "key") row.deliveryKey = "unrelated-key";
+    await expect(f.dispatcher(row, payload)).rejects.toThrow(/ledger identity/);
+    expect(f.sendAuthorized).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("provider boundary lease ownership", () => {
+  it("does not call a provider if a newer worker takes ownership during authorization", async () => {
+    const f = fixture();
+    f.readCurrentState.mockImplementation(async () => {
+      const row = [...f.rows.values()][0]; row.attemptCount += 1; row.lastAttemptedAt = STAFF_LATER;
+      return f.current;
+    });
+    expect(await f.deliver()).toMatchObject({ outcome: "duplicate", reason: "in_progress" });
+    expect(f.sendAuthorized).not.toHaveBeenCalled();
+    expect([...f.rows.values()][0]).toMatchObject({ status: "PENDING", attemptCount: 2 });
+  });
+  it("does not call a provider if authorization exceeds the owned lease", async () => {
+    const f = fixture(); f.readCurrentState.mockImplementation(async () => { f.advance(); return f.current; });
+    expect(await f.deliver()).toMatchObject({ outcome: "duplicate", reason: "in_progress" });
+    expect(f.sendAuthorized).not.toHaveBeenCalled();
+  });
+});
+
+describe("preserved recovery identity after a delivery-mode decrease", () => {
+  it.each(["false", "throw"])("retries a failed LIVE terminal skip when its first persistence returns %s without sending", async (failure) => {
+    const f = fixture();
+    const identity = notificationRecoveryIdentity(payload);
+    const key = govNotifyReferenceForMode(identity.deliveryKey, "LIVE");
+    f.rows.set(key, {
+      id: STAFF_BOOKING_ID, channel: STAFF_CHANNEL, notificationType: identity.notificationType,
+      deliveryKey: key, recoveryPayload: JSON.stringify(payload), status: NotificationDeliveryStatus.FAILED,
+      recipientUserId: payload.recipientUserId, subjectBookingId: payload.bookingId,
+      attemptCount: 1, createdAt: STAFF_NOW, lastAttemptedAt: STAFF_NOW,
+    });
+    vi.mocked(resolveRuntimeGovNotifyDeliveryMode).mockResolvedValue({
+      requestedMode: "LIVE", siteMode: "SIMULATION", effectiveMode: "SIMULATION",
+    });
+    const markSkipped = vi.spyOn(f.repository, "markSkipped").mockImplementationOnce(async () => {
+      if (failure === "throw") throw new Error("temporary skip persistence outage");
+      return false;
+    });
+    f.advance();
+    expect(await f.recover()).toMatchObject({ failed: 1, skipped: 0, recovered: 0, invalid: 0 });
+    expect(f.rows.get(key)).toMatchObject({ status: NotificationDeliveryStatus.FAILED, attemptCount: 2, deliveryKey: key });
+    expect(JSON.parse(f.rows.get(key)!.recoveryPayload!)).toMatchObject({ deliveryMode: "LIVE" });
+
+    f.advance("2026-10-21T10:40:00Z");
+    expect(await f.recover()).toMatchObject({ skipped: 1, failed: 0, recovered: 0, invalid: 0 });
+    expect(f.rows.get(key)).toMatchObject({ status: NotificationDeliveryStatus.SKIPPED,
+      skipReason: "DELIVERY_MODE_CHANGED", attemptCount: 3, sentAt: null, providerMessageId: null });
+    expect(JSON.parse(f.rows.get(key)!.recoveryPayload!)).toMatchObject({ deliveryMode: "LIVE" });
+    expect(await f.recover()).toMatchObject({ skipped: 1, failed: 0 });
+    expect(markSkipped).toHaveBeenCalledTimes(2);
+    expect(f.readCurrentState).not.toHaveBeenCalled();
+    expect(f.sendAuthorized).not.toHaveBeenCalled();
+    expect(f.rows.size).toBe(1);
+  });
+});

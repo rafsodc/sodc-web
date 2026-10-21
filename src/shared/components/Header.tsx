@@ -1,8 +1,8 @@
+import { signOutPrivateSession } from "../appShell/sessionLifecycle";
 import { useState } from "react";
 import { AppBar, Avatar, Box, Button, ButtonBase, IconButton, Menu, MenuItem, Toolbar, Typography } from "@mui/material";
 import { ExpandMore, Menu as MenuIcon, Person } from "@mui/icons-material";
-import { signOut, type User } from "firebase/auth";
-import { auth } from "../../config/firebase";
+import { type User } from "firebase/auth";
 import type { UserData } from "../../types";
 import { useEnabledClaim } from "../../features/users/hooks/useEnabledClaim";
 import { BRAND_PRIMARY, BRAND_SECONDARY } from "../../config/theme";
@@ -89,7 +89,7 @@ export default function Header({
   const handleLogOut = async () => {
     handleMenuClose();
     try {
-      await signOut(auth);
+      await signOutPrivateSession();
     } catch (error) {
       console.error("Error signing out:", error);
     }

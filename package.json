@@ -17,13 +17,15 @@
     "deploy:prod": "node scripts/deploy-environment.mjs --env prod",
     "deployment:check": "node scripts/deployment-check.mjs",
     "deployment:preflight": "node scripts/deployment-preflight.mjs",
-    "lint": "eslint src scripts eslint.config.js vite.config.ts vitest.config.ts vitest.deploy-safety.config.ts .github/scripts",
+    "lint": "eslint src scripts eslint.config.js vite.config.ts vitest.config.ts vitest.deploy-safety.config.ts .github/scripts playwright.session.config.ts e2e",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:deploy-safety": "vitest run --config vitest.deploy-safety.config.ts",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:browser:session": "playwright test --config playwright.session.config.ts",
+    "dev:session-e2e": "vite --mode session-e2e --host 127.0.0.1 --port 4173"
   },
   "dependencies": {
     "@dataconnect/generated": "file:src/dataconnect-generated",
@@ -41,6 +43,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.64.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.6.1",

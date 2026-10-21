@@ -11,6 +11,7 @@ export const DEPLOYMENT_ENVIRONMENTS = Object.freeze({
 const GENERATED_PATHS = Object.freeze([
   "src/dataconnect-generated",
   "functions/src/dataconnect-admin-generated",
+  "functions/src/security-admin-generated",
 ]);
 
 /**
