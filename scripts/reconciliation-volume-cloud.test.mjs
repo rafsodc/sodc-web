@@ -55,9 +55,14 @@ async function fixture({mode='SIMULATION',canonicalTarget=false,defaultDrain=fal
             securityTransitions:[...transitions.values()].filter(row=>variables.ids.includes(row.userId)||variables.operationIds.includes(row.operationId)).map(clone),callableRateLimitBuckets:rates.filter(row=>variables.ids.includes(row.userId)).slice(0,1),callableInvocations:invocations.filter(row=>variables.ids.includes(row.userId)).slice(0,1)}};
         }
         if(query.includes('ReconciliationVolumeCreateProfile')){
+          // The live Dev raw API rejected direct audit variables with String_Expr.
+          // Model that observed failure before any profile mutation runs.
+          if(/\b(?:createdBy|updatedBy)\s*:\s*\$[A-Za-z_]/.test(query))throw new Error('Failed to compute String_Expr');
+          const auditValue=field=>{const expression=query.match(new RegExp(`\\b${field}_expr\\s*:\\s*"vars\\.([A-Za-z_][A-Za-z0-9_]*)"`));if(!expression||typeof variables[expression[1]]!=='string')throw new Error('Unsupported audit String_Expr');return variables[expression[1]];};
+          const createdBy=auditValue('createdBy'),updatedBy=auditValue('updatedBy');
           commands.push({kind:'profileCreate',query,variables});
           if(profiles.has(variables.id))throw new Error('duplicate key');
-          profiles.set(variables.id,{id:variables.id,firstName:'Reconciliation',lastName:'Volume fixture',email:variables.email,serviceNumber:variables.id,membershipStatus:'PENDING',createdBy:variables.marker,updatedBy:variables.marker,announcementOptOutAll:true});
+          profiles.set(variables.id,{id:variables.id,firstName:'Reconciliation',lastName:'Volume fixture',email:variables.email,serviceNumber:variables.id,membershipStatus:'PENDING',createdBy,updatedBy,announcementOptOutAll:true});
           if(uncertainProfile)throw new Error('lost database response');return {data:{user_insert:{id:variables.id}}};
         }
         if(query.includes('ReconciliationVolumeCleanup')){
@@ -139,6 +144,18 @@ describe('Dev-only reconciliation volume cloud adapter',()=>{
     expect(f.commands.find(row=>row.kind==='initialize').input).toMatchObject({actorKind:'OPERATOR',allowAdminBootstrap:false,operationId:owned.operationId});
     const observation=await f.adapter.observe();expect(observation.notification.mode).toBe('TEAM_TEST');expect(observation.baselineAuthorityPassed).toBe(true);expect(observation.readyAdminCount).toBe(2);expect(observation.fixtures.validDeniedReady).toBe(1);
     expect(JSON.stringify(observation)).not.toContain(owned.uid);expect(JSON.stringify(observation)).not.toContain('SECRET_ADC');
+  });
+
+  it('uses audit String expressions accepted by raw Data Connect and preserves the owned marker',async()=>{
+    const f=await fixture();await f.adapter.pauseScheduler();const owned=f.manifest.fixtures[0],provider=await f.baseOptions.adminFactory();
+    const legacy='mutation ReconciliationVolumeCreateProfile($id:String!,$marker:String!){user_insert(data:{id:$id,createdBy:$marker,updatedBy:$marker})}';
+    await expect(provider.dc.executeGraphql(legacy,{variables:{id:owned.uid,marker:owned.marker}})).rejects.toThrow('Failed to compute String_Expr');
+    expect(f.profiles.has(owned.uid)).toBe(false);expect(f.commands.some(row=>row.kind==='profileCreate')).toBe(false);
+    await expect(f.adapter.createFixture(owned)).resolves.toEqual({ready:true});
+    const insert=f.commands.find(row=>row.kind==='profileCreate');expect(insert.query).toContain('createdBy_expr:"vars.marker"');expect(insert.query).toContain('updatedBy_expr:"vars.marker"');expect(insert.query).not.toMatch(/\b(?:createdBy|updatedBy)\s*:\s*\$/);
+    expect(f.profiles.get(owned.uid)).toMatchObject({createdBy:owned.marker,updatedBy:owned.marker,membershipStatus:'PENDING'});
+    expect(f.commands.filter(row=>row.kind==='initialize')).toHaveLength(1);
+    const observed=await f.adapter.observe();expect(observed.baselineAuthorityPassed).toBe(true);expect(observed.readyAdminCount).toBe(f.manifest.baseline.readyAdminCount);expect(observed.fixtures.validDeniedReady).toBe(1);
   });
 
   it('rejects foreign fixture identities and unknown prefix artifacts',async()=>{
