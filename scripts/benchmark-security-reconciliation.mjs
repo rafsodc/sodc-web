@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { compileFunction, createContext } from "node:vm";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SOURCES = ["securityReconciliation.ts", "currentAuthorizationTransitions.ts", "validation.ts", "constants.ts"];
+const SOURCES = ["securityReconciliation.ts", "securityReconciliationBatch.ts", "currentAuthorizationTransitions.ts", "validation.ts", "constants.ts"];
 const LATENCIES = ["databaseRead", "databaseWrite", "authRead", "authWrite"];
 
 function integer(value, minimum, maximum, label) {
@@ -84,7 +84,7 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
     states.set(uid, state);
     transitions.set(operationId, { ...state, user: undefined, actorId: "local-benchmark", actorKind: "OPERATOR", reason: "LOCAL_BENCHMARK", authDisabled: null, noOp: false });
     identities.set(uid, { uid, emailVerified: !denied, disabled: denied, ...(denied ? {} : { email: "local-fixture@example.invalid" }),
-      customClaims: { securityVersion: pending ? 1 : index >= 2 && index < 2 + mirrorDriftCount ? 0 : 1, enabled: !pending && !denied, admin } });
+      customClaims: { unrelated: "preserved", securityVersion: pending ? 1 : index >= 2 && index < 2 + mirrorDriftCount ? 0 : 1, enabled: !pending && !denied, admin } });
     if (pending && index < rosterSize - pendingCount + transientAuthFailures) failures.add(uid);
   }
   const fixturesMemory = memory();
@@ -92,7 +92,8 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
   const repository = {
     async getAdminSafetyControl() { charge("databaseRead", "GetAdminSafetyControl"); return response("adminSafetyControl", control); },
     async listPendingSecurityTransitions({ limit }) { charge("databaseRead", "ListPendingSecurityTransitions"); return response("securityTransitions", [...transitions.values()].filter(row => row.syncStatus === "PENDING").slice(0, limit).map(row => ({ operationId: row.operationId }))); },
-    async listSecurityStatesForReconciliation({ limit, offset }) { charge("databaseRead", "ListSecurityStatesForReconciliation"); return response("userSecurityStates", [...states.values()].slice(offset, offset + limit).map(row => ({ userId: row.userId, operationId: row.operationId }))); },
+    async listSecurityStatesForReconciliation({ limit, offset }) { charge("databaseRead", "ListSecurityStatesForReconciliation"); return response("userSecurityStates", [...states.values()].slice(offset, offset + limit)); },
+    async listSecurityTransitionsForReconciliation({ operationIds, limit }) { charge("databaseRead", "ListSecurityTransitionsForReconciliation"); return response("securityTransitions", operationIds.map(id => transitions.get(id)).filter(Boolean).slice(0, limit)); },
     async getSecurityTransition({ operationId }) { charge("databaseRead", "GetSecurityTransition"); return response("securityTransition", transitions.get(operationId) ?? null); },
     async getUserSecurityState({ userId }) { charge("databaseRead", "GetUserSecurityState"); return response("userSecurityState", states.get(userId) ?? null); },
     async completeSecurityTransition(input) {
@@ -113,6 +114,12 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
       if (failures.delete(uid)) { injectedFailures++; throw new Error("LOCAL_TRANSIENT_AUTH_FAILURE"); }
       if (!identities.has(uid)) throw new Error("UNKNOWN_LOCAL_IDENTITY");
       return clone(identities.get(uid));
+    },
+    async getUsers(identifiers) {
+      charge("authRead", "AuthGetUsers");
+      if (identifiers.length > 100) throw new Error("Oversized Auth batch");
+      const users = identifiers.map(({uid}) => identities.get(uid)).filter(Boolean).map(clone).reverse();
+      return {users, notFound: identifiers.filter(({uid}) => !identities.has(uid))};
     },
     async setCustomUserClaims(uid, claims) { charge("authWrite", "AuthSetCustomUserClaims"); identities.get(uid).customClaims = clone(claims); },
     async updateUser() { throw new Error("Unexpected account mutation in local scenario"); },
@@ -168,6 +175,7 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
     rosterSize, pendingCount, deniedCount, mirrorDriftCount, transientAuthFailures, actualProductionCode: true, cloudCalls: 0,
     sourceSha256, typescriptVersion: ts.version, scheduleOptions,
     completion, warnings, injectedFailures, pendingRemaining, mirrorMismatches,
+    unrelatedClaimsPreserved: [...identities.values()].every(identity => identity.customClaims.unrelated === "preserved"),
     simulatedServiceOperations: counts, simulatedOperationCounts: operations, totalSimulatedServiceOperations: serviceCalls,
     localMeasurement: { sweepWallMs, cpuMs: (cpu.user + cpu.system) / 1000,
       fixtureHeapDeltaBytes: fixturesMemory.heapUsedBytes - beforeFixtures.heapUsedBytes,
@@ -211,17 +219,17 @@ export function summarizeMeasurements(measurements) {
 
 export function projectProviderSamples(summaries, provider, sourceSha256) {
   const allowed = ["schemaVersion", "projectId", "releaseGitSha", "sourceSha256", "observedAt", "authorityVerifiedHealthy", "evidenceReference", "samples", "missingCompletions", "timeouts", "backlogBefore", "backlogAfter"];
-  if (!provider || Object.keys(provider).some(key => !allowed.includes(key)) || provider.schemaVersion !== "sodc-reconciliation-provider-samples/v1" || provider.projectId !== "sodc-web" ||
+  if (!provider || Object.keys(provider).some(key => !allowed.includes(key)) || provider.schemaVersion !== "sodc-reconciliation-provider-samples/v2" || provider.projectId !== "sodc-web" ||
       !/^[a-f0-9]{40}$/.test(provider.releaseGitSha ?? "") || !Number.isFinite(Date.parse(provider.observedAt)) || provider.authorityVerifiedHealthy !== true ||
       typeof provider.evidenceReference !== "string" || !provider.evidenceReference || !Array.isArray(provider.samples) || !provider.samples.length ||
       !sameObject(provider.sourceSha256, sourceSha256) || Object.keys(sourceSha256).length !== SOURCES.length ||
       SOURCES.some(name => !/^[a-f0-9]{64}$/.test(sourceSha256[name] ?? ""))) throw new Error("Invalid aggregate Dev provider calibration or mismatched source");
   for (const sample of provider.samples) {
-    if (Object.keys(sample).some(key => !["stateAttempts", "pendingAttempts", "failedAttempts", "durationMs"].includes(key)) || !Number.isSafeInteger(sample.stateAttempts) || sample.stateAttempts < 2 ||
-        sample.pendingAttempts !== 0 || sample.failedAttempts !== 0 || !Number.isFinite(sample.durationMs) || sample.durationMs <= 0) throw new Error("Calibration requires healthy complete natural sweeps only");
+    if (Object.keys(sample).some(key => !["stateAttempts", "pendingAttempts", "failedAttempts", "durationMs", "logicalServiceOperations"].includes(key)) || !Number.isSafeInteger(sample.stateAttempts) || sample.stateAttempts < 2 ||
+        !Number.isSafeInteger(sample.logicalServiceOperations) || sample.logicalServiceOperations < 1 || sample.pendingAttempts !== 0 || sample.failedAttempts !== 0 || !Number.isFinite(sample.durationMs) || sample.durationMs <= 0) throw new Error("Calibration requires healthy complete natural sweeps only");
   }
   for (const key of ["missingCompletions", "timeouts", "backlogBefore", "backlogAfter"]) integer(provider[key], 0, Number.MAX_SAFE_INTEGER, "provider aggregate");
-  const unitCosts = provider.samples.map(sample => sample.durationMs / (3 * sample.stateAttempts + Math.floor(sample.stateAttempts / 500) + 3));
+  const unitCosts = provider.samples.map(sample => sample.durationMs / sample.logicalServiceOperations);
   return { projectId: provider.projectId, releaseGitSha: provider.releaseGitSha, observedAt: provider.observedAt,
     evidenceReference: provider.evidenceReference, measuredNaturalSweepCount: provider.samples.length,
     measuredRosterSizes: [...new Set(provider.samples.map(sample => sample.stateAttempts))].toSorted((a, b) => a - b),
@@ -230,7 +238,7 @@ export function projectProviderSamples(summaries, provider, sourceSha256) {
     projections: summaries.map(summary => ({ rosterSize: summary.rosterSize, pendingCount: summary.pendingCount, deniedCount: summary.deniedCount, mirrorDriftCount: summary.mirrorDriftCount,
       equalCostServiceOperationProjectionMs: { median: median(unitCosts) * summary.totalSimulatedServiceOperations, p95: percentile(unitCosts, 0.95) * summary.totalSimulatedServiceOperations },
       actualProviderVolumeTest: false })),
-    assumptions: "Linear sequential cost at one mean service-operation price; small-roster overhead, read/write latency differences, load, retries and larger query pages are not established.",
+    assumptions: "Linear sequential cost at one mean logical service-operation price using explicitly supplied, source-bound sample operation counts; small-roster overhead, read/write latency differences, load, retries and larger query pages are not established.",
     liveVolumeAcceptancePassed: false };
 }
 

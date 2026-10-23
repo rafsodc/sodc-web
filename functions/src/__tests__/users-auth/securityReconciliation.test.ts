@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({control: vi.fn(), pending: vi.fn(), states: vi.fn(), synchronize: vi.fn(), info: vi.fn(), warn: vi.fn()}));
+const mocks = vi.hoisted(() => ({control: vi.fn(), pending: vi.fn(), states: vi.fn(), synchronize: vi.fn(), healthy: vi.fn(), info: vi.fn(), warn: vi.fn()}));
 vi.mock("firebase-functions/v2/scheduler", () => ({onSchedule: (_options: unknown, handler: unknown) => handler}));
 vi.mock("firebase-functions/logger", () => ({info: mocks.info, warn: mocks.warn}));
 vi.mock("../../securityRepository", () => ({getAdminSafetyControl: mocks.control, listPendingSecurityTransitions: mocks.pending, listSecurityStatesForReconciliation: mocks.states}));
+vi.mock("../../securityReconciliationBatch", () => ({healthySecurityMirrorUserIds: mocks.healthy}));
 vi.mock("../../currentAuthorizationTransitions", () => ({synchronizeUserSecurity: mocks.synchronize}));
 import { reconcilePendingSecurityTransitions } from "../../securityReconciliation";
 
@@ -11,6 +12,7 @@ const run = () => (reconcilePendingSecurityTransitions as unknown as () => Promi
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.control.mockResolvedValue({data: {adminSafetyControl: {status: "READY"}}});
+  mocks.healthy.mockResolvedValue(new Set());
   mocks.pending.mockResolvedValue({data: {securityTransitions: []}});
   mocks.states.mockResolvedValue({data: {userSecurityStates: []}});
 });
@@ -39,7 +41,7 @@ describe("security reconciliation cutover boundary", () => {
     await run();
     expect(mocks.synchronize.mock.calls).toEqual([["pending"], ["ready"]]);
     expect(mocks.info).toHaveBeenLastCalledWith("Security reconciliation completed", {
-      pendingAttempts: 1, stateAttempts: 1, failedAttempts: 0, durationMs: expect.any(Number),
+      pendingAttempts: 1, stateAttempts: 1, failedAttempts: 0, healthyMirrorChecks: 0, durationMs: expect.any(Number),
     });
   });
 
@@ -52,7 +54,7 @@ describe("security reconciliation cutover boundary", () => {
     expect(mocks.synchronize).toHaveBeenCalledTimes(503);
     expect(mocks.states.mock.calls).toEqual([[{limit: 500, offset: 0}], [{limit: 500, offset: 500}]]);
     expect(mocks.info).toHaveBeenLastCalledWith("Security reconciliation completed", {
-      pendingAttempts: 2, stateAttempts: 501, failedAttempts: 2, durationMs: expect.any(Number),
+      pendingAttempts: 2, stateAttempts: 501, failedAttempts: 2, healthyMirrorChecks: 0, durationMs: expect.any(Number),
     });
     expect(mocks.warn).toHaveBeenCalledTimes(2);
   });

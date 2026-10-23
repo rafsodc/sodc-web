@@ -120,6 +120,13 @@ function listSecurityStatesForReconciliation(dcOrVarsOrOptions, varsOrOptions, o
 }
 exports.listSecurityStatesForReconciliation = listSecurityStatesForReconciliation;
 
+function listSecurityTransitionsForReconciliation(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListSecurityTransitionsForReconciliation', inputVars, inputOpts);
+}
+exports.listSecurityTransitionsForReconciliation = listSecurityTransitionsForReconciliation;
+
 function getAdminSafetyControl(dcOrOptions, options) {
   const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
   dcInstance.useGen(true);

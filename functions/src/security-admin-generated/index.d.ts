@@ -362,13 +362,43 @@ export interface ListReadyAdministratorsData {
 export interface ListSecurityStatesForReconciliationData {
   userSecurityStates: ({
     userId: string;
+    securityVersion: number;
+    membershipStatus: MembershipStatus;
+    desiredEnabled: boolean;
+    desiredAdmin: boolean;
+    verificationEmail?: string | null;
+    accessReady: boolean;
+    adminReady: boolean;
     operationId: string;
+    syncStatus: SecuritySyncStatus;
+    user: {
+      membershipStatus: MembershipStatus;
+    };
   } & UserSecurityState_Key)[];
 }
 
 export interface ListSecurityStatesForReconciliationVariables {
   limit: number;
   offset: number;
+}
+
+export interface ListSecurityTransitionsForReconciliationData {
+  securityTransitions: ({
+    operationId: string;
+    userId: string;
+    securityVersion: number;
+    membershipStatus: MembershipStatus;
+    desiredEnabled: boolean;
+    desiredAdmin: boolean;
+    verificationEmail?: string | null;
+    noOp: boolean;
+    syncStatus: SecuritySyncStatus;
+  } & SecurityTransition_Key)[];
+}
+
+export interface ListSecurityTransitionsForReconciliationVariables {
+  operationIds: string[];
+  limit: number;
 }
 
 export interface NotificationDelivery_Key {
@@ -610,6 +640,11 @@ export function supersedeSecurityTransition(vars: SupersedeSecurityTransitionVar
 export function listSecurityStatesForReconciliation(dc: DataConnect, vars: ListSecurityStatesForReconciliationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSecurityStatesForReconciliationData>>;
 /** Generated Node Admin SDK operation action function for the 'ListSecurityStatesForReconciliation' Query. Allow users to pass in custom DataConnect instances. */
 export function listSecurityStatesForReconciliation(vars: ListSecurityStatesForReconciliationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSecurityStatesForReconciliationData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListSecurityTransitionsForReconciliation' Query. Allow users to execute without passing in DataConnect. */
+export function listSecurityTransitionsForReconciliation(dc: DataConnect, vars: ListSecurityTransitionsForReconciliationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSecurityTransitionsForReconciliationData>>;
+/** Generated Node Admin SDK operation action function for the 'ListSecurityTransitionsForReconciliation' Query. Allow users to pass in custom DataConnect instances. */
+export function listSecurityTransitionsForReconciliation(vars: ListSecurityTransitionsForReconciliationVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSecurityTransitionsForReconciliationData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetAdminSafetyControl' Query. Allow users to execute without passing in DataConnect. */
 export function getAdminSafetyControl(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetAdminSafetyControlData>>;

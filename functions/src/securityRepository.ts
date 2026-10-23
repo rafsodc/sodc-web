@@ -13,6 +13,7 @@ export const getUserSecurityState = (variables: sdk.GetUserSecurityStateVariable
 export const getSecurityTransition = (variables: sdk.GetSecurityTransitionVariables) => sdk.getSecurityTransition(getAuthorizationDataConnect(), variables);
 export const listPendingSecurityTransitions = (variables: sdk.ListPendingSecurityTransitionsVariables) => sdk.listPendingSecurityTransitions(getAuthorizationDataConnect(), variables);
 export const listSecurityStatesForReconciliation = (variables: sdk.ListSecurityStatesForReconciliationVariables) => sdk.listSecurityStatesForReconciliation(getAuthorizationDataConnect(), variables);
+export const listSecurityTransitionsForReconciliation = (variables: sdk.ListSecurityTransitionsForReconciliationVariables) => sdk.listSecurityTransitionsForReconciliation(getAuthorizationDataConnect(), variables);
 export const initializeUserSecurityState = (variables: sdk.InitializeUserSecurityStateVariables) => sdk.initializeUserSecurityState(getAuthorizationDataConnect(), variables);
 export const beginSecurityTransition = (variables: sdk.BeginSecurityTransitionVariables) => sdk.beginSecurityTransition(getAuthorizationDataConnect(), variables);
 export const completeSecurityTransition = (variables: sdk.CompleteSecurityTransitionVariables) => sdk.completeSecurityTransition(getAuthorizationDataConnect(), variables);
