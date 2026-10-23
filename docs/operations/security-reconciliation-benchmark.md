@@ -107,13 +107,30 @@ only manifest-owned fixtures. Review the manifest before either write phase.**
    ```
 
    This verifies the exact 2,000-state roster and persists the earliest allowed
-   execution time. Have the operator dispatch the actual deployed scheduler
-   **once** under a reviewed invocation procedure.
-   The helper intentionally does not guess whether a PAUSED job can be Run.
-   Official [Run documentation](https://docs.cloud.google.com/scheduler/docs/reference/rest/v1/projects.locations.jobs/run)
-   says running jobs can be dispatched again, so do not retry an uncertain
-   invocation. Resolve its actual execution in Cloud Logging first. Keep the
-   job paused or restore its paused state after a controlled invocation.
+   execution time. Dispatch the actual deployed scheduler **once** under a
+   reviewed invocation procedure. During Dev acceptance on 23 October 2026,
+   RunJob against the PAUSED job returned HTTP 400 / FAILED_PRECONDITION:
+   `Job.state must be ENABLED for RunJob.` Audits established no execution;
+   that rejected arm was archived and retired without becoming a measurement.
+
+   A controlled launch must bind the exact original job/configuration, deployed
+   revision, manifest/owner and complete fixture audit, with actual prior-handler
+   drain and fresh no-execution evidence. Journal each API intent before its
+   request. Resume the original job once, then require both its returned and
+   fresh `scheduleTime` to leave at least 180 seconds before the next natural
+   attempt, with unchanged resolved `lastAttemptTime`. Omitted timestamps alone
+   are not proof. A wall-clock window is only preselection; use the provider's
+   authoritative next-run time, including for the `every 5 minutes` schedule.
+
+   Recheck the margin immediately before one empty RunJob POST with a request
+   timeout of at most 30 seconds. Immediately restore PAUSED in a finally path,
+   before closing the client or inspecting execution logs. Resolve uncertain
+   state by GET; conditional pause recovery may act only on a fresh ENABLED
+   observation. An accepted or uncertain resume/dispatch is never repeated.
+   [Run documentation](https://docs.cloud.google.com/scheduler/docs/reference/rest/v1/projects.locations.jobs/run)
+   also permits dispatching an already running job. Inspect the entire enabled
+   window: natural/duplicate executions invalidate capacity evidence, and every
+   actual execution still requires completion proof before fixture cleanup.
 6. Supply the private measurement receipt described by the cloud provider,
    including its exact execution ID, deployed revision, log insert ID and time
    window. The provider independently reads Cloud Logging and verifies the
@@ -125,10 +142,14 @@ only manifest-owned fixtures. Review the manifest before either write phase.**
 
    Successful evidence requires exactly 2,000 state attempts, zero pending
    attempts/failures, no warning/error and an unchanged real-member authority
-   audit. A verified timeout is recorded as a failed baseline capacity result;
-   it cannot unlock stress setup. Repeating this command resolves the same
-   execution rather than dispatching another.
-7. After the latest baseline measurement succeeds, `setup-stress` extends the same owned run to
+   audit. Baseline capacity additionally requires both handler duration and
+   dispatch-to-completion wall time to be strictly below 300,000 ms. A
+   `completed:true` checkpoint alone does not establish that cadence gate; the
+   runner rejects stress setup when either duration reaches the limit. A verified
+   timeout remains a failed baseline result. Repeating this command resolves
+   the same execution rather than dispatching another.
+7. Only after the latest baseline passes correctness and both cadence checks,
+   `setup-stress` extends the same owned run to
    **10,000 total states**. Use `arm-stress` before dispatch, then
    `measure-stress` to verify the actual execution using a distinct
    `volume-10000-...` measurement ID. Capture timeouts as
@@ -292,14 +313,9 @@ Do not delete fixtures while the original revision might still execute.
    and elapsed time do not establish that status.
    [Manage revisions](https://docs.cloud.google.com/run/docs/managing/revisions).
    Do not invent an API condition mapping; retain the actual provider status.
-4. For that exact non-serving old revision, review an etag-bound
-   `DELETE https://run.googleapis.com/v2/projects/sodc-web/locations/europe-west2/services/REVIEWED_SERVICE/revisions/REVIEWED_OLD_REVISION`.
-   The API accepts only retired revisions. Await its successful long-running
-   operation and verify the old revision's deletion/tombstone or absence.
-   A submitted or timed-out deletion request is insufficient.
-   [DeleteRevision precondition](https://docs.cloud.google.com/run/docs/reference/rpc/google.cloud.run.v2#deleterevisionrequest),
-   [Revision DELETE](https://docs.cloud.google.com/run/docs/reference/rest/v2/projects.locations.services.revisions/delete).
-5. Only after positive old-infrastructure retirement/deletion, prepare a new
+   Positive retirement of the exact old revision is the required infrastructure
+   proof; a separate revision DELETE is unnecessary for this procedure.
+4. Only after positive old-infrastructure retirement, prepare a new
    cleanup-only recovery plan bound to the current replacement source/settings
    and **original exact fixture IDs, markers and operation IDs**. Preserve all
    normal ownership, healthy-current-authority, atomic deletion, verified Auth
@@ -309,7 +325,7 @@ Do not delete fixtures while the original revision might still execute.
    state; retain the advanced control versions and failed capacity result.
 
 Retirement is not guaranteed to become observable promptly. If actual handler
-completion or positive infrastructure retirement/deletion cannot be proven,
+completion or positive infrastructure retirement cannot be proven,
 leave the disabled denied fixtures intact, keep the job paused and seek
 provider support. The normal runner deliberately remains blocked. No runtime
 code change or speculative service-instance termination call is part of this
@@ -319,8 +335,9 @@ procedure.
 
 Report baseline and stress separately, including execution count, exact roster
 size, revision, duration, failures, timeout evidence and verified cleanup.
-Baseline must complete before the five-minute schedule can safely keep pace;
-the suggested operating budget is p95 ≤180 seconds and maximum ≤240 seconds.
+Baseline handler duration and dispatch-to-completion wall time must both be
+strictly below the five-minute cadence. The suggested operating budget is
+p95 ≤180 seconds and maximum ≤240 seconds.
 These are proposed release budgets for review, not an existing service-level
 agreement. The deployed function's hard timeout is 540 seconds. Stress must
 report whether the 300-second cadence or 540-second limit was exceeded; do not
@@ -330,6 +347,7 @@ Provider request counts and memory require provider telemetry if they are
 needed for cost/capacity approval; local logical operation counts and local
 RSS are not substitutes. The live denied-state scenario does not establish
 large pending-grant backlogs or simultaneous membership writes. If baseline
-times out, stop, establish actual completion or reviewed infrastructure
-retirement before cleanup, and address the measured bottleneck before expanding
+times out or either duration reaches 300 seconds, stop stress expansion.
+Establish actual completion or reviewed infrastructure retirement before
+cleanup, and address the measured bottleneck before expanding
 to stress volume or approving Beta/production.

@@ -12,6 +12,20 @@ const ROOT=path.resolve(import.meta.dirname,'..');
 const directories=[];
 afterEach(async()=>{await Promise.all(directories.splice(0).map(directory=>rm(directory,{recursive:true,force:true})));});
 
+// Data Connect filters reject logical operators beside scalar fields. Parse the
+// generated state filter rather than accepting any string with a cleanup name.
+function cleanupStateFilter(query,variables){
+  const marker='userSecurityState_deleteMany(where:',start=query.indexOf(marker);
+  if(start<0)throw new Error('State cleanup filter required');
+  const tokens=query.slice(start+marker.length).match(/\$[A-Za-z_]\w*|-?\d+|[A-Za-z_]\w*|[{}[\]:,]/g)??[];let index=0;
+  const take=expected=>{const token=tokens[index++];if(expected&&token!==expected)throw new Error('Invalid generated filter');return token;};
+  function value(){const token=take();if(token==='{'){const result={};while(tokens[index]!=='}'){const name=take();take(':');result[name]=value();if(tokens[index]===',')take(',');}take('}');return result;}if(token==='['){const result=[];while(tokens[index]!==']'){result.push(value());if(tokens[index]===',')take(',');}take(']');return result;}if(token.startsWith('$')){if(!Object.hasOwn(variables,token.slice(1)))throw new Error('Unbound filter variable');return variables[token.slice(1)];}if(token==='true'||token==='false')return token==='true';if(/^-?\d+$/.test(token))return Number(token);return token;}
+  const result=value();
+  function validate(filter){const keys=Object.keys(filter),logical=keys.filter(key=>['_and','_or','_not'].includes(key));if(logical.length&&(logical.length!==1||keys.length!==1))throw new Error('Data Connect filter cannot mix logical and scalar fields');for(const key of logical){for(const child of Array.isArray(filter[key])?filter[key]:[filter[key]])validate(child);}}
+  validate(result);return result;
+}
+function stateMatchesFilter(row,filter){return Object.entries(filter).every(([field,condition])=>field==='_and'?condition.every(child=>stateMatchesFilter(row,child)):field==='_or'?condition.some(child=>stateMatchesFilter(row,child)):field==='_not'?!stateMatchesFilter(row,condition):Object.entries(condition).every(([operator,value])=>operator==='eq'?row[field]===value:operator==='in'?value.includes(row[field]):false));}
+
 async function fixture({mode='SIMULATION',canonicalTarget=false,defaultDrain=false}={}){
   const directory=await mkdtemp(path.join(tmpdir(),'sodc-volume-provider-'));directories.push(directory);
   let now=new Date('2026-10-23T09:00:00Z');
@@ -66,8 +80,9 @@ async function fixture({mode='SIMULATION',canonicalTarget=false,defaultDrain=fal
           if(uncertainProfile)throw new Error('lost database response');return {data:{user_insert:{id:variables.id}}};
         }
         if(query.includes('ReconciliationVolumeCleanup')){
-          commands.push({kind:'dbCleanup',query,variables});if(failDbCleanup)throw new Error('database unavailable');
-          for(const uid of variables.ids){states.delete(uid);profiles.delete(uid);}
+          commands.push({kind:'dbCleanup',query,variables});const stateFilter=cleanupStateFilter(query,variables);if(failDbCleanup)throw new Error('database unavailable');
+          const matchingStates=[...states.values()].filter(row=>stateMatchesFilter(row,stateFilter));if(matchingStates.length!==variables.expectedStates)throw new Error('FIXTURE_CLEANUP_CONFLICT');
+          for(const row of matchingStates)states.delete(row.userId);for(const uid of variables.ids)profiles.delete(uid);
           for(let index=rates.length-1;index>=0;index--)if(variables.ids.includes(rates[index].userId))rates.splice(index,1);
           for(let index=invocations.length-1;index>=0;index--)if(variables.ids.includes(invocations[index].userId))invocations.splice(index,1);
           if(uncertainDbCleanup)throw new Error('lost cleanup response');return {data:{userSecurityState_deleteMany:variables.expectedStates,user_deleteMany:variables.expectedProfiles}};
@@ -118,6 +133,16 @@ async function fixture({mode='SIMULATION',canonicalTarget=false,defaultDrain=fal
 }
 
 describe('Dev-only reconciliation volume cloud adapter',()=>{
+  it('uses schema-valid logical groups while retaining exact UID-operation pairs and denied READY guards',async()=>{
+    expect(()=>cleanupStateFilter('userSecurityState_deleteMany(where:{userId:{in:$ids},_or:[{operationId:{eq:$op}}]})',{ids:['a'],op:'one'})).toThrow('cannot mix logical and scalar');
+    const f=await fixture();await f.adapter.pauseScheduler();for(const item of f.manifest.fixtures)await f.adapter.createFixture(item);await f.adapter.deleteFixtureBatch(f.manifest.fixtures);
+    const cleanup=f.commands.find(row=>row.kind==='dbCleanup'),filter=cleanupStateFilter(cleanup.query,cleanup.variables),first=f.manifest.fixtures[0],second=f.manifest.fixtures[1];
+    const owned={userId:first.uid,operationId:first.operationId,securityVersion:1,membershipStatus:'PENDING',desiredEnabled:false,desiredAdmin:false,accessReady:false,adminReady:false,syncStatus:'READY'};
+    expect(stateMatchesFilter(owned,filter)).toBe(true);
+    for(const patch of [{userId:'unowned'},{operationId:second.operationId},{securityVersion:2},{membershipStatus:'REGULAR'},{desiredEnabled:true},{desiredAdmin:true},{accessReady:true},{adminReady:true},{syncStatus:'PENDING'}])expect(stateMatchesFilter({...owned,...patch},filter)).toBe(false);
+    expect(f.states.has('real-0')).toBe(true);expect(f.identities.has('real-0')).toBe(true);
+  });
+
   it('constructs without credentials or transport and rejects conflicting environments before discovery',async()=>{
     const f=await fixture();let calls=0;
     const adapter=createReconciliationVolumeCloud({...f.baseOptions,manifest:f.manifest,adminFactory:async()=>{calls++;throw new Error('must not load');},environment:{GCLOUD_PROJECT:'sodc-web-production'}});

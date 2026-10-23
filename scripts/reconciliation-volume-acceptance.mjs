@@ -166,7 +166,11 @@ export async function executeVolumePhase({ manifest, checkpoint, provider, phase
   if (phase.startsWith("setup-")) {
     assert(!state.cleanupStarted && !state.measuring, "RUN_BUSY_OR_CLEANUP_STARTED");
     const targetSize = manifest.targets[phase.slice(6)];
-    if (phase === "setup-stress") assert(state.measurements.filter(item => item.targetSize === 2000).at(-1)?.completed === true, "BASELINE_MEASUREMENT_REQUIRED_BEFORE_STRESS");
+    if (phase === "setup-stress") {
+      const baseline = state.measurements.filter(item => item.targetSize === 2000).at(-1);
+      assert(baseline?.completed === true, "BASELINE_MEASUREMENT_REQUIRED_BEFORE_STRESS");
+      assert(baseline.durationMs < 300000 && Date.parse(baseline.completedAt) - Date.parse(baseline.startedAt) < 300000, "BASELINE_CADENCE_REQUIRED_BEFORE_STRESS");
+    }
     assert(before.counts.states <= targetSize, "CANNOT_SHRINK_EXISTING_VOLUME_TARGET");
     const drain = await provider.pauseScheduler(latestDrainContext(manifest, state));
     assert(drain?.quiescent === true && HASH.test(drain.proofHash), "PAUSED_QUIESCENT_SCHEDULER_REQUIRED");

@@ -355,7 +355,7 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
     const pairs=fixtures.map((_,index)=>`{userId:{eq:$uid${index}},operationId:{eq:$operation${index}}}`).join(',');
     const pairVariables=Object.fromEntries(fixtures.flatMap((row,index)=>[[`uid${index}`,row.uid],[`operation${index}`,row.operationId]]));
     const cleanup=`mutation ReconciliationVolumeCleanup($ids:[String!]!,$operationIds:[String!]!,$marker:String!,$expectedStates:Int!,$expectedProfiles:Int!,${pairDefinitions}) @transaction {`+
-      `userSecurityState_deleteMany(where:{userId:{in:$ids},operationId:{in:$operationIds},_or:[${pairs}],securityVersion:{eq:1},membershipStatus:{eq:PENDING},desiredEnabled:{eq:false},desiredAdmin:{eq:false},accessReady:{eq:false},adminReady:{eq:false},syncStatus:{eq:READY}}) @check(expr:"this == vars.expectedStates",message:"FIXTURE_CLEANUP_CONFLICT") `+
+      `userSecurityState_deleteMany(where:{_and:[{userId:{in:$ids},operationId:{in:$operationIds},securityVersion:{eq:1},membershipStatus:{eq:PENDING},desiredEnabled:{eq:false},desiredAdmin:{eq:false},accessReady:{eq:false},adminReady:{eq:false},syncStatus:{eq:READY}},{_or:[${pairs}]}]}) @check(expr:"this == vars.expectedStates",message:"FIXTURE_CLEANUP_CONFLICT") `+
       'callableRateLimitBucket_deleteMany(where:{userId:{in:$ids}}) callableInvocation_deleteMany(where:{userId:{in:$ids}}) '+
       'user_deleteMany(where:{id:{in:$ids},createdBy:{eq:$marker},updatedBy:{eq:$marker},membershipStatus:{eq:PENDING}}) @check(expr:"this == vars.expectedProfiles",message:"FIXTURE_PROFILE_CLEANUP_CONFLICT")}';
     // Skip writes for wholly absent slots. A committed-but-lost response is

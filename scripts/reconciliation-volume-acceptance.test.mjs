@@ -331,3 +331,88 @@ describe("checkpointed volume fixture lifecycle", () => {
     await expect(test.phase("cleanup", { checkpoint: { ...test.checkpoint, createdUIDs: ["foreign"] } })).rejects.toThrow("CHECKPOINT_UID_SCOPE_MISMATCH");
   });
 });
+
+
+describe("baseline cadence gate before stress allocation", () => {
+  async function measured(test, measurementId, durationMs, wallMs) {
+    await test.phase("arm-baseline", { measurementId });
+    const measure = test.provider.measure;
+    test.provider.measure = async args => {
+      const receipt = await measure(args);
+      return { ...receipt, durationMs, completedAt: new Date(Date.parse(receipt.startedAt) + wallMs).toISOString() };
+    };
+    try { await test.phase("measure-baseline", { measurementId }); }
+    finally { test.provider.measure = measure; }
+  }
+
+  async function expectStressAllocation(test) {
+    const create = test.provider.createFixture;
+    const existingCreates = test.calls.filter(value => value === "create").length;
+    test.provider.createFixture = async fixture => {
+      await create(fixture);
+      throw new Error("STRESS_ALLOCATION_REACHED");
+    };
+    await expect(test.phase("setup-stress")).rejects.toThrow("STRESS_ALLOCATION_REACHED");
+    expect(test.calls.filter(value => value === "create")).toHaveLength(existingCreates + 1);
+    expect(test.checkpoint.creatingUID).toBe(test.manifest.fixtures[1].uid);
+  }
+
+  it.each([
+    { durationMs: 300000, wallMs: 299999 },
+    { durationMs: 299999, wallMs: 300000 },
+    { durationMs: 300000, wallMs: 300000 },
+    { durationMs: 300001, wallMs: 299999 },
+    { durationMs: 299999, wallMs: 300001 },
+    { durationMs: 404672, wallMs: 407129 },
+  ])("blocks stress before scheduler or fixture writes for a completed baseline at/over cadence: %o", async ({ durationMs, wallMs }) => {
+    const test = harness();
+    await test.phase("setup-baseline");
+    await measured(test, "volume-2000-slow", durationMs, wallMs);
+    const checkpoint = structuredClone(test.checkpoint), calls = [...test.calls], fixtures = [...test.fixtures];
+    const pause = test.provider.pauseScheduler;
+    test.provider.pauseScheduler = async options => { await pause(options); throw new Error("UNEXPECTED_STRESS_PAUSE"); };
+    let persists = 0;
+    await expect(test.phase("setup-stress", { persist: () => { persists++; } })).rejects.toThrow("BASELINE_CADENCE_REQUIRED_BEFORE_STRESS");
+    expect(persists).toBe(0);
+    expect(test.checkpoint).toEqual(checkpoint);
+    expect(test.calls).toEqual(calls);
+    expect([...test.fixtures]).toEqual(fixtures);
+    expect(test.checkpoint.measurements[0]).toMatchObject({ completed: true, durationMs });
+    expect(summarizeVolumeRun(test.manifest, test.checkpoint).baseline.completedExecutions).toBe(1);
+  });
+
+  it("permits first journalled stress allocation only when both baseline durations are strictly below cadence", async () => {
+    const test = harness();
+    await test.phase("setup-baseline");
+    await measured(test, "volume-2000-just-under", 299999, 299999);
+    await expectStressAllocation(test);
+    expect(test.pauseCalls.at(-1).drainExecution.measurementId).toBe("volume-2000-just-under");
+  });
+
+  it("does not use an older fast completion when the latest baseline is slow", async () => {
+    const test = harness();
+    await test.phase("setup-baseline");
+    await measured(test, "volume-2000-fast-old", 58000, 60000);
+    await measured(test, "volume-2000-slow-latest", 404672, 407129);
+    const checkpoint = structuredClone(test.checkpoint), calls = [...test.calls];
+    const pause = test.provider.pauseScheduler;
+    test.provider.pauseScheduler = async options => { await pause(options); throw new Error("UNEXPECTED_STRESS_PAUSE"); };
+    let persists = 0;
+    await expect(test.phase("setup-stress", { persist: () => { persists++; } })).rejects.toThrow("BASELINE_CADENCE_REQUIRED_BEFORE_STRESS");
+    expect(persists).toBe(0);
+    expect(test.checkpoint).toEqual(checkpoint);
+    expect(test.calls).toEqual(calls);
+    expect(test.checkpoint.measurements.map(item => item.completed)).toEqual([true, true]);
+  });
+
+  it("allows a newer fast baseline while preserving an older slow completion as factual evidence", async () => {
+    const test = harness();
+    await test.phase("setup-baseline");
+    await measured(test, "volume-2000-slow-old", 404672, 407129);
+    await measured(test, "volume-2000-fast-latest", 58000, 60000);
+    await expectStressAllocation(test);
+    expect(test.checkpoint.measurements.map(item => item.durationMs)).toEqual([404672, 58000]);
+    expect(summarizeVolumeRun(test.manifest, test.checkpoint).baseline).toMatchObject({ completedExecutions: 2, exceedsFiveMinuteCadence: true });
+    expect(test.pauseCalls.at(-1).drainExecution.measurementId).toBe("volume-2000-fast-latest");
+  });
+});
