@@ -77,6 +77,7 @@ function recoveryHarness(initial: MutableDelivery, send: () => Promise<void>) {
       stored.lastAttemptedAt = args.lastAttemptedAt;
       return true;
     },
+    async tryMarkPendingForRecovery() { throw new Error("unexpected recovery claim"); },
     async markSent(args) {
       if (
         stored.status !== NotificationDeliveryStatus.PENDING ||

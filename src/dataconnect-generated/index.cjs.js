@@ -1234,6 +1234,20 @@ exports.claimNotificationDeliveryById = function claimNotificationDeliveryById(d
 }
 ;
 
+const claimNotificationDeliveryForRecoveryByIdRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'ClaimNotificationDeliveryForRecoveryById', inputVars);
+}
+claimNotificationDeliveryForRecoveryByIdRef.operationName = 'ClaimNotificationDeliveryForRecoveryById';
+exports.claimNotificationDeliveryForRecoveryByIdRef = claimNotificationDeliveryForRecoveryByIdRef;
+
+exports.claimNotificationDeliveryForRecoveryById = function claimNotificationDeliveryForRecoveryById(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(claimNotificationDeliveryForRecoveryByIdRef(dcInstance, inputVars));
+}
+;
+
 const recordNotificationRecoveryFailureByIdRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

@@ -7,6 +7,7 @@ import { createNotificationRecoveryDispatcher, notificationRecoveryIdentity } fr
 import { runNotificationRecoveryBatch } from "../../notificationRecoveryEngine";
 import { resolveRuntimeGovNotifyDeliveryMode } from "../../govNotifyDeliveryConfiguration";
 import { govNotifyReferenceForMode } from "../../govNotifyDeliveryMode";
+import type { NotificationRecoveryClaim } from "../../notificationRecoveryClaim";
 import type { NotificationRecoveryPayload } from "../../notificationRecoveryPayload";
 import { notificationTestRepository, STAFF_BOOKING_ID, STAFF_NOW, STAFF_LATER, STAFF_CHANNEL } from "./notificationTestRepository";
 
@@ -29,15 +30,15 @@ function fixture() {
     authorizePrivilegedNotificationRecipient(uid, scope, { readCurrentState });
   const sendAuthorized = vi.fn(async (_email: string) => ({ providerMessageId: "fake-provider-id" }));
   const hasLegacyEvent = vi.fn(async () => false);
-  const deliver = (key?: string, recoveredPayload: typeof payload = payload) => sendPrivilegedNotification({
+  const deliver = (key?: string, recoveredPayload: typeof payload = payload, recoveryClaim?: NotificationRecoveryClaim) => sendPrivilegedNotification({
     channel: STAFF_CHANNEL, notificationType: "BOOKING_PENDING_APPROVAL_MODERATOR",
     deliveryKey: key ?? notificationRecoveryIdentity(recoveredPayload).deliveryKey, preserveDeliveryKey: Boolean(key),
     recipientUserId: recoveredPayload.recipientUserId, bookingId: recoveredPayload.bookingId,
-    recoveryPayload: recoveredPayload, deliveryMode: recoveredPayload.deliveryMode, provider: "govuk_notify",
+    recoveryPayload: recoveredPayload, recoveryClaim, deliveryMode: recoveredPayload.deliveryMode, provider: "govuk_notify",
     scope: { kind: "BOOKING", sectionId: "section-1" }, event: { kind: "BOOKING", bookingId: recoveredPayload.bookingId }, sendAuthorized,
   }, { authorize, hasLegacyEvent, delivery: { repository: store.repository, now: () => now } });
   const dispatcher = createNotificationRecoveryDispatcher("https://app.example", {
-    notifyBookingPending: async (args) => { expect(args.recipientUserIds).toEqual(["staff-1"]); expect(args.notifyMember).toBe(false); await deliver(args.recoveryDeliveryKey); },
+    notifyBookingPending: async (args) => { expect(args.recipientUserIds).toEqual(["staff-1"]); expect(args.notifyMember).toBe(false); await deliver(args.recoveryDeliveryKey, payload, args.recoveryClaim); },
     sendNotification: (request) => sendNotificationOnce(request, { repository: store.repository, now: () => now }),
   });
   const recover = () => runNotificationRecoveryBatch({ candidates: [...store.rows.values()].map((r) => ({ ...r })), now,
@@ -140,7 +141,7 @@ describe("privileged delivery and recovery with fake provider and real ledger or
   });
   it.each(["recipient", "subject", "type", "key"])("rejects a mismatched v2 ledger %s before any provider call", async (mismatch) => {
     const f = fixture(); await f.deliver();
-    const row = { ...[...f.rows.values()][0] };
+    const row = { ...[...f.rows.values()][0], status: NotificationDeliveryStatus.FAILED };
     if (mismatch === "recipient") row.recipientUserId = "another-user";
     if (mismatch === "subject") row.subjectBookingId = "another-booking";
     if (mismatch === "type") row.notificationType = "USER_PENDING_APPROVAL";

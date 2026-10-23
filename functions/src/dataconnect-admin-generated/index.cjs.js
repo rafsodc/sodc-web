@@ -685,6 +685,13 @@ function claimNotificationDeliveryById(dcOrVarsOrOptions, varsOrOptions, options
 }
 exports.claimNotificationDeliveryById = claimNotificationDeliveryById;
 
+function claimNotificationDeliveryForRecoveryById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ClaimNotificationDeliveryForRecoveryById', inputVars, inputOpts);
+}
+exports.claimNotificationDeliveryForRecoveryById = claimNotificationDeliveryForRecoveryById;
+
 function recordNotificationRecoveryFailureById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

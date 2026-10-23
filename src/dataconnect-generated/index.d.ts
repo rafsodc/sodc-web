@@ -387,6 +387,26 @@ export interface ClaimNotificationDeliveryByIdVariables {
   recoveryPayload?: string | null;
 }
 
+export interface ClaimNotificationDeliveryForRecoveryByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface ClaimNotificationDeliveryForRecoveryByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+}
+
 export interface ClaimNotifyDeliveryReceiptData {
   notifyDeliveryReceipt_updateMany: number;
 }
@@ -1941,6 +1961,7 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     deliveryKey: string;
     notificationType: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -2992,6 +3013,7 @@ export interface ListFailedNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -3380,6 +3402,7 @@ export interface ListStalePendingNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -3767,9 +3790,16 @@ export interface RecordNotificationRecoveryFailureByIdData {
 
 export interface RecordNotificationRecoveryFailureByIdVariables {
   id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
   expectedStatus: NotificationDeliveryStatus;
   expectedAttemptCount: number;
-  attemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
   lastAttemptedAt: TimestampString;
   lastErrorCode: string;
   lastErrorMessage: string;
@@ -5592,6 +5622,18 @@ export const claimNotificationDeliveryByIdRef: ClaimNotificationDeliveryByIdRef;
 
 export function claimNotificationDeliveryById(vars: ClaimNotificationDeliveryByIdVariables): MutationPromise<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
 export function claimNotificationDeliveryById(dc: DataConnect, vars: ClaimNotificationDeliveryByIdVariables): MutationPromise<ClaimNotificationDeliveryByIdData, ClaimNotificationDeliveryByIdVariables>;
+
+interface ClaimNotificationDeliveryForRecoveryByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationRef<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationRef<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+  operationName: string;
+}
+export const claimNotificationDeliveryForRecoveryByIdRef: ClaimNotificationDeliveryForRecoveryByIdRef;
+
+export function claimNotificationDeliveryForRecoveryById(vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationPromise<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+export function claimNotificationDeliveryForRecoveryById(dc: DataConnect, vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationPromise<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
 
 interface RecordNotificationRecoveryFailureByIdRef {
   /* Allow users to create refs without passing in DataConnect */

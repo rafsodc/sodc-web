@@ -170,6 +170,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
   - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
+  - [*ClaimNotificationDeliveryForRecoveryById*](#claimnotificationdeliveryforrecoverybyid)
   - [*RecordNotificationRecoveryFailureById*](#recordnotificationrecoveryfailurebyid)
   - [*MarkNotificationDeliverySentById*](#marknotificationdeliverysentbyid)
   - [*MarkNotificationDeliverySkippedById*](#marknotificationdeliveryskippedbyid)
@@ -3895,6 +3896,7 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     deliveryKey: string;
     notificationType: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -4032,6 +4034,7 @@ export interface ListFailedNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -4164,6 +4167,7 @@ export interface ListStalePendingNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -20121,6 +20125,151 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## ClaimNotificationDeliveryForRecoveryById
+You can execute the `ClaimNotificationDeliveryForRecoveryById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+claimNotificationDeliveryForRecoveryById(vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationPromise<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+
+interface ClaimNotificationDeliveryForRecoveryByIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationRef<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+}
+export const claimNotificationDeliveryForRecoveryByIdRef: ClaimNotificationDeliveryForRecoveryByIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+claimNotificationDeliveryForRecoveryById(dc: DataConnect, vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationPromise<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+
+interface ClaimNotificationDeliveryForRecoveryByIdRef {
+  ...
+  (dc: DataConnect, vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationRef<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+}
+export const claimNotificationDeliveryForRecoveryByIdRef: ClaimNotificationDeliveryForRecoveryByIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the claimNotificationDeliveryForRecoveryByIdRef:
+```typescript
+const name = claimNotificationDeliveryForRecoveryByIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ClaimNotificationDeliveryForRecoveryById` mutation requires an argument of type `ClaimNotificationDeliveryForRecoveryByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ClaimNotificationDeliveryForRecoveryByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+}
+```
+### Return Type
+Recall that executing the `ClaimNotificationDeliveryForRecoveryById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ClaimNotificationDeliveryForRecoveryByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ClaimNotificationDeliveryForRecoveryByIdData {
+  notificationDelivery_updateMany: number;
+}
+```
+### Using `ClaimNotificationDeliveryForRecoveryById`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, claimNotificationDeliveryForRecoveryById, ClaimNotificationDeliveryForRecoveryByIdVariables } from '@dataconnect/generated';
+
+// The `ClaimNotificationDeliveryForRecoveryById` mutation requires an argument of type `ClaimNotificationDeliveryForRecoveryByIdVariables`:
+const claimNotificationDeliveryForRecoveryByIdVars: ClaimNotificationDeliveryForRecoveryByIdVariables = {
+  id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
+  lastAttemptedAt: ..., 
+  provider: ..., // optional
+};
+
+// Call the `claimNotificationDeliveryForRecoveryById()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await claimNotificationDeliveryForRecoveryById(claimNotificationDeliveryForRecoveryByIdVars);
+// Variables can be defined inline as well.
+const { data } = await claimNotificationDeliveryForRecoveryById({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., lastAttemptedAt: ..., provider: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await claimNotificationDeliveryForRecoveryById(dataConnect, claimNotificationDeliveryForRecoveryByIdVars);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+claimNotificationDeliveryForRecoveryById(claimNotificationDeliveryForRecoveryByIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
+### Using `ClaimNotificationDeliveryForRecoveryById`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, claimNotificationDeliveryForRecoveryByIdRef, ClaimNotificationDeliveryForRecoveryByIdVariables } from '@dataconnect/generated';
+
+// The `ClaimNotificationDeliveryForRecoveryById` mutation requires an argument of type `ClaimNotificationDeliveryForRecoveryByIdVariables`:
+const claimNotificationDeliveryForRecoveryByIdVars: ClaimNotificationDeliveryForRecoveryByIdVariables = {
+  id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
+  lastAttemptedAt: ..., 
+  provider: ..., // optional
+};
+
+// Call the `claimNotificationDeliveryForRecoveryByIdRef()` function to get a reference to the mutation.
+const ref = claimNotificationDeliveryForRecoveryByIdRef(claimNotificationDeliveryForRecoveryByIdVars);
+// Variables can be defined inline as well.
+const ref = claimNotificationDeliveryForRecoveryByIdRef({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., lastAttemptedAt: ..., provider: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = claimNotificationDeliveryForRecoveryByIdRef(dataConnect, claimNotificationDeliveryForRecoveryByIdVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
 ## RecordNotificationRecoveryFailureById
 You can execute the `RecordNotificationRecoveryFailureById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -20156,9 +20305,16 @@ The `RecordNotificationRecoveryFailureById` mutation requires an argument of typ
 ```typescript
 export interface RecordNotificationRecoveryFailureByIdVariables {
   id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
   expectedStatus: NotificationDeliveryStatus;
   expectedAttemptCount: number;
-  attemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
   lastAttemptedAt: TimestampString;
   lastErrorCode: string;
   lastErrorMessage: string;
@@ -20182,9 +20338,16 @@ import { connectorConfig, recordNotificationRecoveryFailureById, RecordNotificat
 // The `RecordNotificationRecoveryFailureById` mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`:
 const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailureByIdVariables = {
   id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
   expectedStatus: ..., 
   expectedAttemptCount: ..., 
-  attemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
   lastAttemptedAt: ..., 
   lastErrorCode: ..., 
   lastErrorMessage: ..., 
@@ -20194,7 +20357,7 @@ const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailu
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await recordNotificationRecoveryFailureById(recordNotificationRecoveryFailureByIdVars);
 // Variables can be defined inline as well.
-const { data } = await recordNotificationRecoveryFailureById({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+const { data } = await recordNotificationRecoveryFailureById({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -20218,9 +20381,16 @@ import { connectorConfig, recordNotificationRecoveryFailureByIdRef, RecordNotifi
 // The `RecordNotificationRecoveryFailureById` mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`:
 const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailureByIdVariables = {
   id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
   expectedStatus: ..., 
   expectedAttemptCount: ..., 
-  attemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
   lastAttemptedAt: ..., 
   lastErrorCode: ..., 
   lastErrorMessage: ..., 
@@ -20229,7 +20399,7 @@ const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailu
 // Call the `recordNotificationRecoveryFailureByIdRef()` function to get a reference to the mutation.
 const ref = recordNotificationRecoveryFailureByIdRef(recordNotificationRecoveryFailureByIdVars);
 // Variables can be defined inline as well.
-const ref = recordNotificationRecoveryFailureByIdRef({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+const ref = recordNotificationRecoveryFailureByIdRef({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

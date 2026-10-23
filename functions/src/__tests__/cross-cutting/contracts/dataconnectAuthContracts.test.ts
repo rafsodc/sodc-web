@@ -207,6 +207,7 @@ describe("Data Connect auth contracts", () => {
       { op: "query ListStalePendingNotificationDeliveriesForRecovery", mustInclude: NO_ACCESS },
       { op: "mutation CreateNotificationDelivery", mustInclude: NO_ACCESS },
       { op: "mutation ClaimNotificationDeliveryById", mustInclude: NO_ACCESS },
+      { op: "mutation ClaimNotificationDeliveryForRecoveryById", mustInclude: NO_ACCESS },
       { op: "mutation RecordNotificationRecoveryFailureById", mustInclude: NO_ACCESS },
       { op: "mutation MarkNotificationDeliverySentById", mustInclude: NO_ACCESS },
       { op: "mutation MarkNotificationDeliveryFailedById", mustInclude: NO_ACCESS },

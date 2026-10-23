@@ -28,6 +28,7 @@ function candidate(
     attemptCount: 1,
     lastAttemptedAt: CREATED_AT,
     createdAt: CREATED_AT,
+    deliveryMode: "LIVE",
   };
 }
 
@@ -50,6 +51,8 @@ describe("notification recovery dispatch routing", () => {
       bookingId: payload.bookingId,
       idempotencyKey: payload.idempotencyKey,
       appBaseUrl: APP_BASE_URL,
+      deliveryMode: "LIVE",
+      recoveryClaim: expect.objectContaining({ id: candidate(payload).id, deliveryKey: candidate(payload).deliveryKey }),
     });
   });
 
@@ -72,7 +75,8 @@ describe("notification recovery dispatch routing", () => {
       recoveryDeliveryKey: candidate(payload).deliveryKey,
       notifyMember: false,
       appBaseUrl: APP_BASE_URL,
-      deliveryMode: undefined,
+      deliveryMode: "LIVE",
+      recoveryClaim: expect.objectContaining({ id: candidate(payload).id, deliveryKey: candidate(payload).deliveryKey }),
     });
   });
 
@@ -95,7 +99,7 @@ describe("notification recovery dispatch routing", () => {
 
     await dispatch(candidate(payload), payload);
 
-    expect(notifyPaymentLifecycle).toHaveBeenCalledWith(payload);
+    expect(notifyPaymentLifecycle).toHaveBeenCalledWith(payload, expect.objectContaining({ id: candidate(payload).id, deliveryKey: candidate(payload).deliveryKey }), "LIVE");
   });
 
   it("rejects payloads that do not reproduce the ledger delivery key", async () => {
@@ -129,7 +133,8 @@ describe("applicant privileged recovery identity", () => {
     const row = { ...candidate(payload), recipientUserId: "original-admin", subjectUserId: "applicant" };
     await dispatch(row, payload);
     expect(notifyPendingApproval).toHaveBeenCalledWith({ userId: "applicant", emailVerified: true,
-      recipientUserIds: ["original-admin"], recoveryDeliveryKey: row.deliveryKey, appBaseUrl: APP_BASE_URL, deliveryMode: undefined });
+      recipientUserIds: ["original-admin"], recoveryDeliveryKey: row.deliveryKey, appBaseUrl: APP_BASE_URL, deliveryMode: "LIVE",
+      recoveryClaim: expect.objectContaining({ id: row.id, deliveryKey: row.deliveryKey }) });
   });
   it.each([{ recipientUserId: "replacement-admin", subjectUserId: "applicant" }, { recipientUserId: "original-admin", subjectUserId: "other-applicant" }])("rejects mismatched applicant/recipient ledger metadata", async (metadata) => {
       const notifyPendingApproval = vi.fn(async () => undefined);

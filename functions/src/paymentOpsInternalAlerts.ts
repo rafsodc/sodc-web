@@ -1,3 +1,4 @@
+import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import {
   getTicketOrderForWebhook,
@@ -104,6 +105,7 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
   recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createPaymentOpsInternalMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   const recipients = args.recipientEmails
     ? Array.from(
@@ -152,11 +154,13 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
         await sendNotificationOnce({
           channel: NotificationChannel.EMAIL,
           notificationType: "RECONCILIATION_EXCEPTION_OPEN",
-          deliveryKey,
+          deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+          preserveDeliveryKey: Boolean(args.recoveryClaim),
           ticketOrderId: args.orderId,
           userId: null,
           provider: GOV_NOTIFY_PROVIDER,
           deliveryMode: args.deliveryMode,
+          recoveryClaim: args.recoveryClaim,
           recoveryPayload: {
             version: 1,
             kind: "PAYMENT_RECONCILIATION_OPS",
@@ -209,6 +213,7 @@ export async function notifyPaymentOpsDisputeSideState(args: {
   recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createPaymentOpsInternalMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   const recipients = args.recipientEmails
     ? Array.from(
@@ -256,11 +261,13 @@ export async function notifyPaymentOpsDisputeSideState(args: {
         await sendNotificationOnce({
           channel: NotificationChannel.EMAIL,
           notificationType: "DISPUTE_OPS_EVENT",
-          deliveryKey,
+          deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+          preserveDeliveryKey: Boolean(args.recoveryClaim),
           ticketOrderId: args.orderId,
           userId: null,
           provider: GOV_NOTIFY_PROVIDER,
           deliveryMode: args.deliveryMode,
+          recoveryClaim: args.recoveryClaim,
           recoveryPayload: {
             version: 1,
             kind: "PAYMENT_DISPUTE_OPS",

@@ -365,6 +365,26 @@ export interface ClaimNotificationDeliveryByIdVariables {
   recoveryPayload?: string | null;
 }
 
+export interface ClaimNotificationDeliveryForRecoveryByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface ClaimNotificationDeliveryForRecoveryByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+}
+
 export interface ClaimNotifyDeliveryReceiptData {
   notifyDeliveryReceipt_updateMany: number;
 }
@@ -1919,6 +1939,7 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     deliveryKey: string;
     notificationType: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -2970,6 +2991,7 @@ export interface ListFailedNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -3358,6 +3380,7 @@ export interface ListStalePendingNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -3745,9 +3768,16 @@ export interface RecordNotificationRecoveryFailureByIdData {
 
 export interface RecordNotificationRecoveryFailureByIdVariables {
   id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
   expectedStatus: NotificationDeliveryStatus;
   expectedAttemptCount: number;
-  attemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
   lastAttemptedAt: TimestampString;
   lastErrorCode: string;
   lastErrorMessage: string;
@@ -5052,6 +5082,11 @@ export function createNotificationDelivery(vars: CreateNotificationDeliveryVaria
 export function claimNotificationDeliveryById(dc: DataConnect, vars: ClaimNotificationDeliveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotificationDeliveryByIdData>>;
 /** Generated Node Admin SDK operation action function for the 'ClaimNotificationDeliveryById' Mutation. Allow users to pass in custom DataConnect instances. */
 export function claimNotificationDeliveryById(vars: ClaimNotificationDeliveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotificationDeliveryByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ClaimNotificationDeliveryForRecoveryById' Mutation. Allow users to execute without passing in DataConnect. */
+export function claimNotificationDeliveryForRecoveryById(dc: DataConnect, vars: ClaimNotificationDeliveryForRecoveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotificationDeliveryForRecoveryByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ClaimNotificationDeliveryForRecoveryById' Mutation. Allow users to pass in custom DataConnect instances. */
+export function claimNotificationDeliveryForRecoveryById(vars: ClaimNotificationDeliveryForRecoveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotificationDeliveryForRecoveryByIdData>>;
 
 /** Generated Node Admin SDK operation action function for the 'RecordNotificationRecoveryFailureById' Mutation. Allow users to execute without passing in DataConnect. */
 export function recordNotificationRecoveryFailureById(dc: DataConnect, vars: RecordNotificationRecoveryFailureByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotificationRecoveryFailureByIdData>>;

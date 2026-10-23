@@ -1,3 +1,4 @@
+import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import { serviceGetUserById as getUserById, NotificationChannel } from "@dataconnect/admin-generated";
 import {
@@ -70,6 +71,7 @@ export async function notifyAdminsUserPendingApproval(args: {
   recoveryDeliveryKey?: string;
   getMailer?: () => ReturnType<typeof createPendingApprovalAlertMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   try {
     const row = await getUserById({ id: args.userId });
@@ -115,14 +117,15 @@ export async function notifyAdminsUserPendingApproval(args: {
         await sendPrivilegedNotification({
           channel: NotificationChannel.EMAIL,
           notificationType: "USER_PENDING_APPROVAL",
-          deliveryKey,
-          preserveDeliveryKey: Boolean(args.recoveryDeliveryKey),
+          deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+          preserveDeliveryKey: Boolean(args.recoveryClaim || args.recoveryDeliveryKey),
           recipientUserId,
           scope: { kind: "ADMIN" },
           event: { kind: "APPLICANT", subjectUserId: args.userId },
           userId: args.userId,
           provider: GOV_NOTIFY_PROVIDER,
           deliveryMode: args.deliveryMode,
+          recoveryClaim: args.recoveryClaim,
           recoveryPayload: {
             version: 2,
             kind: "USER_PENDING_APPROVAL",

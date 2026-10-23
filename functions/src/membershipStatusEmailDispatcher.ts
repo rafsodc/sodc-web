@@ -1,3 +1,4 @@
+import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import { getUserMembershipStatus, NotificationChannel } from "@dataconnect/admin-generated";
 import { createConfiguredGovNotifyMailer, GOV_NOTIFY_PROVIDER } from "./mailer";
@@ -105,6 +106,7 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
   appBaseUrl: string;
   getMailer?: () => ReturnType<typeof createMembershipStatusMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   const kind = classifyMembershipStatusEmailTransition(args.previousStatus, args.newStatus);
   if (!kind) {
@@ -146,10 +148,12 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
     await sendNotificationOnce({
       channel: NotificationChannel.EMAIL,
       notificationType,
-      deliveryKey,
+      deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+      preserveDeliveryKey: Boolean(args.recoveryClaim),
       userId: args.userId,
       provider: GOV_NOTIFY_PROVIDER,
       deliveryMode: args.deliveryMode,
+      recoveryClaim: args.recoveryClaim,
       recoveryPayload: {
         version: 1,
         kind: "MEMBERSHIP_STATUS",

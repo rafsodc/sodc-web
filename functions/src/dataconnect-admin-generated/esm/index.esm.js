@@ -590,6 +590,12 @@ export function claimNotificationDeliveryById(dcOrVarsOrOptions, varsOrOptions, 
   return dcInstance.executeMutation('ClaimNotificationDeliveryById', inputVars, inputOpts);
 }
 
+export function claimNotificationDeliveryForRecoveryById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ClaimNotificationDeliveryForRecoveryById', inputVars, inputOpts);
+}
+
 export function recordNotificationRecoveryFailureById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

@@ -1718,6 +1718,7 @@ query GetNotificationDeliveryByChannelAndKey(
     deliveryKey
     notificationType
     recoveryPayload
+    deliveryMode
     recipientUserId
     booking { id }
     user { id }
@@ -1755,6 +1756,7 @@ query ListFailedNotificationDeliveriesForRecovery(
     notificationType
     deliveryKey
     recoveryPayload
+    deliveryMode
     recipientUserId
     booking { id }
     user { id }
@@ -1785,6 +1787,7 @@ query ListStalePendingNotificationDeliveriesForRecovery(
     notificationType
     deliveryKey
     recoveryPayload
+    deliveryMode
     recipientUserId
     booking { id }
     user { id }
@@ -1858,24 +1861,93 @@ mutation ClaimNotificationDeliveryById(
   )
 }
 
-mutation RecordNotificationRecoveryFailureById(
+# Recovery claims bind the listed snapshot and enforce limits at the write boundary.
+# Direct/manual sends retain the separate ClaimNotificationDeliveryById operation.
+mutation ClaimNotificationDeliveryForRecoveryById(
   $id: UUID!
+  $channel: NotificationChannel!
+  $deliveryKey: String!
+  $notificationType: String!
   $expectedStatus: NotificationDeliveryStatus!
   $expectedAttemptCount: Int!
-  $attemptCount: Int!
+  $expectedLastAttemptedAt: Timestamp!
+  $expectedRecoveryPayload: String
+  $expectedRecoveryPayloadIsNull: Boolean!
+  $expectedDeliveryMode: GovNotifyDeliveryMode
+  $expectedDeliveryModeIsNull: Boolean!
+  $lastAttemptedAt: Timestamp!
+  $provider: String
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_updateMany(
+    where: {
+      _and: [
+        {
+          id: { eq: $id }
+          channel: { eq: $channel }
+          deliveryKey: { eq: $deliveryKey }
+          notificationType: { eq: $notificationType }
+          status: { eq: $expectedStatus }
+          attemptCount: { eq: $expectedAttemptCount, ge: 0, lt: 6 }
+          lastAttemptedAt: { eq: $expectedLastAttemptedAt }
+          recoveryPayload: { eq: $expectedRecoveryPayload, isNull: $expectedRecoveryPayloadIsNull }
+          deliveryMode: { eq: $expectedDeliveryMode, isNull: $expectedDeliveryModeIsNull }
+        }
+        { _or: [
+          { status: { eq: FAILED }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 15 } } } }
+          { status: { eq: PENDING }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 10 } } } }
+        ] }
+      ]
+    }
+    data: {
+      status: PENDING
+      attemptCount_update: { inc: 1 }
+      lastAttemptedAt: $lastAttemptedAt
+      provider: $provider
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation RecordNotificationRecoveryFailureById(
+  $id: UUID!
+  $channel: NotificationChannel!
+  $deliveryKey: String!
+  $notificationType: String!
+  $expectedStatus: NotificationDeliveryStatus!
+  $expectedAttemptCount: Int!
+  $expectedLastAttemptedAt: Timestamp!
+  $expectedRecoveryPayload: String
+  $expectedRecoveryPayloadIsNull: Boolean!
+  $expectedDeliveryMode: GovNotifyDeliveryMode
+  $expectedDeliveryModeIsNull: Boolean!
   $lastAttemptedAt: Timestamp!
   $lastErrorCode: String!
   $lastErrorMessage: String!
 ) @auth(level: NO_ACCESS) {
   notificationDelivery_updateMany(
     where: {
-      id: { eq: $id }
-      status: { eq: $expectedStatus }
-      attemptCount: { eq: $expectedAttemptCount }
+      _and: [
+        {
+          id: { eq: $id }
+          channel: { eq: $channel }
+          deliveryKey: { eq: $deliveryKey }
+          notificationType: { eq: $notificationType }
+          status: { eq: $expectedStatus }
+          attemptCount: { eq: $expectedAttemptCount, ge: 0, lt: 6 }
+          lastAttemptedAt: { eq: $expectedLastAttemptedAt }
+          recoveryPayload: { eq: $expectedRecoveryPayload, isNull: $expectedRecoveryPayloadIsNull }
+          deliveryMode: { eq: $expectedDeliveryMode, isNull: $expectedDeliveryModeIsNull }
+        }
+        { _or: [
+          { status: { eq: FAILED }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 15 } } } }
+          { status: { eq: PENDING }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 10 } } } }
+        ] }
+      ]
     }
     data: {
       status: FAILED
-      attemptCount: $attemptCount
+      attemptCount_update: { inc: 1 }
       lastAttemptedAt: $lastAttemptedAt
       lastErrorCode: $lastErrorCode
       lastErrorMessage: $lastErrorMessage

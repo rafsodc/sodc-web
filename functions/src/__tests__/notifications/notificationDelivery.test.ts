@@ -114,6 +114,7 @@ function createRepository(initialRecords: StoredDelivery[] = []): {
       return true;
     },
 
+    async tryMarkPendingForRecovery() { throw new Error("unexpected recovery claim"); },
     async markSent(args) {
       const record = getById(args.id);
       if (

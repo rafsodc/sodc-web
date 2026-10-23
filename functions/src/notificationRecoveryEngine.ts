@@ -8,10 +8,19 @@ import {
   type NotificationRecoveryPayload,
 } from "./notificationRecoveryPayload";
 import { isNotificationDeliveryLeaseExpired } from "./notificationDelivery";
+import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
 
-export const NOTIFICATION_RECOVERY_BATCH_LIMIT = 25;
-export const NOTIFICATION_RECOVERY_MAX_ATTEMPTS = 6;
-export const NOTIFICATION_RECOVERY_RETRY_DELAY_MS = 15 * 60 * 1000;
+import {
+  NOTIFICATION_RECOVERY_BATCH_LIMIT,
+  NOTIFICATION_RECOVERY_MAX_ATTEMPTS,
+  NOTIFICATION_RECOVERY_RETRY_DELAY_MS,
+  NotificationRecoveryDeferredError,
+} from "./notificationRecoveryClaim";
+export {
+  NOTIFICATION_RECOVERY_BATCH_LIMIT,
+  NOTIFICATION_RECOVERY_MAX_ATTEMPTS,
+  NOTIFICATION_RECOVERY_RETRY_DELAY_MS,
+} from "./notificationRecoveryClaim";
 
 export interface RecoverableNotificationDelivery {
   id: UUIDString;
@@ -26,6 +35,7 @@ export interface RecoverableNotificationDelivery {
   recipientUserId?: string | null;
   subjectBookingId?: string | null;
   subjectUserId?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode | null;
 }
 
 export interface NotificationRecoveryBatchSummary {
@@ -182,7 +192,9 @@ export async function runNotificationRecoveryBatch(
       }
     } catch (error: unknown) {
       summary.failed += 1;
-      await recordRecoveryFailure(dependencies, candidate);
+      if (!(error instanceof NotificationRecoveryDeferredError)) {
+        await recordRecoveryFailure(dependencies, candidate);
+      }
       dependencies.onError?.(candidate, error);
     }
   }
