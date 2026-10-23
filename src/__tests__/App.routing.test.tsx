@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { render, screen, waitFor } from "../test-utils";
+import { act, render, screen, waitFor } from "../test-utils";
 import userEvent from "@testing-library/user-event";
 import type { User } from "firebase/auth";
 import type { GetSectionsForUserData } from "@dataconnect/generated";
@@ -16,6 +16,8 @@ const mockRefetchUserData = vi.hoisted(() => vi.fn());
 const mockRetrySession = vi.hoisted(() => vi.fn());
 
 let currentUser: User | null = null;
+let deferAuthState = false;
+const authStateListeners = new Set<(user: User | null) => void>();
 let enabledClaim = false;
 let enabledClaimResolved = true;
 let adminClaim = false;
@@ -65,8 +67,9 @@ function signInEnabledUser({ admin = false, data = sectionsData() } = {}) {
 
 vi.mock("firebase/auth", () => ({
   onAuthStateChanged: vi.fn((_auth, callback) => {
-    callback(currentUser);
-    return vi.fn();
+    authStateListeners.add(callback);
+    if (!deferAuthState) callback(currentUser);
+    return vi.fn(() => authStateListeners.delete(callback));
   }),
   onIdTokenChanged: vi.fn((_auth, callback) => {
     callback(currentUser);
@@ -220,6 +223,10 @@ vi.mock("../features/profile/components/Profile", () => ({
   ),
 }));
 
+vi.mock("../features/account/components/AccountSettingsPage", () => ({
+  default: () => <h1>Account Settings Page</h1>,
+}));
+
 vi.mock("../features/profile/components/ProfileReviewDialog", () => ({
   default: ({ onReviewed }: { onReviewed: () => void }) => (
     <div role="dialog" aria-label="Please review your profile">
@@ -321,7 +328,7 @@ function LocationProbe() {
   const location = useLocation();
   return (
     <>
-      <div data-testid="location">{`${location.pathname}${location.search}`}</div>
+      <div data-testid="location">{`${location.pathname}${location.search}${location.hash}`}</div>
       <div data-testid="location-state">{JSON.stringify(location.state)}</div>
     </>
   );
@@ -339,6 +346,8 @@ function renderApp(initialEntries: Array<string | { pathname: string; search?: s
 describe("App routing", () => {
   beforeEach(() => {
     currentUser = null;
+    deferAuthState = false;
+    authStateListeners.clear();
     enabledClaim = false;
     enabledClaimResolved = true;
     adminClaim = false;
@@ -472,6 +481,73 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "Account Page" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.ACCOUNT);
+  });
+
+  it.each([
+    [ROUTES.PROFILE, "Profile Page"],
+    [ROUTES.ACCOUNT_SETTINGS, "Account Settings Page"],
+  ])("preserves %s during cold Auth restoration", async (route, heading) => {
+    signInEnabledUser();
+    deferAuthState = true;
+    const destination = `${route}?from=email#preferences`;
+    renderApp([destination]);
+
+    expect(screen.getByTestId("location")).toHaveTextContent(destination);
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: heading })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Account Page" })).not.toBeInTheDocument();
+
+    await act(async () => {authStateListeners.forEach(listener => listener(currentUser));});
+
+    expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(destination);
+    expect(screen.queryByRole("heading", { name: "Welcome Dashboard" })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [ROUTES.PROFILE, "Profile Page"],
+    [ROUTES.ACCOUNT_SETTINGS, "Account Settings Page"],
+  ])("preserves the %s destination through cold sign-out and later sign-in", async (route, heading) => {
+    deferAuthState = true;
+    const destination = `${route}?from=email#preferences`;
+    renderApp([destination]);
+    expect(screen.getByTestId("location")).toHaveTextContent(destination);
+
+    await act(async () => {authStateListeners.forEach(listener => listener(null));});
+
+    expect(await screen.findByRole("heading", { name: "Account Page" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(`${ROUTES.ACCOUNT}?returnTo=${encodeURIComponent(destination)}`);
+    expect(screen.queryByRole("heading", { name: heading })).not.toBeInTheDocument();
+
+    signInEnabledUser();
+    await act(async () => {authStateListeners.forEach(listener => listener(currentUser));});
+
+    expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(destination);
+  });
+
+  it.each([
+    [ROUTES.PROFILE, "Profile Page"],
+    [ROUTES.ACCOUNT_SETTINGS, "Account Settings Page"],
+  ])("keeps %s private while restored account claims remain unresolved", async (route, heading) => {
+    signInEnabledUser();
+    deferAuthState = true;
+    enabledClaimResolved = false;
+    renderApp([route]);
+
+    await act(async () => {authStateListeners.forEach(listener => listener(currentUser));});
+
+    expect(screen.getByTestId("location")).toHaveTextContent(route);
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: heading })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Account Page" })).not.toBeInTheDocument();
+
+    enabledClaimResolved = true;
+    currentUser = createMockUser({ uid: currentUser!.uid });
+    await act(async () => {authStateListeners.forEach(listener => listener(currentUser));});
+
+    expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(route);
   });
 
   it("renders password reset request from a public deep link", async () => {

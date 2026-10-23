@@ -410,6 +410,7 @@ function AppContent() {
     );
   };
 
+  const signInPath = accountSignInPath(`${location.pathname}${location.search}${location.hash}`);
   const protectedRoute = (element: ReactElement) => {
     if (!authInitialized) {
       return <LoadingFallback />;
@@ -424,10 +425,7 @@ function AppContent() {
       return <Navigate to={{ pathname: ROUTES.ACCOUNT, search: location.search }} replace />;
     }
     return (
-      <Navigate
-        to={accountSignInPath(`${location.pathname}${location.search}${location.hash}`)}
-        replace
-      />
+      <Navigate to={signInPath} replace />
     );
   };
 
@@ -619,7 +617,9 @@ function AppContent() {
                   path={ROUTES.PROFILE}
                   element={
                     <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
-                      {user ? (
+                      {!authInitialized ? (
+                        <LoadingFallback />
+                      ) : user ? (
                         <Suspense fallback={<LoadingFallback />}>
                           <Profile
                             key={user.uid}
@@ -631,7 +631,7 @@ function AppContent() {
                           />
                         </Suspense>
                       ) : (
-                        <Navigate to={ROUTES.ACCOUNT} replace />
+                        <Navigate to={signInPath} replace />
                       )}
                     </Box>
                   }
@@ -640,7 +640,9 @@ function AppContent() {
                   path={ROUTES.ACCOUNT_SETTINGS}
                   element={
                     <Box sx={{ maxWidth: { sm: "600px" }, mx: "auto", px: { xs: 3, sm: 4 } }}>
-                      {user && isEnabled ? (
+                      {!authInitialized ? (
+                        <LoadingFallback />
+                      ) : user && isEnabled ? (
                         <Suspense fallback={<LoadingFallback />}>
                           <AccountSettingsPage
                             key={user.uid}
@@ -655,7 +657,7 @@ function AppContent() {
                       ) : user ? (
                         <Navigate to={ROUTES.HOME} replace />
                       ) : (
-                        <Navigate to={ROUTES.ACCOUNT} replace />
+                        <Navigate to={signInPath} replace />
                       )}
                     </Box>
                   }

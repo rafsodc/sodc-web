@@ -11,5 +11,14 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   reporter: "list",
-  use: { baseURL, browserName: "chromium", trace: "off", screenshot: "off", video: "off" },
+  use: {
+    baseURL,
+    browserName: "chromium",
+    channel: "chromium",
+    launchOptions: {
+      ignoreDefaultArgs: ["--disable-back-forward-cache"],
+      args: ["--enable-features=BackForwardCache"],
+    },
+    trace: "off", screenshot: "off", video: "off",
+  },
 });
