@@ -76,6 +76,31 @@ describe("batch snapshots never become authority for reconciliation writes", () 
     expect(mocks.getUsers).not.toHaveBeenCalled(); expect(mocks.ledgers).not.toHaveBeenCalled();
     expect(mocks.getUser).toHaveBeenCalledWith("member"); expect(mocks.state).toHaveBeenCalled();
   });
+  it("aggregates service phase costs and fresh fallback after a failed batch, resetting each invocation", async () => {
+    let elapsed = 0;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => elapsed);
+    mocks.pending.mockResolvedValue({data: {securityTransitions: [{operationId: "old"}]}});
+    mocks.states.mockImplementation(async () => {elapsed += 5; return {data: {userSecurityStates: [structuredClone(current)]}};});
+    mocks.ledgers.mockImplementation(async () => {elapsed += 3; return {data: {securityTransitions: [structuredClone(operations.get("old"))]}};});
+    mocks.getUsers.mockImplementationOnce(async () => {elapsed += 7; throw new Error("temporary");});
+    mocks.getUser.mockImplementation(async () => {elapsed += 11; return structuredClone(account);});
+    try {
+      await run();
+      expect(mocks.info).toHaveBeenLastCalledWith("Security reconciliation completed", {
+        pendingAttempts: 1, stateAttempts: 1, failedAttempts: 0, healthyMirrorChecks: 0, durationMs: 37,
+        phaseMetrics: {statePageReads: 1, statePageReadDurationMs: 5, statePages: 1, maxStatePageDurationMs: 26,
+          pendingRepairs: 1, pendingRepairDurationMs: 11, stateRepairs: 1, stateRepairDurationMs: 11,
+          ledgerReads: 1, ledgerReadDurationMs: 3, ledgerReadFailures: 0, authBatchReads: 1, authBatchReadDurationMs: 7, authBatchReadFailures: 1},
+      });
+      await run();
+      expect(mocks.info).toHaveBeenLastCalledWith("Security reconciliation completed", expect.objectContaining({
+        healthyMirrorChecks: 1, phaseMetrics: expect.objectContaining({statePageReads: 1, ledgerReads: 1, authBatchReads: 1,
+          authBatchReadFailures: 0, stateRepairs: 0, stateRepairDurationMs: 0, pendingRepairs: 1, pendingRepairDurationMs: 11}),
+      }));
+      expect(mocks.setClaims).not.toHaveBeenCalled();
+    } finally {clock.mockRestore();}
+  });
+
   it("uses fresh lookups after missing identities and a transient batch failure", async () => {
     mocks.getUsers.mockResolvedValueOnce({users: [], notFound: [{uid: "member"}]}).mockRejectedValueOnce(new Error("temporary"));
     await run(); await run();

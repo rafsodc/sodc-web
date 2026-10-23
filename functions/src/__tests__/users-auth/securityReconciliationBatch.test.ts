@@ -4,7 +4,7 @@ import type { ListSecurityStatesForReconciliationData } from "../../securityRepo
 const mocks = vi.hoisted(() => ({ledgers: vi.fn(), getUsers: vi.fn()}));
 vi.mock("firebase-admin", () => ({auth: () => ({getUsers: mocks.getUsers})}));
 vi.mock("../../securityRepository", () => ({listSecurityTransitionsForReconciliation: mocks.ledgers}));
-import { healthySecurityMirrorUserIds } from "../../securityReconciliationBatch";
+import { createReconciliationBatchMetrics, healthySecurityMirrorUserIds } from "../../securityReconciliationBatch";
 type State = ListSecurityStatesForReconciliationData["userSecurityStates"][number];
 function state(i = 0): State {
   return {userId: `member-${i}`, operationId: `operation-${i}`, securityVersion: 3, membershipStatus: "REGULAR", desiredEnabled: true,
@@ -113,6 +113,26 @@ describe("read-only healthy security mirror batches", () => {
     mocks.getUsers.mockRejectedValueOnce(new Error("unavailable"));
     expect(await healthySecurityMirrorUserIds(rows)).toEqual(new Set([rows[100].userId]));
     expect(mocks.getUsers).toHaveBeenCalledTimes(2);
+  });
+
+  it("accounts for a failed ledger read without making any Auth request", async () => {
+    const metrics = createReconciliationBatchMetrics();
+    let elapsed = 0;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => elapsed);
+    mocks.ledgers.mockImplementationOnce(async () => {elapsed += 9; throw new Error("unavailable");});
+    try {
+      expect(await healthySecurityMirrorUserIds(rows, metrics)).toEqual(new Set());
+      expect(metrics).toEqual({ledgerReads: 1, ledgerReadDurationMs: 9, ledgerReadFailures: 1,
+        authBatchReads: 0, authBatchReadDurationMs: 0, authBatchReadFailures: 0});
+    } finally {clock.mockRestore();}
+  });
+
+  it("records incomplete Auth coverage as one uncertain batch, retaining later healthy batches", async () => {
+    rows = Array.from({length: 101}, (_, i) => state(i));
+    const metrics = createReconciliationBatchMetrics();
+    mocks.getUsers.mockResolvedValueOnce({users: [], notFound: []});
+    expect(await healthySecurityMirrorUserIds(rows, metrics)).toEqual(new Set([rows[100].userId]));
+    expect(metrics).toMatchObject({ledgerReads: 1, ledgerReadFailures: 0, authBatchReads: 2, authBatchReadFailures: 1});
   });
 
   it("does not retain authority or identities between invocations", async () => {

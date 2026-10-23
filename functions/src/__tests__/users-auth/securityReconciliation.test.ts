@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({control: vi.fn(), pending: vi.fn(), states: vi.
 vi.mock("firebase-functions/v2/scheduler", () => ({onSchedule: (_options: unknown, handler: unknown) => handler}));
 vi.mock("firebase-functions/logger", () => ({info: mocks.info, warn: mocks.warn}));
 vi.mock("../../securityRepository", () => ({getAdminSafetyControl: mocks.control, listPendingSecurityTransitions: mocks.pending, listSecurityStatesForReconciliation: mocks.states}));
-vi.mock("../../securityReconciliationBatch", () => ({healthySecurityMirrorUserIds: mocks.healthy}));
+vi.mock("../../securityReconciliationBatch", async importOriginal => ({...await importOriginal<typeof import("../../securityReconciliationBatch")>(), healthySecurityMirrorUserIds: mocks.healthy}));
 vi.mock("../../currentAuthorizationTransitions", () => ({synchronizeUserSecurity: mocks.synchronize}));
 import { reconcilePendingSecurityTransitions } from "../../securityReconciliation";
 
@@ -41,7 +41,7 @@ describe("security reconciliation cutover boundary", () => {
     await run();
     expect(mocks.synchronize.mock.calls).toEqual([["pending"], ["ready"]]);
     expect(mocks.info).toHaveBeenLastCalledWith("Security reconciliation completed", {
-      pendingAttempts: 1, stateAttempts: 1, failedAttempts: 0, healthyMirrorChecks: 0, durationMs: expect.any(Number),
+      pendingAttempts: 1, stateAttempts: 1, failedAttempts: 0, healthyMirrorChecks: 0, durationMs: expect.any(Number), phaseMetrics: expect.objectContaining({pendingRepairs: 1, stateRepairs: 1, statePages: 1, statePageReads: 1}),
     });
   });
 
@@ -55,6 +55,7 @@ describe("security reconciliation cutover boundary", () => {
     expect(mocks.states.mock.calls).toEqual([[{limit: 500, offset: 0}], [{limit: 500, offset: 500}]]);
     expect(mocks.info).toHaveBeenLastCalledWith("Security reconciliation completed", {
       pendingAttempts: 2, stateAttempts: 501, failedAttempts: 2, healthyMirrorChecks: 0, durationMs: expect.any(Number),
+      phaseMetrics: expect.objectContaining({pendingRepairs: 2, stateRepairs: 501, statePages: 2, statePageReads: 2}),
     });
     expect(mocks.warn).toHaveBeenCalledTimes(2);
   });

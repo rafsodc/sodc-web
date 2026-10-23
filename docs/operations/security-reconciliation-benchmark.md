@@ -44,6 +44,27 @@ holds, pending work, missing identities, drift and service failures require
 more fresh coordinator operations. Unrelated custom claims are preserved by
 that unchanged repair path.
 
+The completion log contains one fixed-size `phaseMetrics` object: state-page
+read count/time; populated page count and maximum whole-page time; ledger and
+Auth-batch read counts/times/failures; and pending/fallback coordinator
+attempts/times. Transport failures and malformed or ambiguous responses count
+as read failures; incomplete Auth coverage counts as a failed batch. Missing
+ledger records or explicitly not-found Auth identities use fresh fallback
+without being reported as transport failures. Repair timings include all I/O inside the
+unchanged coordinator; maximum page time includes its page read, bulk checks
+and fallback repairs. These aggregate timings contain no UID, email or claims.
+They reset on each invocation and are emitted only when the handler completes;
+they are not a timeout, cancellation or handler-drain proof.
+
+`maxInstances: 1` limits instance scaling; it is **not a global run lock** and
+does not establish that natural, forced or retried invocations cannot overlap.
+The invocation/concurrency configuration is unchanged by this optimization.
+Fresh per-record coordinator checks and CAS safety still apply. Controlled
+capacity acceptance must pause/drain the Scheduler job and inspect the entire
+armed window for exactly one execution before accepting a measurement. An
+additional durable sweep lease or explicit concurrency policy would need its
+own correctness/recovery review; this change does not claim to solve overlap.
+
 Deploy the expanded `authorization-service` queries before the dependent
 Functions. Regenerate the SDK using `firebase dataconnect:sdk:generate` and the
 normal runtime-format normalizer; do not hand-edit generated files. The queries

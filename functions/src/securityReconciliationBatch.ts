@@ -4,6 +4,17 @@ import { isNonRestrictedStatus, type MembershipStatus } from "./validation";
 
 type State = db.ListSecurityStatesForReconciliationData["userSecurityStates"][number];
 type Transition = db.ListSecurityTransitionsForReconciliationData["securityTransitions"][number];
+export interface ReconciliationBatchMetrics {
+  ledgerReads: number;
+  ledgerReadDurationMs: number;
+  ledgerReadFailures: number;
+  authBatchReads: number;
+  authBatchReadDurationMs: number;
+  authBatchReadFailures: number;
+}
+export function createReconciliationBatchMetrics(): ReconciliationBatchMetrics {
+  return {ledgerReads: 0, ledgerReadDurationMs: 0, ledgerReadFailures: 0, authBatchReads: 0, authBatchReadDurationMs: 0, authBatchReadFailures: 0};
+}
 const MEMBERSHIP_STATUSES = new Set(["PENDING", "REGULAR", "RESERVE", "RETIRED", "INDUSTRY", "CIVIL_SERVICE", "RESIGNED", "LOST", "DECEASED"]);
 
 function candidate(state: State): boolean {
@@ -27,7 +38,7 @@ function identityMatches(state: State, identity: admin.auth.UserRecord): boolean
 }
 
 /** A snapshot can only avoid work. All writes remain behind fresh coordinator reads. */
-export async function healthySecurityMirrorUserIds(page: State[]): Promise<Set<string>> {
+export async function healthySecurityMirrorUserIds(page: State[], metrics = createReconciliationBatchMetrics()): Promise<Set<string>> {
   const healthy = new Set<string>();
   if (page.length > 500) return healthy;
   // A malformed/duplicated page cannot bind either UID or operation unambiguously.
@@ -41,17 +52,22 @@ export async function healthySecurityMirrorUserIds(page: State[]): Promise<Set<s
   if (!candidates.length) return healthy;
   const requestedOperations = new Set(candidates.map(state => state.operationId));
   const ledgers = new Map<string, Transition>();
+  const ledgerStartedAt = Date.now();
+  metrics.ledgerReads++;
   try {
     const rows = (await db.listSecurityTransitionsForReconciliation({operationIds: [...requestedOperations], limit: candidates.length})).data.securityTransitions;
     for (const row of rows) {
-      if (!requestedOperations.has(row.operationId) || ledgers.has(row.operationId)) return healthy;
+      if (!requestedOperations.has(row.operationId) || ledgers.has(row.operationId)) {metrics.ledgerReadFailures++; return healthy;}
       ledgers.set(row.operationId, row);
     }
-  } catch {return healthy;}
+  } catch {metrics.ledgerReadFailures++; return healthy;}
+  finally {metrics.ledgerReadDurationMs += Math.max(0, Date.now() - ledgerStartedAt);}
   const matched = candidates.filter(state => ledgerMatches(state, ledgers.get(state.operationId)));
   for (let offset = 0; offset < matched.length; offset += 100) {
     const batch = matched.slice(offset, offset + 100);
     const requested = new Set(batch.map(state => state.userId));
+    const authStartedAt = Date.now();
+    metrics.authBatchReads++;
     try {
       // Firebase Admin gives no result ordering guarantee. Require exact coverage,
       // including explicit notFound entries, before trusting any identity here.
@@ -59,7 +75,7 @@ export async function healthySecurityMirrorUserIds(page: State[]): Promise<Set<s
       const found = new Map<string, admin.auth.UserRecord>();
       const covered = new Set<string>();
       let valid = Array.isArray(result.users) && Array.isArray(result.notFound);
-      if (!valid) continue;
+      if (!valid) {metrics.authBatchReadFailures++; continue;}
       for (const identity of result.users) {
         if (!requested.has(identity.uid) || covered.has(identity.uid)) {valid = false; break;}
         covered.add(identity.uid); found.set(identity.uid, identity);
@@ -68,15 +84,16 @@ export async function healthySecurityMirrorUserIds(page: State[]): Promise<Set<s
         if (!("uid" in identifier) || Object.keys(identifier).length !== 1 || !requested.has(identifier.uid) || covered.has(identifier.uid)) {valid = false; break;}
         covered.add(identifier.uid);
       }
-      if (!valid || covered.size !== requested.size) continue;
+      if (!valid || covered.size !== requested.size) {metrics.authBatchReadFailures++; continue;}
       for (const state of batch) {
         const identity = found.get(state.userId);
         if (identity && identityMatches(state, identity)) healthy.add(state.userId);
       }
     } catch {
+      metrics.authBatchReadFailures++;
       // One batch failure does not abandon other records. The caller repairs
       // these members serially with fresh state/ledger/Auth reads instead.
-    }
+    } finally {metrics.authBatchReadDurationMs += Math.max(0, Date.now() - authStartedAt);}
   }
   return healthy;
 }
