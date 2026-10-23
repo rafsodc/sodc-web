@@ -17,6 +17,7 @@ const clone=value=>JSON.parse(JSON.stringify(value));
 const assert=(condition,code)=>{if(!condition)throw new ReconciliationVolumeCloudError(code);};
 const sorted=(rows,key)=>rows.map(clone).sort((a,b)=>a[key].localeCompare(b[key]));
 const clockDate=value=>new Date(typeof value==='function'?value():value).toISOString();
+const canonicalTimestamp=value=>typeof value==='string'&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString()===value;
 
 export class ReconciliationVolumeCloudError extends Error {
   constructor(code){super(code);this.name='ReconciliationVolumeCloudError';this.code=code;}
@@ -92,8 +93,23 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
   environment=process.env,nodeVersion=process.version,now=()=>new Date(),evidence={}}){
   assert(path.isAbsolute(repositoryRoot??'')&&path.isAbsolute(runDirectory??''),'ABSOLUTE_PROVIDER_DIRECTORIES_REQUIRED');
   const plan=validateManifest(manifest),manifestHash=stableHash(plan),allowed=new Map(plan.fixtures.map(row=>[row.uid,row]));
-  let adminPromise,closed=false,lastObservation,drainCache;
+  let adminPromise,closed=false,lastObservation,drainCache,requiredDrainAnchor=plan.createdAt,requiredDrainExecution=null;
   const clock=()=>clockDate(now);
+  function requireDrainAnchor(anchor){
+    assert(canonicalTimestamp(anchor)&&Date.parse(anchor)>=Date.parse(plan.createdAt)&&Date.parse(anchor)<=Date.parse(clock())+1000,'CANONICAL_DRAIN_ANCHOR_REQUIRED');
+    if(Date.parse(anchor)>Date.parse(requiredDrainAnchor)){requiredDrainAnchor=anchor;requiredDrainExecution=null;drainCache=undefined;}
+    return requiredDrainAnchor;
+  }
+  function validateDrainExecution(execution,anchor){
+    assert(execution&&Object.keys(execution).every(key=>['measurementId','notBefore','targetSize','executionId'].includes(key))&&
+      typeof execution.measurementId==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(execution.measurementId)&&execution.notBefore===anchor&&Number.isSafeInteger(execution.targetSize)&&execution.targetSize>=2&&execution.targetSize<=10000&&
+      (execution.executionId===undefined||typeof execution.executionId==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(execution.executionId)),'ARMED_DRAIN_EXECUTION_REQUIRED');
+    return clone(execution);
+  }
+  function requireDrainExecution(execution){
+    if(execution){const validated=validateDrainExecution(execution,requiredDrainAnchor);if(stableHash(validated)!==stableHash(requiredDrainExecution)){requiredDrainExecution=validated;drainCache=undefined;}}
+    assert(Date.parse(requiredDrainAnchor)===Date.parse(plan.createdAt)||requiredDrainExecution,'ARMED_DRAIN_EXECUTION_REQUIRED');
+  }
   const guard=()=>{assert(!closed,'VOLUME_PROVIDER_CLOSED');assertReconciliationVolumeEnvironment(environment,nodeVersion);};
   async function admin(){guard();adminPromise??=adminFactory({repositoryRoot,projectId:PROJECT,manifest:clone(plan)});return adminPromise;}
   async function graphql(query,variables={},read=true){
@@ -119,8 +135,11 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
     assert(job.name===JOB&&['ENABLED','PAUSED'].includes(job.state)&&job.httpTarget?.httpMethod==='POST'&&!job.pubsubTarget&&!job.appEngineHttpTarget,'EXACT_RECONCILIATION_HTTP_JOB_REQUIRED');
     assert(fn.name===FUNCTION_RESOURCE&&fn.state==='ACTIVE'&&fn.environment==='GEN_2'&&typeof fn.serviceConfig?.revision==='string'&&fn.serviceConfig.timeoutSeconds===540,'ACTIVE_RECONCILIATION_DEPLOYMENT_REQUIRED');
     assert([fn.serviceConfig.uri,`https://${REGION}-${PROJECT}.cloudfunctions.net/${FUNCTION}`].includes(job.httpTarget.uri)&&job.httpTarget.oidcToken?.serviceAccountEmail===fn.serviceConfig.serviceAccountEmail&&(!job.httpTarget.oidcToken.audience||job.httpTarget.oidcToken.audience===job.httpTarget.uri),'RECONCILIATION_TARGET_IDENTITY_MISMATCH');
+    const timestamp=field=>{const value=job[field];assert(value==null||(typeof value==='string'&&Number.isFinite(Date.parse(value))),'SCHEDULER_ATTEMPT_TIMESTAMP_INVALID');return value==null?null:new Date(value).toISOString();};
+    const attemptEvidence={lastAttemptTime:timestamp('lastAttemptTime'),scheduleTime:timestamp('scheduleTime')};
+    attemptEvidence.informative=Boolean(attemptEvidence.lastAttemptTime||attemptEvidence.scheduleTime);
     const result={scheduler:{resource:JOB,state:job.state,configurationHash:stableHash(schedulerConfiguration(job))},deployment:{revision:fn.serviceConfig.revision,proofHash:stableHash(deploymentProof(fn))},
-      providerObservedAt:jobRead.observedAt,attemptHash:stableHash({lastAttemptTime:job.lastAttemptTime??null,scheduleTime:job.scheduleTime??null})};
+      providerObservedAt:jobRead.observedAt,attemptEvidence,attemptHash:stableHash(attemptEvidence)};
     if(plan.baseline)assert(result.scheduler.configurationHash===plan.baseline.scheduler.configurationHash&&result.deployment.proofHash===plan.baseline.deployment.proofHash&&result.deployment.revision===plan.baseline.deployment.revision,'VOLUME_DEPLOYMENT_OR_SCHEDULER_DRIFT');
     return result;
   }
@@ -170,7 +189,7 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
   }
   function fixtureArgument(fixture){const owned=allowed.get(fixture?.uid);assert(owned&&stableHash(owned)===stableHash(fixture),'MANIFEST_FIXTURE_REQUIRED');return owned;}
   async function receiptFile(name,optional=false){try{const filename=path.join(runDirectory,name),info=await lstat(filename);assert(info.isFile()&&!info.isSymbolicLink()&&(info.mode&0o077)===0,'PRIVATE_EVIDENCE_FILE_REQUIRED');return JSON.parse(await readFile(filename,'utf8'));}catch(error){if(optional&&error?.code==='ENOENT')return null;if(error instanceof ReconciliationVolumeCloudError)throw error;throw new ReconciliationVolumeCloudError('PROVIDER_EVIDENCE_REQUIRED');}}
-  function pauseCapture(record){const capture=clone(record);delete capture.captureHash;delete capture.verifiedAt;delete capture.logsProofHash;return capture;}
+  function pauseCapture(record){const capture=clone(record);delete capture.captureHash;delete capture.verifiedAt;delete capture.logsProofHash;delete capture.handlerCompletionHash;return capture;}
   async function savePause(record){const directory=await lstat(runDirectory);assert(directory.isDirectory()&&!directory.isSymbolicLink()&&(directory.mode&0o077)===0,'PRIVATE_RUN_DIRECTORY_REQUIRED');
     const capture=pauseCapture(record);assert(record.captureHash===stableHash(capture),'PAUSE_CAPTURE_HASH_MISMATCH');
     const captureName=`provider-pause-capture-${record.captureHash}.json`,existing=await receiptFile(captureName,true);
@@ -181,32 +200,60 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
     receipt.configurationHash===plan.baseline.scheduler.configurationHash&&receipt.deploymentProofHash===plan.baseline.deployment.proofHash&&typeof receipt.evidenceReference==='string'&&receipt.evidenceReference.length>0,'PROVIDER_EVIDENCE_IDENTITY_MISMATCH');}
   async function validatePause(record,meta){
     receiptIdentity(record,'sodc-reconciliation-volume-pause/v1');
-    const keys=['schemaVersion','projectId','runId','manifestHash','schedulerResource','configurationHash','deploymentProofHash','evidenceReference','attemptHash','pausedAt','notBefore','captureHash','verifiedAt','logsProofHash'];
-    const canonical=value=>typeof value==='string'&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString()===value;
-    assert(Object.keys(record).every(key=>keys.includes(key))&&HASH.test(record.attemptHash??'')&&HASH.test(record.captureHash??'')&&canonical(record.pausedAt)&&canonical(record.notBefore)&&
-      Date.parse(record.pausedAt)>=Date.parse(plan.createdAt)-1000&&Date.parse(record.pausedAt)<=Date.parse(meta.providerObservedAt)&&Date.parse(record.notBefore)===Date.parse(record.pausedAt)+600000,'PAUSE_RECORD_INVALID');
-    assert((record.verifiedAt===undefined&&record.logsProofHash===undefined)||(canonical(record.verifiedAt)&&Date.parse(record.verifiedAt)>=Date.parse(record.notBefore)&&Date.parse(record.verifiedAt)<=Date.parse(meta.providerObservedAt)&&HASH.test(record.logsProofHash??'')),'PAUSE_VERIFICATION_RECORD_INVALID');
+    const keys=['schemaVersion','projectId','runId','manifestHash','schedulerResource','configurationHash','deploymentProofHash','evidenceReference','attemptHash','attemptEvidence','drainNotBefore','drainExecution','pausedAt','notBefore','captureHash','verifiedAt','logsProofHash','handlerCompletionHash'];
+    assert(Object.keys(record).every(key=>keys.includes(key))&&HASH.test(record.attemptHash??'')&&HASH.test(record.captureHash??'')&&canonicalTimestamp(record.pausedAt)&&canonicalTimestamp(record.notBefore)&&canonicalTimestamp(record.drainNotBefore)&&
+      Date.parse(record.drainNotBefore)>=Date.parse(plan.createdAt)&&Date.parse(record.pausedAt)>=Date.parse(record.drainNotBefore)&&Date.parse(record.pausedAt)<=Date.parse(meta.providerObservedAt)&&Date.parse(record.notBefore)===Date.parse(record.pausedAt)+600000,'PAUSE_RECORD_INVALID');
+    assert(record.drainExecution===null||record.drainExecution&&validateDrainExecution(record.drainExecution,record.drainNotBefore),'PAUSE_DRAIN_EXECUTION_INVALID');
+    assert(Date.parse(record.drainNotBefore)===Date.parse(plan.createdAt)||record.drainExecution,'PAUSE_DRAIN_EXECUTION_INVALID');
+    const attempt=record.attemptEvidence;
+    assert(attempt&&Object.keys(attempt).length===3&&Object.keys(attempt).every(key=>['lastAttemptTime','scheduleTime','informative'].includes(key))&&
+      [attempt.lastAttemptTime,attempt.scheduleTime].every(value=>value===null||canonicalTimestamp(value))&&attempt.informative===Boolean(attempt.lastAttemptTime||attempt.scheduleTime)&&stableHash(attempt)===record.attemptHash,'PAUSE_ATTEMPT_EVIDENCE_INVALID');
+    assert((record.verifiedAt===undefined&&record.logsProofHash===undefined&&record.handlerCompletionHash===undefined)||(canonicalTimestamp(record.verifiedAt)&&Date.parse(record.verifiedAt)>=Date.parse(record.notBefore)&&Date.parse(record.verifiedAt)<=Date.parse(meta.providerObservedAt)&&HASH.test(record.logsProofHash??'')&&
+      (record.drainExecution?HASH.test(record.handlerCompletionHash??''):record.handlerCompletionHash===undefined)),'PAUSE_VERIFICATION_RECORD_INVALID');
     assert(stableHash(pauseCapture(record))===record.captureHash,'PAUSE_CAPTURE_HASH_MISMATCH');
     const capture=await receiptFile(`provider-pause-capture-${record.captureHash}.json`);assert(stableHash(capture)===record.captureHash,'IMMUTABLE_PAUSE_CAPTURE_CHANGED');
     return record;
   }
+  async function handlerDrainProof(execution){
+    const receipt=await receiptFile(`handler-drain-${execution.measurementId}.json`,true);assert(receipt,'DRAIN_HANDLER_COMPLETION_REQUIRED');
+    receiptIdentity(receipt,'sodc-reconciliation-volume-handler-drain/v1');
+    assert(receipt.measurementId===execution.measurementId&&receipt.notBefore===execution.notBefore&&receipt.targetSize===execution.targetSize&&receipt.revision===plan.baseline.deployment.revision&&
+      typeof receipt.executionId==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(receipt.executionId)&&(!execution.executionId||receipt.executionId===execution.executionId)&&typeof receipt.insertId==='string'&&receipt.insertId.length>0,'DRAIN_HANDLER_COMPLETION_IDENTITY_MISMATCH');
+    const timestamp=value=>typeof value==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?Z$/.test(value)&&Number.isFinite(Date.parse(value));
+    assert(timestamp(receipt.startedAt)&&timestamp(receipt.completedAt)&&Date.parse(receipt.startedAt)>=Date.parse(execution.notBefore)&&Date.parse(receipt.completedAt)>=Date.parse(receipt.startedAt)&&Date.parse(receipt.completedAt)<=Date.parse(clock())+1000,'DRAIN_HANDLER_COMPLETION_WINDOW_INVALID');
+    const entries=await logsQuery({executionId:receipt.executionId,from:receipt.startedAt,to:receipt.completedAt,completionOnly:true});
+    assert(entries.length===1&&entries[0].insertId===receipt.insertId&&entries[0].jsonPayload?.message==='Security reconciliation completed','DRAIN_HANDLER_COMPLETION_REQUIRED');
+    const fields=entries[0].jsonPayload;
+    assert(['stateAttempts','pendingAttempts','failedAttempts'].every(key=>Number.isSafeInteger(fields[key])&&fields[key]>=0)&&Number.isFinite(fields.durationMs)&&fields.durationMs>=0,'DRAIN_HANDLER_COMPLETION_FIELDS_INVALID');
+    // Completion proves the handler has left its loop. Failed work and a prior
+    // request timeout remain capacity findings; they never become a passing run.
+    return stableHash({receipt,entry:{insertId:entries[0].insertId,timestamp:entries[0].timestamp,resource:entries[0].resource,labels:entries[0].labels,fields}});
+  }
   async function drain(meta){
-    if(evidence.drain){const proof=await evidence.drain();receiptIdentity(proof,'sodc-reconciliation-volume-drain/v1');
-      assert(proof.inFlightExecutions===0&&Number.isFinite(Date.parse(proof.observedAt))&&Date.parse(proof.observedAt)<=Date.parse(clock())+1000&&Date.parse(clock())-Date.parse(proof.observedAt)<=300000,'RECENT_QUIESCENT_SCHEDULER_PROOF_REQUIRED');return {quiescent:true,proofHash:stableHash(proof)};}
+    if(evidence.drain){const proof=await evidence.drain({drainNotBefore:requiredDrainAnchor,drainExecution:requiredDrainExecution});receiptIdentity(proof,'sodc-reconciliation-volume-drain/v1');
+      assert(proof.drainNotBefore===requiredDrainAnchor&&proof.inFlightExecutions===0&&Number.isFinite(Date.parse(proof.observedAt))&&Date.parse(proof.observedAt)<=Date.parse(clock())+1000&&Date.parse(clock())-Date.parse(proof.observedAt)<=300000,'RECENT_QUIESCENT_SCHEDULER_PROOF_REQUIRED');return {quiescent:true,proofHash:stableHash(proof)};}
     const record=await validatePause(await receiptFile('provider-pause.json'),meta);
+    if(Date.parse(record.drainNotBefore)>Date.parse(requiredDrainAnchor)){requireDrainAnchor(record.drainNotBefore);requireDrainExecution(record.drainExecution);}
+    else if(!requiredDrainExecution&&record.drainExecution)requireDrainExecution(record.drainExecution);
+    assert(Date.parse(record.drainNotBefore)>=Date.parse(requiredDrainAnchor)&&Date.parse(record.pausedAt)>=Date.parse(requiredDrainAnchor)&&stableHash(record.drainExecution)===stableHash(requiredDrainExecution),'POST_MEASUREMENT_PAUSE_REQUIRED');
+    // PAUSED jobs can omit both attempt timestamps, even after a forced run.
+    // A matching hash is supporting evidence only; the durable armed-window
+    // anchor and a new provider-stamped timeout window are always required.
     assert(meta.scheduler.state==='PAUSED'&&record.attemptHash===meta.attemptHash,'PAUSE_ATTEMPT_CHANGED_CALL_PAUSE_AGAIN');
     assert(Date.parse(meta.providerObservedAt)>=Date.parse(record.notBefore),'WAIT_FOR_RECONCILIATION_DRAIN');
     if(drainCache?.captureHash===record.captureHash){assert(drainCache.recordHash===stableHash(record),'DRAIN_PROOF_CHANGED');return {quiescent:true,proofHash:drainCache.proofHash};}
     // A saved verification is audit evidence, never permission to skip fresh
     // provider verification in another process. Cache only this process's proof.
     {
+      const handlerCompletionHash=record.drainExecution?await handlerDrainProof(record.drainExecution):undefined;
       const entries=await logsQuery({from:new Date(Date.parse(record.pausedAt)-540000).toISOString(),to:meta.providerObservedAt});
-      // The reviewed timeout plus grace has elapsed. Any execution visible in this
-      // window must also have a terminal completion/timeout record; absence alone
-      // before the timeout window is never accepted as a drain proof.
+      // A request timeout does not terminate its container or handler. Every
+      // visible execution needs the actual application's completion message;
+      // forced epochs additionally require the exact armed completion proof.
       const executions=new Map();for(const entry of entries){const id=entry.labels?.execution_id;if(id){const group=executions.get(id)??[];group.push(entry);executions.set(id,group);}}
-      for(const group of executions.values())assert(group.some(entry=>entry.jsonPayload?.message==='Security reconciliation completed'||/finished with status|timed? out|timeout|deadline exceeded/i.test(entry.jsonPayload?.message??entry.textPayload??'')),'VISIBLE_EXECUTION_HAS_NO_TERMINAL_LOG');
+      for(const group of executions.values())assert(group.some(entry=>entry.jsonPayload?.message==='Security reconciliation completed'),'VISIBLE_EXECUTION_HAS_NO_TERMINAL_LOG');
       record.verifiedAt=meta.providerObservedAt;record.logsProofHash=stableHash(entries.map(entry=>({insertId:entry.insertId,timestamp:entry.timestamp,executionId:entry.labels?.execution_id??null,message:entry.jsonPayload?.message??entry.textPayload??null})));
+      if(handlerCompletionHash)record.handlerCompletionHash=handlerCompletionHash;
       await savePause(record);
     }
     const proofHash=stableHash(record);drainCache={captureHash:record.captureHash,recordHash:proofHash,proofHash};return {quiescent:true,proofHash};
@@ -221,17 +268,21 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
     assert(meta.scheduler.state==='PAUSED','PAUSED_RECONCILIATION_REQUIRED');
     if(requireDrain)await drain(meta);return meta;
   }
-  async function pauseScheduler({cleanup=false}={}){
+  async function pauseScheduler({cleanup=false,drainNotBefore=plan.createdAt,drainExecution}={}){
     guard();assert(plan.baseline,'FINAL_VOLUME_BASELINE_REQUIRED');
+    requireDrainAnchor(drainNotBefore);
+    requireDrainExecution(drainExecution);
     const settings=await configuration();assert(stableHash(settings.notification)===stableHash(plan.baseline.notification),'NOTIFICATION_CONFIGURATION_CHANGED');
     if(cleanup){assert(settings.control?.status==='READY'&&Number.isSafeInteger(settings.control.readyAdminCount)&&settings.control.readyAdminCount>=1,'CURRENT_ADMINISTRATOR_CONTROL_UNSAFE');await currentAdministrators(settings.control);}
     else assert(settings.control?.status==='READY'&&settings.control.readyAdminCount===plan.baseline.readyAdminCount,'REAL_ADMINISTRATOR_CONTROL_CHANGED');
     const before=await metadata();if(before.scheduler.state!=='PAUSED')await request('cloudscheduler.googleapis.com',`/v1/${JOB}:pause`,{method:'POST',body:{}});
     const after=await metadata();assert(after.scheduler.state==='PAUSED','SCHEDULER_PAUSE_NOT_VERIFIED');
     if(!evidence.drain){let record=await receiptFile('provider-pause.json',true);
-      if(record){await validatePause(record,after);}
-      if(!record||record.attemptHash!==after.attemptHash){record={schemaVersion:'sodc-reconciliation-volume-pause/v1',projectId:PROJECT,runId:plan.runId,manifestHash,schedulerResource:JOB,configurationHash:after.scheduler.configurationHash,
-        deploymentProofHash:after.deployment.proofHash,evidenceReference:'Provider-confirmed PAUSED job plus 540-second handler timeout and 60-second log grace',attemptHash:after.attemptHash,pausedAt:after.providerObservedAt,notBefore:new Date(Date.parse(after.providerObservedAt)+600000).toISOString()};
+      if(record){await validatePause(record,after);if(Date.parse(record.drainNotBefore)>Date.parse(requiredDrainAnchor)){requireDrainAnchor(record.drainNotBefore);requireDrainExecution(record.drainExecution);}else if(!requiredDrainExecution&&record.drainExecution)requireDrainExecution(record.drainExecution);}
+      if(!record||record.attemptHash!==after.attemptHash||Date.parse(record.drainNotBefore)<Date.parse(requiredDrainAnchor)||Date.parse(record.pausedAt)<Date.parse(requiredDrainAnchor)||stableHash(record.drainExecution)!==stableHash(requiredDrainExecution)){
+        assert(Date.parse(after.providerObservedAt)>=Date.parse(requiredDrainAnchor),'WAIT_FOR_POST_ANCHOR_PROVIDER_OBSERVATION');
+        record={schemaVersion:'sodc-reconciliation-volume-pause/v1',projectId:PROJECT,runId:plan.runId,manifestHash,schedulerResource:JOB,configurationHash:after.scheduler.configurationHash,
+        deploymentProofHash:after.deployment.proofHash,evidenceReference:'Provider-confirmed PAUSED job after the latest durable measurement arm; forced epochs require actual handler completion in addition to the 600-second observation window',attemptHash:after.attemptHash,attemptEvidence:after.attemptEvidence,drainNotBefore:requiredDrainAnchor,drainExecution:requiredDrainExecution,pausedAt:after.providerObservedAt,notBefore:new Date(Date.parse(after.providerObservedAt)+600000).toISOString()};
         record.captureHash=stableHash(record);drainCache=undefined;await savePause(record);}}
     return drain(after);
   }
@@ -320,12 +371,12 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
     assert((await identitiesFor(fixtures)).size===0,'FIXTURE_AUTH_DELETION_INCOMPLETE');
     return {deleted:fixtures.length,auditReceiptsRetained:true};
   }
-  async function logsQuery({executionId,from,to}){
+  async function logsQuery({executionId,from,to,completionOnly=false}){
     const entries=[],seen=new Set();let pageToken;
     do{const response=await request('logging.googleapis.com','/v2/entries:list',{method:'POST',body:{resourceNames:[`projects/${PROJECT}`],filter:
-      `resource.type="cloud_run_revision" AND resource.labels.project_id="${PROJECT}" AND resource.labels.location="${REGION}" AND resource.labels.revision_name="${plan.baseline.deployment.revision}"${executionId?` AND labels.execution_id="${executionId}"`:''} AND timestamp>="${from}" AND timestamp<="${to}"`,orderBy:'timestamp asc',pageSize:1000,...(pageToken?{pageToken}:{})}});
+      `resource.type="cloud_run_revision" AND resource.labels.project_id="${PROJECT}" AND resource.labels.location="${REGION}" AND resource.labels.revision_name="${plan.baseline.deployment.revision}"${executionId?` AND labels.execution_id="${executionId}"`:''}${completionOnly?' AND jsonPayload.message="Security reconciliation completed"':''} AND timestamp>="${from}" AND timestamp<="${to}"`,orderBy:'timestamp asc',pageSize:1000,...(pageToken?{pageToken}:{})}});
       assert(Array.isArray(response.entries??[]),'PROVIDER_LOG_PAGE_INVALID');
-      for(const entry of response.entries??[])assert(entry.resource?.type==='cloud_run_revision'&&entry.resource.labels?.project_id===PROJECT&&entry.resource.labels.location===REGION&&entry.resource.labels.revision_name===plan.baseline.deployment.revision&&Date.parse(entry.timestamp)>=Date.parse(from)&&Date.parse(entry.timestamp)<=Date.parse(to)&&(!executionId||entry.labels?.execution_id===executionId),'PROVIDER_LOG_IDENTITY_MISMATCH');
+      for(const entry of response.entries??[])assert(entry.resource?.type==='cloud_run_revision'&&entry.resource.labels?.project_id===PROJECT&&entry.resource.labels.location===REGION&&entry.resource.labels.revision_name===plan.baseline.deployment.revision&&Date.parse(entry.timestamp)>=Date.parse(from)&&Date.parse(entry.timestamp)<=Date.parse(to)&&(!executionId||entry.labels?.execution_id===executionId)&&(!completionOnly||entry.jsonPayload?.message==='Security reconciliation completed'),'PROVIDER_LOG_IDENTITY_MISMATCH');
       entries.push(...response.entries??[]);pageToken=response.nextPageToken;if(pageToken){assert(!seen.has(pageToken),'PROVIDER_LOG_PAGE_REPEATED');seen.add(pageToken);}assert(entries.length<=10000,'PROVIDER_LOG_BOUND_EXCEEDED');
     }while(pageToken);return entries;
   }
@@ -334,6 +385,7 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
     // lastAttemptTime, so cleanup establishes a new drain proof afterwards.
     await boundary({requireDrain:false});assert(Number.isSafeInteger(targetSize)&&targetSize>=2&&targetSize<=10000&&/^[A-Za-z0-9_-]{1,64}$/.test(measurementId??''),'MEASUREMENT_IDENTITY_INVALID');
     assert(typeof notBefore==='string'&&Number.isFinite(Date.parse(notBefore))&&Date.parse(notBefore)>=Date.parse(plan.createdAt)&&Date.parse(notBefore)<=Date.parse(clock())+1000,'ARMED_MEASUREMENT_WINDOW_REQUIRED');
+    requireDrainAnchor(new Date(notBefore).toISOString());
     const receipt=evidence.measurement?await evidence.measurement({targetSize,measurementId,notBefore}):await receiptFile(`measurement-${measurementId}.json`);
     receiptIdentity(receipt,'sodc-reconciliation-volume-measurement/v1');
     assert(receipt.measurementId===measurementId&&receipt.targetSize===targetSize&&receipt.revision===plan.baseline.deployment.revision&&/^[A-Za-z0-9_-]{1,128}$/.test(receipt.executionId??'')&&typeof receipt.insertId==='string','MEASUREMENT_RECEIPT_IDENTITY_MISMATCH');

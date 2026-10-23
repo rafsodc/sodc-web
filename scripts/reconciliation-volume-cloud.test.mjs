@@ -86,14 +86,17 @@ async function fixture({mode='SIMULATION',canonicalTarget=false,defaultDrain=fal
     if(url===`https://cloudfunctions.googleapis.com/v2/${FUNCTION}`)return response(fn);
     if(url===`https://cloudscheduler.googleapis.com/v1/${JOB}:pause`){job.state='PAUSED';return response(job);}
     if(url===`https://cloudscheduler.googleapis.com/v1/${JOB}:resume`){job.state='ENABLED';return response(job);}
-    if(url==='https://logging.googleapis.com/v2/entries:list')return response({entries:logs});
+    if(url==='https://logging.googleapis.com/v2/entries:list'){
+      const filter=JSON.parse(options.body).filter;
+      return response({entries:filter.includes('jsonPayload.message="Security reconciliation completed"')?logs.filter(row=>row.jsonPayload?.message==='Security reconciliation completed'):logs});
+    }
     throw new Error('Unexpected fake REST target');
   };
   let manifest=draft;
   const baseOptions={repositoryRoot:ROOT,runDirectory:directory,fetch,adminFactory:async()=>{authFactoryCalls++;return provider;},environment:{},nodeVersion:'v24.0.0',now:()=>now};
   const receiptBase=()=>({projectId:'sodc-web',runId:RUN,manifestHash:stableHash(manifest),schedulerResource:JOB,configurationHash:manifest.baseline.scheduler.configurationHash,deploymentProofHash:manifest.baseline.deployment.proofHash,evidenceReference:'independent-provider-evidence'});
   let measurementReceipt;
-  const evidence={...(defaultDrain?{}:{drain:async()=>({schemaVersion:'sodc-reconciliation-volume-drain/v1',...receiptBase(),observedAt:now.toISOString(),inFlightExecutions:0})}),measurement:async()=>measurementReceipt};
+  const evidence={...(defaultDrain?{}:{drain:async({drainNotBefore})=>({schemaVersion:'sodc-reconciliation-volume-drain/v1',...receiptBase(),drainNotBefore,observedAt:now.toISOString(),inFlightExecutions:0})}),measurement:async()=>measurementReceipt};
   const draftAdapter=createReconciliationVolumeCloud({...baseOptions,manifest:draft,evidence});
   const observed=await draftAdapter.observe();
   manifest={...draft,baseline:{fingerprint:observed.baselineFingerprint,counts:observed.counts,readyAdminCount:observed.readyAdminCount,scheduler:observed.scheduler,deployment:observed.deployment,notification:observed.notification}};
@@ -208,6 +211,48 @@ describe('Dev-only reconciliation volume cloud adapter',()=>{
     f.setNow('2026-10-23T09:30:01Z');await f.adapter.createFixture(f.manifest.fixtures[0]);f.job.lastAttemptTime='2026-10-23T09:29:00Z';
     await expect(f.adapter.createFixture(f.manifest.fixtures[1])).rejects.toThrow('PAUSE_ATTEMPT_CHANGED_CALL_PAUSE_AGAIN');await expect(f.adapter.pauseScheduler()).rejects.toThrow('WAIT_FOR_RECONCILIATION_DRAIN');
     expect(f.commands.some(row=>row.kind==='rest'&&row.url.endsWith(':run'))).toBe(false);
+  });
+
+  it('renews an armed pause when PAUSED responses omit both attempt fields and never trusts the old cached drain',async()=>{
+    const f=await fixture({defaultDrain:true});delete f.job.lastAttemptTime;delete f.job.scheduleTime;
+    await expect(f.adapter.pauseScheduler({drainNotBefore:f.manifest.createdAt})).rejects.toThrow('WAIT_FOR_RECONCILIATION_DRAIN');f.setNow('2026-10-23T09:10:01Z');await f.adapter.pauseScheduler({drainNotBefore:f.manifest.createdAt});
+    const filename=path.join(f.directory,'provider-pause.json'),original=JSON.parse(await readFile(filename,'utf8'));
+    expect(original.attemptEvidence).toEqual({lastAttemptTime:null,scheduleTime:null,informative:false});
+    const anchor='2026-10-23T09:11:00.000Z',execution={measurementId:'volume-2000-stalled',notBefore:anchor,targetSize:2000};f.setNow('2026-10-23T09:12:00Z');
+    // A forced dispatch has no visible timestamp or log; the durable arm must
+    // still revoke the original proof and create a new provider-timed window.
+    await expect(f.adapter.pauseScheduler({drainNotBefore:anchor,drainExecution:execution})).rejects.toThrow('WAIT_FOR_RECONCILIATION_DRAIN');
+    const renewed=JSON.parse(await readFile(filename,'utf8'));expect(renewed.attemptHash).toBe(original.attemptHash);expect(renewed.captureHash).not.toBe(original.captureHash);expect(renewed.drainNotBefore).toBe(anchor);expect(renewed.pausedAt).toBe('2026-10-23T09:12:00.000Z');expect(renewed.notBefore).toBe('2026-10-23T09:22:00.000Z');expect(renewed.verifiedAt).toBeUndefined();
+    await expect(f.adapter.createFixture(f.manifest.fixtures[0])).rejects.toThrow('WAIT_FOR_RECONCILIATION_DRAIN');f.setNow('2026-10-23T09:13:00Z');
+    await expect(f.adapter.pauseScheduler({drainNotBefore:anchor,drainExecution:execution})).rejects.toThrow('WAIT_FOR_RECONCILIATION_DRAIN');expect(JSON.parse(await readFile(filename,'utf8')).captureHash).toBe(renewed.captureHash);
+    f.setNow('2026-10-23T09:22:01Z');await expect(f.adapter.pauseScheduler({drainNotBefore:anchor,drainExecution:execution})).rejects.toThrow('DRAIN_HANDLER_COMPLETION_REQUIRED');
+    await expect(f.adapter.deleteFixtureBatch(f.manifest.fixtures)).rejects.toThrow('DRAIN_HANDLER_COMPLETION_REQUIRED');expect(f.commands.some(row=>['authCreate','dbCleanup','authBulkDelete'].includes(row.kind))).toBe(false);
+  });
+
+  it('requires the armed handler completion after a request timeout without changing its failed capacity receipt',async()=>{
+    const f=await fixture({defaultDrain:true});delete f.job.lastAttemptTime;await expect(f.adapter.pauseScheduler()).rejects.toThrow('WAIT_FOR_RECONCILIATION_DRAIN');f.setNow('2026-10-23T09:10:01Z');await f.adapter.pauseScheduler();
+    const anchor='2026-10-23T09:11:00.000Z',execution={measurementId:'volume-2000-timeout',notBefore:anchor,targetSize:2000,executionId:'timed_out_execution'};f.setNow('2026-10-23T09:12:00Z');
+    await expect(f.adapter.pauseScheduler({cleanup:true,drainNotBefore:anchor,drainExecution:execution})).rejects.toThrow('WAIT_FOR_RECONCILIATION_DRAIN');
+    const capacityFile=path.join(f.directory,`measurement-${execution.measurementId}.json`),capacity=JSON.stringify({completed:false,timedOut:true,executionId:execution.executionId});await writeFile(capacityFile,capacity,{mode:0o600});
+    const handler={schemaVersion:'sodc-reconciliation-volume-handler-drain/v1',...f.receiptBase(),measurementId:execution.measurementId,notBefore:anchor,targetSize:2000,revision:f.fn.serviceConfig.revision,executionId:execution.executionId,insertId:'request_timeout',startedAt:'2026-10-23T09:11:01Z',completedAt:'2026-10-23T09:12:10Z'};
+    const handlerFile=path.join(f.directory,`handler-drain-${execution.measurementId}.json`);await writeFile(handlerFile,JSON.stringify(handler),{mode:0o600});
+    f.logs.push({insertId:'request_timeout',timestamp:'2026-10-23T09:12:00Z',resource:{type:'cloud_run_revision',labels:{project_id:'sodc-web',location:'europe-west2',revision_name:f.fn.serviceConfig.revision}},labels:{execution_id:execution.executionId},severity:'ERROR',jsonPayload:{message:'Function execution finished with status timeout'}});
+    f.setNow('2026-10-23T09:22:01Z');await expect(f.adapter.pauseScheduler({cleanup:true,drainNotBefore:anchor,drainExecution:execution})).rejects.toThrow('DRAIN_HANDLER_COMPLETION_REQUIRED');
+    handler.insertId='actual_handler_completion';await writeFile(handlerFile,JSON.stringify(handler));
+    f.logs.push({...structuredClone(f.logs[0]),insertId:handler.insertId,timestamp:'2026-10-23T09:12:05Z',severity:'INFO',jsonPayload:{message:'Security reconciliation completed',durationMs:64000,stateAttempts:1999,pendingAttempts:1,failedAttempts:3}});
+    await expect(f.adapter.pauseScheduler({cleanup:true,drainNotBefore:anchor,drainExecution:execution})).resolves.toMatchObject({quiescent:true});
+    const saved=JSON.parse(await readFile(path.join(f.directory,'provider-pause.json'),'utf8'));expect(saved.handlerCompletionHash).toMatch(/^[a-f0-9]{64}$/);expect(await readFile(capacityFile,'utf8')).toBe(capacity);
+  });
+
+  it('rejects missing armed identity, noncanonical anchors, and handler evidence from another execution',async()=>{
+    const f=await fixture({defaultDrain:true}),anchor='2026-10-23T09:01:00.000Z';f.setNow('2026-10-23T09:02:00Z');
+    await expect(f.adapter.pauseScheduler({drainNotBefore:'2026-10-23T09:01:00Z'})).rejects.toThrow('CANONICAL_DRAIN_ANCHOR_REQUIRED');await expect(f.adapter.pauseScheduler({drainNotBefore:anchor})).rejects.toThrow('ARMED_DRAIN_EXECUTION_REQUIRED');
+    const execution={measurementId:'volume-2000-other',notBefore:anchor,targetSize:2000,executionId:'expected_execution'};
+    await expect(f.adapter.pauseScheduler({drainNotBefore:anchor,drainExecution:{...execution,executionId:null}})).rejects.toThrow('ARMED_DRAIN_EXECUTION_REQUIRED');
+    await expect(f.adapter.pauseScheduler({drainNotBefore:anchor,drainExecution:execution})).rejects.toThrow('WAIT_FOR_RECONCILIATION_DRAIN');
+    const handler={schemaVersion:'sodc-reconciliation-volume-handler-drain/v1',...f.receiptBase(),...execution,revision:f.fn.serviceConfig.revision,executionId:'foreign_execution',insertId:'insert',startedAt:'2026-10-23T09:01:01Z',completedAt:'2026-10-23T09:02:01Z'};
+    await writeFile(path.join(f.directory,`handler-drain-${execution.measurementId}.json`),JSON.stringify(handler),{mode:0o600});f.setNow('2026-10-23T09:12:01Z');
+    await expect(f.adapter.pauseScheduler({drainNotBefore:anchor,drainExecution:execution})).rejects.toThrow('DRAIN_HANDLER_COMPLETION_IDENTITY_MISMATCH');
   });
 
   it('rejects a visible execution without a terminal log even after the timeout grace',async()=>{

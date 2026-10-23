@@ -124,6 +124,18 @@ function recordUnrelatedDrift(manifest, observation, checkpoint) {
   checkpoint.acceptanceInvalidated = reasons.size > 0;
 }
 
+function latestDrainContext(manifest, checkpoint) {
+  // PAUSED Scheduler responses can omit both attempt timestamps. A durable arm
+  // is therefore an explicit new execution epoch, including after its receipt.
+  const latest = [...(checkpoint.measuring ? [checkpoint.measuring] : []), ...checkpoint.measurements]
+    .sort((a, b) => Date.parse(b.notBefore) - Date.parse(a.notBefore))[0];
+  if (!latest) return { drainNotBefore: manifest.createdAt };
+  return { drainNotBefore: latest.notBefore, drainExecution: {
+    measurementId: latest.measurementId, notBefore: latest.notBefore, targetSize: latest.targetSize,
+    ...(latest.executionId ? { executionId: latest.executionId } : {})
+  } };
+}
+
 function validateMeasurement(manifest, receipt, { targetSize, measurementId, notBefore }) {
   assert(receipt?.projectId === "sodc-web" && receipt.runId === manifest.runId && receipt.measurementId === measurementId && receipt.targetSize === targetSize && receipt.revision === manifest.baseline.deployment.revision && receipt.providerVerified === true && HASH.test(receipt.evidenceHash) && typeof receipt.executionId === "string" && receipt.executionId, "ACTUAL_PROVIDER_MEASUREMENT_REQUIRED");
   assert(receipt.notBefore === notBefore && Date.parse(notBefore) >= Date.parse(manifest.createdAt) && Number.isFinite(Date.parse(receipt.startedAt)) && Date.parse(receipt.startedAt) >= Date.parse(notBefore) && Date.parse(receipt.completedAt) >= Date.parse(receipt.startedAt), "MEASUREMENT_WINDOW_INVALID");
@@ -154,9 +166,9 @@ export async function executeVolumePhase({ manifest, checkpoint, provider, phase
   if (phase.startsWith("setup-")) {
     assert(!state.cleanupStarted && !state.measuring, "RUN_BUSY_OR_CLEANUP_STARTED");
     const targetSize = manifest.targets[phase.slice(6)];
-    if (phase === "setup-stress") assert(state.measurements.some(item => item.targetSize === 2000 && item.completed === true), "BASELINE_MEASUREMENT_REQUIRED_BEFORE_STRESS");
+    if (phase === "setup-stress") assert(state.measurements.filter(item => item.targetSize === 2000).at(-1)?.completed === true, "BASELINE_MEASUREMENT_REQUIRED_BEFORE_STRESS");
     assert(before.counts.states <= targetSize, "CANNOT_SHRINK_EXISTING_VOLUME_TARGET");
-    const drain = await provider.pauseScheduler();
+    const drain = await provider.pauseScheduler(latestDrainContext(manifest, state));
     assert(drain?.quiescent === true && HASH.test(drain.proofHash), "PAUSED_QUIESCENT_SCHEDULER_REQUIRED");
     state.paused = true;
     await save();
@@ -187,7 +199,15 @@ export async function executeVolumePhase({ manifest, checkpoint, provider, phase
     assert(!state.measuring || state.measuring.measurementId === measurementId && state.measuring.targetSize === targetSize, "RESOLVE_PRIOR_MEASUREMENT_FIRST");
     if (phase.startsWith("arm-")) {
       assert(before.scheduler.state === "PAUSED", "PAUSED_RECONCILIATION_REQUIRED");
-      if (!state.measuring) { state.measuring = { targetSize, measurementId, notBefore: new Date(now).toISOString() }; await save(); }
+      if (!state.measuring) {
+        if (state.measurements.length) {
+          const drain = await provider.pauseScheduler(latestDrainContext(manifest, state));
+          assert(drain?.quiescent === true && HASH.test(drain.proofHash), "PAUSED_QUIESCENT_SCHEDULER_REQUIRED");
+        }
+        const priorArm = latestDrainContext(manifest, state).drainNotBefore;
+        const armedAt = state.measurements.length ? Math.max(Number(new Date(now)), Date.parse(priorArm) + 1) : Number(new Date(now));
+        state.measuring = { targetSize, measurementId, notBefore: new Date(armedAt).toISOString() }; await save();
+      }
       return state;
     }
     assert(state.measuring, "ARM_MEASUREMENT_BEFORE_DISPATCH");
@@ -202,7 +222,7 @@ export async function executeVolumePhase({ manifest, checkpoint, provider, phase
     return state;
   }
   // Cleanup also remains available after expiry or an interrupted create/measurement.
-  const drain = await provider.pauseScheduler({ cleanup: true });
+  const drain = await provider.pauseScheduler({ cleanup: true, ...latestDrainContext(manifest, state) });
   assert(drain?.quiescent === true && HASH.test(drain.proofHash), "PAUSED_QUIESCENT_SCHEDULER_REQUIRED");
   state.paused = true;
   state.cleanupStarted = true;

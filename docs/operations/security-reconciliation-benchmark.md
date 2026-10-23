@@ -128,13 +128,17 @@ only manifest-owned fixtures. Review the manifest before either write phase.**
    audit. A verified timeout is recorded as a failed baseline capacity result;
    it cannot unlock stress setup. Repeating this command resolves the same
    execution rather than dispatching another.
-7. After a successful baseline, `setup-stress` extends the same owned run to
+7. After the latest baseline measurement succeeds, `setup-stress` extends the same owned run to
    **10,000 total states**. Use `arm-stress` before dispatch, then
    `measure-stress` to verify the actual execution using a distinct
    `volume-10000-...` measurement ID. Capture timeouts as
-   capacity findings. A single successful sweep proves that observed scenario;
+   capacity findings. Before another distinct arm, the helper requires the
+   previous armed execution's actual handler completion, including after a
+   timeout receipt. A single successful sweep proves that observed scenario;
    use at least ten independent runs before presenting p95 as a stable target.
-8. Always run cleanup, including after incomplete setup or failed measurement:
+8. Request cleanup after incomplete setup or failed measurement. After a forced
+   execution, deletion remains blocked until its actual handler completion is
+   independently verified:
 
    ```sh
    node scripts/reconciliation-volume-acceptance.mjs cleanup /private/tmp/reconciliation-volume-RUN --approve-manifest HASH
@@ -183,13 +187,32 @@ an explicitly reviewed operator procedure.
 
 The provider records `provider-pause.json` itself after an exact Dev Scheduler
 REST read confirms PAUSED. It binds the reviewed manifest, scheduler
-configuration, deployed revision, attempt stamp and provider Date header. Its
-not-before time is the pause plus 600 seconds (540-second handler timeout and
-60-second grace). The first invocation stops with
-`WAIT_FOR_RECONCILIATION_DRAIN`; rerun after that time. It then verifies bounded
-Cloud Logging results and persists the proof. Configuration, revision or
-attempt changes invalidate it. This proof establishes quiescence and does not
-constitute a performance measurement.
+configuration, deployed revision, provider Date header and latest durable arm,
+including an arm already recorded as a completed or timed-out measurement.
+Scheduler responses may omit both attempt timestamps. Their unchanged empty
+hash is explicitly uninformative; it cannot prove that a forced execution has
+finished. A newer arm renews the capture once from a fresh provider timestamp;
+retrying the same epoch reuses that capture.
+
+The capture requires a 600-second observation window (540-second configured
+timeout plus 60 seconds), then independently verifies Cloud Logging. This
+window is **not a cancellation guarantee**. A Cloud Run 504 closes the request
+connection while its container may continue processing.
+[Cloud Run request timeout](https://docs.cloud.google.com/run/docs/configuring/request-timeout).
+With request-based CPU allocation, work after an aborted request might not make
+progress, so a late completion could remain unavailable indefinitely.
+[Container runtime contract](https://docs.cloud.google.com/run/docs/container-contract).
+
+Every visible execution must have the application's actual
+`Security reconciliation completed` message. After an arm, the exact execution
+additionally needs a private `handler-drain-<measurement-id>.json` receipt,
+independently matched to that message. Missing logs, HTTP 504, a request-finished
+or timeout message, and elapsed time alone never permit fixture deletion,
+stress expansion or another distinct arm. The first invocation stops with
+`WAIT_FOR_RECONCILIATION_DRAIN`; after the observation window it may instead
+stop with `DRAIN_HANDLER_COMPLETION_REQUIRED`. Resolve the same execution;
+do not dispatch another to make it progress. Configuration, revision or attempt
+changes invalidate the proof. A drain proof is separate from capacity evidence.
 
 For a completed execution, create the following owner-only regular file as
 `measurement-volume-2000-first.json` in the private run directory. Populate
@@ -226,6 +249,72 @@ and use the actual timeout ERROR log's insert ID. It must match the exact
 project, region, revision and execution. Missing or ambiguous provider evidence
 leaves the measurement pending. Preserve the same ID while resolving it.
 
+For `handler-drain-volume-2000-first.json`, use the same project/run/manifest,
+scheduler/configuration/deployment hashes, evidence reference, measurement ID,
+target size, revision, execution ID, insert ID and actual log-window fields as
+the measurement example. Change `schemaVersion` to
+`sodc-reconciliation-volume-handler-drain/v1`, add `notBefore` from the durable
+arm, and omit `completed`/`timedOut`. Its selected insert ID must be the actual
+handler-completion message. A completed sweep with failed attempts can establish
+that the loop ended; it does not pass the performance or correctness gate.
+A previously recorded timeout receipt remains failed evidence even if a later
+handler completion allows safe cleanup.
+
+## Exceptional recovery when a timed-out handler never completes
+
+This is a separately reviewed operator procedure, not a standard CLI override.
+Review and authorize its exact resource/configuration requests before creating
+live volume fixtures. Keep the reconciliation job PAUSED throughout. Preserve
+the original arm, failed measurement, manifest, owner lock and all audit files.
+Do not delete fixtures while the original revision might still execute.
+
+1. Capture the exact Dev Function, underlying Run service, old revision/image
+   digest, source provenance, full configuration, IAM and Scheduler settings.
+   Prepare a Functions v2 PATCH limited to
+   `serviceConfig.environmentVariables,serviceConfig.allTrafficOnLatestRevision`:
+   preserve the entire current environment map, add one reviewed unused drain
+   epoch marker, and route traffic to the resulting latest revision. Do not
+   include source/build fields or use a normal Firebase deploy that could
+   recreate the paused Scheduler job. The API supports a field mask and
+   latest-revision routing; this replacement plan is an operator inference from
+   those supported operations, not an immediate-cancellation API.
+   [Functions PATCH](https://docs.cloud.google.com/functions/docs/reference/rest/v2/projects.locations.functions/patch),
+   [ServiceConfig](https://docs.cloud.google.com/functions/docs/reference/rest/v2/projects.locations.functions#ServiceConfig).
+2. Await the update operation and verify the new healthy revision uses the
+   exact reviewed image digest/source and unchanged settings apart from the
+   epoch marker. Verify 100% traffic goes to it, the old revision has no
+   traffic or tags, and the exact Scheduler configuration remains PAUSED.
+   A changed image, ambiguous operation or unintended settings change stops
+   recovery for review.
+3. Require positive provider evidence that the old revision is `RETIRED`.
+   Google's definition is: "Cloud Run has retired the infrastructure needed
+   for that particular revision." Zero traffic, a replica count, a timeout
+   and elapsed time do not establish that status.
+   [Manage revisions](https://docs.cloud.google.com/run/docs/managing/revisions).
+   Do not invent an API condition mapping; retain the actual provider status.
+4. For that exact non-serving old revision, review an etag-bound
+   `DELETE https://run.googleapis.com/v2/projects/sodc-web/locations/europe-west2/services/REVIEWED_SERVICE/revisions/REVIEWED_OLD_REVISION`.
+   The API accepts only retired revisions. Await its successful long-running
+   operation and verify the old revision's deletion/tombstone or absence.
+   A submitted or timed-out deletion request is insufficient.
+   [DeleteRevision precondition](https://docs.cloud.google.com/run/docs/reference/rpc/google.cloud.run.v2#deleterevisionrequest),
+   [Revision DELETE](https://docs.cloud.google.com/run/docs/reference/rest/v2/projects.locations.services.revisions/delete).
+5. Only after positive old-infrastructure retirement/deletion, prepare a new
+   cleanup-only recovery plan bound to the current replacement source/settings
+   and **original exact fixture IDs, markers and operation IDs**. Preserve all
+   normal ownership, healthy-current-authority, atomic deletion, verified Auth
+   absence, zero-notification and terminal-ledger checks. Never alter the
+   original immutable manifest to bypass revision protection. Verify zero
+   operational fixture residue before restoring the exact original Scheduler
+   state; retain the advanced control versions and failed capacity result.
+
+Retirement is not guaranteed to become observable promptly. If actual handler
+completion or positive infrastructure retirement/deletion cannot be proven,
+leave the disabled denied fixtures intact, keep the job paused and seek
+provider support. The normal runner deliberately remains blocked. No runtime
+code change or speculative service-instance termination call is part of this
+procedure.
+
 ## Acceptance decision
 
 Report baseline and stress separately, including execution count, exact roster
@@ -241,5 +330,6 @@ Provider request counts and memory require provider telemetry if they are
 needed for cost/capacity approval; local logical operation counts and local
 RSS are not substitutes. The live denied-state scenario does not establish
 large pending-grant backlogs or simultaneous membership writes. If baseline
-times out, stop, clean up, and address the measured bottleneck before expanding
+times out, stop, establish actual completion or reviewed infrastructure
+retirement before cleanup, and address the measured bottleneck before expanding
 to stress volume or approving Beta/production.

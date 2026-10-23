@@ -18,7 +18,7 @@ function harness() {
   const manifest = prepared();
   const fixtures = new Set();
   let schedulerState = "ENABLED", durable, override = {}, createFailure = false, deleteFailure = false, measureFailure = false;
-  const calls = [];
+  const calls = [], pauseCalls = [];
   const provider = {
     async observe() {
       const value = observation();
@@ -27,7 +27,7 @@ function harness() {
       value.fixtures.validDeniedReady = fixtures.size;
       return { ...value, ...override };
     },
-    async pauseScheduler() { calls.push("pause"); schedulerState = "PAUSED"; return { quiescent: true, proofHash: HASH }; },
+    async pauseScheduler(options) { calls.push("pause"); pauseCalls.push(options); schedulerState = "PAUSED"; return { quiescent: true, proofHash: HASH }; },
     async restoreScheduler() { calls.push("restore"); schedulerState = manifest.baseline.scheduler.state; },
     async createFixture(fixture) {
       expect(durable.creatingUID).toBe(fixture.uid);
@@ -54,7 +54,7 @@ function harness() {
     },
   };
   durable = createVolumeCheckpoint(manifest);
-  return { manifest, provider, calls, fixtures, get checkpoint() { return durable; }, setOverride(value) { override = value; },
+  return { manifest, provider, calls, pauseCalls, fixtures, get checkpoint() { return durable; }, setOverride(value) { override = value; },
     setCreateFailure(value) { createFailure = value; }, setDeleteFailure(value) { deleteFailure = value; }, setMeasureFailure(value) { measureFailure = value; },
     async phase(phase, args = {}) {
       return executeVolumePhase({ manifest, checkpoint: durable, provider, phase, persist: value => { durable = value; }, ...args });
@@ -181,6 +181,40 @@ describe("checkpointed volume fixture lifecycle", () => {
     await expect(test.phase("measure-baseline", { measurementId: "volume-2000-first" })).rejects.toThrow("MEASUREMENT_WINDOW_INVALID");
   });
 
+  it("passes the durable latest arm into cleanup even after its completed measurement receipt", async () => {
+    const test = harness();
+    await test.phase("setup-baseline");
+    expect(test.pauseCalls[0]).toEqual({ drainNotBefore: test.manifest.createdAt });
+    const armedAt = new Date(Date.parse(test.manifest.createdAt) + 10000);
+    await test.phase("arm-baseline", { measurementId: "volume-2000-first", now: armedAt });
+    await test.phase("measure-baseline", { measurementId: "volume-2000-first" });
+    expect(test.checkpoint.measuring).toBeNull();
+    await test.phase("cleanup");
+    expect(test.pauseCalls.at(-1)).toEqual({ cleanup: true, drainNotBefore: armedAt.toISOString(), drainExecution: {
+      measurementId: "volume-2000-first", notBefore: armedAt.toISOString(), targetSize: 2000, executionId: "volume-2000-first"
+    } });
+  });
+
+  it("passes an unresolved arm into cleanup, and a completed baseline arm into stress setup", async () => {
+    const test = harness();
+    await test.phase("setup-baseline");
+    const armedAt = new Date(Date.parse(test.manifest.createdAt) + 10000);
+    await test.phase("arm-baseline", { measurementId: "volume-2000-first", now: armedAt });
+    const pause = test.provider.pauseScheduler;
+    test.provider.pauseScheduler = async options => { await pause(options); throw new Error("WAIT_FOR_RENEWED_DRAIN"); };
+    await expect(test.phase("cleanup")).rejects.toThrow("WAIT_FOR_RENEWED_DRAIN");
+    expect(test.pauseCalls.at(-1)).toEqual({ cleanup: true, drainNotBefore: armedAt.toISOString(), drainExecution: {
+      measurementId: "volume-2000-first", notBefore: armedAt.toISOString(), targetSize: 2000
+    } });
+    test.provider.pauseScheduler = pause;
+    await test.phase("measure-baseline", { measurementId: "volume-2000-first" });
+    test.provider.pauseScheduler = async options => { await pause(options); throw new Error("WAIT_FOR_RENEWED_DRAIN"); };
+    await expect(test.phase("setup-stress")).rejects.toThrow("WAIT_FOR_RENEWED_DRAIN");
+    expect(test.pauseCalls.at(-1)).toEqual({ drainNotBefore: armedAt.toISOString(), drainExecution: {
+      measurementId: "volume-2000-first", notBefore: armedAt.toISOString(), targetSize: 2000, executionId: "volume-2000-first"
+    } });
+  });
+
   it("records a verified baseline timeout as failed capacity evidence and blocks expansion to stress", async () => {
     const test = harness();
     await test.phase("setup-baseline");
@@ -190,6 +224,48 @@ describe("checkpointed volume fixture lifecycle", () => {
     await test.phase("measure-baseline", { measurementId: "volume-2000-timeout" });
     expect(summarizeVolumeRun(test.manifest, test.checkpoint)).toMatchObject({ baseline: { actualVolumeEvidence: true, completedExecutions: 0, verifiedTimeouts: 1, exceedsFunctionTimeout: true } });
     await expect(test.phase("setup-stress")).rejects.toThrow("BASELINE_MEASUREMENT_REQUIRED_BEFORE_STRESS");
+  });
+
+  it("requires actual prior-execution drain before rearming after a recorded timeout", async () => {
+    const test = harness();
+    await test.phase("setup-baseline");
+    await test.phase("arm-baseline", { measurementId: "volume-2000-timeout" });
+    const measure = test.provider.measure;
+    test.provider.measure = async args => ({ ...await measure(args), completed: false, timedOut: true, stateAttempts: null, pendingAttempts: null, failedAttempts: null });
+    await test.phase("measure-baseline", { measurementId: "volume-2000-timeout" });
+    test.provider.pauseScheduler = async options => { test.pauseCalls.push(options); throw new Error("DRAIN_HANDLER_COMPLETION_REQUIRED"); };
+    await expect(test.phase("arm-baseline", { measurementId: "volume-2000-next" })).rejects.toThrow("DRAIN_HANDLER_COMPLETION_REQUIRED");
+    expect(test.checkpoint.measuring).toBeNull();
+    expect(test.pauseCalls.at(-1).drainExecution).toMatchObject({ measurementId: "volume-2000-timeout", executionId: "volume-2000-timeout", targetSize: 2000 });
+    await expect(test.phase("cleanup")).rejects.toThrow("DRAIN_HANDLER_COMPLETION_REQUIRED");
+    expect(test.calls).not.toContain("delete");
+    expect(summarizeVolumeRun(test.manifest, test.checkpoint).baseline.completedExecutions).toBe(0);
+  });
+
+  it("does not use an older successful baseline to unlock stress after a newer timeout", async () => {
+    const test = harness();
+    await test.phase("setup-baseline");
+    await test.phase("arm-baseline", { measurementId: "volume-2000-first" });
+    await test.phase("measure-baseline", { measurementId: "volume-2000-first" });
+    await test.phase("arm-baseline", { measurementId: "volume-2000-timeout" });
+    const measure = test.provider.measure;
+    test.provider.measure = async args => ({ ...await measure(args), completed: false, timedOut: true, stateAttempts: null, pendingAttempts: null, failedAttempts: null });
+    await test.phase("measure-baseline", { measurementId: "volume-2000-timeout" });
+    await expect(test.phase("setup-stress")).rejects.toThrow("BASELINE_MEASUREMENT_REQUIRED_BEFORE_STRESS");
+    expect(summarizeVolumeRun(test.manifest, test.checkpoint).baseline).toMatchObject({ completedExecutions: 1, verifiedTimeouts: 1, exceedsFunctionTimeout: true });
+  });
+
+  it("gives a distinct rearm its own later epoch even when the operator clock has not advanced", async () => {
+    const test = harness();
+    await test.phase("setup-baseline");
+    const now = new Date(Date.parse(test.manifest.createdAt) + 1000);
+    await test.phase("arm-baseline", { measurementId: "volume-2000-first", now });
+    await test.phase("measure-baseline", { measurementId: "volume-2000-first" });
+    await test.phase("arm-baseline", { measurementId: "volume-2000-second", now });
+    expect(Date.parse(test.checkpoint.measuring.notBefore)).toBe(Number(now) + 1);
+    test.provider.pauseScheduler = async options => { test.pauseCalls.push(options); throw new Error("DRAIN_HANDLER_COMPLETION_REQUIRED"); };
+    await expect(test.phase("cleanup")).rejects.toThrow("DRAIN_HANDLER_COMPLETION_REQUIRED");
+    expect(test.pauseCalls.at(-1).drainExecution).toEqual({ measurementId: "volume-2000-second", notBefore: new Date(Number(now) + 1).toISOString(), targetSize: 2000 });
   });
 
   it("rejects changed aggregate counts and unexpected notification rows without touching fixtures", async () => {
