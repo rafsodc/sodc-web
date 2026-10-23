@@ -34,8 +34,8 @@ test.beforeEach(async ({ context }) => {
   for (const value of [...Object.values(accountA), ...Object.values(accountB)]) expect(value).not.toBe("");
   expect(accountA.marker).not.toBe(accountB.marker);
 });
-async function signIn(page: Page, account: typeof accountA) {
-  await page.goto("/account");
+async function signIn(page: Page, account: typeof accountA, destination = "/account") {
+  await page.goto(destination);
   await page.getByLabel("Email", { exact: true }).fill(account.email);
   await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
@@ -54,13 +54,13 @@ async function dismissCookies(page: Page) {
 
 for (const route of ["/profile", "/account/settings"]) {
   test(`cold reload preserves the ${route} email-link destination`, async ({ page }) => {
-    await signIn(page, accountA);
     const destination = `${route}?from=email#preferences`;
+    await signIn(page, accountA, destination);
     const content = route === "/profile"
       ? page.getByRole("textbox", { name: /^First Name/ })
       : page.getByRole("heading", { name: "Announcement emails", exact: true });
-    await page.goto(destination);
     await expect(content).toBeVisible();
+    expect(new URL(page.url()).pathname + new URL(page.url()).search + new URL(page.url()).hash).toBe(destination);
     await page.reload();
     await expect(content).toBeVisible();
     const url = new URL(page.url());
