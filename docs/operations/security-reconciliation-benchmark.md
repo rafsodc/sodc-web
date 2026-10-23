@@ -140,6 +140,15 @@ only manifest-owned fixtures. Review the manifest before either write phase.**
    node scripts/reconciliation-volume-acceptance.mjs measure-baseline /private/tmp/reconciliation-volume-RUN --approve-manifest HASH --measurement-id volume-2000-first
    ```
 
+   The verifier also requires the private pre-dispatch journal described below.
+   Its first invocation waits until the Scheduler finish is visible, captures
+   a fixed evidence-window endpoint from a fresh PAUSED provider response, and
+   stops with `WAIT_FOR_MEASUREMENT_LOG_VISIBILITY`. Run the same measurement
+   command after at least 60 seconds; it reuses that endpoint and verifies the
+   complete armed window across all revisions of the reconciler service.
+   This delay permits log ingestion; it is an operational visibility assumption,
+   not a guarantee against arbitrarily delayed or missing provider logs.
+
    Successful evidence requires exactly 2,000 state attempts, zero pending
    attempts/failures, no warning/error and an unchanged real-member authority
    audit. Baseline capacity additionally requires both handler duration and
@@ -206,6 +215,36 @@ an explicitly reviewed operator procedure.
 
 ## Provider evidence files
 
+Before its sole RunJob POST, the reviewed invocation controller must exclusively
+create and fsync `scheduler-attempt-<measurement-id>.json` with owner-only
+permissions. Bind its `schemaVersion: sodc-volume-scheduler-attempt/v1`, project,
+run, Git SHA, manifest/checkpoint hashes, measurement ID, target size, arm time
+(`notBefore`), Scheduler resource, revision, configuration/deployment hashes and
+target-URI hash to the reviewed run. Include the fresh provider observation time
+(`providerObservedAt`), the actual pre-request `dispatchStartedAt`, and
+`request: {method: "POST", resource: "/v1/EXACT_JOB:run", emptyBody: true, retries: 0}`.
+The resource must use the full exact job name, not the placeholder `EXACT_JOB`.
+
+Measurement requires receipt `startedAt` to equal that journal's dispatch time,
+with a fresh provider observation within ten seconds. Provider request and
+execution logs must not precede it; both the HTTP request and Scheduler start
+must occur within 90 seconds. The Scheduler start log can arrive after the HTTP
+request begins and is not used as the dispatch clock. The journal and cloud
+corroboration are included in the evidence hash. This protects against an
+accidentally shifted receipt window; it relies on the trusted controller's
+pre-dispatch write and clock. It is not cryptographic proof against an operator
+rewriting all local artifacts.
+
+The provider creates `provider-measurement-window-<measurement-id>.json` after
+seeing one Scheduler start/finish and the unchanged PAUSED job. After the
+visibility delay, it requires exactly one Scheduler start/finish, one matching
+HTTP request and one execution ID across the entire fixed window. A second
+request without an execution ID, another unfinished execution or a foreign
+revision invalidates capacity evidence. Ordinary system cold-start logs without
+execution IDs are allowed. The completion timestamp must match the selected
+provider log to millisecond precision; the matching request/handler instance
+and target are also checked. These checks do not dispatch or cancel work.
+
 The provider records `provider-pause.json` itself after an exact Dev Scheduler
 REST read confirms PAUSED. It binds the reviewed manifest, scheduler
 configuration, deployed revision, provider Date header and latest durable arm,
@@ -257,8 +296,8 @@ include the selected log and span no more than 20 minutes.
   "revision": "ACTUAL_REVIEWED_REVISION",
   "executionId": "ACTUAL_PROVIDER_EXECUTION_ID",
   "insertId": "ACTUAL_COMPLETION_LOG_INSERT_ID",
-  "startedAt": "ACTUAL_EXECUTION_WINDOW_START_ISO",
-  "completedAt": "ACTUAL_EXECUTION_WINDOW_END_ISO",
+  "startedAt": "EXACT_JOURNALED_DISPATCH_START_ISO",
+  "completedAt": "ACTUAL_SELECTED_PROVIDER_LOG_TIME_ISO",
   "completed": true,
   "timedOut": false
 }

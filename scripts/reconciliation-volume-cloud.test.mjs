@@ -44,7 +44,7 @@ async function fixture({mode='SIMULATION',canonicalTarget=false,defaultDrain=fal
     serviceConfig:{revision:'reconcilependingsecuritytransitions-00001-abc',service:'projects/sodc-web/locations/europe-west2/services/reconcilependingsecuritytransitions',uri:'https://reconcilependingsecuritytransitions-example-ew.a.run.app',serviceAccountEmail:'sodc-web@appspot.gserviceaccount.com',timeoutSeconds:540}};
   const target=canonicalTarget?'https://europe-west2-sodc-web.cloudfunctions.net/reconcilePendingSecurityTransitions':fn.serviceConfig.uri;
   const job={name:JOB,state:'ENABLED',schedule:'every 5 minutes',timeZone:'UTC',lastAttemptTime:'2026-10-23T08:55:00Z',httpTarget:{uri:target,httpMethod:'POST',oidcToken:{serviceAccountEmail:fn.serviceConfig.serviceAccountEmail,audience:target}},retryConfig:{retryCount:0},attemptDeadline:'1800s'};
-  const commands=[],logs=[],otherTables=new Map();let authFactoryCalls=0,failDbCleanup=false,uncertainDbCleanup=false,uncertainCreate=false,uncertainProfile=false,uncertainInitialize=false,uncertainAuthDelete=false,partialAuthDelete=false;
+  const commands=[],logs=[],schedulerLogs=[],otherTables=new Map();let authFactoryCalls=0,failDbCleanup=false,uncertainDbCleanup=false,uncertainCreate=false,uncertainProfile=false,uncertainInitialize=false,uncertainAuthDelete=false,partialAuthDelete=false,logPageSize=1000;
   const clone=value=>structuredClone(value);
   const provider={
     auth:{
@@ -107,8 +107,10 @@ async function fixture({mode='SIMULATION',canonicalTarget=false,defaultDrain=fal
     if(url===`https://cloudscheduler.googleapis.com/v1/${JOB}:pause`){job.state='PAUSED';return response(job);}
     if(url===`https://cloudscheduler.googleapis.com/v1/${JOB}:resume`){job.state='ENABLED';return response(job);}
     if(url==='https://logging.googleapis.com/v2/entries:list'){
-      const filter=JSON.parse(options.body).filter;
-      return response({entries:filter.includes('jsonPayload.message="Security reconciliation completed"')?logs.filter(row=>row.jsonPayload?.message==='Security reconciliation completed'):logs});
+      const body=JSON.parse(options.body),filter=body.filter,from=Date.parse(filter.match(/timestamp>="([^"]+)"/)[1]),to=Date.parse(filter.match(/timestamp<="([^"]+)"/)[1]);
+      let entries=(filter.includes('resource.type="cloud_scheduler_job"')?schedulerLogs:logs).filter(row=>Date.parse(row.timestamp)>=from&&Date.parse(row.timestamp)<=to);
+      if(filter.includes('jsonPayload.message="Security reconciliation completed"'))entries=entries.filter(row=>row.jsonPayload?.message==='Security reconciliation completed');
+      const offset=Number(body.pageToken??0);return response({entries:entries.slice(offset,offset+logPageSize),...(offset+logPageSize<entries.length?{nextPageToken:String(offset+logPageSize)}:{})});
     }
     throw new Error('Unexpected fake REST target');
   };
@@ -121,13 +123,19 @@ async function fixture({mode='SIMULATION',canonicalTarget=false,defaultDrain=fal
   const observed=await draftAdapter.observe();
   manifest={...draft,baseline:{fingerprint:observed.baselineFingerprint,counts:observed.counts,readyAdminCount:observed.readyAdminCount,scheduler:observed.scheduler,deployment:observed.deployment,notification:observed.notification}};
   const adapter=createReconciliationVolumeCloud({...baseOptions,manifest,evidence});
-  return {adapter,manifest,directory,commands,identities,profiles,states,transitions,rates,invocations,otherTables,control,notification,job,fn,logs,baseOptions,receiptBase,
+  return {adapter,manifest,directory,commands,identities,profiles,states,transitions,rates,invocations,otherTables,control,notification,job,fn,logs,schedulerLogs,baseOptions,receiptBase,
     get authFactoryCalls(){return authFactoryCalls;},setNow:value=>{now=new Date(value);},flags:options=>{({failDbCleanup=false,uncertainDbCleanup=false,uncertainCreate=false,uncertainProfile=false,uncertainInitialize=false,uncertainAuthDelete=false,partialAuthDelete=false}=options);},
-    setReceipt:receipt=>{measurementReceipt=receipt;},completion({targetSize=3,executionId='execution_1',insertId='insert_1',completed=true,timedOut=false}={}){
-      const startedAt='2026-10-23T09:00:01Z',completedAt='2026-10-23T09:00:10Z';now=new Date('2026-10-23T09:00:15Z');
+    setLogPageSize:value=>{logPageSize=value;},
+    async openWindow(){await expect(adapter.measure({targetSize:3,measurementId:'volume-2000-test',notBefore:manifest.createdAt})).rejects.toThrow('WAIT_FOR_MEASUREMENT_LOG_VISIBILITY');now=new Date(+now+60000);},
+    setReceipt:receipt=>{measurementReceipt=receipt;},async completion({targetSize=3,executionId='execution_1',insertId='insert_1',completed=true,timedOut=false}={}){
+      const startedAt='2026-10-23T09:00:01.000Z',completedAt='2026-10-23T09:00:10.001Z';now=new Date('2026-10-23T09:00:15Z');
       const receipt={schemaVersion:'sodc-reconciliation-volume-measurement/v1',...receiptBase(),measurementId:'volume-2000-test',targetSize,revision:fn.serviceConfig.revision,executionId,insertId,startedAt,completedAt,completed,timedOut};
-      logs.push({insertId,timestamp:'2026-10-23T09:00:09Z',resource:{type:'cloud_run_revision',labels:{project_id:'sodc-web',location:'europe-west2',revision_name:fn.serviceConfig.revision}},labels:{execution_id:executionId},severity:completed?'INFO':'ERROR',
+      logs.push({insertId,timestamp:'2026-10-23T09:00:10.000Z',resource:{type:'cloud_run_revision',labels:{project_id:'sodc-web',location:'europe-west2',service_name:'reconcilependingsecuritytransitions',revision_name:fn.serviceConfig.revision}},labels:{execution_id:executionId,instanceId:'instance_1'},severity:completed?'INFO':'ERROR',
         jsonPayload:completed?{message:'Security reconciliation completed',stateAttempts:targetSize,pendingAttempts:0,failedAttempts:0,durationMs:8000}:{message:'Function execution timed out'}});
+      logs.push({insertId:'request_1',timestamp:'2026-10-23T09:00:01.100Z',resource:clone(logs[0].resource),labels:{instanceId:'instance_1'},logName:'projects/sodc-web/logs/run.googleapis.com%2Frequests',httpRequest:{requestMethod:'POST',requestUrl:target,status:completed?200:504}});
+      logs.push({insertId:'startup_1',timestamp:'2026-10-23T09:00:01.200Z',resource:clone(logs[0].resource),labels:{instanceId:'instance_1'},logName:'projects/sodc-web/logs/run.googleapis.com%2Fvarlog%2Fsystem',textPayload:'Starting a new instance'});
+      for(const [type,timestamp]of [['AttemptStarted','2026-10-23T09:00:03.000Z'],['AttemptFinished','2026-10-23T09:00:12.000Z']])schedulerLogs.push({insertId:type,timestamp,resource:{type:'cloud_scheduler_job',labels:{project_id:'sodc-web',location:'europe-west2',job_id:JOB.split('/').at(-1)}},jsonPayload:{'@type':'type.googleapis.com/google.cloud.scheduler.logging.'+type,jobName:JOB,targetType:'HTTP',url:target},...(type==='AttemptFinished'?{httpRequest:{status:completed?200:504}}:{})});
+      await writeFile(path.join(directory,'scheduler-attempt-volume-2000-test.json'),JSON.stringify({schemaVersion:'sodc-volume-scheduler-attempt/v1',projectId:'sodc-web',runId:RUN,manifestHash:stableHash(manifest),gitSha:manifest.gitSha,checkpointHash:'a'.repeat(64),measurementId:receipt.measurementId,targetSize,notBefore:manifest.createdAt,schedulerResource:JOB,revision:fn.serviceConfig.revision,configurationHash:manifest.baseline.scheduler.configurationHash,deploymentProofHash:manifest.baseline.deployment.proofHash,targetUriHash:stableHash(target),providerObservedAt:startedAt,dispatchStartedAt:startedAt,request:{method:'POST',resource:`/v1/${JOB}:run`,emptyBody:true,retries:0}}),{mode:0o600,flag:'wx'});
       measurementReceipt=receipt;return receipt;
     }};
 }
@@ -324,7 +332,7 @@ describe('Dev-only reconciliation volume cloud adapter',()=>{
   });
 
   it('verifies actual provider completion counts and never dispatches or accepts a fabricated pass',async()=>{
-    const f=await fixture();await f.adapter.pauseScheduler();await f.adapter.createFixture(f.manifest.fixtures[0]);f.completion();
+    const f=await fixture();await f.adapter.pauseScheduler();await f.adapter.createFixture(f.manifest.fixtures[0]);await f.completion();await f.openWindow();
     const measured=await f.adapter.measure({targetSize:3,measurementId:'volume-2000-test',notBefore:f.manifest.createdAt});expect(measured).toMatchObject({completed:true,providerVerified:true,stateAttempts:3,pendingAttempts:0,failedAttempts:0,durationMs:8000,notBefore:f.manifest.createdAt});expect(measured.evidenceHash).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(measured)).not.toContain(f.manifest.fixtures[0].uid);expect(f.commands.some(row=>row.url?.endsWith(':run'))).toBe(false);
     await expect(f.adapter.measure({targetSize:3,measurementId:'volume-2000-test',notBefore:'2026-10-23T09:00:02Z'})).rejects.toThrow('MEASUREMENT_TIME_WINDOW_INVALID');
@@ -333,9 +341,80 @@ describe('Dev-only reconciliation volume cloud adapter',()=>{
   });
 
   it('records only an independently verified timeout and rejects cross-project log evidence',async()=>{
-    const f=await fixture();await f.adapter.pauseScheduler();await f.adapter.createFixture(f.manifest.fixtures[0]);f.completion({completed:false,timedOut:true});
+    const f=await fixture();await f.adapter.pauseScheduler();await f.adapter.createFixture(f.manifest.fixtures[0]);await f.completion({completed:false,timedOut:true});await f.openWindow();
     const result=await f.adapter.measure({targetSize:3,measurementId:'volume-2000-test',notBefore:f.manifest.createdAt});expect(result).toMatchObject({completed:false,timedOut:true,providerVerified:true,stateAttempts:null});
     f.logs[0].resource.labels.project_id='sodc-web-production';await expect(f.adapter.measure({targetSize:3,measurementId:'volume-2000-test',notBefore:f.manifest.createdAt})).rejects.toThrow('PROVIDER_LOG_IDENTITY_MISMATCH');
+  });
+
+  describe('measurement dispatch and complete-window evidence',()=>{
+    const measure=f=>f.adapter.measure({targetSize:3,measurementId:'volume-2000-test',notBefore:f.manifest.createdAt});
+    async function prepared({visible=true,timeout=false}={}){const f=await fixture();await f.adapter.pauseScheduler();await f.adapter.createFixture(f.manifest.fixtures[0]);f.receipt=await f.completion({completed:!timeout,timedOut:timeout});if(visible)await f.openWindow();return f;}
+    const journal=f=>path.join(f.directory,'scheduler-attempt-volume-2000-test.json');
+
+    it('requires the private pre-dispatch journal and rejects a later operator receipt start',async()=>{
+      const f=await prepared();f.setReceipt({...f.receipt,startedAt:'2026-10-23T09:00:02.000Z'});
+      await expect(measure(f)).rejects.toThrow('MEASUREMENT_DISPATCH_JOURNAL_MISMATCH');
+      f.setReceipt(f.receipt);await rm(journal(f));await expect(measure(f)).rejects.toThrow('PROVIDER_EVIDENCE_REQUIRED');
+    });
+
+    it.each(['runId','manifestHash','gitSha','checkpointHash','measurementId','targetSize','notBefore','schedulerResource','revision','configurationHash','deploymentProofHash','targetUriHash','providerObservedAt','dispatchStartedAt','request'])('rejects a dispatch journal with altered %s',async field=>{
+      const f=await prepared(),filename=journal(f),record=JSON.parse(await readFile(filename,'utf8'));
+      record[field]=field==='targetSize'?4:field==='request'?{...record.request,retries:1}:'altered';await writeFile(filename,JSON.stringify(record));
+      await expect(measure(f)).rejects.toThrow('MEASUREMENT_DISPATCH_JOURNAL_MISMATCH');
+    });
+
+    it('closes a fixed PAUSED window and waits a full provider-stamped visibility interval',async()=>{
+      const f=await prepared({visible:false});await expect(measure(f)).rejects.toThrow('WAIT_FOR_MEASUREMENT_LOG_VISIBILITY');
+      const filename=path.join(f.directory,'provider-measurement-window-volume-2000-test.json'),first=await readFile(filename,'utf8');
+      f.setNow('2026-10-23T09:01:14Z');await expect(measure(f)).rejects.toThrow('WAIT_FOR_MEASUREMENT_LOG_VISIBILITY');
+      expect(await readFile(filename,'utf8')).toBe(first);f.setNow('2026-10-23T09:01:15Z');await expect(measure(f)).resolves.toMatchObject({providerVerified:true});
+    });
+
+    it('does not close its evidence window before Scheduler completion is visible',async()=>{
+      const f=await prepared({visible:false}),finish=f.schedulerLogs.pop();await expect(measure(f)).rejects.toThrow('MEASUREMENT_SCHEDULER_COMPLETION_PENDING');
+      await expect(readFile(path.join(f.directory,'provider-measurement-window-volume-2000-test.json'))).rejects.toMatchObject({code:'ENOENT'});
+      f.schedulerLogs.push(finish);await f.openWindow();await expect(measure(f)).resolves.toMatchObject({providerVerified:true});
+    });
+
+    it('accepts ordinary no-ID cold-start logs and a Scheduler start logged after the request',async()=>{
+      const f=await prepared();expect(Date.parse(f.schedulerLogs[0].timestamp)).toBeGreaterThan(Date.parse(f.logs[1].timestamp));
+      const result=await measure(f);expect(result.startedAt).toBe(f.receipt.startedAt);expect(Date.parse(result.completedAt)-Date.parse(result.startedAt)).toBe(9001);
+      const queries=f.commands.filter(row=>row.url==='https://logging.googleapis.com/v2/entries:list').map(row=>row.body.filter);
+      expect(queries.some(filter=>filter.includes('resource.labels.service_name="reconcilependingsecuritytransitions"')&&!filter.includes('labels.execution_id=')&&!filter.includes('revision_name='))).toBe(true);
+    });
+
+    it('rejects a local dispatch timestamp after the provider request already began',async()=>{
+      const f=await prepared();f.logs[1].timestamp='2026-10-23T09:00:00.900Z';await expect(measure(f)).rejects.toThrow('MEASUREMENT_DISPATCH_AFTER_PROVIDER_START');
+    });
+
+    it('rejects an artificially extended receipt completion timestamp',async()=>{
+      const f=await prepared();f.setReceipt({...f.receipt,completedAt:'2026-10-23T09:00:14.000Z'});await expect(measure(f)).rejects.toThrow('MEASUREMENT_COMPLETION_TIME_MISMATCH');
+    });
+
+    it.each(['request','unfinished execution','finished execution','foreign revision','Scheduler attempt','unbound application error'])('rejects another %s anywhere in the armed evidence window',async type=>{
+      const f=await prepared();
+      if(type==='request')f.logs.push({...structuredClone(f.logs[1]),insertId:'duplicate_request'});
+      if(type==='unfinished execution'||type==='finished execution')f.logs.push({...structuredClone(f.logs[0]),insertId:'other_execution',timestamp:'2026-10-23T09:00:14.000Z',labels:{execution_id:'execution_2',instanceId:'instance_2'},jsonPayload:type==='finished execution'?f.logs[0].jsonPayload:{message:'Still processing'}});
+      if(type==='foreign revision')f.logs[0].resource.labels.revision_name='foreign_revision';
+      if(type==='Scheduler attempt')f.schedulerLogs.push({...structuredClone(f.schedulerLogs[0]),insertId:'duplicate_schedule'});
+      if(type==='unbound application error')f.logs.push({...structuredClone(f.logs[0]),insertId:'unbound_error',labels:{instanceId:'instance_1'},severity:'ERROR'});
+      await expect(measure(f)).rejects.toThrow(type==='request'?'ONE_MEASUREMENT_HTTP_REQUEST_REQUIRED':type.includes('execution')?'ONE_MEASUREMENT_EXECUTION_REQUIRED':type==='foreign revision'?'MEASUREMENT_FOREIGN_REVISION':type==='Scheduler attempt'?'MULTIPLE_MEASUREMENT_SCHEDULER_ATTEMPTS':'UNBOUND_MEASUREMENT_APPLICATION_LOG');
+    });
+
+    it('reads every page before accepting uniqueness, including duplicates on later pages',async()=>{
+      const f=await prepared();f.setLogPageSize(1);await expect(measure(f)).resolves.toMatchObject({providerVerified:true});
+      f.logs.push({...structuredClone(f.logs[1]),insertId:'last_page_duplicate'});await expect(measure(f)).rejects.toThrow('ONE_MEASUREMENT_HTTP_REQUEST_REQUIRED');
+    });
+
+    it('rejects a request bound to a different target or instance',async()=>{
+      const f=await prepared();f.logs[1].httpRequest.requestUrl='https://foreign.example/';await expect(measure(f)).rejects.toThrow('MEASUREMENT_DISPATCH_AFTER_PROVIDER_START');
+      f.logs[1].httpRequest.requestUrl=f.job.httpTarget.uri;f.logs[1].labels.instanceId='foreign_instance';await expect(measure(f)).rejects.toThrow('MEASUREMENT_REQUEST_EXECUTION_MISMATCH');
+    });
+
+    it('preserves a recognized timeout if the same handler completes later',async()=>{
+      const f=await prepared({timeout:true});f.logs.push({...structuredClone(f.logs[0]),insertId:'late_completion',timestamp:'2026-10-23T09:00:13.000Z',severity:'INFO',jsonPayload:{message:'Security reconciliation completed',durationMs:12000,stateAttempts:3,pendingAttempts:0,failedAttempts:0}});
+      await expect(measure(f)).resolves.toMatchObject({completed:false,timedOut:true,durationMs:9001,stateAttempts:null});
+    });
   });
 
   it('keeps evidence private and refuses to recreate a retired fixture',async()=>{

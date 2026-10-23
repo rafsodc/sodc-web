@@ -220,9 +220,12 @@ describe("checkpointed volume fixture lifecycle", () => {
     await test.phase("setup-baseline");
     await test.phase("arm-baseline", { measurementId: "volume-2000-timeout" });
     const measure = test.provider.measure;
-    test.provider.measure = async args => ({ ...await measure(args), completed: false, timedOut: true, stateAttempts: null, pendingAttempts: null, failedAttempts: null });
+    test.provider.measure = async args => {
+      const receipt = await measure(args);
+      return { ...receipt, completed: false, timedOut: true, durationMs: 600000, completedAt: new Date(Date.parse(receipt.startedAt) + 600000).toISOString(), stateAttempts: null, pendingAttempts: null, failedAttempts: null };
+    };
     await test.phase("measure-baseline", { measurementId: "volume-2000-timeout" });
-    expect(summarizeVolumeRun(test.manifest, test.checkpoint)).toMatchObject({ baseline: { actualVolumeEvidence: true, completedExecutions: 0, verifiedTimeouts: 1, exceedsFunctionTimeout: true } });
+    expect(summarizeVolumeRun(test.manifest, test.checkpoint)).toMatchObject({ baseline: { actualVolumeEvidence: true, completedExecutions: 0, verifiedTimeouts: 1, exceedsFiveMinuteCadence: false, exceedsFunctionTimeout: true } });
     await expect(test.phase("setup-stress")).rejects.toThrow("BASELINE_MEASUREMENT_REQUIRED_BEFORE_STRESS");
   });
 
@@ -378,13 +381,14 @@ describe("baseline cadence gate before stress allocation", () => {
     expect(test.calls).toEqual(calls);
     expect([...test.fixtures]).toEqual(fixtures);
     expect(test.checkpoint.measurements[0]).toMatchObject({ completed: true, durationMs });
-    expect(summarizeVolumeRun(test.manifest, test.checkpoint).baseline.completedExecutions).toBe(1);
+    expect(summarizeVolumeRun(test.manifest, test.checkpoint).baseline).toMatchObject({ completedExecutions: 1, exceedsFiveMinuteCadence: true });
   });
 
   it("permits first journalled stress allocation only when both baseline durations are strictly below cadence", async () => {
     const test = harness();
     await test.phase("setup-baseline");
     await measured(test, "volume-2000-just-under", 299999, 299999);
+    expect(summarizeVolumeRun(test.manifest, test.checkpoint).baseline).toMatchObject({ completedExecutions: 1, exceedsFiveMinuteCadence: false });
     await expectStressAllocation(test);
     expect(test.pauseCalls.at(-1).drainExecution.measurementId).toBe("volume-2000-just-under");
   });

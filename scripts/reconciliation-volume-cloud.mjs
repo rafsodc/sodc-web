@@ -139,7 +139,7 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
     const attemptEvidence={lastAttemptTime:timestamp('lastAttemptTime'),scheduleTime:timestamp('scheduleTime')};
     attemptEvidence.informative=Boolean(attemptEvidence.lastAttemptTime||attemptEvidence.scheduleTime);
     const result={scheduler:{resource:JOB,state:job.state,configurationHash:stableHash(schedulerConfiguration(job))},deployment:{revision:fn.serviceConfig.revision,proofHash:stableHash(deploymentProof(fn))},
-      providerObservedAt:jobRead.observedAt,attemptEvidence,attemptHash:stableHash(attemptEvidence)};
+      providerObservedAt:jobRead.observedAt,attemptEvidence,attemptHash:stableHash(attemptEvidence),targetUriHash:stableHash(job.httpTarget.uri)};
     if(plan.baseline)assert(result.scheduler.configurationHash===plan.baseline.scheduler.configurationHash&&result.deployment.proofHash===plan.baseline.deployment.proofHash&&result.deployment.revision===plan.baseline.deployment.revision,'VOLUME_DEPLOYMENT_OR_SCHEDULER_DRIFT');
     return result;
   }
@@ -371,19 +371,50 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
     assert((await identitiesFor(fixtures)).size===0,'FIXTURE_AUTH_DELETION_INCOMPLETE');
     return {deleted:fixtures.length,auditReceiptsRetained:true};
   }
-  async function logsQuery({executionId,from,to,completionOnly=false}){
+  async function logsQuery({executionId,from,to,completionOnly=false,wholeService=false,scheduler=false}){
     const entries=[],seen=new Set();let pageToken;
+    const scope=scheduler?`resource.type="cloud_scheduler_job" AND resource.labels.job_id="${JOB.split('/').at(-1)}"`:
+      `resource.type="cloud_run_revision" AND ${wholeService?`resource.labels.service_name="${FUNCTION.toLowerCase()}"`:`resource.labels.revision_name="${plan.baseline.deployment.revision}"`}`;
     do{const response=await request('logging.googleapis.com','/v2/entries:list',{method:'POST',body:{resourceNames:[`projects/${PROJECT}`],filter:
-      `resource.type="cloud_run_revision" AND resource.labels.project_id="${PROJECT}" AND resource.labels.location="${REGION}" AND resource.labels.revision_name="${plan.baseline.deployment.revision}"${executionId?` AND labels.execution_id="${executionId}"`:''}${completionOnly?' AND jsonPayload.message="Security reconciliation completed"':''} AND timestamp>="${from}" AND timestamp<="${to}"`,orderBy:'timestamp asc',pageSize:1000,...(pageToken?{pageToken}:{})}});
+      `${scope} AND resource.labels.project_id="${PROJECT}" AND resource.labels.location="${REGION}"${executionId?` AND labels.execution_id="${executionId}"`:''}${completionOnly?' AND jsonPayload.message="Security reconciliation completed"':''} AND timestamp>="${from}" AND timestamp<="${to}"`,orderBy:'timestamp asc',pageSize:1000,...(pageToken?{pageToken}:{})}});
       assert(Array.isArray(response.entries??[]),'PROVIDER_LOG_PAGE_INVALID');
-      for(const entry of response.entries??[])assert(entry.resource?.type==='cloud_run_revision'&&entry.resource.labels?.project_id===PROJECT&&entry.resource.labels.location===REGION&&entry.resource.labels.revision_name===plan.baseline.deployment.revision&&Date.parse(entry.timestamp)>=Date.parse(from)&&Date.parse(entry.timestamp)<=Date.parse(to)&&(!executionId||entry.labels?.execution_id===executionId)&&(!completionOnly||entry.jsonPayload?.message==='Security reconciliation completed'),'PROVIDER_LOG_IDENTITY_MISMATCH');
+      for(const entry of response.entries??[])assert(entry.resource?.labels?.project_id===PROJECT&&entry.resource.labels.location===REGION&&
+        (scheduler?entry.resource.type==='cloud_scheduler_job'&&entry.resource.labels.job_id===JOB.split('/').at(-1):entry.resource.type==='cloud_run_revision'&&(wholeService?entry.resource.labels.service_name===FUNCTION.toLowerCase():entry.resource.labels.revision_name===plan.baseline.deployment.revision))&&
+        Date.parse(entry.timestamp)>=Date.parse(from)&&Date.parse(entry.timestamp)<=Date.parse(to)&&(!executionId||entry.labels?.execution_id===executionId)&&(!completionOnly||entry.jsonPayload?.message==='Security reconciliation completed'),'PROVIDER_LOG_IDENTITY_MISMATCH');
       entries.push(...response.entries??[]);pageToken=response.nextPageToken;if(pageToken){assert(!seen.has(pageToken),'PROVIDER_LOG_PAGE_REPEATED');seen.add(pageToken);}assert(entries.length<=10000,'PROVIDER_LOG_BOUND_EXCEEDED');
     }while(pageToken);return entries;
+  }
+  function schedulerAttempts(entries,meta){
+    const starts=entries.filter(entry=>entry.jsonPayload?.['@type']==='type.googleapis.com/google.cloud.scheduler.logging.AttemptStarted');
+    const finishes=entries.filter(entry=>entry.jsonPayload?.['@type']==='type.googleapis.com/google.cloud.scheduler.logging.AttemptFinished');
+    assert(starts.length<=1&&finishes.length<=1,'MULTIPLE_MEASUREMENT_SCHEDULER_ATTEMPTS');
+    assert(starts.length===1&&finishes.length===1,'MEASUREMENT_SCHEDULER_COMPLETION_PENDING');
+    for(const entry of [...starts,...finishes])assert(entry.jsonPayload.jobName===JOB&&entry.jsonPayload.targetType==='HTTP'&&stableHash(entry.jsonPayload.url)===meta.targetUriHash,'MEASUREMENT_SCHEDULER_TARGET_MISMATCH');
+    return {start:starts[0],finish:finishes[0]};
+  }
+  async function measurementWindow({meta,measurementId,targetSize,notBefore,attemptHash}){
+    const name=`provider-measurement-window-${measurementId}.json`;
+    const binding={schemaVersion:'sodc-reconciliation-volume-window/v1',projectId:PROJECT,runId:plan.runId,manifestHash,measurementId,targetSize,notBefore,attemptHash,
+      schedulerResource:JOB,configurationHash:meta.scheduler.configurationHash,deploymentProofHash:meta.deployment.proofHash,targetUriHash:meta.targetUriHash,jobAttemptHash:meta.attemptHash};
+    let record=await receiptFile(name,true);
+    if(!record){
+      // First see the scheduled request finish, then close a fixed window while
+      // the unchanged job is PAUSED. A later invocation allows log ingestion.
+      const initial=await logsQuery({scheduler:true,from:notBefore,to:meta.providerObservedAt});schedulerAttempts(initial,meta);
+      record={...binding,closedAt:meta.providerObservedAt,initialSchedulerProofHash:stableHash(initial)};
+      const directory=await lstat(runDirectory);assert(directory.isDirectory()&&!directory.isSymbolicLink()&&(directory.mode&0o077)===0,'PRIVATE_RUN_DIRECTORY_REQUIRED');
+      const file=await open(path.join(runDirectory,name),'wx',0o600);try{await file.writeFile(JSON.stringify(record)+'\n');await file.sync();}finally{await file.close();}
+      const parent=await open(runDirectory,'r');try{await parent.sync();}finally{await parent.close();}
+    }
+    assert(canonicalTimestamp(record.closedAt)&&Date.parse(record.closedAt)>=Date.parse(notBefore)&&HASH.test(record.initialSchedulerProofHash??'')&&
+      stableHash(record)===stableHash({...binding,closedAt:record.closedAt,initialSchedulerProofHash:record.initialSchedulerProofHash}),'MEASUREMENT_WINDOW_BINDING_MISMATCH');
+    assert(Date.parse(meta.providerObservedAt)>=Date.parse(record.closedAt)+60000,'WAIT_FOR_MEASUREMENT_LOG_VISIBILITY');
+    return record;
   }
   async function measure({targetSize,measurementId,notBefore}){
     // This only verifies an already finished invocation. That invocation changes
     // lastAttemptTime, so cleanup establishes a new drain proof afterwards.
-    await boundary({requireDrain:false});assert(Number.isSafeInteger(targetSize)&&targetSize>=2&&targetSize<=10000&&/^[A-Za-z0-9_-]{1,64}$/.test(measurementId??''),'MEASUREMENT_IDENTITY_INVALID');
+    const meta=await boundary({requireDrain:false});assert(Number.isSafeInteger(targetSize)&&targetSize>=2&&targetSize<=10000&&/^[A-Za-z0-9_-]{1,64}$/.test(measurementId??''),'MEASUREMENT_IDENTITY_INVALID');
     assert(typeof notBefore==='string'&&Number.isFinite(Date.parse(notBefore))&&Date.parse(notBefore)>=Date.parse(plan.createdAt)&&Date.parse(notBefore)<=Date.parse(clock())+1000,'ARMED_MEASUREMENT_WINDOW_REQUIRED');
     requireDrainAnchor(new Date(notBefore).toISOString());
     const receipt=evidence.measurement?await evidence.measurement({targetSize,measurementId,notBefore}):await receiptFile(`measurement-${measurementId}.json`);
@@ -391,23 +422,46 @@ export function createReconciliationVolumeCloud({repositoryRoot,runDirectory,man
     assert(receipt.measurementId===measurementId&&receipt.targetSize===targetSize&&receipt.revision===plan.baseline.deployment.revision&&/^[A-Za-z0-9_-]{1,128}$/.test(receipt.executionId??'')&&typeof receipt.insertId==='string','MEASUREMENT_RECEIPT_IDENTITY_MISMATCH');
     const start=Date.parse(receipt.startedAt),end=Date.parse(receipt.completedAt);
     assert(Number.isFinite(start)&&Number.isFinite(end)&&start>=Date.parse(notBefore)&&end>=start&&end<=Date.parse(clock())+1000&&end-start<=20*60*1000,'MEASUREMENT_TIME_WINDOW_INVALID');
+    const attempt=await receiptFile(`scheduler-attempt-${measurementId}.json`);
+    assert(attempt.schemaVersion==='sodc-volume-scheduler-attempt/v1'&&attempt.projectId===PROJECT&&attempt.runId===plan.runId&&attempt.manifestHash===manifestHash&&attempt.gitSha===plan.gitSha&&
+      HASH.test(attempt.checkpointHash??'')&&attempt.measurementId===measurementId&&attempt.targetSize===targetSize&&attempt.notBefore===notBefore&&attempt.schedulerResource===JOB&&
+      attempt.revision===receipt.revision&&attempt.configurationHash===meta.scheduler.configurationHash&&attempt.deploymentProofHash===meta.deployment.proofHash&&attempt.targetUriHash===meta.targetUriHash&&
+      canonicalTimestamp(attempt.dispatchStartedAt)&&attempt.dispatchStartedAt===receipt.startedAt&&canonicalTimestamp(attempt.providerObservedAt)&&Math.abs(start-Date.parse(attempt.providerObservedAt))<=10000&&
+      attempt.request?.method==='POST'&&attempt.request.resource===`/v1/${JOB}:run`&&attempt.request.emptyBody===true&&attempt.request.retries===0,'MEASUREMENT_DISPATCH_JOURNAL_MISMATCH');
+    const window=await measurementWindow({meta,measurementId,targetSize,notBefore,attemptHash:stableHash(attempt)});
+    assert(end<=Date.parse(window.closedAt),'MEASUREMENT_COMPLETION_OUTSIDE_CLOSED_WINDOW');
     const before=await observe();assert(before.baselineAuthorityPassed&&before.counts.states===targetSize&&before.fixtures.validDeniedReady===targetSize-plan.baseline.counts.states&&before.fixtures.unexpectedOwnedRows===0&&before.pendingTransitions===0,'EXACT_MEASUREMENT_ROSTER_REQUIRED');
-    const entries=await logsQuery({executionId:receipt.executionId,from:receipt.startedAt,to:receipt.completedAt});
-    for(const entry of entries)assert(entry.resource?.labels?.project_id===PROJECT&&entry.resource.labels.revision_name===receipt.revision&&entry.labels?.execution_id===receipt.executionId&&Date.parse(entry.timestamp)>=start&&Date.parse(entry.timestamp)<=end,'PROVIDER_LOG_IDENTITY_MISMATCH');
+    const [allEntries,schedulerEntries]=await Promise.all([logsQuery({wholeService:true,from:notBefore,to:window.closedAt}),logsQuery({scheduler:true,from:notBefore,to:window.closedAt})]);
+    const scheduled=schedulerAttempts(schedulerEntries,meta),requests=allEntries.filter(entry=>entry.logName===`projects/${PROJECT}/logs/run.googleapis.com%2Frequests`);
+    assert(requests.length===1,'ONE_MEASUREMENT_HTTP_REQUEST_REQUIRED');const http=requests[0];
+    const executionIds=new Set(allEntries.map(entry=>entry.labels?.execution_id).filter(Boolean));assert(executionIds.size===1&&executionIds.has(receipt.executionId),'ONE_MEASUREMENT_EXECUTION_REQUIRED');
+    for(const entry of allEntries){
+      assert(entry.resource.labels.revision_name===receipt.revision,'MEASUREMENT_FOREIGN_REVISION');
+      if(!entry.labels?.execution_id&&entry!==http)assert(entry.logName===`projects/${PROJECT}/logs/run.googleapis.com%2Fvarlog%2Fsystem`&&!['WARNING','ERROR','CRITICAL','ALERT','EMERGENCY'].includes(entry.severity),'UNBOUND_MEASUREMENT_APPLICATION_LOG');
+      if(entry.labels?.execution_id)assert(Date.parse(entry.timestamp)>=start,'MEASUREMENT_DISPATCH_AFTER_PROVIDER_START');
+    }
+    assert(http.httpRequest?.requestMethod==='POST'&&stableHash(http.httpRequest.requestUrl)===meta.targetUriHash&&Date.parse(http.timestamp)>=start&&Date.parse(http.timestamp)<=start+90000&&
+      Date.parse(scheduled.start.timestamp)>=start&&Date.parse(scheduled.start.timestamp)<=start+90000,'MEASUREMENT_DISPATCH_AFTER_PROVIDER_START');
+    // A later handler completion can permit cleanup, but cannot erase an
+    // earlier recognized timeout selected by this capacity receipt.
+    const entries=allEntries.filter(entry=>entry.labels?.execution_id===receipt.executionId&&Date.parse(entry.timestamp)<=end);
     const completed=entries.filter(entry=>entry.jsonPayload?.message==='Security reconciliation completed');
     const selected=entries.find(entry=>entry.insertId===receipt.insertId);assert(selected,'MEASUREMENT_PROVIDER_LOG_REQUIRED');
+    assert(Date.parse(selected.timestamp)>=start&&end>=Date.parse(selected.timestamp)&&end<=Date.parse(selected.timestamp)+1,'MEASUREMENT_COMPLETION_TIME_MISMATCH');
+    assert(typeof http.labels?.instanceId==='string'&&http.labels.instanceId===selected.labels?.instanceId,'MEASUREMENT_REQUEST_EXECUTION_MISMATCH');
     let result;
     if(receipt.completed===false&&receipt.timedOut===true){
       assert(completed.length===0&&['ERROR','CRITICAL','ALERT','EMERGENCY'].includes(selected.severity)&&/timed? out|timeout|deadline exceeded/i.test(selected.jsonPayload?.message??selected.textPayload??''),'INDEPENDENT_TIMEOUT_LOG_REQUIRED');
       result={completed:false,timedOut:true,durationMs:end-start,stateAttempts:null,pendingAttempts:null,failedAttempts:null};
     }else{
-      assert(receipt.completed===true&&completed.length===1&&completed[0].insertId===receipt.insertId&&!entries.some(entry=>['WARNING','ERROR','CRITICAL','ALERT','EMERGENCY'].includes(entry.severity)),'ONE_SUCCESSFUL_PROVIDER_COMPLETION_REQUIRED');
+      assert(receipt.completed===true&&completed.length===1&&completed[0].insertId===receipt.insertId&&!allEntries.some(entry=>['WARNING','ERROR','CRITICAL','ALERT','EMERGENCY'].includes(entry.severity))&&
+        http.httpRequest.status>=200&&http.httpRequest.status<300&&scheduled.finish.httpRequest?.status>=200&&scheduled.finish.httpRequest.status<300,'ONE_SUCCESSFUL_PROVIDER_COMPLETION_REQUIRED');
       const fields=selected.jsonPayload;assert(fields.stateAttempts===targetSize&&fields.pendingAttempts===0&&fields.failedAttempts===0&&Number.isFinite(fields.durationMs)&&fields.durationMs>=0&&fields.durationMs<=end-start+1000,'PROVIDER_SWEEP_COUNTS_INVALID');
       result={completed:true,timedOut:false,durationMs:fields.durationMs,stateAttempts:fields.stateAttempts,pendingAttempts:fields.pendingAttempts,failedAttempts:fields.failedAttempts};
     }
     const after=await observe();assert(after.baselineAuthorityPassed&&after.counts.states===targetSize&&after.fixtures.validDeniedReady===before.fixtures.validDeniedReady&&after.pendingTransitions===0,'MEASUREMENT_CHANGED_AUTHORITY');
     return {projectId:PROJECT,runId:plan.runId,measurementId,targetSize,notBefore,revision:receipt.revision,executionId:receipt.executionId,startedAt:receipt.startedAt,completedAt:receipt.completedAt,
-      ...result,providerVerified:true,evidenceHash:stableHash({receipt,entries:entries.map(entry=>({insertId:entry.insertId,timestamp:entry.timestamp,severity:entry.severity,payload:entry.jsonPayload??entry.textPayload}))})};
+      ...result,providerVerified:true,evidenceHash:stableHash({receipt,attempt,window,allEntries,schedulerEntries})};
   }
   // Provider exceptions may contain request objects, identities or credentials.
   // Only aggregate, deliberately assigned error codes cross this boundary.

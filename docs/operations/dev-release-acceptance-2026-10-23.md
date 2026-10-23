@@ -138,6 +138,22 @@ After these corrections, all 13 deployment-safety test files passed (282
 tests), and targeted lint passed. The application and Functions suites were
 not rerun because their sources did not change.
 
+An independent review then identified three low-severity evidence gaps. The
+tool now binds receipt start to the private pre-dispatch journal and
+corroborates it against provider request timing; its summary checks both
+handler and wall duration; and measurement checks every request/execution and
+Scheduler start/finish in a fixed, provider-closed armed window after a
+60-second log-visibility delay. The journal remains trusted operator evidence,
+not cryptographic proof against an operator rewriting local files. The runbook
+describes that boundary and the visibility assumption.
+
+The follow-up passed all 13 deployment-safety files (312 tests), targeted lint
+and an independent provider review. The actual run's saved dispatch start
+already matches its journal, whole-window operational inspection established
+one execution, and handler time alone failed the cadence. Its failed result
+and verified cleanup remain unchanged; no new live benchmark was performed
+for these operator-tool corrections.
+
 ## Evidence and remaining release work
 
 Private receipts retain exact manifests, source/configuration hashes, immutable

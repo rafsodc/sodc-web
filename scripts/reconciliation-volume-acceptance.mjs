@@ -270,7 +270,7 @@ export function summarizeVolumeRun(manifest, checkpoint) {
     const durations = completed.map(item => item.durationMs);
     return { targetSize, actualProviderExecutions: runs.length, completedExecutions: completed.length, verifiedTimeouts: runs.filter(item => item.timedOut === true).length,
       durationMs: { median: percentile(durations, 0.5), p95: percentile(durations, 0.95), max: durations.length ? Math.max(...durations) : null },
-      actualVolumeEvidence: runs.length > 0, exceedsFiveMinuteCadence: durations.some(value => value >= 300000),
+      actualVolumeEvidence: runs.length > 0, exceedsFiveMinuteCadence: completed.some(item => item.durationMs >= 300000 || Date.parse(item.completedAt) - Date.parse(item.startedAt) >= 300000),
       exceedsFunctionTimeout: runs.some(item => item.timedOut === true) || durations.some(value => value >= 540000),
       sampleSizeBelowTen: runs.length < 10 };
   };
