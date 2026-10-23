@@ -46,12 +46,20 @@ SODC_E2E_B_MARKER='Session Beta' \
 npm run test:browser:session
 ```
 
-The three scenarios cover shared-device/cross-tab isolation, blocked-storage first login, and Back/Forward after another tab signs out. Browser BFCache eligibility varies; inspect the browser history result in addition to the deterministic persisted-pageshow regression in `App.sessionIsolation.test.tsx`. Trace, screenshots and video are disabled. Do not substitute member credentials or point this runner at Dev/Beta/Prod.
+The seven scenarios cover profile/settings cold reloads with query and fragment preservation, own membership-status saves and profile resumption, explicit recovery after a pending access check, shared-device/cross-tab isolation, blocked-storage first login, and actual browser-cache restoration after another tab signs out. The recovery case injects one stale read and a pending status only at the loopback transport boundary; its explicit retry uses the real emulator callable and token refresh. It does not establish signed-JWT behavior in Dev.
 
-Without `SODC_SESSION_E2E=1`, the command deliberately reports three skipped tests. `--list` only checks test discovery. Neither result is browser acceptance evidence.
+The runner uses full Chromium, removes Playwright's default BFCache-disabling switch and requires a genuine `pageshow.persisted` event. It navigates away to a disposable loopback HTML server, checks that the restored snapshot contains no former account marker before app recovery runs, then verifies the signed-out screen. Vite disables HMR only in `session-e2e` mode because its open WebSocket can prevent BFCache restoration. An ordinary history navigation or a synthetic event does not pass this case. Trace, screenshots and video are disabled. Do not substitute member credentials or point this runner at Dev/Beta/Prod.
+
+Without `SODC_SESSION_E2E=1`, the command deliberately reports seven skipped tests. `--list` only checks test discovery. Neither result is browser acceptance evidence.
 
 ## Release evidence still required
 
-Record the emulator/Chromium versions, command, result and BFCache behavior before production promotion. The implementation session ran frontend/SDK unit integration checks and browser discovery/skip checks; it did not start emulators, create accounts, or run the browser scenarios. An already accepted server mutation can still complete after logout; these checks establish that its old callback cannot populate or act in a later session.
+Record the emulator/Chromium versions, command, result and BFCache behavior before production promotion. The original implementation session ran frontend/SDK unit integration checks and browser discovery/skip checks. Follow-up acceptance evidence must distinguish a real executed run from that earlier discovery result. An already accepted server mutation can still complete after logout; these checks establish that its old callback cannot populate or act in a later session.
 
 The seed script creates a separate verified `session-e2e-admin` anchor so administrator safety can reach READY while `session-e2e-a`/`session-e2e-b` remain ordinary members. It precreates the control, supplies explicit trusted local OPERATOR context and unique per-run operation references, completes verified state and activates control. Repeated seeding uses current transitions for membership/role/disabled changes; existing profile status is never raw-upserted. Existing unverified fixture authority is held before the emulator-only verification write. It refuses unexpected identity emails. The exact demo/loopback gate is pure-tested before SDK/credential imports, and its local owner credential never discovers cloud ADC. The updated browser fixture workflow itself has not been executed as part of #654; real browser acceptance remains a separate local gate.
+
+## Executed local acceptance — 23 October 2026
+
+A fresh loopback demo stack passed all **seven browser scenarios in 51.3 seconds**, including a genuine cached-document restore, against integration base `ef89c37db8b76300bb4b6a6673776fd511c8b2ea` with the profile/settings cold-auth fix and expanded acceptance runner. The final run used unmodified Firebase CLI 15.22.3, Data Connect emulator 3.4.14, Node 24.22.0, Playwright 1.64.1 and full Chromium 156.0.8078.4. An earlier emulator protocol crash was investigated separately; no compatibility shim was loaded in the passing final run.
+
+The full frontend suite passed **126 files / 1,060 tests**. This establishes local browser behavior with disposable identities. Dev signed-token/browser, positive App Check attestation, real notification delivery and live 2,000/10,000-state capacity remain separate acceptance gates. Do not infer production approval from the local pass.
