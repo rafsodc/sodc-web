@@ -1909,7 +1909,36 @@ mutation ClaimNotificationDeliveryForRecoveryById(
   )
 }
 
+# Retained for deployed workers during a connector/Functions rollout. New recovery
+# code must use the guarded, snapshot-bound operation below.
 mutation RecordNotificationRecoveryFailureById(
+  $id: UUID!
+  $expectedStatus: NotificationDeliveryStatus!
+  $expectedAttemptCount: Int!
+  $attemptCount: Int!
+  $lastAttemptedAt: Timestamp!
+  $lastErrorCode: String!
+  $lastErrorMessage: String!
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_updateMany(
+    where: {
+      id: { eq: $id }
+      status: { eq: $expectedStatus }
+      attemptCount: { eq: $expectedAttemptCount }
+    }
+    data: {
+      status: FAILED
+      attemptCount: $attemptCount
+      lastAttemptedAt: $lastAttemptedAt
+      lastErrorCode: $lastErrorCode
+      lastErrorMessage: $lastErrorMessage
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+mutation RecordNotificationRecoveryFailureForClaimById(
   $id: UUID!
   $channel: NotificationChannel!
   $deliveryKey: String!

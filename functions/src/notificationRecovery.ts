@@ -4,7 +4,7 @@ import {
   getNotificationDeliveryByChannelAndKey,
   listFailedNotificationDeliveriesForRecovery,
   listStalePendingNotificationDeliveriesForRecovery,
-  recordNotificationRecoveryFailureById,
+  recordNotificationRecoveryFailureForClaimById,
   NotificationChannel,
   NotificationDeliveryStatus,
   GovNotifyDeliveryMode as DataConnectGovNotifyDeliveryMode,
@@ -418,6 +418,31 @@ function mapRecoveryRow(row: {
   };
 }
 
+/** The scheduled worker uses only the guarded operation; legacy workers retain their old API. */
+export async function recordNotificationRecoveryFailureForClaim(
+  candidate: RecoverableNotificationDelivery,
+  now: string,
+): Promise<boolean> {
+  const claim = createNotificationRecoveryClaim(candidate);
+  const result = await recordNotificationRecoveryFailureForClaimById({
+    id: claim.id,
+    channel: claim.channel,
+    deliveryKey: claim.deliveryKey,
+    notificationType: claim.notificationType,
+    expectedStatus: claim.status,
+    expectedAttemptCount: claim.attemptCount,
+    expectedLastAttemptedAt: claim.lastAttemptedAt,
+    expectedRecoveryPayload: claim.recoveryPayload,
+    expectedRecoveryPayloadIsNull: claim.recoveryPayload === null,
+    expectedDeliveryMode: claim.deliveryMode as DataConnectGovNotifyDeliveryMode | null,
+    expectedDeliveryModeIsNull: claim.deliveryMode === null,
+    lastAttemptedAt: now,
+    lastErrorCode: "RECOVERY_DISPATCH_FAILED",
+    lastErrorMessage: "Recovery dispatch did not complete the notification delivery",
+  });
+  return result.data.notificationDelivery_updateMany === 1;
+}
+
 export const recoverNotificationDeliveries = onSchedule(
   {
     schedule: "every 5 minutes",
@@ -472,26 +497,7 @@ export const recoverNotificationDeliveries = onSchedule(
         const row = result.data?.notificationDeliveries?.[0];
         return row ? mapRecoveryRow(row) : null;
       },
-      recordFailure: async (candidate) => {
-        const claim = createNotificationRecoveryClaim(candidate);
-        const result = await recordNotificationRecoveryFailureById({
-          id: claim.id,
-          channel: claim.channel,
-          deliveryKey: claim.deliveryKey,
-          notificationType: claim.notificationType,
-          expectedStatus: claim.status,
-          expectedAttemptCount: claim.attemptCount,
-          expectedLastAttemptedAt: claim.lastAttemptedAt,
-          expectedRecoveryPayload: claim.recoveryPayload,
-          expectedRecoveryPayloadIsNull: claim.recoveryPayload === null,
-          expectedDeliveryMode: claim.deliveryMode as DataConnectGovNotifyDeliveryMode | null,
-          expectedDeliveryModeIsNull: claim.deliveryMode === null,
-          lastAttemptedAt: now,
-          lastErrorCode: "RECOVERY_DISPATCH_FAILED",
-          lastErrorMessage: "Recovery dispatch did not complete the notification delivery",
-        });
-        return result.data.notificationDelivery_updateMany === 1;
-      },
+      recordFailure: (candidate) => recordNotificationRecoveryFailureForClaim(candidate, now),
       onError: (candidate, error) => {
         logger.error("notification recovery attempt failed", {
           deliveryId: candidate.id,

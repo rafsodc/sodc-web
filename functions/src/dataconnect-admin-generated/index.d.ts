@@ -3768,6 +3768,20 @@ export interface RecordNotificationRecoveryFailureByIdData {
 
 export interface RecordNotificationRecoveryFailureByIdVariables {
   id: UUIDString;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  lastErrorCode: string;
+  lastErrorMessage: string;
+}
+
+export interface RecordNotificationRecoveryFailureForClaimByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface RecordNotificationRecoveryFailureForClaimByIdVariables {
+  id: UUIDString;
   channel: NotificationChannel;
   deliveryKey: string;
   notificationType: string;
@@ -5092,6 +5106,11 @@ export function claimNotificationDeliveryForRecoveryById(vars: ClaimNotification
 export function recordNotificationRecoveryFailureById(dc: DataConnect, vars: RecordNotificationRecoveryFailureByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotificationRecoveryFailureByIdData>>;
 /** Generated Node Admin SDK operation action function for the 'RecordNotificationRecoveryFailureById' Mutation. Allow users to pass in custom DataConnect instances. */
 export function recordNotificationRecoveryFailureById(vars: RecordNotificationRecoveryFailureByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotificationRecoveryFailureByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'RecordNotificationRecoveryFailureForClaimById' Mutation. Allow users to execute without passing in DataConnect. */
+export function recordNotificationRecoveryFailureForClaimById(dc: DataConnect, vars: RecordNotificationRecoveryFailureForClaimByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotificationRecoveryFailureForClaimByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'RecordNotificationRecoveryFailureForClaimById' Mutation. Allow users to pass in custom DataConnect instances. */
+export function recordNotificationRecoveryFailureForClaimById(vars: RecordNotificationRecoveryFailureForClaimByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotificationRecoveryFailureForClaimByIdData>>;
 
 /** Generated Node Admin SDK operation action function for the 'MarkNotificationDeliverySentById' Mutation. Allow users to execute without passing in DataConnect. */
 export function markNotificationDeliverySentById(dc: DataConnect, vars: MarkNotificationDeliverySentByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationDeliverySentByIdData>>;

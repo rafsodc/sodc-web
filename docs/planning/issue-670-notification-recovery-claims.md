@@ -37,6 +37,8 @@ The runner accepts only its fixed demo project and loopback emulator, creates a 
 
 ## Release and remaining acceptance
 
-This change adds a server-only connector operation and changes the existing recovery-failure operation's required variables. Pause the notification recovery Scheduler job while deploying the API connector and the matching Functions revision; resume only after both are verified. Ordinary direct/manual claim operations keep their existing contract. No database table migration is required.
+This change adds two server-only operations: `ClaimNotificationDeliveryForRecoveryById` and `RecordNotificationRecoveryFailureForClaimById`. The original `ClaimNotificationDeliveryById` and `RecordNotificationRecoveryFailureById` operations retain their deployed signatures and behavior, so a connector-first rollout does not reject old in-flight workers for missing new variables. New scheduled recovery code calls only the guarded operations. No database table migration is required.
+
+Old Functions revisions retain the pre-fix race until they finish. Pause the notification recovery Scheduler job, establish completion of old workers, deploy the API connector and matching Functions revision, then resume only after both are verified. Keep old operation compatibility through the rollout; their presence does not certify that an old worker is safe to overlap with acceptance fixtures.
 
 These checks do not prove deployed scheduler behavior or notification delivery. After Dev deployment, repeat the approved single-recipient staff alert acceptance using the normal worker and verify provider, callback and inbox evidence before clearing the release gate.

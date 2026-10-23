@@ -55,7 +55,7 @@ function claimSnapshot(row: Row): Claim {
 async function recover(operation: RecoveryOperation, variables: Claim, client = db): Promise<number> {
   if (operation === "claim") return (await sdk.claimNotificationDeliveryForRecoveryById(client, variables)).data.notificationDelivery_updateMany;
   const { provider: _provider, ...snapshot } = variables;
-  return (await sdk.recordNotificationRecoveryFailureById(client, {
+  return (await sdk.recordNotificationRecoveryFailureForClaimById(client, {
     ...snapshot, lastErrorCode: "LOCAL_RECOVERY_FAILURE", lastErrorMessage: "Local SQL fixture; no provider was called",
   })).data.notificationDelivery_updateMany;
 }
@@ -101,6 +101,16 @@ afterAll(async () => {
 });
 
 describe("actual local SQL notification recovery claims", () => {
+  it("retains the deployed recovery-failure operation and its old variables during connector-first rollout", async () => {
+    const row = await seed();
+    const oldVariables = { id: row.id, expectedStatus: row.status, expectedAttemptCount: row.attemptCount,
+      attemptCount: row.attemptCount + 1, lastAttemptedAt: now(), lastErrorCode: "OLD_WORKER_COMPATIBILITY",
+      lastErrorMessage: "Original deployed signature remains accepted" };
+    expect((await sdk.recordNotificationRecoveryFailureById(db, oldVariables)).data.notificationDelivery_updateMany).toBe(1);
+    expect(await rawRow(row.id)).toMatchObject({ status: "FAILED", attemptCount: 6, lastErrorCode: "OLD_WORKER_COMPATIBILITY" });
+    expect((await sdk.recordNotificationRecoveryFailureById(db, oldVariables)).data.notificationDelivery_updateMany).toBe(0);
+  });
+
   it("permits due FAILED5 to claim attempt six and fail, but rejects its stale snapshot and current FAILED6", async () => {
     const row = await seed();
     const snapshot = claimSnapshot(row);

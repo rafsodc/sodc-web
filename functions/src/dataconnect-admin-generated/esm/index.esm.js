@@ -602,6 +602,12 @@ export function recordNotificationRecoveryFailureById(dcOrVarsOrOptions, varsOrO
   return dcInstance.executeMutation('RecordNotificationRecoveryFailureById', inputVars, inputOpts);
 }
 
+export function recordNotificationRecoveryFailureForClaimById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordNotificationRecoveryFailureForClaimById', inputVars, inputOpts);
+}
+
 export function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

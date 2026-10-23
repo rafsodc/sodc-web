@@ -3790,6 +3790,20 @@ export interface RecordNotificationRecoveryFailureByIdData {
 
 export interface RecordNotificationRecoveryFailureByIdVariables {
   id: UUIDString;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  lastErrorCode: string;
+  lastErrorMessage: string;
+}
+
+export interface RecordNotificationRecoveryFailureForClaimByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface RecordNotificationRecoveryFailureForClaimByIdVariables {
+  id: UUIDString;
   channel: NotificationChannel;
   deliveryKey: string;
   notificationType: string;
@@ -5646,6 +5660,18 @@ export const recordNotificationRecoveryFailureByIdRef: RecordNotificationRecover
 
 export function recordNotificationRecoveryFailureById(vars: RecordNotificationRecoveryFailureByIdVariables): MutationPromise<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
 export function recordNotificationRecoveryFailureById(dc: DataConnect, vars: RecordNotificationRecoveryFailureByIdVariables): MutationPromise<RecordNotificationRecoveryFailureByIdData, RecordNotificationRecoveryFailureByIdVariables>;
+
+interface RecordNotificationRecoveryFailureForClaimByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordNotificationRecoveryFailureForClaimByIdVariables): MutationRef<RecordNotificationRecoveryFailureForClaimByIdData, RecordNotificationRecoveryFailureForClaimByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: RecordNotificationRecoveryFailureForClaimByIdVariables): MutationRef<RecordNotificationRecoveryFailureForClaimByIdData, RecordNotificationRecoveryFailureForClaimByIdVariables>;
+  operationName: string;
+}
+export const recordNotificationRecoveryFailureForClaimByIdRef: RecordNotificationRecoveryFailureForClaimByIdRef;
+
+export function recordNotificationRecoveryFailureForClaimById(vars: RecordNotificationRecoveryFailureForClaimByIdVariables): MutationPromise<RecordNotificationRecoveryFailureForClaimByIdData, RecordNotificationRecoveryFailureForClaimByIdVariables>;
+export function recordNotificationRecoveryFailureForClaimById(dc: DataConnect, vars: RecordNotificationRecoveryFailureForClaimByIdVariables): MutationPromise<RecordNotificationRecoveryFailureForClaimByIdData, RecordNotificationRecoveryFailureForClaimByIdVariables>;
 
 interface MarkNotificationDeliverySentByIdRef {
   /* Allow users to create refs without passing in DataConnect */

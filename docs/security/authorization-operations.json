@@ -534,6 +534,13 @@
   {
     "connector": "api",
     "file": "admin-mutations.gql",
+    "operation": "RecordNotificationRecoveryFailureForClaimById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
     "operation": "MarkNotificationDeliverySentById",
     "kind": "mutation",
     "classification": "service-only"

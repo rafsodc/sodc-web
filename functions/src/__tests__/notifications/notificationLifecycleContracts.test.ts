@@ -95,7 +95,7 @@ describe("staff skip source contracts", () => {
 describe("atomic recovery claim source contracts", () => {
   it("binds complete snapshots and database-clock limits in claims and fallback failures", () => {
     const operations = fs.readFileSync(path.resolve(process.cwd(), "..", "dataconnect", "api", "admin-mutations.gql"), "utf8");
-    for (const name of ["ClaimNotificationDeliveryForRecoveryById", "RecordNotificationRecoveryFailureById"]) {
+    for (const name of ["ClaimNotificationDeliveryForRecoveryById", "RecordNotificationRecoveryFailureForClaimById"]) {
       const start = operations.indexOf(`mutation ${name}(`);
       expect(start).toBeGreaterThanOrEqual(0);
       const end = operations.indexOf("\nmutation ", start + 1);
@@ -110,4 +110,12 @@ describe("atomic recovery claim source contracts", () => {
       expect(block).not.toContain("$attemptCount:");
     }
   });
+});
+
+
+it("routes the deployed recovery worker exclusively through the guarded failure operation", () => {
+  const recovery = readFunctionSource("notificationRecovery.ts");
+  expect(recovery).toContain("recordFailure: (candidate) => recordNotificationRecoveryFailureForClaim(candidate, now)");
+  expect(recovery).toContain("await recordNotificationRecoveryFailureForClaimById(");
+  expect(recovery).not.toMatch(/\brecordNotificationRecoveryFailureById\b/);
 });

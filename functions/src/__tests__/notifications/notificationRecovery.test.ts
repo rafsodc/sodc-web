@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import * as sdk from "@dataconnect/admin-generated";
 import {
   NotificationChannel,
   NotificationDeliveryStatus,
@@ -7,6 +8,7 @@ import {
 import {
   createNotificationRecoveryDispatcher,
   notificationRecoveryIdentity,
+  recordNotificationRecoveryFailureForClaim,
 } from "../../notificationRecovery";
 import type { RecoverableNotificationDelivery } from "../../notificationRecoveryEngine";
 import type { NotificationRecoveryPayload } from "../../notificationRecoveryPayload";
@@ -151,5 +153,24 @@ describe("applicant privileged recovery identity", () => {
     });
     await createNotificationRecoveryDispatcher(APP_BASE_URL, { notifyPendingApproval, sendNotification })(candidate(old), old);
     expect(notifyPendingApproval).not.toHaveBeenCalled(); expect(sendNotification).toHaveBeenCalledOnce();
+  });
+});
+
+
+describe("scheduled recovery failure operation compatibility", () => {
+  it.each([0, 1])("calls only the new guarded operation when it returns %i affected rows", async (affected) => {
+    const payload: NotificationRecoveryPayload = { version: 1, kind: "BOOKING_CONFIRMATION", bookingId: "22222222-2222-4222-8222-222222222222", idempotencyKey: "original", deliveryMode: "LIVE" };
+    const original = { ...candidate(payload), attemptCount: 5, lastAttemptedAt: "2026-10-23T19:30:00.123456Z" };
+    const legacy = vi.spyOn(sdk, "recordNotificationRecoveryFailureById").mockImplementation(async () => { throw new Error("New recovery must not call the legacy operation"); });
+    const guarded = vi.spyOn(sdk, "recordNotificationRecoveryFailureForClaimById").mockResolvedValue({ data: { notificationDelivery_updateMany: affected } } as never);
+    const now = "2026-10-23T20:00:00.000Z";
+    expect(await recordNotificationRecoveryFailureForClaim(original, now)).toBe(affected === 1);
+    expect(guarded).toHaveBeenCalledExactlyOnceWith({ id: original.id, channel: original.channel, deliveryKey: original.deliveryKey,
+      notificationType: original.notificationType, expectedStatus: original.status, expectedAttemptCount: 5,
+      expectedLastAttemptedAt: original.lastAttemptedAt, expectedRecoveryPayload: original.recoveryPayload, expectedRecoveryPayloadIsNull: false,
+      expectedDeliveryMode: "LIVE", expectedDeliveryModeIsNull: false, lastAttemptedAt: now,
+      lastErrorCode: "RECOVERY_DISPATCH_FAILED", lastErrorMessage: "Recovery dispatch did not complete the notification delivery" });
+    expect(legacy).not.toHaveBeenCalled();
+    legacy.mockRestore(); guarded.mockRestore();
   });
 });

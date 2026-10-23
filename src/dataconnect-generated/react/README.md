@@ -179,6 +179,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
   - [*ClaimNotificationDeliveryForRecoveryById*](#claimnotificationdeliveryforrecoverybyid)
   - [*RecordNotificationRecoveryFailureById*](#recordnotificationrecoveryfailurebyid)
+  - [*RecordNotificationRecoveryFailureForClaimById*](#recordnotificationrecoveryfailureforclaimbyid)
   - [*MarkNotificationDeliverySentById*](#marknotificationdeliverysentbyid)
   - [*MarkNotificationDeliverySkippedById*](#marknotificationdeliveryskippedbyid)
   - [*DeleteNotificationDeliveryIntegrationFixture*](#deletenotificationdeliveryintegrationfixture)
@@ -16331,16 +16332,9 @@ The `RecordNotificationRecoveryFailureById` Mutation requires an argument of typ
 ```javascript
 export interface RecordNotificationRecoveryFailureByIdVariables {
   id: UUIDString;
-  channel: NotificationChannel;
-  deliveryKey: string;
-  notificationType: string;
   expectedStatus: NotificationDeliveryStatus;
   expectedAttemptCount: number;
-  expectedLastAttemptedAt: TimestampString;
-  expectedRecoveryPayload?: string | null;
-  expectedRecoveryPayloadIsNull: boolean;
-  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
-  expectedDeliveryModeIsNull: boolean;
+  attemptCount: number;
   lastAttemptedAt: TimestampString;
   lastErrorCode: string;
   lastErrorMessage: string;
@@ -16394,6 +16388,119 @@ export default function RecordNotificationRecoveryFailureByIdComponent() {
   // The `useRecordNotificationRecoveryFailureById` Mutation requires an argument of type `RecordNotificationRecoveryFailureByIdVariables`:
   const recordNotificationRecoveryFailureByIdVars: RecordNotificationRecoveryFailureByIdVariables = {
     id: ..., 
+    expectedStatus: ..., 
+    expectedAttemptCount: ..., 
+    attemptCount: ..., 
+    lastAttemptedAt: ..., 
+    lastErrorCode: ..., 
+    lastErrorMessage: ..., 
+  };
+  mutation.mutate(recordNotificationRecoveryFailureByIdVars);
+  // Variables can be defined inline as well.
+  mutation.mutate({ id: ..., expectedStatus: ..., expectedAttemptCount: ..., attemptCount: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+
+  // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  mutation.mutate(recordNotificationRecoveryFailureByIdVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Mutation.
+  if (mutation.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (mutation.isError) {
+    return <div>Error: {mutation.error.message}</div>;
+  }
+
+  // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
+  if (mutation.isSuccess) {
+    console.log(mutation.data.notificationDelivery_updateMany);
+  }
+  return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## RecordNotificationRecoveryFailureForClaimById
+You can execute the `RecordNotificationRecoveryFailureForClaimById` Mutation using the `UseMutationResult` object returned by the following Mutation hook function (which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts)):
+```javascript
+useRecordNotificationRecoveryFailureForClaimById(options?: useDataConnectMutationOptions<RecordNotificationRecoveryFailureForClaimByIdData, FirebaseError, RecordNotificationRecoveryFailureForClaimByIdVariables>): UseDataConnectMutationResult<RecordNotificationRecoveryFailureForClaimByIdData, RecordNotificationRecoveryFailureForClaimByIdVariables>;
+```
+You can also pass in a `DataConnect` instance to the Mutation hook function.
+```javascript
+useRecordNotificationRecoveryFailureForClaimById(dc: DataConnect, options?: useDataConnectMutationOptions<RecordNotificationRecoveryFailureForClaimByIdData, FirebaseError, RecordNotificationRecoveryFailureForClaimByIdVariables>): UseDataConnectMutationResult<RecordNotificationRecoveryFailureForClaimByIdData, RecordNotificationRecoveryFailureForClaimByIdVariables>;
+```
+
+### Variables
+The `RecordNotificationRecoveryFailureForClaimById` Mutation requires an argument of type `RecordNotificationRecoveryFailureForClaimByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface RecordNotificationRecoveryFailureForClaimByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  lastAttemptedAt: TimestampString;
+  lastErrorCode: string;
+  lastErrorMessage: string;
+}
+```
+### Return Type
+Recall that calling the `RecordNotificationRecoveryFailureForClaimById` Mutation hook function returns a `UseMutationResult` object. This object holds the state of your Mutation, including whether the Mutation is loading, has completed, or has succeeded/failed, among other things.
+
+To check the status of a Mutation, use the `UseMutationResult.status` field. You can also check for pending / success / error status using the `UseMutationResult.isPending`, `UseMutationResult.isSuccess`, and `UseMutationResult.isError` fields.
+
+To execute the Mutation, call `UseMutationResult.mutate()`. This function executes the Mutation, but does not return the data from the Mutation.
+
+To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `RecordNotificationRecoveryFailureForClaimById` Mutation is of type `RecordNotificationRecoveryFailureForClaimByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface RecordNotificationRecoveryFailureForClaimByIdData {
+  notificationDelivery_updateMany: number;
+}
+```
+
+To learn more about the `UseMutationResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useMutation).
+
+### Using `RecordNotificationRecoveryFailureForClaimById`'s Mutation hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, RecordNotificationRecoveryFailureForClaimByIdVariables } from '@dataconnect/generated';
+import { useRecordNotificationRecoveryFailureForClaimById } from '@dataconnect/generated/react'
+
+export default function RecordNotificationRecoveryFailureForClaimByIdComponent() {
+  // Call the Mutation hook function to get a `UseMutationResult` object which holds the state of your Mutation.
+  const mutation = useRecordNotificationRecoveryFailureForClaimById();
+
+  // You can also pass in a `DataConnect` instance to the Mutation hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const mutation = useRecordNotificationRecoveryFailureForClaimById(dataConnect);
+
+  // You can also pass in a `useDataConnectMutationOptions` object to the Mutation hook function.
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRecordNotificationRecoveryFailureForClaimById(options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectMutationOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = {
+    onSuccess: () => { console.log('Mutation succeeded!'); }
+  };
+  const mutation = useRecordNotificationRecoveryFailureForClaimById(dataConnect, options);
+
+  // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
+  // The `useRecordNotificationRecoveryFailureForClaimById` Mutation requires an argument of type `RecordNotificationRecoveryFailureForClaimByIdVariables`:
+  const recordNotificationRecoveryFailureForClaimByIdVars: RecordNotificationRecoveryFailureForClaimByIdVariables = {
+    id: ..., 
     channel: ..., 
     deliveryKey: ..., 
     notificationType: ..., 
@@ -16408,7 +16515,7 @@ export default function RecordNotificationRecoveryFailureByIdComponent() {
     lastErrorCode: ..., 
     lastErrorMessage: ..., 
   };
-  mutation.mutate(recordNotificationRecoveryFailureByIdVars);
+  mutation.mutate(recordNotificationRecoveryFailureForClaimByIdVars);
   // Variables can be defined inline as well.
   mutation.mutate({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
 
@@ -16416,7 +16523,7 @@ export default function RecordNotificationRecoveryFailureByIdComponent() {
   const options = {
     onSuccess: () => { console.log('Mutation succeeded!'); }
   };
-  mutation.mutate(recordNotificationRecoveryFailureByIdVars, options);
+  mutation.mutate(recordNotificationRecoveryFailureForClaimByIdVars, options);
 
   // Then, you can render your component dynamically based on the status of the Mutation.
   if (mutation.isPending) {
