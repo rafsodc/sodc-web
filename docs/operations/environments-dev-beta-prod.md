@@ -4,7 +4,7 @@ Tracked in [GitHub issue #193](https://github.com/rafsodc/sodc-web/issues/193).
 
 This document describes how we run **three isolated Firebase-backed environments** without relying on local emulators for day-to-day development. Each environment is a **separate Firebase (Google Cloud) project** so Auth, Data Connect, Cloud Functions, and Hosting stay segregated.
 
-Before the first release containing #653 into **each** project, complete the staged [current-authorization migration](./current-authorization.md#one-time-migration-in-each-project). The default strict connector cannot safely be deployed before additive service operations, backfill and compatible Functions. Normal deploy/preflight commands require the one-time project/migration receipt.
+Before the first release containing #653 into **each** project, complete the staged [current-authorization migration](./current-authorization.md#one-time-migration-in-each-project) using the [migration tool workflow](./authorization-migration-tool.md). The default strict connector cannot safely be deployed before additive service operations, backfill and compatible Functions. Normal deploy/preflight commands require the one-time project/migration receipt. A Dev receipt or backup waiver does not apply to Beta or Production.
 
 For the first deployment into a newly created production project, complete the
 [new production instance provisioning runbook](./new-production-instance.md)
@@ -121,6 +121,8 @@ is useful when you want to validate a checkout without also deploying, or to
 diagnose why a deploy stopped early.
 
 ## One-command application deployment
+
+Complete the project-specific authorization migration and its verified receipt first. `npm run deploy:beta` and `npm run deploy:prod` are ordinary release commands; they do not perform the first authorization cutover. Use the [migration tool](./authorization-migration-tool.md) for that prerequisite, then return here for Hosting promotion and the full deployment audit.
 
 For an ordinary reviewed application release, use the command pinned to the
 target environment:
@@ -268,6 +270,8 @@ permissions, JSON output, authenticated smoke checks, and manual checkpoints.
 
 ## Partial failure and rollback checkpoints
 
+For the authorization migration, follow the [migration tool's failure and recovery rules](./authorization-migration-tool.md#failure-resume-and-rollback) before applying the general responses below. Once strict authorization is active, preserve its schema, versions and checks. Do not restore an older claim-only connector or Auth snapshot; recover forward while keeping the write freeze where needed.
+
 | Failure point | Safe response |
 |---|---|
 | SDK generation or either build fails | Stop. No remote state has changed; regenerate, fix, review, and restart. |
@@ -309,3 +313,4 @@ They do **not** replace the Beta project for full-stack staging.
 - [contributor-workflow.md](../contributor-workflow.md) — Branches, PRs, tests.
 - [stripe-webhook-endpoints.md](./stripe-webhook-endpoints.md) — Webhook URLs per deployment.
 - [deployment-checks.md](./deployment-checks.md) — Read-only configuration audit and runtime checks.
+- [authorization-migration-tool.md](./authorization-migration-tool.md) — Project-specific preparation, gated cutover phases, evidence and recovery.

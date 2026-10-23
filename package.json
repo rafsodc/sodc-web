@@ -17,6 +17,7 @@
     "deploy:prod": "node scripts/deploy-environment.mjs --env prod",
     "deployment:check": "node scripts/deployment-check.mjs",
     "deployment:preflight": "node scripts/deployment-preflight.mjs",
+    "authorization:migrate": "node scripts/authorization-migration.mjs",
     "lint": "eslint src scripts eslint.config.js vite.config.ts vitest.config.ts vitest.deploy-safety.config.ts .github/scripts playwright.session.config.ts e2e",
     "preview": "vite preview",
     "test": "vitest",
