@@ -26,6 +26,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `requestPasswordReset` | 5 | 1 hour | Account enumeration, Firebase Auth and GOV.UK Notify |
 | `requestEmailVerification` | 5 | 1 hour | Firebase Auth and GOV.UK Notify resend abuse |
 | `requestEmailChange` | 5 | 1 hour | Sensitive Firebase Auth action and GOV.UK Notify |
+| `getMyAuthorizationStatus` | 30 | 5 minutes | Own current session metadata, fresh Auth read and existing READY mirror repair |
 | `reconcileMyEmail` | 10 | 1 hour | Firebase Auth read and profile mutation |
 | `grantAdmin` | 20 | 1 hour | Firebase Auth claim write |
 | `revokeAdmin` | 20 | 1 hour | Firebase Auth enumeration and claim write |
@@ -82,6 +83,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `requestPasswordReset` | High | High | Firebase Auth, GOV.UK Notify | Medium | Public; email/IP-derived pseudonymous key; neutral success response; 5/hour |
 | `requestEmailVerification` | High | None | Firebase Auth, GOV.UK Notify | Medium | Authenticated onboarding exception; recipient derived from Auth; 5/hour |
 | `requestEmailChange` | High | Low | Firebase Auth, GOV.UK Notify | Medium | Enabled + recent authentication; current identity derived from Auth; 5/hour |
+| `getMyAuthorizationStatus` | Medium | None | Firebase Auth | Low | Authenticated own-session exception; no target UID/member data/grant; 30/5 minutes |
 | `reconcileMyEmail` | Medium | None | Firebase Auth | Low | Authenticated; verified Auth email copied to caller-owned profile; 10/hour |
 | `grantAdmin` | High | Low | Firebase Auth | Medium | Admin + enabled; 20/hour |
 | `revokeAdmin` | High | Medium | Firebase Auth | Medium | Admin + enabled; 20/hour; last-admin guard |

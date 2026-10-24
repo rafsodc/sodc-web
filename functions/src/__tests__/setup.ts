@@ -19,3 +19,19 @@ vi.mock("firebase-functions/logger", () => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+
+// Domain unit tests use explicit versioned identities. Boundary tests override this repository.
+vi.mock("../securityRepository", () => ({
+  getUserSecurityState: vi.fn(async ({userId}: {userId: string}) => ({ data: { userSecurityState: {
+    userId, securityVersion: 1, membershipStatus: "REGULAR", desiredEnabled: true, desiredAdmin: false,
+    accessReady: true, adminReady: true, operationId: "test-operation", syncStatus: "READY",
+    user: { membershipStatus: "REGULAR" },
+  } } })),
+  getSecurityTransition: vi.fn(async () => ({data: {securityTransition: null}})),
+  getAdminSafetyControl: vi.fn(async () => ({data: {adminSafetyControl: {id: "site-wide", version: 1, readyAdminCount: 0, status: "READY"}}})),
+  listSecurityStatesForReconciliation: vi.fn(async () => ({data: {userSecurityStates: []}})),
+  listReadyAdministrators: vi.fn(async () => ({data: {userSecurityStates: []}})), recordSecurityNoop: vi.fn(), getAdminSafetyAudit: vi.fn(async () => ({data: {adminSafetyAudit: null}})),
+  createAdminSafetyControl: vi.fn(), activateAdminSafetyControl: vi.fn(), reconcileAdminSafetyControl: vi.fn(), confirmPotentialLostWithAdminSafety: vi.fn(),
+  initializePendingEmailHold: vi.fn(), initializeUserSecurityState: vi.fn(), beginSecurityTransition: vi.fn(), completeSecurityTransition: vi.fn(),
+  recordSecuritySynchronizationFailure: vi.fn(), listPendingSecurityTransitions: vi.fn(), supersedeSecurityTransition: vi.fn(),
+}));

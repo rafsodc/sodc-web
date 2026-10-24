@@ -1,4 +1,4 @@
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "../../shared/utils/sessionCallable";
 import { functions } from "../../config/firebase";
 export interface GuestType {
   id: string;

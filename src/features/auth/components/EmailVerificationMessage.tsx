@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { securityMutationError } from "../../../shared/utils/securityMutation";
+import { captureSession, isSessionCurrent, runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -7,8 +10,10 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { reload, type User } from "firebase/auth";
+import type { User } from "firebase/auth";
 import { requestEmailVerification } from "../../../shared/utils/firebaseFunctions";
+import { auth } from "../../../config/firebase";
+import { reconcileVerifiedIdentity, reloadOwnIdentity } from "../utils/reconcileVerifiedIdentity";
 import { reportError, toAuthUserFacingError } from "../../../shared/errors";
 
 interface EmailVerificationMessageProps {
@@ -25,41 +30,62 @@ export default function EmailVerificationMessage({
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
+  const checks = useLatestRequestGuard();
+  const resends = useLatestRequestGuard();
+  const sentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setChecking(false);
+    setSending(false);
+    setSent(false);
+    setError(null);
+    return () => {
+      checks.invalidate();
+      resends.invalidate();
+      if (sentTimer.current) clearTimeout(sentTimer.current);
+    };
+  }, [user.uid, checks, resends]);
+
   const handleResend = async () => {
+    const request = resends.start();
+    const session = captureSession(user.uid);
+    const current = () => resends.isCurrent(request) && isSessionCurrent(session);
     setError(null);
     setSending(true);
     try {
-      await requestEmailVerification();
+      await runSessionOperation(() => requestEmailVerification(), session);
+      if (!current()) return;
       setSent(true);
-      setTimeout(() => setSent(false), 60_000);
-    } catch (e: unknown) {
-      reportError("auth.email-verification.resend", e);
-      setError(toAuthUserFacingError(e, "email-verification").message);
+      sentTimer.current = setTimeout(() => { if (current()) setSent(false); }, 60_000);
+    } catch (error) {
+      if (!current()) return;
+      reportError("auth.email-verification.resend", error);
+      setError(securityMutationError(error, toAuthUserFacingError(error, "email-verification").message));
     } finally {
-      setSending(false);
+      if (current()) setSending(false);
     }
   };
 
   const checkVerification = async () => {
+    const request = checks.start();
+    const session = captureSession(user.uid);
+    const current = () => checks.isCurrent(request) && isSessionCurrent(session) && auth.currentUser?.uid === user.uid;
     setChecking(true);
     setError(null);
     try {
-      await reload(user);
-      await user.getIdToken(true);
+      await reloadOwnIdentity(user, session, current);
+      if (!current()) return;
+      if (!user.emailVerified) { setError("Email not yet verified. Please check your inbox and click the verification link."); return; }
+      await reconcileVerifiedIdentity(user, session, current);
+      if (!current()) return;
       await new Promise((resolve) => setTimeout(resolve, 100));
-
-      if (user.emailVerified) {
-        if (onVerified) {
-          await onVerified();
-        }
-      } else {
-        setError("Email not yet verified. Please check your inbox and click the verification link.");
-      }
-    } catch (verificationError) {
-      reportError("auth.email-verification.check", verificationError);
-      setError(toAuthUserFacingError(verificationError, "email-verification").message);
+      if (!current()) return;
+      await onVerified?.();
+    } catch (error) {
+      if (!current()) return;
+      reportError("auth.email-verification.check", error);
+      setError(securityMutationError(error, toAuthUserFacingError(error, "email-verification").message));
     } finally {
-      setChecking(false);
+      if (current()) setChecking(false);
     }
   };
 

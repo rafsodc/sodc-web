@@ -1,3 +1,6 @@
+import { classifyMembershipStatusEmailTransition, membershipStatusDeliveryKey, type MembershipStatusEmailKind } from "./notificationDeliveryKeys";
+export { classifyMembershipStatusEmailTransition, membershipStatusDeliveryKey } from "./notificationDeliveryKeys";
+import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import { getUserMembershipStatus, NotificationChannel } from "@dataconnect/admin-generated";
 import { createConfiguredGovNotifyMailer, GOV_NOTIFY_PROVIDER } from "./mailer";
@@ -5,8 +8,6 @@ import { sanitizeMailerError } from "./mailerErrors";
 import { normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
 import { sendNotificationOnce } from "./notificationDelivery";
 import {
-  isNonRestrictedStatus,
-  isRestrictedStatus,
   type MembershipStatus,
 } from "./validation";
 import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
@@ -28,7 +29,7 @@ export type MembershipEmailTemplates = {
   };
 };
 
-export type MembershipStatusEmailKind = "activation" | "restricted";
+export type { MembershipStatusEmailKind } from "./notificationDeliveryKeys";
 
 const MEMBERSHIP_STATUS_LABELS: Record<MembershipStatus, string> = {
   PENDING: "Pending",
@@ -44,38 +45,6 @@ const MEMBERSHIP_STATUS_LABELS: Record<MembershipStatus, string> = {
 
 export function membershipStatusCustomerLabel(status: MembershipStatus): string {
   return MEMBERSHIP_STATUS_LABELS[status] ?? status;
-}
-
-/**
- * Determines whether a successful status update should trigger a user-facing email.
- */
-export function classifyMembershipStatusEmailTransition(
-  previousStatus: MembershipStatus | null,
-  newStatus: MembershipStatus
-): MembershipStatusEmailKind | null {
-  if (previousStatus === newStatus) {
-    return null;
-  }
-  const wasRestricted = previousStatus === null || isRestrictedStatus(previousStatus);
-  const wasNonRestricted = previousStatus !== null && isNonRestrictedStatus(previousStatus);
-
-  if (wasRestricted && isNonRestrictedStatus(newStatus)) {
-    return "activation";
-  }
-  if (wasNonRestricted && isRestrictedStatus(newStatus)) {
-    return "restricted";
-  }
-  return null;
-}
-
-export function membershipStatusDeliveryKey(args: {
-  userId: string;
-  kind: MembershipStatusEmailKind;
-  previousStatus: MembershipStatus | null;
-  newStatus: MembershipStatus;
-}): string {
-  const from = args.previousStatus ?? "UNKNOWN";
-  return `membership-${args.kind}:${args.userId}:${from}:${args.newStatus}`;
 }
 
 export function membershipStatusNotifyReference(args: {
@@ -105,6 +74,7 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
   appBaseUrl: string;
   getMailer?: () => ReturnType<typeof createMembershipStatusMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   const kind = classifyMembershipStatusEmailTransition(args.previousStatus, args.newStatus);
   if (!kind) {
@@ -146,10 +116,12 @@ export async function notifyMembershipStatusEmailIfNeeded(args: {
     await sendNotificationOnce({
       channel: NotificationChannel.EMAIL,
       notificationType,
-      deliveryKey,
+      deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+      preserveDeliveryKey: Boolean(args.recoveryClaim),
       userId: args.userId,
       provider: GOV_NOTIFY_PROVIDER,
       deliveryMode: args.deliveryMode,
+      recoveryClaim: args.recoveryClaim,
       recoveryPayload: {
         version: 1,
         kind: "MEMBERSHIP_STATUS",

@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {
-  getUserGroupById,
+  serviceGetUserGroupById as getUserGroupById,
   registerForSection,
   subscribeToUserGroup as subscribeToUserGroupMutation,
 } from "@dataconnect/admin-generated";
@@ -16,7 +16,7 @@ import { FUNCTIONS_REGION } from "./constants";
 export const subscribeToUserGroup = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-    requireEnabled(request);
+    await requireEnabled(request);
     const uid = request.auth!.uid;
     const userGroupId = validateUUID(request.data?.userGroupId, "userGroupId") as UUIDString;
 
@@ -48,7 +48,7 @@ export const subscribeToUserGroup = onCall(
 export const registerForSectionCallable = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-    requireEnabled(request);
+    await requireEnabled(request);
     const uid = request.auth!.uid;
     const userGroupId = validateUUID(request.data?.userGroupId, "userGroupId") as UUIDString;
 

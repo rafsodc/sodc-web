@@ -78,6 +78,16 @@ describe("ChangeUserEmailDialog", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("explains last-admin protection without changing the form or reporting success", async () => {
+    vi.mocked(updateUserEmail).mockRejectedValue({ code: "functions/failed-precondition", details: { code: "LAST_ADMIN_REQUIRED" } });
+    const { onChanged } = setup();
+    confirmAndSubmit();
+    expect(await screen.findByText(/Give another eligible member/)).toBeInTheDocument();
+    expect(onChanged).not.toHaveBeenCalled();
+    expect(screen.queryByText(/profile and sign-in email are now/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/New email address/)).toHaveValue("NEW@EXAMPLE.ORG");
+  });
+
   it("distinguishes delivery failure from an unsuccessful email update", async () => {
     vi.mocked(updateUserEmail).mockResolvedValue({ ...result, verificationEmailSent: false });
     setup();

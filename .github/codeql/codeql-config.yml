@@ -5,3 +5,4 @@ name: "SODC Web CodeQL"
 paths-ignore:
   - "**/dataconnect-generated/**"
   - "**/dataconnect-admin-generated/**"
+  - "**/security-admin-generated/**"

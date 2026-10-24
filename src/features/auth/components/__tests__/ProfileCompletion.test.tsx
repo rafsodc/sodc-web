@@ -1,5 +1,7 @@
+import { auth } from "../../../../config/firebase";
+import { createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "../../../../test-utils";
+import { act, render, screen, waitFor, fireEvent } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import ProfileCompletion from "../ProfileCompletion";
 import { checkUserProfileExists, MembershipStatus } from "@dataconnect/generated";
@@ -117,4 +119,28 @@ describe("ProfileCompletion", () => {
     expect(syncPendingUserClaims).toHaveBeenCalledOnce();
     expect(executeMutation).toHaveBeenCalledOnce();
   });
+  it.each(["token", "completion timer"])("does not complete onboarding after retirement during %s", async (stage) => {
+    vi.useFakeTimers();
+    let resolveToken!: (value: string) => void;
+    vi.mocked(auth.currentUser!.getIdToken).mockReturnValue(stage === "token" ? new Promise<string>((resolve) => { resolveToken = resolve; }) : Promise.resolve("token"));
+    const lifecycle = createSessionLifecycle();
+    lifecycle.observe("user-1");
+    const uninstall = installSessionRuntime({ lifecycle, retire: () => lifecycle.retire(), signOut: async () => lifecycle.retire() });
+    const onComplete = vi.fn();
+    const view = render(<ProfileCompletion userEmail="new@example.com" onComplete={onComplete} />);
+    try {
+      const textboxes = screen.getAllByRole("textbox");
+      fireEvent.change(textboxes[0], { target: { value: "New" } });
+      fireEvent.change(textboxes[1], { target: { value: "Member" } });
+      fireEvent.change(document.querySelector('input[maxlength="50"]')!, { target: { value: "99999" } });
+      fireEvent.change(screen.getByLabelText(/Mobile number/i), { target: { value: "07700 900123" } });
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: /submit profile/i })));
+      expect(auth.currentUser!.getIdToken).toHaveBeenCalled();
+      lifecycle.retire();
+      if (stage === "token") await act(async () => resolveToken("old-token"));
+      await act(async () => vi.advanceTimersByTimeAsync(1600));
+      expect(onComplete).not.toHaveBeenCalled();
+    } finally { view.unmount(); uninstall(); vi.useRealTimers(); }
+  });
+
 });

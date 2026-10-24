@@ -31,6 +31,7 @@ export default defineConfig([
       '*.config.{js,mjs,cjs,ts,mts,cts}',
       '.github/scripts/**/*.{js,mjs,cjs}',
       'scripts/**/*.{js,mjs,cjs}',
+      'e2e/**/*.ts',
     ],
     languageOptions: {
       ecmaVersion: 2022,

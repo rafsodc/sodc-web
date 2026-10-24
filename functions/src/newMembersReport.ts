@@ -22,7 +22,7 @@ async function migrationStart(): Promise<string | null> {
 }
 
 export const getNewMemberReportOptions = onCall({ region: FUNCTIONS_REGION }, async (request): Promise<NewMemberReportOptions> => {
-  requireAdmin(request);
+  await requireAdmin(request);
   await enforceRateLimit("getNewMemberReportOptions", request.auth!.uid);
   try {
     const through = new Date().toISOString();
@@ -37,7 +37,7 @@ export const getNewMemberReportOptions = onCall({ region: FUNCTIONS_REGION }, as
 });
 
 export const getNewMembersReport = onCall({ region: FUNCTIONS_REGION }, async (request): Promise<NewMemberReport> => {
-  requireAdmin(request);
+  await requireAdmin(request);
   await enforceRateLimit("getNewMembersReport", request.auth!.uid);
   try {
     const selection = request.data?.selection;

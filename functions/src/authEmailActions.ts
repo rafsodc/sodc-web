@@ -1,3 +1,4 @@
+import { reconcileVerifiedEmailSecurity, securityRequestOperationId } from "./currentAuthorizationTransitions";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
@@ -281,7 +282,7 @@ export const requestEmailVerification = onCall(
 export const requestEmailChange = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<{ success: true }> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     requireRecentAuthentication(request.auth!.token.auth_time);
     await enforceRateLimit("requestEmailChange", request.auth!.uid);
     const newEmail = validateEmail(
@@ -331,6 +332,7 @@ export const reconcileMyEmail = onCall(
   { region: FUNCTIONS_REGION, timeoutSeconds: 60 },
   async (request): Promise<{ success: true; email: string }> => {
     requireAuth(request);
+    const operationId = securityRequestOperationId(request);
     await enforceRateLimit("reconcileMyEmail", request.auth!.uid);
     return withUserEmailLease(request.auth!.uid, async (writeEmail) => {
       const user = await admin.auth().getUser(request.auth!.uid);
@@ -339,7 +341,14 @@ export const reconcileMyEmail = onCall(
       }
       const email = validateEmail(user.email);
       await writeEmail(email, user.uid);
-      return { success: true, email };
-    });
+      await reconcileVerifiedEmailSecurity({userId: user.uid, email, operationId, actorSecurityVersion: request.auth!.token.securityVersion});
+      return { success: true as const, email };
+    }, {onMissingProfile: async () => {
+      // Verified onboarding has no profile/authority to synchronize yet. This is
+      // an Auth-only response, never an initializer or an authorization grant.
+      const user = await admin.auth().getUser(request.auth!.uid);
+      if (!user.email || !user.emailVerified) throw new HttpsError("failed-precondition", "A verified email address is required.");
+      return {success: true as const, email: validateEmail(user.email)};
+    }});
   },
 );

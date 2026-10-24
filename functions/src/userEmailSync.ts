@@ -3,7 +3,7 @@ import { HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {
   acquireUserEmailLease,
-  getUserById,
+  serviceGetUserById as getUserById,
   releaseUserEmailLease,
   updateUserEmailFromAuth,
 } from "@dataconnect/admin-generated";
@@ -15,9 +15,11 @@ const LEASE_MS = 5 * 60 * 1000;
 export async function withUserEmailLease<T>(
   userId: string,
   work: (writeEmail: (email: string, changedBy: string) => Promise<void>) => Promise<T>,
+  options: {onMissingProfile?: () => Promise<T>} = {},
 ): Promise<T> {
   const profile = await getUserById({ id: userId });
   if (!profile.data.user) {
+    if (options.onMissingProfile) return options.onMissingProfile();
     throw new HttpsError("not-found", "The user profile could not be found.");
   }
   const leaseId = randomUUID();

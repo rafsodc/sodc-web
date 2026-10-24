@@ -1,4 +1,5 @@
-import { httpsCallable } from "firebase/functions";
+import { runSecurityMutation } from "../securityMutation";
+import { httpsCallable } from "../sessionCallable";
 import { functions } from "../../../config/firebase";
 
 export interface PotentialLostMember {
@@ -22,5 +23,6 @@ export async function listPotentialLostMembers() {
   return (await httpsCallable<void, { members: PotentialLostMember[] }>(functions, "listPotentialLostMembers")()).data;
 }
 export async function confirmPotentialLostMember(member: PotentialLostMember) {
-  return (await httpsCallable<{ userId: string; reviewToken: string }, { success: boolean }>(functions, "confirmPotentialLostMember")({ userId: member.id, reviewToken: member.reviewToken })).data;
+  const callable = httpsCallable<{ userId: string; reviewToken: string; operationId: string }, { success: boolean }>(functions, "confirmPotentialLostMember");
+  return (await runSecurityMutation("confirmPotentialLostMember", { userId: member.id, reviewToken: member.reviewToken }, callable)).data;
 }

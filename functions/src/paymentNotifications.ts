@@ -1,3 +1,6 @@
+import { paymentLifecycleDeliveryKey } from "./notificationDeliveryKeys";
+export { paymentLifecycleDeliveryKey } from "./notificationDeliveryKeys";
+import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import { NotificationChannel, TicketOrderStatus } from "@dataconnect/admin-generated";
 import type { UUIDString } from "@dataconnect/admin-generated";
@@ -23,6 +26,7 @@ export interface EmitPaymentLifecycleNotificationExtras {
   userId?: string | null;
   provider?: string | null;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }
 
 type NotificationDispatcher = (
@@ -35,10 +39,6 @@ async function defaultDispatcher(notification: PaymentLifecycleNotification): Pr
   logger.info("payment lifecycle notification", notification);
 }
 
-export function paymentLifecycleDeliveryKey(notification: PaymentLifecycleNotification): string {
-  return `payment:${notification.orderId}:${notification.type}:${notification.stripeEventId}`;
-}
-
 export async function emitPaymentLifecycleNotification(
   notification: PaymentLifecycleNotification,
   dispatcher: NotificationDispatcher = defaultDispatcher,
@@ -49,11 +49,13 @@ export async function emitPaymentLifecycleNotification(
     await notificationSender({
       channel: NotificationChannel.EMAIL,
       notificationType: notification.type,
-      deliveryKey: paymentLifecycleDeliveryKey(notification),
+      deliveryKey: extras?.recoveryClaim?.deliveryKey ?? paymentLifecycleDeliveryKey(notification),
+      preserveDeliveryKey: Boolean(extras?.recoveryClaim),
       ticketOrderId: notification.orderId,
       userId: extras?.userId ?? null,
       provider: extras?.provider ?? null,
       deliveryMode: extras?.deliveryMode,
+      recoveryClaim: extras?.recoveryClaim,
       recoveryPayload: {
         version: 1,
         kind: "PAYMENT_LIFECYCLE",

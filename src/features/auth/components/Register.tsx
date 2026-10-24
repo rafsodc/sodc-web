@@ -1,3 +1,4 @@
+import { acceptAuthenticatedIdentity, assertSessionAvailable, assertSessionCurrent } from "../../../shared/appShell/sessionLifecycle";
 import { useState, type FormEvent } from "react";
 import {
   Alert,
@@ -63,18 +64,22 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
 
     setSubmitting(true);
     try {
+      assertSessionAvailable();
       const passwordValidation = await validateNewPassword(auth, password);
       if (!passwordValidation.isValid) {
         setError(passwordValidation.error ?? "Choose a stronger password");
         return;
       }
+      assertSessionAvailable();
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email.trim(),
         password
       );
 
+      const session = acceptAuthenticatedIdentity(userCredential.user.uid);
       const claimsResult = await syncPendingUserClaims();
+      assertSessionCurrent(session);
       if (!claimsResult.success) {
         throw new Error(
           claimsResult.error ||
@@ -82,9 +87,11 @@ export default function Register({ onSuccess, onSignInClick }: RegisterProps) {
         );
       }
       await userCredential.user.getIdToken(true);
+      assertSessionCurrent(session);
 
       await requestEmailVerification();
 
+      assertSessionCurrent(session);
       setSuccess(true);
       setPassword("");
       setConfirmPassword("");

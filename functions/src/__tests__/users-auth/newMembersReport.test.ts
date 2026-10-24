@@ -15,7 +15,7 @@ const profile = (id = "new-member") => ({ id, firstName: "New", lastName: "Membe
   membershipStatus: db.MembershipStatus.REGULAR, createdAt: "2026-09-01T00:00:00.000Z", createdBy: id,
   legacyPasswordMigrated: null, legacyIdentity: null });
 const pastEvent = { id: eventId, title: "Annual Dinner", endDateTime: "2026-09-10T23:00:00.000Z", section: { name: "Events" } };
-function request(data: unknown = { selection: { kind: "migration" } }, token = { admin: true, enabled: true }) {
+function request(data: unknown = { selection: { kind: "migration" } }, token = { admin: true, enabled: true, securityVersion: 1 }) {
   return { auth: { uid: "admin", token }, data } as Parameters<typeof getNewMembersReport.run>[0];
 }
 beforeEach(() => {
@@ -29,7 +29,7 @@ afterEach(() => vi.useRealTimers());
 
 describe("new members report", () => {
   it.each([getNewMembersReport, getNewMemberReportOptions])("requires an enabled administrator before reading any report data", async (callable) => {
-    for (const auth of [undefined, { uid: "member", token: { enabled: true } }, { uid: "admin", token: { admin: true, enabled: false } }]) {
+    for (const auth of [undefined, { uid: "member", token: { enabled: true, securityVersion: 1 } }, { uid: "admin", token: { securityVersion: 1,  admin: true, enabled: false } }]) {
       await expect(callable.run({ ...request(), auth } as never)).rejects.toBeDefined();
     }
     expect(migration).not.toHaveBeenCalled(); expect(profiles).not.toHaveBeenCalled(); expect(events).not.toHaveBeenCalled();

@@ -5,10 +5,11 @@ import * as logger from "firebase-functions/logger";
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), updateUser: vi.fn(), revokeRefreshTokens: vi.fn(),
   getUserById: vi.fn(), acquireUserEmailLease: vi.fn(), releaseUserEmailLease: vi.fn(), updateUserEmailFromAuth: vi.fn(),
-  enforceRateLimit: vi.fn(), requestEmailVerificationForUser: vi.fn(),
+  enforceRateLimit: vi.fn(), requestEmailVerificationForUser: vi.fn(), transition: vi.fn(), reconcile: vi.fn(),
 }));
 vi.mock("firebase-admin", () => ({ auth: () => mocks }));
-vi.mock("@dataconnect/admin-generated", () => mocks);
+vi.mock("@dataconnect/admin-generated", () => ({...mocks, serviceGetUserById: mocks.getUserById}));
+vi.mock("../../currentAuthorizationTransitions", async original => ({...await original<typeof import("../../currentAuthorizationTransitions")>(), transitionUserSecurity: mocks.transition, reconcileVerifiedEmailSecurity: mocks.reconcile, resumeSecurityOperation: vi.fn(async () => false)}));
 vi.mock("../../rateLimiter", () => ({ enforceRateLimit: mocks.enforceRateLimit }));
 vi.mock("../../authEmailActions", async (original) => ({
   ...await original<typeof import("../../authEmailActions")>(),
@@ -16,12 +17,13 @@ vi.mock("../../authEmailActions", async (original) => ({
 }));
 vi.mock("../../mailer", () => ({ govNotifySecrets: [], createConfiguredGovNotifyMailer: vi.fn() }));
 
+import { getUserSecurityState, getSecurityTransition } from "../../securityRepository";
 import { updateUserEmail } from "../../adminUserEmail";
 import { withUserEmailLease } from "../../userEmailSync";
 import { reconcileMyEmail } from "../../authEmailActions";
 
-const data = { userId: "member", email: " New@Example.org ", expectedEmail: "old@example.org" };
-const auth = { uid: "admin", token: { admin: true, enabled: true } };
+const data = { operationId: "test-email-operation", userId: "member", email: " New@Example.org ", expectedEmail: "old@example.org" };
+const auth = { uid: "admin", token: { admin: true, enabled: true, securityVersion: 1 } };
 function run(input = data, caller: unknown = auth) {
   return updateUserEmail.run({ data: input, auth: caller } as Parameters<typeof updateUserEmail.run>[0]);
 }
@@ -36,6 +38,10 @@ describe("administrator email changes", () => {
       account = { ...account, ...changes };
       return { ...account };
     });
+    vi.mocked(getUserSecurityState).mockImplementation(async ({userId}) => ({data: {userSecurityState: userId === "member"
+      ? {userId, operationId: data.operationId, securityVersion: 1, verificationEmail: "new@example.org", accessReady: false, adminReady: false}
+      : {userId, operationId: "actor-current", securityVersion: 1, membershipStatus: "REGULAR", user: {membershipStatus: "REGULAR"}, syncStatus: "READY", accessReady: true, adminReady: true}}}) as never);
+    vi.mocked(getSecurityTransition).mockResolvedValue({data: {securityTransition: {userId: "member", securityVersion: 1, noOp: false}}} as never);
     mocks.getUserById.mockResolvedValue({ data: { user: { id: "member" } } });
   });
 
@@ -55,8 +61,8 @@ describe("administrator email changes", () => {
 
   it.each([
     [undefined, "unauthenticated"],
-    [{ uid: "member", token: { enabled: true } }, "permission-denied"],
-    [{ uid: "admin", token: { admin: true, enabled: false } }, "permission-denied"],
+    [{ uid: "member", token: { enabled: true, securityVersion: 1 } }, "permission-denied"],
+    [{ uid: "admin", token: { securityVersion: 1,  admin: true, enabled: false } }, "permission-denied"],
   ])("rejects callers without enabled administrator access", async (caller, code) => {
     // Explicit undefined must not fall through the helper's default argument.
     await expect(updateUserEmail.run({ data, auth: caller } as Parameters<typeof updateUserEmail.run>[0])).rejects.toMatchObject({ code });
@@ -177,18 +183,48 @@ describe("administrator email changes", () => {
   it("member reconciliation copies fresh verified Auth state, ignoring stale token email", async () => {
     account.email = "verified-new@example.org";
     const result = await reconcileMyEmail.run({
-      data: {}, auth: { uid: "member", token: { email: "stale@example.org" } },
+      data: {operationId: "test-email-reconcile-operation"}, auth: { uid: "member", token: { securityVersion: 1,  email: "stale@example.org" } },
     } as Parameters<typeof reconcileMyEmail.run>[0]);
     expect(result).toEqual({ success: true, email: "verified-new@example.org" });
+    expect(mocks.reconcile).toHaveBeenCalledWith({userId: "member", email: "verified-new@example.org", operationId: "test-email-reconcile-operation", actorSecurityVersion: 1});
     expect(mocks.updateUserEmailFromAuth).toHaveBeenCalledWith(expect.objectContaining({ email: "verified-new@example.org", changedBy: "member" }));
   });
 
   it("does not reconcile an unverified email based on stale token verification", async () => {
     account.emailVerified = false;
     await expect(reconcileMyEmail.run({
-      data: {}, auth: { uid: "member", token: { email_verified: true } },
+      data: {operationId: "test-email-reconcile-operation"}, auth: { uid: "member", token: { securityVersion: 1,  email_verified: true } },
     } as Parameters<typeof reconcileMyEmail.run>[0])).rejects.toMatchObject({ code: "failed-precondition" });
     expect(mocks.updateUserEmailFromAuth).not.toHaveBeenCalled();
     expect(mocks.releaseUserEmailLease).toHaveBeenCalledOnce();
   });
+  it("durably binds the intended new address before the Auth email write", async () => {
+    mocks.transition.mockImplementation(async input => {
+      expect(input).toMatchObject({userId: "member", verificationEmail: "new@example.org", reason: "EMAIL_REVERIFICATION"});
+      expect(mocks.updateUser).not.toHaveBeenCalled();
+    });
+    await run();
+    expect(mocks.transition).toHaveBeenCalledOnce();
+  });
+
+  // Exact-hold release, denial and replay use the real orchestrator in
+  // adminRoleSafety.test.ts rather than independently mocked transition calls.
+  it("does not unverify a counted administrator when an obsolete email operation is replayed", async () => {
+    vi.mocked(getUserSecurityState).mockImplementation(async ({userId}) => ({data: {userSecurityState: userId === "member"
+      ? {operationId: "newer-operation", securityVersion: 3, verificationEmail: null, accessReady: true, adminReady: true}
+      : {userId, securityVersion: 1, membershipStatus: "REGULAR", user: {membershipStatus: "REGULAR"}, syncStatus: "READY", accessReady: true, adminReady: true}}}) as never);
+    await expect(run()).rejects.toMatchObject({details: {code: "EMAIL_CHANGE_CONFLICT"}});
+    expect(mocks.updateUser).not.toHaveBeenCalled(); expect(mocks.updateUserEmailFromAuth).not.toHaveBeenCalled();
+  });
+  it("refuses sole-admin email holds without starting an Auth or profile update", async () => {
+    mocks.transition.mockRejectedValue(new HttpsError("failed-precondition", "Another administrator is required", {code: "LAST_ADMIN_REQUIRED"}));
+    await expect(run()).rejects.toMatchObject({details: {code: "LAST_ADMIN_REQUIRED"}});
+    expect(mocks.updateUser).not.toHaveBeenCalled(); expect(mocks.updateUserEmailFromAuth).not.toHaveBeenCalled();
+  });
+  it("allows fresh verified no-profile onboarding to reconcile without creating authority", async () => {
+    mocks.getUserById.mockResolvedValue({data: {user: null}});
+    await expect(reconcileMyEmail.run({data: {operationId: "onboarding-reconcile-operation"}, auth: {uid: "member", token: {}}} as never)).resolves.toMatchObject({success: true, email: "old@example.org"});
+    expect(mocks.acquireUserEmailLease).not.toHaveBeenCalled(); expect(mocks.updateUserEmailFromAuth).not.toHaveBeenCalled(); expect(mocks.transition).not.toHaveBeenCalled();
+  });
+
 });

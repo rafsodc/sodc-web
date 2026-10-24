@@ -1,0 +1,1822 @@
+[
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetGovNotifyDeliveryConfiguration",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListGovNotifyDeliveryModeAudits",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateGovNotifyDeliveryConfiguration",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ChangeGovNotifyDeliveryMode",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetNotifyReplyToConfiguration",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListNotifyReplyToAudits",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateNotifyEmailConfiguration",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateNotifyReplyToAddress",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpdateNotifyReplyToAddressIdentity",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "RecordNotifyReplyToProviderAcceptance",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ConfirmNotifyReplyToVerification",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpdateNotifyReplyToAvailability",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ChangeNotifyReplyToDefault",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "DisableDefaultNotifyReplyToAddress",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "SetNotifyTemplateReplyToOverride",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ClearNotifyTemplateReplyToOverride",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetNotifyTemplateBindings",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListNotifyTemplateBindingAudits",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpsertNotifyTemplateBinding",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreatePendingSectionFile",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetSectionFileById",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListSectionFilesByStatus",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListStaleSectionFiles",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListSectionFilesForQuota",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "RecordSectionFileAudit",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "AbandonPendingSectionFile",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "FinalizePendingSectionFile",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpdateAvailableSectionFileMetadata",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "BeginSectionFileReplacement",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "FinalizeSectionFileReplacement",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "AbortSectionFileReplacement",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "BeginSectionFileDeletion",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkSectionFileDeleted",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpdateUserMembershipStatus",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "AcquireUserEmailLease",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ReleaseUserEmailLease",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpdateUserEmailFromAuth",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "DeleteUser",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateUser",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateMigratedUserProfileAndIdentity",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "LinkLegacyIdentityToExistingUser",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetLegacyUserIdentity",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListLegacyUserIdentitiesByBatch",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListMigrationUsers",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "SearchSectionMemberCandidates",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListLegacyUserIdentitiesForMigration",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateUserGroupAdmin",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "AddUserToUserGroupAdmin",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "RemoveUserFromUserGroupAdmin",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetUserGroupByName",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetUserUserGroupsForAdmin",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetUserForCheckout",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetTicketTypeForCheckout",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpdateUserStripeCustomerId",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetEventByIdForCallable",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetSectionByIdForCallable",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetBookingReplayForBookerEventKey",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetBookingsForBookerAndEvent",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetBookingRevisionForApprovalFromCallable",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetTicketOrdersForBookerAndEvent",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpdateBookingStatusFromCallable",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "SettleBookingPaymentAdjustmentsFromCallable",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpdateBookingApprovalFromCallable",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateTicketOrderForCheckout",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpdateBookingPlaceAllocationRefundFromCallable",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetTicketOrderForWebhook",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetTicketOrderStripeArtifactsForCallable",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetPaymentWebhookEventByStripeEventId",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreatePaymentWebhookEvent",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetNotificationDeliveryByChannelAndKey",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetNotificationDeliveryById",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListFailedNotificationDeliveriesForRecovery",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListStalePendingNotificationDeliveriesForRecovery",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListFailedNotificationDeliveriesForAutomaticRecovery",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListStalePendingNotificationDeliveriesForAutomaticRecovery",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateNotificationDelivery",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ClaimNotificationDeliveryById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ClaimNotificationDeliveryForRecoveryById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "RecordNotificationRecoveryFailureById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "RecordNotificationRecoveryFailureForClaimById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkNotificationRecoveryDeferredForClaimById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ReleaseNotificationRecoveryDeferralForClaimById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkNotificationDeliverySentById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkNotificationDeliverySkippedById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListLegacyBookingStaffNotificationDeliveries",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListLegacyApplicantStaffNotificationDeliveries",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "DeleteNotificationDeliveryIntegrationFixture",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkNotificationDeliveryFailedById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkTicketOrderPaidFromWebhook",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkTicketOrderFailedFromWebhook",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkTicketOrderRefundedFromWebhook",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "RecordTicketOrderPartialRefundFromWebhook",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpsertTicketOrderDisputeFromWebhook",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetPaymentReconciliationExceptionByOrderAndType",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpsertPaymentReconciliationException",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetBookingForNotification",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListStaleDraftBookingsForScheduler",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListStalePendingTicketOrdersForScheduler",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetSectionAnnouncementOptOuts",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetSectionAnnouncementOptOutsPaged",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateAnnouncementSend",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateAnnouncementSendWithDeliveryMode",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateAnnouncementRecipient",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateAnnouncementRecipientWithDeliveryMode",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementRecipientProgress",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementRecipientProgressPaged",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementRecipientProgressSummary",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementRecipientsForResume",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementRecipientsForResumePaged",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementSendHistory",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementSendRecipients",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementSendRecipientsPaged",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementSendRecipientPage",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementAudienceSection",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementAudiencePurposeLinksPaged",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementExplicitMembersPaged",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementStatusMembersPaged",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementSendById",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetAnnouncementRecipientBySendAndUser",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "TryUpdateAnnouncementRecipientProcessingStatus",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "TryMarkAnnouncementRecipientEnqueueFailed",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "TryUpdateAnnouncementRecipientDeliveryStatus",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetUserByEmail",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetNotifyCallbackUserById",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "TryApplyNotifyDeliveryUserState",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetNotifyDeliveryReceipt",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "CreateNotifyDeliveryReceipt",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ClaimNotifyDeliveryReceipt",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkNotifyDeliveryReceiptProcessed",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkNotifyDeliveryReceiptFailed",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetRecentNotifyDeliveryReceiptsForUser",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetLatestNotifyDeliveryReceiptForReference",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "AdminOptOutSectionAnnouncement",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "AdminOptInSectionAnnouncement",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "GetCallableInvocation",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "UpsertCallableInvocation",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "EnsureCallableRateLimitBucket",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ConsumeCallableRateLimit",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "attendee-announcements.gql",
+    "operation": "GetAnnouncementAttendeeBookings",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "attendee-announcements.gql",
+    "operation": "GetAnnouncementAttendeeOrders",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "attendees.gql",
+    "operation": "GetAttendeeEventSection",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "attendees.gql",
+    "operation": "GetEventAttendeeNames",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "booking-mutations.gql",
+    "operation": "AdminDeleteBookingLine",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "booking-mutations.gql",
+    "operation": "AdminDeleteBooking",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "booking-mutations.gql",
+    "operation": "ResolvePaymentReconciliationException",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "member-review.gql",
+    "operation": "ListPotentialLostProfiles",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "member-review.gql",
+    "operation": "GetPotentialLostProfile",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "new-members-report.gql",
+    "operation": "GetNewMemberReportMigration",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "new-members-report.gql",
+    "operation": "ListNewMemberReportEvents",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "new-members-report.gql",
+    "operation": "ListNewMemberReportProfiles",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "GetOrganiserGuestEvent",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "ListOrganiserGuestTypes",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "GetOrganiserGuestType",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "ListOrganiserGuests",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "GetOrganiserGuest",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "GetOrganiserGuestByToken",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "GetPublicOrganiserGuestAttendance",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "CreateOrganiserGuest",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "UpdateOrganiserGuestDetails",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "UpdateOrganiserGuestDietary",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "RotateOrganiserGuestLink",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "CancelOrganiserGuest",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "AttachOrganiserGuestCheckout",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "ResetOrganiserGuestCheckout",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "MarkOrganiserGuestPaid",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "MarkOrganiserGuestRefunded",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "organiser-guests.gql",
+    "operation": "ReassignOrganiserGuestTicket",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetCurrentUser",
+    "kind": "query",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetUserById",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "ListUsers",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "ListUserNamesByIds",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "ListSections",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetSectionsForUser",
+    "kind": "query",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "ListUserGroups",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetUserAccessGroups",
+    "kind": "query",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "CheckUserProfileExists",
+    "kind": "query",
+    "classification": "onboarding-own-profile"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetUserMembershipStatus",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetUserWithAccessGroups",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetUserAccessGroupsById",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetEventsForSection",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetEventById",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetSectionById",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetUserGroupById",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetAllUserGroupsWithStatuses",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetSectionMembers",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetMyBookingsForEvent",
+    "kind": "query",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetMyBookings",
+    "kind": "query",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetMyTicketOrderById",
+    "kind": "query",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetMyTicketOrders",
+    "kind": "query",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetMyBookingPaymentAdjustments",
+    "kind": "query",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "ListEventBookingsForAdmin",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "ListTicketOrdersForAdmin",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "ListBookingPaymentAdjustmentsForAdmin",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "ListOpenPaymentReconciliationExceptions",
+    "kind": "query",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetSectionAnnouncementOptOut",
+    "kind": "query",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "GetMyAnnouncementPreferences",
+    "kind": "query",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "service-queries.gql",
+    "operation": "ServiceGetUserById",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "service-queries.gql",
+    "operation": "ServiceListUsers",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "service-queries.gql",
+    "operation": "ServiceListUserNamesByIds",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "service-queries.gql",
+    "operation": "ServiceGetUserAccessGroupsById",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "service-queries.gql",
+    "operation": "ServiceGetEventsForSection",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "service-queries.gql",
+    "operation": "ServiceGetEventById",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "service-queries.gql",
+    "operation": "ServiceGetSectionById",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "service-queries.gql",
+    "operation": "ServiceGetUserGroupById",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "service-queries.gql",
+    "operation": "ServiceListEventBookingsForAdmin",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "ticket-attendance.gql",
+    "operation": "GetTicketAttendanceForManagement",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "ticket-attendance.gql",
+    "operation": "GetAttendanceTicketType",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "ticket-attendance.gql",
+    "operation": "UpdateTicketAttendance",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "ticket-attendance.gql",
+    "operation": "EditOrganiserGuestAttendance",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "CreateSection",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "CreateUserGroup",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "AddUserToUserGroup",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "RemoveUserFromUserGroup",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "GrantUserGroupToSectionForPurpose",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "RevokeUserGroupFromSectionForPurpose",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "UpdateUserGroup",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "DeleteUserGroup",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "UpdateSection",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "DeleteSection",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "CreateEvent",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "UpdateEvent",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "DeleteEvent",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "CreateTicketType",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "UpdateTicketType",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-group-mutations.gql",
+    "operation": "DeleteTicketType",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "CreateUserProfile",
+    "kind": "mutation",
+    "classification": "onboarding-own-profile"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "UpsertUser",
+    "kind": "mutation",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "UpdateUser",
+    "kind": "mutation",
+    "classification": "current-admin"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "RegisterForSection",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "UnregisterFromSection",
+    "kind": "mutation",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "SubscribeToUserGroup",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "UnsubscribeFromUserGroup",
+    "kind": "mutation",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "OptOutSectionAnnouncement",
+    "kind": "mutation",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "OptInSectionAnnouncement",
+    "kind": "mutation",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "UpdateAnnouncementOptOutAll",
+    "kind": "mutation",
+    "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "user-mutations.gql",
+    "operation": "ConfirmProfileReview",
+    "kind": "mutation",
+    "classification": "current-member"
+  },
+  {
+    "connector": "booking-service",
+    "file": "booking-submission.gql",
+    "operation": "CreateCompleteBookingFromCallable",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "booking-service",
+    "file": "booking-submission.gql",
+    "operation": "CreateActiveBookingRevisionFromCallable",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "booking-service",
+    "file": "booking-submission.gql",
+    "operation": "CreatePendingBookingRevisionFromCallable",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "booking-service",
+    "file": "booking-submission.gql",
+    "operation": "ActivateApprovedBookingRevisionFromCallable",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "booking-service",
+    "file": "booking-submission.gql",
+    "operation": "CreateAllocatedTicketOrderFromCallable",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "GetUserSecurityState",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "GetSecurityTransition",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ListPendingSecurityTransitions",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "InitializeUserSecurityState",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "InitializePendingEmailHold",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "BeginSecurityTransition",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "RecordSecurityNoop",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "CompleteSecurityTransition",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "RecordSecuritySynchronizationFailure",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "SupersedeSecurityTransition",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ListSecurityStatesForReconciliation",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ListSecurityTransitionsForReconciliation",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "GetAdminSafetyControl",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ListReadyAdministrators",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "CreateAdminSafetyControl",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ActivateAdminSafetyControl",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ConfirmPotentialLostWithAdminSafety",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "GetAdminSafetyAudit",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
+    "operation": "ReconcileAdminSafetyControl",
+    "kind": "mutation",
+    "classification": "service-only"
+  }
+]

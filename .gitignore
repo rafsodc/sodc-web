@@ -34,3 +34,9 @@ dist-ssr
 *.sw?
 coverage/
 functions/coverage/
+
+# Local Data Connect PostgreSQL emulator state
+dataconnect/.dataconnect/
+# Local browser acceptance artifacts
+playwright-report/
+test-results/
