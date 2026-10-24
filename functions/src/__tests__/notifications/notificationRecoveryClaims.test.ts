@@ -36,6 +36,48 @@ beforeEach(() => {
 });
 
 describe("recovery-only notification claims", () => {
+  it("owns a recovered lease when Data Connect returns six fractional digits for the millisecond writer", async () => {
+    const writtenAt = "2026-10-24T13:42:01.884Z";
+    const f = fixture({}, writtenAt);
+    const read = f.repository.getByChannelAndKey;
+    vi.spyOn(f.repository, "getByChannelAndKey").mockImplementation(async args => {
+      const row = await read(args);
+      return row ? { ...row, lastAttemptedAt: row.lastAttemptedAt!.replace(/(\.\d{3})Z$/, (_match, fraction) => `${fraction}000Z`) } : null;
+    });
+    const claim = vi.spyOn(f.repository, "tryMarkPendingForRecovery");
+    const complete = vi.spyOn(f.repository, "markSent");
+    expect(await sendNotificationOnce(f.request(), { repository: f.repository, now: () => writtenAt }))
+      .toMatchObject({ outcome: "sent", attemptCount: 6 });
+    expect(f.send).toHaveBeenCalledOnce();
+    expect(claim.mock.calls[0][0].claim.lastAttemptedAt).toBe(OLD);
+    expect(claim.mock.calls[0][0].lastAttemptedAt).toBe(writtenAt);
+    expect(complete.mock.calls[0][0].lastAttemptedAt).toBe(writtenAt);
+    expect(f.row()).toMatchObject({ status: "SENT", attemptCount: 6, lastAttemptedAt: writtenAt });
+  });
+
+  it.each([
+    ["microsecond", { lastAttemptedAt: "2026-10-23T20:00:00.000001Z" }],
+    ["nanosecond", { lastAttemptedAt: "2026-10-23T20:00:00.000000001Z" }],
+    ["attempt", { attemptCount: 7 }],
+    ["status", { status: NotificationDeliveryStatus.FAILED }],
+    ["physical row", { id: "22222222-2222-4222-8222-222222222222" }],
+    ["recipient", { recipientUserId: "replacement-staff" }],
+    ["deferral", { recoveryDeferredAt: NOW }],
+    ["invalid timestamp", { lastAttemptedAt: "2026-10-23T24:00:00Z" }],
+  ])("rejects a changed %s at the recovered lease ownership check", async (_name, change) => {
+    const f = fixture();
+    const read = f.repository.getByChannelAndKey;
+    vi.spyOn(f.repository, "getByChannelAndKey").mockImplementation(async args => {
+      const row = await read(args);
+      return row && row.status === NotificationDeliveryStatus.PENDING ? { ...row, ...change } : row;
+    });
+    const complete = vi.spyOn(f.repository, "markSent");
+    const failed = vi.spyOn(f.repository, "markFailed");
+    expect(await f.deliver()).toMatchObject({ outcome: "duplicate", reason: "in_progress" });
+    expect(f.send).not.toHaveBeenCalled(); expect(complete).not.toHaveBeenCalled(); expect(failed).not.toHaveBeenCalled();
+    expect(f.row()).toMatchObject({ status: "PENDING", attemptCount: 6, lastAttemptedAt: NOW });
+  });
+
   it("does not turn a stale FAILED5 list snapshot into a seventh provider attempt", async () => {
     const f = fixture();
     Object.assign(f.row(), { attemptCount: 6, lastAttemptedAt: NOW });

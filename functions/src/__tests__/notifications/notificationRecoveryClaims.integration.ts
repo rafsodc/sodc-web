@@ -12,8 +12,12 @@ type Row = AdminSdk.GetNotificationDeliveryByChannelAndKeyData["notificationDeli
 type RecoveryOperation = "claim" | "failure";
 type OperatorDependencies = import("../../notificationRecoveryAdmin").NotificationRecoveryAdminDependencies;
 type ReleaseVariables = AdminSdk.ReleaseNotificationRecoveryDeferralForClaimByIdVariables;
+type DeliveryRepository = import("../../notificationDelivery").NotificationDeliveryRepository;
 let runAdmin: typeof import("../../notificationRecoveryAdmin").runNotificationRecoveryAdmin;
 let planRelease: typeof import("../../notificationRecoveryDeferral").planNotificationRecoveryRelease;
+let sendOnce: typeof import("../../notificationDelivery").sendNotificationOnce;
+let sendPrivileged: typeof import("../../privilegedNotificationDelivery").sendPrivilegedNotification;
+let createRecoveryClaim: typeof import("../../notificationRecoveryClaim").createNotificationRecoveryClaim;
 let sdk: typeof AdminSdk;
 let db: DataConnect;
 let otherDb: DataConnect;
@@ -104,6 +108,36 @@ async function rawRow(id: string): Promise<Row | null> {
   return result.data.notificationDelivery;
 }
 
+function sqlDeliveryRepository(reads: Row[]): DeliveryRepository {
+  return {
+    getByChannelAndKey: async args => {
+      const rows = (await sdk.getNotificationDeliveryByChannelAndKey(db, args)).data.notificationDeliveries;
+      expect(rows).toHaveLength(1);
+      reads.push(rows[0]);
+      return { ...rows[0], lastAttemptedAt: rows[0].lastAttemptedAt ?? null };
+    },
+    createPending: async () => { throw new Error("Recovery must retain its existing SQL row"); },
+    tryMarkPending: async () => { throw new Error("Recovery must use its guarded SQL claim"); },
+    tryMarkPendingForRecovery: async ({ claim, lastAttemptedAt, provider }) =>
+      (await sdk.claimNotificationDeliveryForRecoveryById(db, {
+        id: claim.id, channel: claim.channel, deliveryKey: claim.deliveryKey, notificationType: claim.notificationType,
+        expectedStatus: claim.status, expectedAttemptCount: claim.attemptCount,
+        expectedLastAttemptedAt: claim.lastAttemptedAt,
+        expectedRecoveryPayload: claim.recoveryPayload, expectedRecoveryPayloadIsNull: claim.recoveryPayload === null,
+        expectedRecipientUserId: claim.recipientUserId, expectedRecipientUserIdIsNull: claim.recipientUserId === null,
+        expectedDeliveryMode: claim.deliveryMode as AdminSdk.GovNotifyDeliveryMode | null,
+        expectedDeliveryModeIsNull: claim.deliveryMode === null,
+        lastAttemptedAt, provider: provider ?? null,
+      })).data.notificationDelivery_updateMany === 1,
+    markSent: async args => (await sdk.markNotificationDeliverySentById(db, {
+      ...args, deliveryMode: args.deliveryMode as AdminSdk.GovNotifyDeliveryMode | null | undefined,
+      lastErrorCode: null, lastErrorMessage: null,
+    })).data.notificationDelivery_updateMany === 1,
+    markSkipped: async args => (await sdk.markNotificationDeliverySkippedById(db, args)).data.notificationDelivery_updateMany === 1,
+    markFailed: async args => (await sdk.markNotificationDeliveryFailedById(db, args)).data.notificationDelivery_updateMany === 1,
+  };
+}
+
 async function seedReviewedOperatorRow(): Promise<Row> {
   const payload = { version: 1, kind: "BOOKING_CONFIRMATION", bookingId: randomUUID(),
     idempotencyKey: `${prefix}:operator:${fixtureSequence++}`, deliveryMode: "TEAM_TEST" };
@@ -161,6 +195,9 @@ beforeAll(async () => {
   prefix = `notification-recovery-it-${context.runId}`;
   ({ runNotificationRecoveryAdmin: runAdmin } = await import("../../notificationRecoveryAdmin"));
   ({ planNotificationRecoveryRelease: planRelease } = await import("../../notificationRecoveryDeferral"));
+  ({ sendNotificationOnce: sendOnce } = await import("../../notificationDelivery.js"));
+  ({ sendPrivilegedNotification: sendPrivileged } = await import("../../privilegedNotificationDelivery.js"));
+  ({ createNotificationRecoveryClaim: createRecoveryClaim } = await import("../../notificationRecoveryClaim.js"));
   const { initializeApp } = require("firebase-admin/app") as typeof import("firebase-admin/app");
   const { getDataConnect } = require("firebase-admin/data-connect") as typeof import("firebase-admin/data-connect");
   sdk = require("@dataconnect/admin-generated");
@@ -196,6 +233,68 @@ afterAll(async () => {
 });
 
 describe("actual local SQL notification recovery claims", () => {
+  it.each(["recovery engine", "privileged final ownership callback"] as const)(
+    "sends the due sixth attempt through the %s after native SQL pads the lease timestamp", async path => {
+      const recipientUserId = prefix + ":local-recipient";
+      const payload = { version: 2 as const, kind: "USER_PENDING_APPROVAL" as const,
+        userId: prefix + ":local-subject", emailVerified: true, recipientUserId, deliveryMode: "TEAM_TEST" as const };
+      const row = await seed({ notificationType: "USER_PENDING_APPROVAL", recipientUserId,
+        recoveryPayload: JSON.stringify(payload) });
+      const reads: Row[] = [];
+      const repository = sqlDeliveryRepository(reads);
+      const attemptedAt = new Date(Math.floor((Date.now() - 2_000) / 1_000) * 1_000 + 123).toISOString();
+      const recoveryClaim = createRecoveryClaim({ ...row, lastAttemptedAt: row.lastAttemptedAt ?? null,
+        recoveryPayload: row.recoveryPayload ?? null });
+      let providerCalls = 0;
+      let authorizationCalls = 0;
+      const provider = async () => {
+        providerCalls += 1;
+        const pending = await rawRow(row.id);
+        expect(pending).toMatchObject({ id: row.id, status: "PENDING", attemptCount: 6,
+          deliveryKey: row.deliveryKey, recoveryPayload: row.recoveryPayload,
+          recoveryDeferredAt: null, recoveryDeferredReason: null });
+        // Keep the real response intact: this format difference caused the live
+        // ownership check to discard a successfully acquired final retry slot.
+        expect(pending!.lastAttemptedAt).toMatch(/\.123000Z$/);
+        expect(pending!.lastAttemptedAt).not.toBe(attemptedAt);
+        expect(Date.parse(pending!.lastAttemptedAt!)).toBe(Date.parse(attemptedAt));
+        return { providerMessageId: "local-sql-provider-receipt", deliveryMode: "TEAM_TEST" as const };
+      };
+      const request = { channel: row.channel, notificationType: row.notificationType, deliveryKey: row.deliveryKey,
+        provider: "local-sql-no-provider", deliveryMode: "TEAM_TEST" as const,
+        preserveDeliveryKey: true, recipientUserId, recoveryClaim,
+        recoveryPayload: { ...payload, deliveryMode: undefined } };
+      const dependencies = { repository, now: () => attemptedAt };
+      const result = path === "recovery engine"
+        ? await sendOnce({ ...request, send: async (_mode, assertOwnership) => {
+          await assertOwnership!();
+          return provider();
+        } }, dependencies)
+        : await sendPrivileged({ ...request, scope: { kind: "ADMIN" },
+          event: { kind: "APPLICANT", subjectUserId: payload.userId },
+          sendAuthorized: async (email, mode) => {
+            expect(email).toBe("local-sql-recipient@example.invalid"); expect(mode).toBe("TEAM_TEST");
+            return provider();
+          } }, {
+          authorize: async uid => {
+            authorizationCalls += 1; expect(uid).toBe(recipientUserId);
+            return { eligible: true, recipientUserId, email: "local-sql-recipient@example.invalid" };
+          },
+          hasLegacyEvent: async () => false,
+          delivery: dependencies,
+        });
+      expect(result).toMatchObject({ outcome: "sent", deliveryId: row.id, attemptCount: 6 });
+      expect(providerCalls).toBe(1);
+      expect(authorizationCalls).toBe(path === "recovery engine" ? 0 : 1);
+      expect(reads.filter(read => read.status === "PENDING")).toHaveLength(2);
+      const sent = await rawRow(row.id);
+      expect(sent).toMatchObject({ id: row.id, status: "SENT", attemptCount: 6,
+        providerMessageId: "local-sql-provider-receipt", deliveryKey: row.deliveryKey,
+        recoveryPayload: row.recoveryPayload, recipientUserId, deliveryMode: row.deliveryMode,
+        recoveryDeferredAt: null, recoveryDeferredReason: null, createdAt: row.createdAt });
+      expect(sent!.lastAttemptedAt).toBe(reads.find(read => read.status === "PENDING")!.lastAttemptedAt);
+    });
+
   it("looks up only the expected delivery ID with the complete current ledger projection", async () => {
     const first = await seed(); const other = await seed();
     expect(await defer(first)).toBe(1);

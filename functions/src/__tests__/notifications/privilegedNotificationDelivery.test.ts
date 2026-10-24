@@ -152,6 +152,41 @@ describe("privileged delivery and recovery with fake provider and real ledger or
 });
 
 describe("provider boundary lease ownership", () => {
+  it.each([
+    "2026-10-24T13:42:01.884000Z",
+    "2026-10-24T13:42:01.884000000Z",
+    "2026-10-24T14:42:01.884000+01:00",
+  ])("retains the normal privileged send lease across the equivalent database timestamp %s", async readTimestamp => {
+    const f = fixture();
+    const writtenAt = "2026-10-24T13:42:01.884Z";
+    f.advance(writtenAt);
+    const read = f.repository.getByChannelAndKey;
+    vi.spyOn(f.repository, "getByChannelAndKey").mockImplementation(async args => {
+      const row = await read(args);
+      return row ? { ...row, lastAttemptedAt: readTimestamp } : null;
+    });
+    const complete = vi.spyOn(f.repository, "markSent");
+    expect(await f.deliver()).toMatchObject({ outcome: "sent", attemptCount: 1 });
+    expect(f.readCurrentState).toHaveBeenCalledOnce();
+    expect(f.sendAuthorized).toHaveBeenCalledExactlyOnceWith("staff@example.com", "LIVE");
+    expect(complete.mock.calls[0][0].lastAttemptedAt).toBe(writtenAt);
+    expect([...f.rows.values()][0]).toMatchObject({ status: "SENT", attemptCount: 1, lastAttemptedAt: writtenAt });
+  });
+
+  it.each(["2026-10-24T13:42:01.884001Z", "2026-10-24T13:42:01.884000001Z"])(
+    "does not call a normal privileged provider for a distinct sub-millisecond lease %s", async readTimestamp => {
+      const f = fixture(); f.advance("2026-10-24T13:42:01.884Z");
+      const read = f.repository.getByChannelAndKey;
+      vi.spyOn(f.repository, "getByChannelAndKey").mockImplementation(async args => {
+        const row = await read(args);
+        return row ? { ...row, lastAttemptedAt: readTimestamp } : null;
+      });
+      expect(await f.deliver()).toMatchObject({ outcome: "duplicate", reason: "in_progress" });
+      expect(f.sendAuthorized).not.toHaveBeenCalled();
+      expect([...f.rows.values()][0]).toMatchObject({ status: "PENDING", attemptCount: 1 });
+    }
+  );
+
   it("does not call a provider if a newer worker takes ownership during authorization", async () => {
     const f = fixture();
     f.readCurrentState.mockImplementation(async () => {

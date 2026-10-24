@@ -522,6 +522,20 @@ describe("notificationDelivery", () => {
 describe("terminal suppression ownership", () => {
   const request = { channel: NotificationChannel.EMAIL, notificationType: "STAFF_ALERT", deliveryKey: "staff-key",
     recipientUserId: "staff", send: async () => ({ outcome: "skipped" as const, reason: "RECIPIENT_DISABLED" }) };
+  it("does not mistake equivalent timestamp formatting for a new owner after a failed skip CAS", async () => {
+    const { repository, records } = createRepository();
+    const writtenAt = "2026-10-24T13:42:01.884Z";
+    const read = repository.getByChannelAndKey;
+    vi.spyOn(repository, "getByChannelAndKey").mockImplementation(async args => {
+      const row = await read(args);
+      return row ? { ...row, lastAttemptedAt: "2026-10-24T13:42:01.884000Z" } : null;
+    });
+    repository.markSkipped = vi.fn(async () => false);
+    const failed = vi.spyOn(repository, "markFailed");
+    expect(await sendNotificationOnce(request, { repository, now: () => writtenAt })).toMatchObject({ outcome: "failed" });
+    expect(failed.mock.calls[0][0].lastAttemptedAt).toBe(writtenAt);
+    expect([...records.values()][0]).toMatchObject({ status: "FAILED", lastAttemptedAt: writtenAt });
+  });
   it("persists suppression once and never reclaims a terminal skip", async () => {
     const { repository, records } = createRepository();
     const send = vi.fn(request.send);
