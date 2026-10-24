@@ -190,25 +190,47 @@ async function failureReport(promise: Promise<any>) {
   expect(failure).toBeInstanceOf(NotificationRecoveryAdminError);
   return formatNotificationRecoveryAdminError(failure);
 }
-const uuid = "33333333-3333-4333-8333-333333333333";
+const uuid = "3333aabb-cdef-4333-8333-333333333333";
+const compactUuid = uuid.replace(/-/g, "");
 const idArgs = args.map(value => value === "--delivery-key" ? "--delivery-id" : value === key ? uuid : value);
 
 describe("one-row lookup by logged delivery ID", () => {
-  it("normalizes the UUID selector without needing a private physical key", () => {
-    expect(parse(idArgs, {})).toMatchObject({deliveryId: uuid, deliveryKey: undefined, apply: false});
-    expect(parse(idArgs.map(value => value === uuid ? value.toUpperCase() : value), {}).deliveryId).toBe(uuid);
+  it.each([uuid, uuid.toUpperCase(), compactUuid, compactUuid.toUpperCase()])("canonicalizes UUID selector %s without needing a private physical key", inputId => {
+    expect(parse(idArgs.map(value => value === uuid ? inputId : value), {})).toMatchObject({deliveryId: compactUuid, deliveryKey: undefined, apply: false});
+  });
+  it.each([compactUuid.slice(1), compactUuid + "0", `{${uuid}}`, uuid.replace("-", ""), " " + compactUuid])("rejects malformed UUID %s before SDK access", async inputId => {
+    const factory = vi.fn();
+    expect(await failureReport(run(idArgs.map(value => value === uuid ? inputId : value), factory, {}))).toMatchObject({result: "NOT_APPLIED", code: "RELEASE_DELIVERY_ID_INVALID"});
+    expect(factory).not.toHaveBeenCalled();
   });
   it.each([[...args, "--delivery-id", uuid], idArgs.map(value => value === uuid ? "not-a-uuid" : value), [...idArgs, "--delivery-id", uuid]])("rejects invalid, duplicate or mixed selectors before SDK access: %j", async input => {
     const factory = vi.fn(); await expect(run(input, factory, {})).rejects.toThrow(); expect(factory).not.toHaveBeenCalled();
   });
-  it("previews and releases the exact ID through the same reviewed-snapshot path", async () => {
-    const f = fixture(); f.before.id = uuid; f.after.id = uuid;
-    const preview = await run(idArgs, f.factory, {});
-    expect(f.dependencies.get).toHaveBeenCalledWith(expect.objectContaining({deliveryId: uuid, deliveryKey: undefined}));
+  it.each([
+    [compactUuid, compactUuid], [uuid, compactUuid], [compactUuid, uuid.toUpperCase()], [uuid.toUpperCase(), uuid],
+  ])("previews and releases selector %s against row ID %s without changing the snapshot", async (inputId, rowId) => {
+    const f = fixture(); f.before.id = rowId; f.after.id = rowId;
+    const input = idArgs.map(value => value === uuid ? inputId : value);
+    const preview = await run(input, f.factory, {});
+    expect(f.dependencies.get).toHaveBeenCalledWith(expect.objectContaining({deliveryId: compactUuid, deliveryKey: undefined}));
     f.dependencies.get.mockResolvedValueOnce(f.before).mockResolvedValueOnce(f.after);
-    expect(await run(apply(preview.planHash, idArgs), f.factory, {})).toMatchObject({result: "RELEASED", deliveryId: uuid});
-    expect(f.dependencies.release).toHaveBeenCalledOnce();
+    expect(await run(apply(preview.planHash, input), f.factory, {})).toMatchObject({result: "RELEASED", deliveryId: rowId});
+    expect(f.dependencies.release).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({id: rowId}));
     expect(JSON.stringify(preview)).not.toContain(key);
+  });
+  it("uses the same reviewed hash across equivalent UUID selector formats", async () => {
+    const f = fixture(); f.before.id = compactUuid; f.after.id = compactUuid;
+    const preview = await run(idArgs, f.factory, {});
+    const equivalent = idArgs.map(value => value === uuid ? compactUuid.toUpperCase() : value);
+    expect(await run(equivalent, f.factory, {})).toMatchObject({result: "PLAN", planHash: preview.planHash});
+    f.dependencies.get.mockResolvedValueOnce(f.before).mockResolvedValueOnce(f.after);
+    expect(await run(apply(preview.planHash, equivalent), f.factory, {})).toMatchObject({result: "RELEASED", planHash: preview.planHash});
+    expect(f.dependencies.release).toHaveBeenCalledOnce();
+  });
+  it("rejects a different well-formed UUID without planning or writing", async () => {
+    const f = fixture(); f.before.id = "4333aabbcdef43338333333333333333";
+    expect(await failureReport(run(idArgs, f.factory, {}))).toMatchObject({result: "NOT_APPLIED", code: "RELEASE_ROW_NOT_FOUND"});
+    expect(f.dependencies.plan).not.toHaveBeenCalled(); expect(f.dependencies.release).not.toHaveBeenCalled();
   });
   it("does not fall back to another row or key when the requested ID is missing", async () => {
     const f = fixture();

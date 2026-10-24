@@ -25,6 +25,12 @@ const PROJECTS = new Set(["sodc-web", "sodc-web-beta", "sodc-web-production"]);
 const MODES = new Set(["SIMULATION", "TEAM_TEST", "LIVE"]);
 const VALUE_OPTIONS = new Set(["--project", "--channel", "--delivery-key", "--delivery-id", "--actor", "--evidence-reference", "--verified-mode", "--confirm-project", "--expected-plan-hash"]);
 
+// Data Connect returns compact UUIDs; normalize selectors without rewriting stored snapshots.
+function canonicalDeliveryId(value: string): string | undefined {
+  if (!/^(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i.test(value)) return undefined;
+  return value.replace(/-/g, "").toLowerCase();
+}
+
 export function parseNotificationRecoveryAdminArguments(args: string[], env: NodeJS.ProcessEnv = process.env): NotificationRecoveryAdminOptions {
   const values = new Map<string, string>();
   let apply = false;
@@ -47,15 +53,16 @@ export function parseNotificationRecoveryAdminArguments(args: string[], env: Nod
   const projectId = values.get("--project");
   const channel = values.get("--channel") ?? "EMAIL";
   const deliveryKey = values.get("--delivery-key");
-  const deliveryId = values.get("--delivery-id")?.toLowerCase();
+  const deliveryIdInput = values.get("--delivery-id");
+  const deliveryId = deliveryIdInput === undefined ? undefined : canonicalDeliveryId(deliveryIdInput);
   const actorId = values.get("--actor");
   const evidenceReference = values.get("--evidence-reference");
   const verifiedMode = values.get("--verified-mode");
   if (!projectId || !PROJECTS.has(projectId)) throw new Error("RELEASE_PROJECT_REQUIRED");
   if (channel !== "EMAIL") throw new Error("RELEASE_CHANNEL_UNSUPPORTED");
-  if (Boolean(deliveryKey) === Boolean(deliveryId)) throw new Error("RELEASE_SELECTOR_REQUIRED");
+  if (Boolean(deliveryKey) === Boolean(deliveryIdInput)) throw new Error("RELEASE_SELECTOR_REQUIRED");
   if (deliveryKey && deliveryKey.length > 2000) throw new Error("RELEASE_DELIVERY_KEY_INVALID");
-  if (deliveryId && !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(deliveryId)) throw new Error("RELEASE_DELIVERY_ID_INVALID");
+  if (deliveryIdInput && !deliveryId) throw new Error("RELEASE_DELIVERY_ID_INVALID");
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(actorId ?? "") || !/^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,239}$/.test(evidenceReference ?? "")) throw new Error("RELEASE_ACTOR_EVIDENCE_REQUIRED");
   if (verifiedMode !== undefined && !MODES.has(verifiedMode)) throw new Error("RELEASE_MODE_INVALID");
   const expectedPlanHash = values.get("--expected-plan-hash");
@@ -188,7 +195,7 @@ export async function runNotificationRecoveryAdmin(args: string[], createDepende
     dependencies = await createDependencies(options);
     fallback = "RELEASE_ROW_READ_FAILED";
     const before = await dependencies.get(options);
-    if (!before || before.channel !== options.channel || (options.deliveryId ? before.id !== options.deliveryId : before.deliveryKey !== options.deliveryKey)) throw new Error("RELEASE_ROW_NOT_FOUND");
+    if (!before || before.channel !== options.channel || (options.deliveryId ? canonicalDeliveryId(before.id) !== options.deliveryId : before.deliveryKey !== options.deliveryKey)) throw new Error("RELEASE_ROW_NOT_FOUND");
     if (options.inspect) {
       result = {schemaVersion: "sodc-notification-recovery-inspection/v1", result: "INSPECTED", projectId: options.projectId,
         deliveryId: before.id, status: before.status, attemptCount: before.attemptCount, lastAttemptedAt: before.lastAttemptedAt,
