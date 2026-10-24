@@ -15,6 +15,13 @@ describe("current-authorization boundary inventory", () => {
     expect(source).toContain("syncStatus: {eq: PENDING}");
     expect(source).toContain("intentHash: $intentHash");
   });
+  it("keeps reconciliation bulk evidence bounded, operation-filtered and absent from the client SDK", () => {
+    const source = read("dataconnect/authorization-service/security.gql");
+    const ledgerRead = source.split("query ListSecurityTransitionsForReconciliation(")[1].split("\n}")[0];
+    expect(ledgerRead).toContain("@auth(level: NO_ACCESS)");
+    expect(ledgerRead).toContain("where: {operationId: {in: $operationIds}}, limit: $limit");
+    expect(read("src/dataconnect-generated/index.d.ts")).not.toContain("listSecurityTransitionsForReconciliation");
+  });
   it("loads generated authorization runtime from the deployed file dependency and wraps every operation with the isolated connector", () => {
     const repository = read("functions/src/securityRepository.ts");
     expect(repository).toContain("from \"@dataconnect/security-admin-generated\"");

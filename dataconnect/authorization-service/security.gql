@@ -137,7 +137,18 @@ mutation SupersedeSecurityTransition($operationId: String!) @auth(level: NO_ACCE
 }
 
 query ListSecurityStatesForReconciliation($limit: Int!, $offset: Int!) @auth(level: NO_ACCESS) {
-  userSecurityStates(orderBy: {userId: ASC}, limit: $limit, offset: $offset) {userId operationId}
+  userSecurityStates(orderBy: {userId: ASC}, limit: $limit, offset: $offset) {
+    userId securityVersion membershipStatus desiredEnabled desiredAdmin verificationEmail accessReady adminReady operationId syncStatus
+    user {membershipStatus}
+  }
+}
+
+# Matching immutable ledgers are evidence for a read-only healthy-mirror skip.
+# Any missing, changed or uncertain evidence still uses the fresh coordinator.
+query ListSecurityTransitionsForReconciliation($operationIds: [String!]!, $limit: Int!) @auth(level: NO_ACCESS) {
+  securityTransitions(where: {operationId: {in: $operationIds}}, limit: $limit) {
+    operationId userId securityVersion membershipStatus desiredEnabled desiredAdmin verificationEmail noOp syncStatus
+  }
 }
 
 query GetAdminSafetyControl @auth(level: NO_ACCESS) {

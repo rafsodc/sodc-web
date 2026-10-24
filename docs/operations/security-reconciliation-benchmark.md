@@ -18,19 +18,64 @@ measurement runs in a separate process, transpiles the current production
 scheduler/coordinator, and supplies local Data Connect/Auth transports. The
 restricted loader rejects unexpected dependencies; it does not load Firebase,
 discover credentials, create members, deliver notifications, or contact cloud
-services. Reports contain aggregate data and hashes of the four source files.
+services. Reports contain aggregate data and hashes of the five source files
+(scheduler, read-only batch checker, coordinator, validation and constants).
 
 The scenarios cover healthy grants; disabled, email-free denied identities;
 the first 100 pending grant retries; and mirror drift with transient Auth
 failures. The last scenario must finish the roster with no remaining pending
 operations or incorrect mirrors. Its injected failed-attempt count is expected.
 
-The scheduler processes states sequentially. A healthy sweep of `N` states uses
-`2N + floor(N/500) + 3` database reads and `N` Auth reads. These are logical SDK
-boundary operations; underlying HTTP requests, SDK retries and credential
-refreshes are not measured. A pending grant adds eight logical operations;
-mirror repair adds two. The benchmark exercises the actual completion and
-retry implementation rather than replacing the coordinator with a cost formula.
+The scheduler still repairs pending, drifted and administrator records serially
+through the existing coordinator. It checks healthy non-admin mirrors using
+500-state/profile pages, one matching transition-ledger query per populated
+page, and unordered Auth batches of at most 100 UIDs. Exact state, ledger and
+security-claim agreement is required; uncertain results use fresh coordinator
+reads. The batch snapshots never authorize writes and are not cached between
+sweeps. A completed non-admin grant can use the fast path during the later
+state scan after its pending-first repair.
+
+With two administrators and all other members exactly healthy, the local
+production-code benchmark verifies **37 logical service operations at 2,000
+states** (15 Data Connect reads, 22 Auth reads) and **149 at 10,000 states**
+(47 Data Connect reads, 102 Auth reads), with no writes. These are SDK boundary
+counts, not HTTP request counts or measured cloud speed. Additional admins,
+holds, pending work, missing identities, drift and service failures require
+more fresh coordinator operations. Unrelated custom claims are preserved by
+that unchanged repair path.
+
+The completion log contains one fixed-size `phaseMetrics` object: state-page
+read count/time; populated page count and maximum whole-page time; ledger and
+Auth-batch read counts/times/failures; and pending/fallback coordinator
+attempts/times. Transport failures and malformed or ambiguous responses count
+as read failures; incomplete Auth coverage counts as a failed batch. Missing
+ledger records or explicitly not-found Auth identities use fresh fallback
+without being reported as transport failures. Repair timings include all I/O inside the
+unchanged coordinator; maximum page time includes its page read, bulk checks
+and fallback repairs. These aggregate timings contain no UID, email or claims.
+They reset on each invocation and are emitted only when the handler completes;
+they are not a timeout, cancellation or handler-drain proof.
+
+`maxInstances: 1` limits instance scaling; it is **not a global run lock** and
+does not establish that natural, forced or retried invocations cannot overlap.
+The invocation/concurrency configuration is unchanged by this optimization.
+Fresh per-record coordinator checks and CAS safety still apply. Controlled
+capacity acceptance must pause/drain the Scheduler job and inspect the entire
+armed window for exactly one execution before accepting a measurement. An
+additional durable sweep lease or explicit concurrency policy would need its
+own correctness/recovery review; this change does not claim to solve overlap.
+
+Deploy the expanded `authorization-service` queries before the dependent
+Functions. Regenerate the SDK using `firebase dataconnect:sdk:generate` and the
+normal runtime-format normalizer; do not hand-edit generated files. The queries
+remain service-only (`NO_ACCESS`), and no database schema change is required.
+An older deployed connector without the new ledger query causes conservative
+fallback, so a partial deployment does not turn uncertain evidence into a
+healthy skip.
+
+The following local measurements describe the **older serial implementation**,
+before issue #669's batched reads. They remain historical evidence, not results
+for the current source:
 
 On 23 October 2026, five isolated runs of each of four scenarios at each of
 100, 1,000, 2,000, 5,000 and 10,000 states completed: **100 local measurements**.
@@ -54,8 +99,13 @@ An optional `--latency-model FILE` accepts only numeric non-negative
 `databaseRead`, `databaseWrite`, `authRead`, and `authWrite` milliseconds. It adds
 virtual sequential cost without delaying the benchmark. Optional
 `--provider-samples FILE` accepts aggregate, source-hash-bound Dev natural-sweep
-receipts using the schema in the script. Both produce explicitly labelled
-projections and always leave `liveVolumeAcceptancePassed:false`.
+receipts using `sodc-reconciliation-provider-samples/v2`. Each healthy sample
+must supply a positive integer `logicalServiceOperations` measured for that
+source and roster; the former serial `3N` formula is invalid for batched reads.
+Do not reuse old source hashes or invent operation counts. This optional model
+still treats every logical operation as equally expensive, including a 100-UID
+Auth batch, so it cannot establish provider capacity. Both produce explicitly
+labelled projections and always leave `liveVolumeAcceptancePassed:false`.
 
 ## Review the live Dev plan before creating fixtures
 

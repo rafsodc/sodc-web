@@ -1759,6 +1759,13 @@
   {
     "connector": "authorization-service",
     "file": "security.gql",
+    "operation": "ListSecurityTransitionsForReconciliation",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "authorization-service",
+    "file": "security.gql",
     "operation": "GetAdminSafetyControl",
     "kind": "query",
     "classification": "service-only"
