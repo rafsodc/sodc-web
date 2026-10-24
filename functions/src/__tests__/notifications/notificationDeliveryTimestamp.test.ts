@@ -37,6 +37,7 @@ describe("notification lease timestamp identity", () => {
     "2026-10-00T13:42:01Z", "2026-10-32T13:42:01Z", "2026-10-24T24:00:00Z", "2026-10-24T13:60:01Z",
     "2026-10-24T13:42:60Z", "2026-10-24T13:42:01.Z", "2026-10-24T13:42:01,884Z", "2026-10-24T13:42:01+24:00",
     "2026-10-24T13:42:01+00:60", "2026-10-24T13:42:01+0100", "2026-10-24T13:42:01Z ",
+    "2026-10-24T13:42:01Z\n", "2026-10-24T13:42:01Z\r", "2026-10-24T13:42:01Z\r\n",
   ])("fails closed for invalid or unsupported timestamp %s", value => {
     expect(notificationDeliveryTimestampsEqual(value, value)).toBe(false);
     expect(notificationDeliveryTimestampsEqual(value, "2026-10-24T13:42:01Z")).toBe(false);

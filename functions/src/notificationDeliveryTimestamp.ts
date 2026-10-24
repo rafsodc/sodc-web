@@ -6,7 +6,7 @@ interface TimestampInstant {
 function timestampInstant(value: string | null): TimestampInstant | null {
   if (typeof value !== "string") return null;
   const match = /^(\d{4}-\d{2}-\d{2})[Tt]([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(?:\.(\d+))?([Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.exec(value);
-  if (!match) return null;
+  if (!match || match[0] !== value) return null;
   const [, date, hour, minute, second, fraction = "", zone] = match;
   const wallSecond = `${date}T${hour}:${minute}:${second}`;
   // Parse only whole seconds; keep every fractional digit out of Date's millisecond conversion.
