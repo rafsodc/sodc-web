@@ -1974,6 +1974,41 @@ export interface GetNotificationDeliveryByChannelAndKeyVariables {
   deliveryKey: string;
 }
 
+export interface GetNotificationDeliveryByIdData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    deliveryKey: string;
+    notificationType: string;
+    recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
+    status: NotificationDeliveryStatus;
+    provider?: string | null;
+    providerMessageId?: string | null;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
+    sentAt?: TimestampString | null;
+    skippedAt?: TimestampString | null;
+    skipReason?: string | null;
+    lastErrorCode?: string | null;
+    lastErrorMessage?: string | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+
+export interface GetNotificationDeliveryByIdVariables {
+  id: UUIDString;
+}
+
 export interface GetNotifyCallbackUserByIdData {
   user?: {
     id: string;
@@ -5191,6 +5226,11 @@ export function createPaymentWebhookEvent(vars: CreatePaymentWebhookEventVariabl
 export function getNotificationDeliveryByChannelAndKey(dc: DataConnect, vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotificationDeliveryByChannelAndKeyData>>;
 /** Generated Node Admin SDK operation action function for the 'GetNotificationDeliveryByChannelAndKey' Query. Allow users to pass in custom DataConnect instances. */
 export function getNotificationDeliveryByChannelAndKey(vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotificationDeliveryByChannelAndKeyData>>;
+
+/** Generated Node Admin SDK operation action function for the 'GetNotificationDeliveryById' Query. Allow users to execute without passing in DataConnect. */
+export function getNotificationDeliveryById(dc: DataConnect, vars: GetNotificationDeliveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotificationDeliveryByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetNotificationDeliveryById' Query. Allow users to pass in custom DataConnect instances. */
+export function getNotificationDeliveryById(vars: GetNotificationDeliveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotificationDeliveryByIdData>>;
 
 /** Generated Node Admin SDK operation action function for the 'ListFailedNotificationDeliveriesForRecovery' Query. Allow users to execute without passing in DataConnect. */
 export function listFailedNotificationDeliveriesForRecovery(dc: DataConnect, vars: ListFailedNotificationDeliveriesForRecoveryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListFailedNotificationDeliveriesForRecoveryData>>;

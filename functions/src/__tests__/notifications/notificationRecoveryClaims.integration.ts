@@ -10,6 +10,10 @@ import type * as AdminSdk from "@dataconnect/admin-generated";
 type Claim = AdminSdk.ClaimNotificationDeliveryForRecoveryByIdVariables;
 type Row = AdminSdk.GetNotificationDeliveryByChannelAndKeyData["notificationDeliveries"][number];
 type RecoveryOperation = "claim" | "failure";
+type OperatorDependencies = import("../../notificationRecoveryAdmin").NotificationRecoveryAdminDependencies;
+type ReleaseVariables = AdminSdk.ReleaseNotificationRecoveryDeferralForClaimByIdVariables;
+let runAdmin: typeof import("../../notificationRecoveryAdmin").runNotificationRecoveryAdmin;
+let planRelease: typeof import("../../notificationRecoveryDeferral").planNotificationRecoveryRelease;
 let sdk: typeof AdminSdk;
 let db: DataConnect;
 let otherDb: DataConnect;
@@ -18,6 +22,7 @@ let prefix: string;
 let fixtureSequence = 0;
 let freshDatabaseVerified = false;
 let ownedIds: string[] = [];
+let ownedDeliveryKeys = new Map<string, string>();
 let ownedUserIds: string[] = [];
 const functionsRoot = path.resolve(__dirname, "../../..");
 const require = createRequire(path.join(functionsRoot, "package.json"));
@@ -33,6 +38,7 @@ async function seed(options: Partial<AdminSdk.CreateNotificationDeliveryVariable
     attemptCount: 5, lastAttemptedAt: minutesAgo(30), provider: "local-sql-no-provider", ...options,
   });
   ownedIds.push(created.data.notificationDelivery_insert.id);
+  ownedDeliveryKeys.set(created.data.notificationDelivery_insert.id, options.deliveryKey ?? deliveryKey);
   return lookup(options.channel ?? sdk.NotificationChannel.EMAIL, options.deliveryKey ?? deliveryKey);
 }
 
@@ -98,11 +104,63 @@ async function rawRow(id: string): Promise<Row | null> {
   return result.data.notificationDelivery;
 }
 
+async function seedReviewedOperatorRow(): Promise<Row> {
+  const payload = { version: 1, kind: "BOOKING_CONFIRMATION", bookingId: randomUUID(),
+    idempotencyKey: `${prefix}:operator:${fixtureSequence++}`, deliveryMode: "TEAM_TEST" };
+  const row = await seed({ notificationType: "BOOKING_CONFIRMATION",
+    deliveryKey: `booking-confirm:${payload.bookingId}:${payload.idempotencyKey}:notify-team_test`,
+    recoveryPayload: JSON.stringify(payload) });
+  expect(await defer(row)).toBe(1);
+  return (await rawRow(row.id))!;
+}
+
+const operatorIdFormats = ["database", "compact-uppercase", "hyphenated", "hyphenated-uppercase"] as const;
+type OperatorIdFormat = typeof operatorIdFormats[number];
+function formattedOperatorId(id: string, format: OperatorIdFormat): string {
+  // This is the actual generated-SDK SQL response, not a canonicalized mock fixture.
+  expect(id).toMatch(/^[0-9a-f]{32}$/);
+  const hyphenated = `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
+  if (format === "database") return id;
+  if (format === "compact-uppercase") return id.toUpperCase();
+  return format === "hyphenated" ? hyphenated : hyphenated.toUpperCase();
+}
+
+function operatorArguments(id: string, flags: string[] = []): string[] {
+  return ["--project", "sodc-web", "--delivery-id", id, "--actor", "local-sql-reviewer-no-auth",
+    "--evidence-reference", "local-sql-no-provider", ...flags];
+}
+
+function operatorFixture() {
+  const reads: string[] = [];
+  const releases: ReleaseVariables[] = [];
+  const dependencies: OperatorDependencies = {
+    get: async options => {
+      expect(options.deliveryId).toBeTruthy(); expect(options.deliveryKey).toBeUndefined();
+      reads.push(options.deliveryId!);
+      return (await sdk.getNotificationDeliveryById(db, { id: options.deliveryId! })).data.notificationDeliveries[0] ?? null;
+    },
+    plan: (row, attestation) => planRelease(row, attestation),
+    release: async variables => {
+      releases.push(variables);
+      return (await sdk.releaseNotificationRecoveryDeferralForClaimById(db, variables)).data.notificationDelivery_updateMany;
+    },
+  };
+  const run = async (id: string, flags: string[] = []) => {
+    expect(freshDatabaseVerified).toBe(true);
+    // Only this gated test injects transport: the SDK above is already bound to
+    // the runner-owned fresh demo database. Production emulator guards stay intact.
+    return runAdmin(operatorArguments(id, flags), async () => dependencies, {});
+  };
+  return { run, reads, releases };
+}
+
 beforeAll(async () => {
   // No Firebase SDK is loaded until this fixed demo/loopback/temp-metadata gate succeeds.
   const { assertNotificationRecoveryFixture } = await import(pathToFileURL(path.join(functionsRoot, "scripts/run-notification-recovery-integration.mjs")).href);
   const context = await assertNotificationRecoveryFixture();
   prefix = `notification-recovery-it-${context.runId}`;
+  ({ runNotificationRecoveryAdmin: runAdmin } = await import("../../notificationRecoveryAdmin"));
+  ({ planNotificationRecoveryRelease: planRelease } = await import("../../notificationRecoveryDeferral"));
   const { initializeApp } = require("firebase-admin/app") as typeof import("firebase-admin/app");
   const { getDataConnect } = require("firebase-admin/data-connect") as typeof import("firebase-admin/data-connect");
   sdk = require("@dataconnect/admin-generated");
@@ -119,10 +177,11 @@ afterEach(async () => {
   if (!db || !freshDatabaseVerified) return;
   const occupants = await db.executeGraphql<{ notificationDeliveries: { id: string; deliveryKey: string }[] }, Record<string, never>>(
     "query OnlyLocalNotificationFixtures { notificationDeliveries(limit: 1001) {id deliveryKey} }");
-  expect(occupants.data.notificationDeliveries.every(row => row.deliveryKey.startsWith(prefix) && ownedIds.includes(row.id))).toBe(true);
+  expect(occupants.data.notificationDeliveries.every(row => ownedIds.includes(row.id) && ownedDeliveryKeys.get(row.id) === row.deliveryKey)).toBe(true);
   await db.executeGraphql("mutation RemoveLocalNotificationFixtures($ids: [UUID!]!) { notificationDelivery_deleteMany(where: {id: {in: $ids}}) }",
     { variables: { ids: ownedIds } });
   ownedIds = [];
+  ownedDeliveryKeys = new Map();
   if (ownedUserIds.length) {
     await db.executeGraphql("mutation RemoveLocalSubjectFixtures($ids: [String!]!) { user_deleteMany(where: {id: {in: $ids}}) }",
       { variables: { ids: ownedUserIds } });
@@ -137,6 +196,83 @@ afterAll(async () => {
 });
 
 describe("actual local SQL notification recovery claims", () => {
+  it("looks up only the expected delivery ID with the complete current ledger projection", async () => {
+    const first = await seed(); const other = await seed();
+    expect(await defer(first)).toBe(1);
+    const current = await lookup(first.channel, first.deliveryKey);
+    const byId = await sdk.getNotificationDeliveryById(db, { id: first.id });
+    expect(byId.data.notificationDeliveries).toEqual([current]);
+    expect(byId.data.notificationDeliveries[0]).toMatchObject({ id: first.id, recoveryDeferredAt: expect.any(String),
+      recoveryDeferredReason: sdk.NotificationRecoveryDeferredReason.RECOVERY_DELIVERY_MODE_UNVERIFIABLE });
+    expect(await lookup(other.channel, other.deliveryKey)).toEqual(other);
+    expect(await rawRow(first.id)).toEqual(current);
+  });
+
+  it("returns an empty array for a nonexistent delivery ID without falling back to another row", async () => {
+    const existing = await seed();
+    expect((await sdk.getNotificationDeliveryById(db, { id: randomUUID() })).data.notificationDeliveries).toEqual([]);
+    expect(await rawRow(existing.id)).toEqual(existing);
+  });
+
+  describe("operator orchestration with genuine database UUID responses", () => {
+    it.each(operatorIdFormats)("inspects and previews a database row with a %s selector without a write", async format => {
+      const row = await seedReviewedOperatorRow(); const other = await seed();
+      const operator = operatorFixture(); const selector = formattedOperatorId(row.id, format);
+      expect(await operator.run(selector, ["--inspect"])).toMatchObject({ result: "INSPECTED", deliveryId: row.id,
+        deferredAt: row.recoveryDeferredAt, deferredReason: row.recoveryDeferredReason });
+      const preview = await operator.run(selector);
+      expect(preview).toMatchObject({ result: "PLAN", deliveryId: row.id, verifiedMode: "TEAM_TEST", fillsMissingDeliveryMode: false });
+      expect("planHash" in preview && preview.planHash).toMatch(/^[a-f0-9]{64}$/);
+      expect(operator.reads).toEqual([row.id, row.id]);
+      expect(operator.releases).toEqual([]);
+      expect(await rawRow(row.id)).toEqual(row); expect(await rawRow(other.id)).toEqual(other);
+    });
+
+    it.each(operatorIdFormats)("applies a database-ID reviewed hash through an equivalent %s selector and preserves physical identity", async format => {
+      const row = await seedReviewedOperatorRow(); const other = await seed();
+      const operator = operatorFixture();
+      const originalPreview = await operator.run(row.id);
+      expect(originalPreview.result).toBe("PLAN");
+      if (!("planHash" in originalPreview)) throw new Error("Expected reviewed plan receipt");
+      // Every accepted representation binds the same selector into the real plan hash.
+      for (const equivalent of operatorIdFormats) {
+        const preview = await operator.run(formattedOperatorId(row.id, equivalent));
+        expect(preview).toMatchObject({ result: "PLAN", deliveryId: row.id, planHash: originalPreview.planHash });
+      }
+      expect(operator.releases).toEqual([]); expect(await rawRow(row.id)).toEqual(row);
+      expect(await operator.run(formattedOperatorId(row.id, format), ["--apply", "--confirm-project", "sodc-web",
+        "--expected-plan-hash", originalPreview.planHash])).toMatchObject({ result: "RELEASED", deliveryId: row.id,
+        planHash: originalPreview.planHash, verifiedAt: expect.any(String) });
+      expect(operator.releases).toHaveLength(1);
+      expect(operator.releases[0]).toMatchObject({ id: row.id, deliveryKey: row.deliveryKey,
+        expectedRecoveryPayload: row.recoveryPayload, expectedDeferredAt: row.recoveryDeferredAt,
+        expectedAttemptCount: row.attemptCount, expectedLastAttemptedAt: row.lastAttemptedAt,
+        expectedRecipientUserId: null, expectedRecipientUserIdIsNull: true,
+        expectedBookingId: null, expectedBookingIdIsNull: true, expectedUserId: null, expectedUserIdIsNull: true });
+      expect(operator.reads.every(id => id === row.id)).toBe(true);
+      expect(await rawRow(row.id)).toEqual({ ...row, recoveryDeferredAt: null });
+      expect(await rawRow(other.id)).toEqual(other);
+    });
+
+    it("refuses an unrelated delivery ID with another row's reviewed hash without a write", async () => {
+      const reviewed = await seedReviewedOperatorRow(); const other = await seedReviewedOperatorRow();
+      const operator = operatorFixture(); const preview = await operator.run(reviewed.id);
+      if (!("planHash" in preview)) throw new Error("Expected reviewed plan receipt");
+      await expect(operator.run(formattedOperatorId(other.id, "hyphenated-uppercase"), ["--apply", "--confirm-project", "sodc-web",
+        "--expected-plan-hash", preview.planHash])).rejects.toMatchObject({ code: "RELEASE_PLAN_CHANGED", outcome: "NOT_APPLIED" });
+      expect(operator.releases).toEqual([]);
+      expect(await rawRow(reviewed.id)).toEqual(reviewed); expect(await rawRow(other.id)).toEqual(other);
+    });
+
+    it("does not select or mutate an existing row when the requested ID is missing", async () => {
+      const row = await seedReviewedOperatorRow(); const operator = operatorFixture(); const missingId = randomUUID();
+      for (const flags of [["--inspect"], [], ["--apply", "--confirm-project", "sodc-web", "--expected-plan-hash", "a".repeat(64)]]) {
+        await expect(operator.run(missingId, flags)).rejects.toMatchObject({ code: "RELEASE_ROW_NOT_FOUND", outcome: "NOT_APPLIED" });
+      }
+      expect(operator.releases).toEqual([]); expect(await rawRow(row.id)).toEqual(row);
+    });
+  });
+
   it("retains the deployed recovery-failure operation and its old variables during connector-first rollout", async () => {
     const row = await seed();
     const oldVariables = { id: row.id, expectedStatus: row.status, expectedAttemptCount: row.attemptCount,

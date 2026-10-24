@@ -39,6 +39,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
   - [*GetPaymentWebhookEventByStripeEventId*](#getpaymentwebhookeventbystripeeventid)
   - [*GetNotificationDeliveryByChannelAndKey*](#getnotificationdeliverybychannelandkey)
+  - [*GetNotificationDeliveryById*](#getnotificationdeliverybyid)
   - [*ListFailedNotificationDeliveriesForRecovery*](#listfailednotificationdeliveriesforrecovery)
   - [*ListStalePendingNotificationDeliveriesForRecovery*](#liststalependingnotificationdeliveriesforrecovery)
   - [*ListFailedNotificationDeliveriesForAutomaticRecovery*](#listfailednotificationdeliveriesforautomaticrecovery)
@@ -3976,6 +3977,142 @@ const ref = getNotificationDeliveryByChannelAndKeyRef({ channel: ..., deliveryKe
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = getNotificationDeliveryByChannelAndKeyRef(dataConnect, getNotificationDeliveryByChannelAndKeyVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+## GetNotificationDeliveryById
+You can execute the `GetNotificationDeliveryById` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getNotificationDeliveryById(vars: GetNotificationDeliveryByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotificationDeliveryByIdData, GetNotificationDeliveryByIdVariables>;
+
+interface GetNotificationDeliveryByIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetNotificationDeliveryByIdVariables): QueryRef<GetNotificationDeliveryByIdData, GetNotificationDeliveryByIdVariables>;
+}
+export const getNotificationDeliveryByIdRef: GetNotificationDeliveryByIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getNotificationDeliveryById(dc: DataConnect, vars: GetNotificationDeliveryByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotificationDeliveryByIdData, GetNotificationDeliveryByIdVariables>;
+
+interface GetNotificationDeliveryByIdRef {
+  ...
+  (dc: DataConnect, vars: GetNotificationDeliveryByIdVariables): QueryRef<GetNotificationDeliveryByIdData, GetNotificationDeliveryByIdVariables>;
+}
+export const getNotificationDeliveryByIdRef: GetNotificationDeliveryByIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getNotificationDeliveryByIdRef:
+```typescript
+const name = getNotificationDeliveryByIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetNotificationDeliveryById` query requires an argument of type `GetNotificationDeliveryByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetNotificationDeliveryByIdVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that executing the `GetNotificationDeliveryById` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetNotificationDeliveryByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetNotificationDeliveryByIdData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    deliveryKey: string;
+    notificationType: string;
+    recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
+    status: NotificationDeliveryStatus;
+    provider?: string | null;
+    providerMessageId?: string | null;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
+    sentAt?: TimestampString | null;
+    skippedAt?: TimestampString | null;
+    skipReason?: string | null;
+    lastErrorCode?: string | null;
+    lastErrorMessage?: string | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+```
+### Using `GetNotificationDeliveryById`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getNotificationDeliveryById, GetNotificationDeliveryByIdVariables } from '@dataconnect/generated';
+
+// The `GetNotificationDeliveryById` query requires an argument of type `GetNotificationDeliveryByIdVariables`:
+const getNotificationDeliveryByIdVars: GetNotificationDeliveryByIdVariables = {
+  id: ..., 
+};
+
+// Call the `getNotificationDeliveryById()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getNotificationDeliveryById(getNotificationDeliveryByIdVars);
+// Variables can be defined inline as well.
+const { data } = await getNotificationDeliveryById({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getNotificationDeliveryById(dataConnect, getNotificationDeliveryByIdVars);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+getNotificationDeliveryById(getNotificationDeliveryByIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+### Using `GetNotificationDeliveryById`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getNotificationDeliveryByIdRef, GetNotificationDeliveryByIdVariables } from '@dataconnect/generated';
+
+// The `GetNotificationDeliveryById` query requires an argument of type `GetNotificationDeliveryByIdVariables`:
+const getNotificationDeliveryByIdVars: GetNotificationDeliveryByIdVariables = {
+  id: ..., 
+};
+
+// Call the `getNotificationDeliveryByIdRef()` function to get a reference to the query.
+const ref = getNotificationDeliveryByIdRef(getNotificationDeliveryByIdVars);
+// Variables can be defined inline as well.
+const ref = getNotificationDeliveryByIdRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getNotificationDeliveryByIdRef(dataConnect, getNotificationDeliveryByIdVars);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.

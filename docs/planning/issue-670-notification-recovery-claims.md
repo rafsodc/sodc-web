@@ -22,7 +22,7 @@ The two columns are additive and nullable. The original recovery queries and leg
 
 ## Guarded, non-sending operator release
 
-The reusable operator command reads one exact physical delivery key and defaults to a plan. It parses the stored recovery payload, checks its logical key/type and privileged recipient/subject identity, and requires consistent original-mode evidence. An explicitly verified mode can fill a missing ledger mode when all existing evidence agrees. It cannot override a conflict, change the payload/key/recipient, release terminal/exhausted work or silently classify an unresolved delivery as sent or skipped. Conflicting evidence remains held for a separately reviewed correction.
+The reusable operator command reads one exact delivery UUID from the deferral log, or one exact physical key, and defaults to a plan. The ID lookup is service-only and resolves the row without direct database access; it never falls back to another key or row. It parses the stored recovery payload, checks its logical key/type and privileged recipient/subject identity, and requires consistent original-mode evidence. An explicitly verified mode can fill a missing ledger mode when all existing evidence agrees. It cannot override a conflict, change the payload/key/recipient, release terminal/exhausted work or silently classify an unresolved delivery as sent or skipped. Conflicting evidence remains held for a separately reviewed correction.
 
 Use Node 24, rebuild Functions from the reviewed source, and keep the plan/receipt with the operational evidence. A plan contains a hash of the exact project, snapshot and release intent; output omits the raw key, payload and recipient. The evidence reference should point to the record establishing the original mode, rather than guessing from current configuration. This is an operator attestation: the tool checks consistency with stored evidence but cannot independently verify an external reference.
 
@@ -30,7 +30,7 @@ Use Node 24, rebuild Functions from the reviewed source, and keep the plan/recei
 npm --prefix functions run build
 npm --prefix functions run notification-recovery-admin -- \
   --project sodc-web \
-  --delivery-key 'EXACT_PHYSICAL_DELIVERY_KEY' \
+  --delivery-id 'EXACT_DELIVERY_UUID_FROM_LOG' \
   --actor 'OPERATOR_ID' \
   --evidence-reference 'REVIEWED_EVIDENCE_REFERENCE' \
   --verified-mode TEAM_TEST
@@ -42,7 +42,22 @@ After inspecting the plan, repeat the same arguments with:
   --apply --confirm-project sodc-web --expected-plan-hash REVIEWED_PLAN_SHA256
 ```
 
-Use the exact project ID (`sodc-web`, `sodc-web-beta` or `sodc-web-production`); aliases and emulator overrides are rejected. `--verified-mode` is optional when existing mode evidence is already conclusive. Apply rereads the row, requires the reviewed plan hash, conditionally releases the exact marker/snapshot and verifies the result. It clears the active timestamp, retains the deferral reason, optionally fills a previously missing mode, and preserves delivery status, retry count/timestamp, payload and key. The operator ID is recorded in the ordinary database audit metadata; the receipt records the evidence reference. This is a release of one hold, with no bulk-clear mode or automatic retry after an uncertain response.
+Use exactly one selector: `--delivery-id` with a UUID from the warning log, or `--delivery-key` with the full physical key. IDs accept compact (32 hexadecimal digits) or hyphenated UUIDs, in either letter case; comparison and plan hashing use the same lowercase compact selector. The stored row and mutation snapshot retain the database-returned ID. Keep the same selector and arguments when applying the plan; switching between ID and key invalidates its hash even for the same row, while equivalent UUID formats retain the same hash. Use the exact project ID (`sodc-web`, `sodc-web-beta` or `sodc-web-production`); aliases and emulator overrides are rejected. `--verified-mode` is optional when existing mode evidence is already conclusive. Apply rereads the row, requires the reviewed plan hash, conditionally releases the exact marker/snapshot and verifies the result. It clears the active timestamp, retains the deferral reason, optionally fills a previously missing mode, and preserves delivery status, retry count/timestamp, payload and key. The operator ID is recorded in the ordinary database audit metadata; the receipt records the evidence reference. This is a release of one hold, with no bulk-clear mode or automatic retry after an uncertain response.
+
+The command writes a sanitized JSON result to stdout for both success and failure, with a fixed diagnostic code on stderr and exit status 1 on failure. Capture stdout as the operational receipt even when the process fails. Raw SDK errors, keys, payloads and recipient identifiers are not printed.
+
+| Result | Meaning |
+| --- | --- |
+| `INSPECTED` | A sanitized current snapshot was read; neither the release planner nor any write was called. |
+| `PLAN` | Read-only planning succeeded; no release was attempted. |
+| `RELEASED` | Exactly one release was confirmed and its readback passed. |
+| `NOT_APPLIED` | This invocation did not apply a release, for example an invalid argument, changed plan or zero-row conditional write. Another worker may still have changed the row. |
+| `WRITE_OUTCOME_UNKNOWN` | The write threw or returned an unexpected response; it may have applied. The command does not retry. Reconcile the current row before deciding on any further action. |
+| `APPLIED_UNVERIFIED` | The write confirmed one row, but its readback failed or changed. The original safe plan receipt is retained. Do not treat this as a failed write or repeat the apply automatically. |
+
+To reconcile an uncertain or applied-but-unverified result, use the same project/selector/actor/reference with `--inspect`, omitting `--apply`, confirmation, hash and `--verified-mode`. Inspection works even when the row is active, exhausted, terminal or no longer deferred. It reports only current ID, status, count, retry timestamp, marker/reason and mode, without changing or sending anything. A fresh release plan may correctly refuse such a row; that refusal is not a reason to resend.
+
+A `RELEASE_CLEANUP_FAILED` warning does not change a known result: app cleanup cannot turn a confirmed release into a no-write result or hide an uncertain write. A failure before a valid plan exists has a fixed code and no plan receipt. Unclassified exceptions after command execution conservatively report uncertainty.
 
 The tool imports no mailer and calls no provider. Released work returns to the normal queue and may be sent by a later eligible scheduled recovery run; keep recovery paused if the maintenance window must remain non-sending. A concurrent worker can change the row before readback, in which case the tool reports incomplete verification rather than claiming success or retrying.
 
