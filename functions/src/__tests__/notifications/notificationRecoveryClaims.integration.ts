@@ -137,6 +137,24 @@ afterAll(async () => {
 });
 
 describe("actual local SQL notification recovery claims", () => {
+  it("looks up only the expected delivery ID with the complete current ledger projection", async () => {
+    const first = await seed(); const other = await seed();
+    expect(await defer(first)).toBe(1);
+    const current = await lookup(first.channel, first.deliveryKey);
+    const byId = await sdk.getNotificationDeliveryById(db, { id: first.id });
+    expect(byId.data.notificationDeliveries).toEqual([current]);
+    expect(byId.data.notificationDeliveries[0]).toMatchObject({ id: first.id, recoveryDeferredAt: expect.any(String),
+      recoveryDeferredReason: sdk.NotificationRecoveryDeferredReason.RECOVERY_DELIVERY_MODE_UNVERIFIABLE });
+    expect(await lookup(other.channel, other.deliveryKey)).toEqual(other);
+    expect(await rawRow(first.id)).toEqual(current);
+  });
+
+  it("returns an empty array for a nonexistent delivery ID without falling back to another row", async () => {
+    const existing = await seed();
+    expect((await sdk.getNotificationDeliveryById(db, { id: randomUUID() })).data.notificationDeliveries).toEqual([]);
+    expect(await rawRow(existing.id)).toEqual(existing);
+  });
+
   it("retains the deployed recovery-failure operation and its old variables during connector-first rollout", async () => {
     const row = await seed();
     const oldVariables = { id: row.id, expectedStatus: row.status, expectedAttemptCount: row.attemptCount,

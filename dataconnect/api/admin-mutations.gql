@@ -1738,6 +1738,38 @@ query GetNotificationDeliveryByChannelAndKey(
   }
 }
 
+query GetNotificationDeliveryById(
+  $id: UUID!
+) @auth(level: NO_ACCESS) {
+  notificationDeliveries(
+    where: { id: { eq: $id } }
+    limit: 1
+  ) {
+    id
+    channel
+    deliveryKey
+    notificationType
+    recoveryPayload
+    deliveryMode
+    recipientUserId
+    booking { id }
+    user { id }
+    status
+    provider
+    providerMessageId
+    attemptCount
+    lastAttemptedAt
+    recoveryDeferredAt
+    recoveryDeferredReason
+    sentAt
+    skippedAt
+    skipReason
+    lastErrorCode
+    lastErrorMessage
+    createdAt
+  }
+}
+
 query ListFailedNotificationDeliveriesForRecovery(
   $attemptedBefore: Timestamp!
   $maxAttemptCount: Int!

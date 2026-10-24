@@ -203,6 +203,7 @@ describe("Data Connect auth contracts", () => {
     assertAuth(adminSdk, [
       { op: "query GetBookingForNotification", mustInclude: NO_ACCESS },
       { op: "query GetNotificationDeliveryByChannelAndKey", mustInclude: NO_ACCESS },
+      { op: "query GetNotificationDeliveryById", mustInclude: NO_ACCESS },
       { op: "query ListFailedNotificationDeliveriesForRecovery", mustInclude: NO_ACCESS },
       { op: "query ListStalePendingNotificationDeliveriesForRecovery", mustInclude: NO_ACCESS },
       { op: "mutation CreateNotificationDelivery", mustInclude: NO_ACCESS },

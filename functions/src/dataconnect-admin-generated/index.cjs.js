@@ -663,6 +663,13 @@ function getNotificationDeliveryByChannelAndKey(dcOrVarsOrOptions, varsOrOptions
 }
 exports.getNotificationDeliveryByChannelAndKey = getNotificationDeliveryByChannelAndKey;
 
+function getNotificationDeliveryById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNotificationDeliveryById', inputVars, inputOpts);
+}
+exports.getNotificationDeliveryById = getNotificationDeliveryById;
+
 function listFailedNotificationDeliveriesForRecovery(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

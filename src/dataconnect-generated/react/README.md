@@ -46,6 +46,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetTicketOrderStripeArtifactsForCallable*](#getticketorderstripeartifactsforcallable)
   - [*GetPaymentWebhookEventByStripeEventId*](#getpaymentwebhookeventbystripeeventid)
   - [*GetNotificationDeliveryByChannelAndKey*](#getnotificationdeliverybychannelandkey)
+  - [*GetNotificationDeliveryById*](#getnotificationdeliverybyid)
   - [*ListFailedNotificationDeliveriesForRecovery*](#listfailednotificationdeliveriesforrecovery)
   - [*ListStalePendingNotificationDeliveriesForRecovery*](#liststalependingnotificationdeliveriesforrecovery)
   - [*ListFailedNotificationDeliveriesForAutomaticRecovery*](#listfailednotificationdeliveriesforautomaticrecovery)
@@ -3225,6 +3226,115 @@ export default function GetNotificationDeliveryByChannelAndKeyComponent() {
   const dataConnect = getDataConnect(connectorConfig);
   const options = { staleTime: 5 * 1000 };
   const query = useGetNotificationDeliveryByChannelAndKey(dataConnect, getNotificationDeliveryByChannelAndKeyVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notificationDeliveries);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetNotificationDeliveryById
+You can execute the `GetNotificationDeliveryById` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetNotificationDeliveryById(dc: DataConnect, vars: GetNotificationDeliveryByIdVariables, options?: useDataConnectQueryOptions<GetNotificationDeliveryByIdData>): UseDataConnectQueryResult<GetNotificationDeliveryByIdData, GetNotificationDeliveryByIdVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetNotificationDeliveryById(vars: GetNotificationDeliveryByIdVariables, options?: useDataConnectQueryOptions<GetNotificationDeliveryByIdData>): UseDataConnectQueryResult<GetNotificationDeliveryByIdData, GetNotificationDeliveryByIdVariables>;
+```
+
+### Variables
+The `GetNotificationDeliveryById` Query requires an argument of type `GetNotificationDeliveryByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetNotificationDeliveryByIdVariables {
+  id: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `GetNotificationDeliveryById` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetNotificationDeliveryById` Query is of type `GetNotificationDeliveryByIdData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetNotificationDeliveryByIdData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    deliveryKey: string;
+    notificationType: string;
+    recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
+    status: NotificationDeliveryStatus;
+    provider?: string | null;
+    providerMessageId?: string | null;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
+    sentAt?: TimestampString | null;
+    skippedAt?: TimestampString | null;
+    skipReason?: string | null;
+    lastErrorCode?: string | null;
+    lastErrorMessage?: string | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetNotificationDeliveryById`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetNotificationDeliveryByIdVariables } from '@dataconnect/generated';
+import { useGetNotificationDeliveryById } from '@dataconnect/generated/react'
+
+export default function GetNotificationDeliveryByIdComponent() {
+  // The `useGetNotificationDeliveryById` Query hook requires an argument of type `GetNotificationDeliveryByIdVariables`:
+  const getNotificationDeliveryByIdVars: GetNotificationDeliveryByIdVariables = {
+    id: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetNotificationDeliveryById(getNotificationDeliveryByIdVars);
+  // Variables can be defined inline as well.
+  const query = useGetNotificationDeliveryById({ id: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetNotificationDeliveryById(dataConnect, getNotificationDeliveryByIdVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotificationDeliveryById(getNotificationDeliveryByIdVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotificationDeliveryById(dataConnect, getNotificationDeliveryByIdVars, options);
 
   // Then, you can render your component dynamically based on the status of the Query.
   if (query.isPending) {

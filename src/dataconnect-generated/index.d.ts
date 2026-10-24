@@ -1997,6 +1997,41 @@ export interface GetNotificationDeliveryByChannelAndKeyVariables {
   deliveryKey: string;
 }
 
+export interface GetNotificationDeliveryByIdData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    deliveryKey: string;
+    notificationType: string;
+    recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
+    status: NotificationDeliveryStatus;
+    provider?: string | null;
+    providerMessageId?: string | null;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
+    sentAt?: TimestampString | null;
+    skippedAt?: TimestampString | null;
+    skipReason?: string | null;
+    lastErrorCode?: string | null;
+    lastErrorMessage?: string | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+
+export interface GetNotificationDeliveryByIdVariables {
+  id: UUIDString;
+}
+
 export interface GetNotifyCallbackUserByIdData {
   user?: {
     id: string;
@@ -5704,6 +5739,18 @@ export const getNotificationDeliveryByChannelAndKeyRef: GetNotificationDeliveryB
 
 export function getNotificationDeliveryByChannelAndKey(vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
 export function getNotificationDeliveryByChannelAndKey(dc: DataConnect, vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotificationDeliveryByChannelAndKeyData, GetNotificationDeliveryByChannelAndKeyVariables>;
+
+interface GetNotificationDeliveryByIdRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetNotificationDeliveryByIdVariables): QueryRef<GetNotificationDeliveryByIdData, GetNotificationDeliveryByIdVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetNotificationDeliveryByIdVariables): QueryRef<GetNotificationDeliveryByIdData, GetNotificationDeliveryByIdVariables>;
+  operationName: string;
+}
+export const getNotificationDeliveryByIdRef: GetNotificationDeliveryByIdRef;
+
+export function getNotificationDeliveryById(vars: GetNotificationDeliveryByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotificationDeliveryByIdData, GetNotificationDeliveryByIdVariables>;
+export function getNotificationDeliveryById(dc: DataConnect, vars: GetNotificationDeliveryByIdVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotificationDeliveryByIdData, GetNotificationDeliveryByIdVariables>;
 
 interface ListFailedNotificationDeliveriesForRecoveryRef {
   /* Allow users to create refs without passing in DataConnect */

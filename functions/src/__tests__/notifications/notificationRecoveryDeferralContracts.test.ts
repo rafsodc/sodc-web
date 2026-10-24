@@ -45,3 +45,15 @@ describe("additive recovery quarantine connector contracts", () => {
     for (const field of ["status:", "attemptCount", "lastAttemptedAt:", "deliveryKey:", "recoveryPayload:", "recipientUserId:", "recoveryDeferredReason:"]) expect(data).not.toContain(field);
   });
 });
+
+
+it("keeps delivery-ID lookup server-only, exact and projection-compatible with key lookup", () => {
+  const byId = operation("GetNotificationDeliveryById");
+  const byKey = operation("GetNotificationDeliveryByChannelAndKey");
+  expect(byId).toContain("$id: UUID!");
+  expect(byId).toContain("@auth(level: NO_ACCESS)");
+  expect(byId).toContain("where: { id: { eq: $id } }");
+  expect(byId).toContain("limit: 1");
+  expect(byId.slice(byId.indexOf("  ) {"))).toBe(byKey.slice(byKey.indexOf("  ) {")));
+  expect(byId).not.toContain("$channel"); expect(byId).not.toContain("$deliveryKey");
+});

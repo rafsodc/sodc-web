@@ -492,6 +492,13 @@
   {
     "connector": "api",
     "file": "admin-mutations.gql",
+    "operation": "GetNotificationDeliveryById",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
     "operation": "ListFailedNotificationDeliveriesForRecovery",
     "kind": "query",
     "classification": "service-only"
