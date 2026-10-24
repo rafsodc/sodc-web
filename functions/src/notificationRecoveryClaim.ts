@@ -20,6 +20,7 @@ export interface NotificationRecoveryClaim {
   readonly attemptCount: number;
   readonly lastAttemptedAt: string;
   readonly recoveryPayload: string | null;
+  readonly recipientUserId: string | null;
   readonly deliveryMode: GovNotifyDeliveryMode | null;
 }
 
@@ -32,6 +33,7 @@ export function createNotificationRecoveryClaim(candidate: {
   attemptCount: number;
   lastAttemptedAt: string | null;
   recoveryPayload: string | null;
+  recipientUserId?: string | null;
   deliveryMode?: GovNotifyDeliveryMode | null;
 }): NotificationRecoveryClaim {
   if (!candidate.id || !candidate.channel || !candidate.notificationType || !candidate.deliveryKey ||
@@ -40,6 +42,7 @@ export function createNotificationRecoveryClaim(candidate: {
     candidate.attemptCount >= NOTIFICATION_RECOVERY_MAX_ATTEMPTS ||
     !candidate.lastAttemptedAt || !Number.isFinite(Date.parse(candidate.lastAttemptedAt)) ||
     (candidate.recoveryPayload !== null && typeof candidate.recoveryPayload !== "string") ||
+    (candidate.recipientUserId != null && (typeof candidate.recipientUserId !== "string" || !candidate.recipientUserId)) ||
     (candidate.deliveryMode != null && !GOV_NOTIFY_DELIVERY_MODES.includes(candidate.deliveryMode))) {
     throw new Error("NOTIFICATION_RECOVERY_CLAIM_INVALID");
   }
@@ -53,6 +56,7 @@ export function createNotificationRecoveryClaim(candidate: {
     attemptCount: candidate.attemptCount,
     lastAttemptedAt: candidate.lastAttemptedAt,
     recoveryPayload: candidate.recoveryPayload,
+    recipientUserId: candidate.recipientUserId ?? null,
     deliveryMode: candidate.deliveryMode ?? null,
   });
 }

@@ -80,6 +80,8 @@ interface NotificationDeliveryRecord {
   status: NotificationDeliveryStatus;
   attemptCount: number;
   lastAttemptedAt: string | null;
+  recipientUserId?: string | null;
+  recoveryDeferredAt?: string | null;
 }
 
 export interface NotificationDeliveryRepository {
@@ -162,6 +164,8 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       status: row.status,
       attemptCount: row.attemptCount,
       lastAttemptedAt: row.lastAttemptedAt ?? null,
+      recipientUserId: row.recipientUserId ?? null,
+      recoveryDeferredAt: row.recoveryDeferredAt ?? null,
     };
   },
 
@@ -213,6 +217,8 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       expectedLastAttemptedAt: args.claim.lastAttemptedAt,
       expectedRecoveryPayload: args.claim.recoveryPayload,
       expectedRecoveryPayloadIsNull: args.claim.recoveryPayload === null,
+      expectedRecipientUserId: args.claim.recipientUserId,
+      expectedRecipientUserIdIsNull: args.claim.recipientUserId === null,
       expectedDeliveryMode: args.claim.deliveryMode as DataConnectGovNotifyDeliveryMode | null,
       expectedDeliveryModeIsNull: args.claim.deliveryMode === null,
       lastAttemptedAt: args.lastAttemptedAt,
@@ -399,7 +405,8 @@ async function claimNotificationDelivery(
     const claim = request.recoveryClaim;
     if (!existing) return { outcome: "duplicate", reason: "recovery_row_missing" };
     if (existing.id !== claim.id || existing.status !== claim.status ||
-      existing.attemptCount !== claim.attemptCount || existing.lastAttemptedAt !== claim.lastAttemptedAt) {
+      existing.attemptCount !== claim.attemptCount || existing.lastAttemptedAt !== claim.lastAttemptedAt ||
+      (existing.recipientUserId ?? null) !== claim.recipientUserId || existing.recoveryDeferredAt != null) {
       return { outcome: "duplicate", reason: "recovery_candidate_changed", deliveryId: existing.id, attemptCount: existing.attemptCount };
     }
     const waitMs = claim.status === NotificationDeliveryStatus.FAILED
@@ -475,7 +482,8 @@ export async function sendNotificationOnce(
     }
     const scopedKey = originalMode ? govNotifyReferenceForMode(request.deliveryKey, originalMode) : request.deliveryKey;
     const keyMatches = request.deliveryKey === claim.deliveryKey || (!request.preserveDeliveryKey && scopedKey === claim.deliveryKey);
-    if (request.channel !== claim.channel || request.notificationType !== claim.notificationType || !keyMatches) {
+    if (request.channel !== claim.channel || request.notificationType !== claim.notificationType || !keyMatches ||
+      (request.recipientUserId ?? null) !== claim.recipientUserId) {
       throw new Error("NOTIFICATION_RECOVERY_CLAIM_IDENTITY_MISMATCH");
     }
     request = { ...request, recoveryClaim: claim, deliveryKey: claim.deliveryKey, preserveDeliveryKey: true,
@@ -517,16 +525,21 @@ export async function sendNotificationOnce(
   }
 
   try {
-    const sendResult: NotificationSendResult | NotificationSkipResult | void = requestedRecoveryMode && requestedRecoveryMode !== deliveryMode
-        ? { outcome: "skipped" as const, reason: "DELIVERY_MODE_CHANGED" }
-        : await request.send(deliveryMode, async () => {
+    const assertOwnership = async () => {
       const current = await repository.getByChannelAndKey({ channel: request.channel, deliveryKey: request.deliveryKey });
       if (!current || current.id !== claimResult.delivery.id || current.status !== NotificationDeliveryStatus.PENDING ||
         current.attemptCount !== claimResult.attemptCount || current.lastAttemptedAt !== attemptStartedAt ||
+        (request.recoveryClaim && ((current.recipientUserId ?? null) !== request.recoveryClaim.recipientUserId || current.recoveryDeferredAt != null)) ||
         isNotificationDeliveryLeaseExpired(current.lastAttemptedAt, now(), leaseMs)) {
         throw Object.assign(new Error("Notification delivery lease is no longer owned"), { code: "NOTIFICATION_DELIVERY_OWNERSHIP_LOST" });
       }
-    });
+    };
+    // Some domain senders do not use the callback. Recovery must still revalidate
+    // the persisted recipient and lease before invoking any provider path.
+    if (request.recoveryClaim) await assertOwnership();
+    const sendResult: NotificationSendResult | NotificationSkipResult | void = requestedRecoveryMode && requestedRecoveryMode !== deliveryMode
+        ? { outcome: "skipped" as const, reason: "DELIVERY_MODE_CHANGED" }
+        : await request.send(deliveryMode, assertOwnership);
     if (isNotificationSkipResult(sendResult)) {
       const completed = await repository.markSkipped({
         id: claimResult.delivery.id,

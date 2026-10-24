@@ -1,3 +1,5 @@
+import { pendingApprovalUidDeliveryKey } from "./notificationDeliveryKeys";
+export { pendingApprovalDeliveryKey, pendingApprovalUidDeliveryKey } from "./notificationDeliveryKeys";
 import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import { serviceGetUserById as getUserById, NotificationChannel } from "@dataconnect/admin-generated";
@@ -30,14 +32,6 @@ export function createPendingApprovalAlertMailer(): ReturnType<
   typeof createConfiguredGovNotifyMailer<PendingApprovalAlertTemplates>
 > {
   return createConfiguredGovNotifyMailer([...PENDING_APPROVAL_ALERT_TEMPLATE_KEYS]);
-}
-
-export function pendingApprovalDeliveryKey(userId: string, adminEmail: string): string {
-  return `pending-approval:${userId}:${adminEmail}`;
-}
-
-export function pendingApprovalUidDeliveryKey(userId: string, recipientUserId: string): string {
-  return `pending-approval-v2:${encodeURIComponent(userId)}:${encodeURIComponent(recipientUserId)}`;
 }
 
 /** e.g. "Regular, Reserve" or "Not specified" if none of the flags are set. */

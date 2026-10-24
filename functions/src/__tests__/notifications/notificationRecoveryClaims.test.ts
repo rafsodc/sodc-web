@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationChannel, NotificationDeliveryStatus } from "@dataconnect/admin-generated";
 import { sendNotificationOnce, type SendNotificationOnceRequest } from "../../notificationDelivery";
-import { createNotificationRecoveryClaim, NotificationRecoveryDeferredError } from "../../notificationRecoveryClaim";
+import { createNotificationRecoveryClaim } from "../../notificationRecoveryClaim";
 import { createNotificationRecoveryDispatcher, notificationRecoveryIdentity } from "../../notificationRecovery";
 import { runNotificationRecoveryBatch, type RecoverableNotificationDelivery } from "../../notificationRecoveryEngine";
 import { resolveRuntimeGovNotifyDeliveryMode } from "../../govNotifyDeliveryConfiguration";
@@ -26,7 +26,7 @@ function fixture(overrides: Partial<StoredTestDelivery> = {}, serverNow = NOW) {
   const send = vi.fn(async () => ({ providerMessageId: "offline-only" }));
   const request = (): SendNotificationOnceRequest => ({ channel: original.channel, notificationType: original.notificationType,
     deliveryKey: original.deliveryKey, preserveDeliveryKey: true, provider: "govuk_notify", deliveryMode: "TEAM_TEST",
-    recoveryClaim: createNotificationRecoveryClaim(snapshot), recoveryPayload: payload, send });
+    recoveryClaim: createNotificationRecoveryClaim(snapshot), recipientUserId: payload.recipientUserId, recoveryPayload: payload, send });
   const deliver = () => sendNotificationOnce(request(), { repository: store.repository, now: () => NOW });
   return { ...store, original, snapshot, send, request, deliver, row: () => store.rows.get(original.deliveryKey)! };
 }
@@ -55,6 +55,9 @@ describe("recovery-only notification claims", () => {
     ["key", { deliveryKey: "replacement-key" }],
     ["physical row", { id: "22222222-2222-4222-8222-222222222222" }],
     ["mode", { deliveryMode: "LIVE" }],
+    ["recipient", { recipientUserId: "different-staff" }],
+    ["recipient nullness", { recipientUserId: null }],
+    ["deferral", { recoveryDeferredAt: NOW }],
   ])("atomically rejects a %s change after the sender's read", async (_name, change) => {
     const f = fixture();
     const atomicClaim = f.repository.tryMarkPendingForRecovery;
@@ -133,6 +136,59 @@ describe("recovery-only notification claims", () => {
     expect(parsed).not.toHaveProperty("recoveryClaim"); expect(parsed).not.toHaveProperty("maxAttempts");
   });
 
+  it.each([
+    ["different recipient", "staff", "different-staff"],
+    ["missing recipient", "staff", undefined],
+    ["recipient added to a general delivery", null, "staff"],
+  ] as const)("rejects a %s before any repository or configuration I/O", async (_name, recipientUserId, requestedRecipient) => {
+    const f = fixture({ recipientUserId });
+    const request = { ...f.request(), recipientUserId: requestedRecipient };
+    const read = vi.spyOn(f.repository, "getByChannelAndKey");
+    const claim = vi.spyOn(f.repository, "tryMarkPendingForRecovery");
+    const create = vi.spyOn(f.repository, "createPending");
+    vi.mocked(resolveRuntimeGovNotifyDeliveryMode).mockClear();
+    await expect(sendNotificationOnce(request, { repository: f.repository, now: () => NOW }))
+      .rejects.toThrow("NOTIFICATION_RECOVERY_CLAIM_IDENTITY_MISMATCH");
+    expect(read).not.toHaveBeenCalled(); expect(claim).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled();
+    expect(resolveRuntimeGovNotifyDeliveryMode).not.toHaveBeenCalled(); expect(f.send).not.toHaveBeenCalled();
+    expect(f.row()).toMatchObject({ status: "FAILED", attemptCount: 5, recipientUserId });
+  });
+
+  it.each(["different-staff", null] as const)("rejects recipient drift to %s after a successful atomic claim before a sender ignoring the callback", async (recipientUserId) => {
+    const f = fixture();
+    const atomicClaim = f.repository.tryMarkPendingForRecovery;
+    vi.spyOn(f.repository, "tryMarkPendingForRecovery").mockImplementation(async (args) => {
+      const claimed = await atomicClaim(args);
+      f.row().recipientUserId = recipientUserId;
+      return claimed;
+    });
+    expect(await f.deliver()).toMatchObject({ outcome: "duplicate", reason: "in_progress" });
+    expect(f.send).not.toHaveBeenCalled();
+    expect(f.row()).toMatchObject({ status: "PENDING", attemptCount: 6, recipientUserId });
+  });
+
+  it("rechecks recipient identity in the final domain ownership callback", async () => {
+    const f = fixture();
+    const provider = vi.fn();
+    const request = f.request();
+    request.send = async (_mode, assertOwnership) => {
+      f.row().recipientUserId = "different-staff";
+      await assertOwnership?.(); await provider(); return {};
+    };
+    expect(await sendNotificationOnce(request, { repository: f.repository, now: () => NOW })).toMatchObject({ outcome: "duplicate" });
+    expect(provider).not.toHaveBeenCalled();
+    expect(f.row()).toMatchObject({ status: "PENDING", attemptCount: 6, recipientUserId: "different-staff" });
+  });
+
+  it("uses only the trusted candidate recipient rather than nested persisted claim extras", async () => {
+    const f = fixture();
+    const malicious = { ...f.snapshot, recoveryClaim: { recipientUserId: "different-staff", attemptCount: 0 }, maxAttempts: 999 };
+    const claim = createNotificationRecoveryClaim(malicious);
+    expect(claim.recipientUserId).toBe("staff");
+    expect(claim).not.toHaveProperty("recoveryClaim"); expect(claim).not.toHaveProperty("maxAttempts");
+    expect(Object.isFrozen(claim)).toBe(true);
+  });
+
   it("binds the physical row ID again at the final provider ownership check", async () => {
     const f = fixture();
     const send = vi.fn();
@@ -154,6 +210,24 @@ describe("legacy delivery-mode recovery retention", () => {
       notificationType: identity.notificationType, deliveryKey: identity.deliveryKey + keySuffix, status: NotificationDeliveryStatus.FAILED,
       attemptCount: 2, lastAttemptedAt: OLD, createdAt: OLD, recoveryPayload: JSON.stringify(bookingPayload), deliveryMode: mode };
   }
+  it.each([null, undefined] as const)("preserves a general booking delivery's nullable recipient (%s) through dispatch and the final send boundary", async (recipientUserId) => {
+    const row = { ...legacy("LIVE"), recipientUserId };
+    const store = notificationTestRepository([row], () => NOW);
+    const provider = vi.fn(async () => ({ providerMessageId: "offline-booking" }));
+    const dispatch = createNotificationRecoveryDispatcher("https://app.example", {
+      notifyBookingConfirmation: async (args) => {
+        await sendNotificationOnce({ channel: row.channel, notificationType: row.notificationType,
+          deliveryKey: row.deliveryKey, preserveDeliveryKey: true, provider: "govuk_notify",
+          bookingId: args.bookingId, userId: "booker-is-a-subject-not-a-recipient-binding",
+          deliveryMode: args.deliveryMode, recoveryPayload: bookingPayload, recoveryClaim: args.recoveryClaim,
+          send: provider }, { repository: store.repository, now: () => NOW });
+      },
+    });
+    await dispatch(row, bookingPayload);
+    expect(provider).toHaveBeenCalledOnce();
+    expect(store.rows.get(row.deliveryKey)).toMatchObject({ status: "SENT", attemptCount: 3 });
+  });
+
   it.each([["persisted mode", "LIVE", ""], ["physical key suffix", null, ":notify-live"]] as const)("uses an unambiguous %s when the payload has no mode", async (_name, mode, suffix) => {
     const notifyBookingConfirmation = vi.fn(async () => undefined);
     const row = legacy(mode, suffix);
@@ -167,12 +241,14 @@ describe("legacy delivery-mode recovery retention", () => {
     const notifyBookingConfirmation = vi.fn(async () => undefined);
     const recordFailure = vi.fn(async () => true);
     const onError = vi.fn();
+    const onDeferred = vi.fn();
     const summary = await runNotificationRecoveryBatch({ candidates: [row], now: NOW,
       dispatch: createNotificationRecoveryDispatcher("https://app.example", { notifyBookingConfirmation }),
-      getCurrent: async () => row, recordFailure, onError });
-    expect(summary.failed).toBe(1); expect(row).toEqual(before);
+      getCurrent: async () => row, recordFailure, onError, onDeferred });
+    expect(summary.deferred).toBe(1); expect(summary.failed).toBe(0); expect(row).toEqual(before);
     expect(notifyBookingConfirmation).not.toHaveBeenCalled(); expect(recordFailure).not.toHaveBeenCalled();
-    expect(onError.mock.calls[0][1]).toBeInstanceOf(NotificationRecoveryDeferredError);
+    expect(onError).not.toHaveBeenCalled();
+    expect(onDeferred).toHaveBeenCalledWith(row, expect.stringMatching(/^RECOVERY_DELIVERY_MODE_/), false);
   });
 });
 

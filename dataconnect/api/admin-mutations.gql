@@ -1727,6 +1727,8 @@ query GetNotificationDeliveryByChannelAndKey(
     providerMessageId
     attemptCount
     lastAttemptedAt
+    recoveryDeferredAt
+    recoveryDeferredReason
     sentAt
     skippedAt
     skipReason
@@ -1797,6 +1799,71 @@ query ListStalePendingNotificationDeliveriesForRecovery(
     createdAt
   }
 }
+
+query ListFailedNotificationDeliveriesForAutomaticRecovery(
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  notificationDeliveries(
+    where: {
+      status: { eq: FAILED }
+      recoveryPayload: { isNull: false }
+      attemptCount: { ge: 0, lt: 6 }
+      lastAttemptedAt: { le_time: { now: true, sub: { minutes: 15 } } }
+      recoveryDeferredAt: { isNull: true }
+    }
+    orderBy: [{ lastAttemptedAt: ASC }, { id: ASC }]
+    limit: $limit
+  ) {
+    id
+    channel
+    notificationType
+    deliveryKey
+    recoveryPayload
+    deliveryMode
+    recipientUserId
+    booking { id }
+    user { id }
+    status
+    attemptCount
+    lastAttemptedAt
+    recoveryDeferredAt
+    recoveryDeferredReason
+    createdAt
+  }
+}
+
+query ListStalePendingNotificationDeliveriesForAutomaticRecovery(
+  $limit: Int!
+) @auth(level: NO_ACCESS) {
+  notificationDeliveries(
+    where: {
+      status: { eq: PENDING }
+      recoveryPayload: { isNull: false }
+      attemptCount: { ge: 0, lt: 6 }
+      lastAttemptedAt: { le_time: { now: true, sub: { minutes: 10 } } }
+      recoveryDeferredAt: { isNull: true }
+    }
+    orderBy: [{ lastAttemptedAt: ASC }, { id: ASC }]
+    limit: $limit
+  ) {
+    id
+    channel
+    notificationType
+    deliveryKey
+    recoveryPayload
+    deliveryMode
+    recipientUserId
+    booking { id }
+    user { id }
+    status
+    attemptCount
+    lastAttemptedAt
+    recoveryDeferredAt
+    recoveryDeferredReason
+    createdAt
+  }
+}
+
 
 mutation CreateNotificationDelivery(
   $channel: NotificationChannel!
@@ -1875,6 +1942,8 @@ mutation ClaimNotificationDeliveryForRecoveryById(
   $expectedRecoveryPayloadIsNull: Boolean!
   $expectedDeliveryMode: GovNotifyDeliveryMode
   $expectedDeliveryModeIsNull: Boolean!
+  $expectedRecipientUserId: String
+  $expectedRecipientUserIdIsNull: Boolean!
   $lastAttemptedAt: Timestamp!
   $provider: String
 ) @auth(level: NO_ACCESS) {
@@ -1891,6 +1960,8 @@ mutation ClaimNotificationDeliveryForRecoveryById(
           lastAttemptedAt: { eq: $expectedLastAttemptedAt }
           recoveryPayload: { eq: $expectedRecoveryPayload, isNull: $expectedRecoveryPayloadIsNull }
           deliveryMode: { eq: $expectedDeliveryMode, isNull: $expectedDeliveryModeIsNull }
+          recipientUserId: { eq: $expectedRecipientUserId, isNull: $expectedRecipientUserIdIsNull }
+          recoveryDeferredAt: { isNull: true }
         }
         { _or: [
           { status: { eq: FAILED }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 15 } } } }
@@ -1950,6 +2021,8 @@ mutation RecordNotificationRecoveryFailureForClaimById(
   $expectedRecoveryPayloadIsNull: Boolean!
   $expectedDeliveryMode: GovNotifyDeliveryMode
   $expectedDeliveryModeIsNull: Boolean!
+  $expectedRecipientUserId: String
+  $expectedRecipientUserIdIsNull: Boolean!
   $lastAttemptedAt: Timestamp!
   $lastErrorCode: String!
   $lastErrorMessage: String!
@@ -1967,6 +2040,8 @@ mutation RecordNotificationRecoveryFailureForClaimById(
           lastAttemptedAt: { eq: $expectedLastAttemptedAt }
           recoveryPayload: { eq: $expectedRecoveryPayload, isNull: $expectedRecoveryPayloadIsNull }
           deliveryMode: { eq: $expectedDeliveryMode, isNull: $expectedDeliveryModeIsNull }
+          recipientUserId: { eq: $expectedRecipientUserId, isNull: $expectedRecipientUserIdIsNull }
+          recoveryDeferredAt: { isNull: true }
         }
         { _or: [
           { status: { eq: FAILED }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 15 } } } }
@@ -1982,6 +2057,116 @@ mutation RecordNotificationRecoveryFailureForClaimById(
       lastErrorMessage: $lastErrorMessage
       updatedAt_expr: "request.time"
       updatedBy: "system"
+    }
+  )
+}
+
+
+mutation MarkNotificationRecoveryDeferredForClaimById(
+  $id: UUID!
+  $channel: NotificationChannel!
+  $deliveryKey: String!
+  $notificationType: String!
+  $expectedStatus: NotificationDeliveryStatus!
+  $expectedAttemptCount: Int!
+  $expectedLastAttemptedAt: Timestamp!
+  $expectedRecoveryPayload: String
+  $expectedRecoveryPayloadIsNull: Boolean!
+  $expectedDeliveryMode: GovNotifyDeliveryMode
+  $expectedDeliveryModeIsNull: Boolean!
+  $expectedRecipientUserId: String
+  $expectedRecipientUserIdIsNull: Boolean!
+  $deferredReason: NotificationRecoveryDeferredReason!
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_updateMany(
+    where: {
+      _and: [
+        {
+          id: { eq: $id }
+          channel: { eq: $channel }
+          deliveryKey: { eq: $deliveryKey }
+          notificationType: { eq: $notificationType }
+          status: { eq: $expectedStatus }
+          attemptCount: { eq: $expectedAttemptCount, ge: 0, lt: 6 }
+          lastAttemptedAt: { eq: $expectedLastAttemptedAt }
+          recoveryPayload: { eq: $expectedRecoveryPayload, isNull: $expectedRecoveryPayloadIsNull }
+          deliveryMode: { eq: $expectedDeliveryMode, isNull: $expectedDeliveryModeIsNull }
+          recipientUserId: { eq: $expectedRecipientUserId, isNull: $expectedRecipientUserIdIsNull }
+          recoveryDeferredAt: { isNull: true }
+        }
+        { _or: [
+          { status: { eq: FAILED }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 15 } } } }
+          { status: { eq: PENDING }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 10 } } } }
+        ] }
+      ]
+    }
+    data: {
+      recoveryDeferredAt_expr: "request.time"
+      recoveryDeferredReason: $deferredReason
+      updatedAt_expr: "request.time"
+      updatedBy: "system"
+    }
+  )
+}
+
+
+mutation ReleaseNotificationRecoveryDeferralForClaimById(
+  $id: UUID!
+  $channel: NotificationChannel!
+  $deliveryKey: String!
+  $notificationType: String!
+  $expectedStatus: NotificationDeliveryStatus!
+  $expectedAttemptCount: Int!
+  $expectedLastAttemptedAt: Timestamp!
+  $expectedRecoveryPayload: String
+  $expectedRecoveryPayloadIsNull: Boolean!
+  $expectedDeliveryMode: GovNotifyDeliveryMode
+  $expectedDeliveryModeIsNull: Boolean!
+  $expectedRecipientUserId: String
+  $expectedRecipientUserIdIsNull: Boolean!
+  $expectedBookingId: UUID
+  $expectedBookingIdIsNull: Boolean!
+  $expectedUserId: String
+  $expectedUserIdIsNull: Boolean!
+  $expectedDeferredAt: Timestamp!
+  $expectedDeferredReason: NotificationRecoveryDeferredReason!
+  $verifiedDeliveryMode: GovNotifyDeliveryMode!
+  $actorId: String!
+) @auth(level: NO_ACCESS) {
+  notificationDelivery_updateMany(
+    where: {
+      _and: [
+        {
+          id: { eq: $id }
+          channel: { eq: $channel }
+          deliveryKey: { eq: $deliveryKey }
+          notificationType: { eq: $notificationType }
+          status: { eq: $expectedStatus }
+          attemptCount: { eq: $expectedAttemptCount, ge: 0, lt: 6 }
+          lastAttemptedAt: { eq: $expectedLastAttemptedAt }
+          recoveryPayload: { eq: $expectedRecoveryPayload, isNull: $expectedRecoveryPayloadIsNull }
+          deliveryMode: { eq: $expectedDeliveryMode, isNull: $expectedDeliveryModeIsNull }
+          recipientUserId: { eq: $expectedRecipientUserId, isNull: $expectedRecipientUserIdIsNull }
+          bookingId: { eq: $expectedBookingId, isNull: $expectedBookingIdIsNull }
+          userId: { eq: $expectedUserId, isNull: $expectedUserIdIsNull }
+          recoveryDeferredAt: { eq: $expectedDeferredAt }
+          recoveryDeferredReason: { eq: $expectedDeferredReason }
+        }
+        { _or: [
+          { deliveryMode: { isNull: true } }
+          { deliveryMode: { eq: $verifiedDeliveryMode } }
+        ] }
+        { _or: [
+          { status: { eq: FAILED }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 15 } } } }
+          { status: { eq: PENDING }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 10 } } } }
+        ] }
+      ]
+    }
+    data: {
+      recoveryDeferredAt: null
+      deliveryMode: $verifiedDeliveryMode
+      updatedAt_expr: "request.time"
+      updatedBy: $actorId
     }
   )
 }

@@ -1,3 +1,5 @@
+import { paymentReconciliationOpsDeliveryKey, paymentDisputeOpsDeliveryKey } from "./notificationDeliveryKeys";
+export { paymentReconciliationOpsDeliveryKey, paymentDisputeOpsDeliveryKey } from "./notificationDeliveryKeys";
 import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import {
@@ -59,23 +61,6 @@ export function createPaymentOpsInternalMailer(): ReturnType<
   typeof createConfiguredGovNotifyMailer<PaymentOpsInternalTemplates>
 > {
   return createConfiguredGovNotifyMailer([...PAYMENT_OPS_ALERT_TEMPLATE_KEYS]);
-}
-
-export function paymentReconciliationOpsDeliveryKey(args: {
-  orderId: string;
-  exceptionType: string;
-  stripeEventId: string;
-  recipientEmail: string;
-}): string {
-  return `reconciliation-ops:${args.orderId}:${args.exceptionType}:${args.stripeEventId}:${args.recipientEmail}`;
-}
-
-export function paymentDisputeOpsDeliveryKey(args: {
-  orderId: string;
-  stripeEventId: string;
-  recipientEmail: string;
-}): string {
-  return `dispute-ops:${args.orderId}:${args.stripeEventId}:${args.recipientEmail}`;
 }
 
 async function loadOrderOpsContext(orderId: UUIDString): Promise<{

@@ -18,6 +18,7 @@ let prefix: string;
 let fixtureSequence = 0;
 let freshDatabaseVerified = false;
 let ownedIds: string[] = [];
+let ownedUserIds: string[] = [];
 const functionsRoot = path.resolve(__dirname, "../../..");
 const require = createRequire(path.join(functionsRoot, "package.json"));
 const now = () => new Date().toISOString();
@@ -47,6 +48,7 @@ function claimSnapshot(row: Row): Claim {
     id: row.id, channel: row.channel, deliveryKey: row.deliveryKey, notificationType: row.notificationType,
     expectedStatus: row.status, expectedAttemptCount: row.attemptCount, expectedLastAttemptedAt: row.lastAttemptedAt!,
     expectedRecoveryPayload: row.recoveryPayload ?? null, expectedRecoveryPayloadIsNull: row.recoveryPayload == null,
+    expectedRecipientUserId: row.recipientUserId ?? null, expectedRecipientUserIdIsNull: row.recipientUserId == null,
     expectedDeliveryMode: row.deliveryMode ?? null, expectedDeliveryModeIsNull: row.deliveryMode == null,
     lastAttemptedAt: now(), provider: "local-sql-no-provider",
   };
@@ -60,9 +62,38 @@ async function recover(operation: RecoveryOperation, variables: Claim, client = 
   })).data.notificationDelivery_updateMany;
 }
 
+function deferSnapshot(row: Row): AdminSdk.MarkNotificationRecoveryDeferredForClaimByIdVariables {
+  const { lastAttemptedAt: _lastAttemptedAt, provider: _provider, ...snapshot } = claimSnapshot(row);
+  return { ...snapshot, deferredReason: sdk.NotificationRecoveryDeferredReason.RECOVERY_DELIVERY_MODE_UNVERIFIABLE };
+}
+
+async function defer(row: Row, client = db): Promise<number> {
+  return (await sdk.markNotificationRecoveryDeferredForClaimById(client, deferSnapshot(row))).data.notificationDelivery_updateMany;
+}
+
+function releaseSnapshot(row: Row, verifiedDeliveryMode = sdk.GovNotifyDeliveryMode.TEAM_TEST): AdminSdk.ReleaseNotificationRecoveryDeferralForClaimByIdVariables {
+  expect(row.recoveryDeferredAt).toBeTruthy(); expect(row.recoveryDeferredReason).toBeTruthy();
+  const { deferredReason: _reason, ...snapshot } = deferSnapshot(row);
+  return { ...snapshot, expectedBookingId: row.booking?.id ?? null, expectedBookingIdIsNull: row.booking == null,
+    expectedUserId: row.user?.id ?? null, expectedUserIdIsNull: row.user == null,
+    expectedDeferredAt: row.recoveryDeferredAt!, expectedDeferredReason: row.recoveryDeferredReason!,
+    verifiedDeliveryMode, actorId: "local-sql-reviewer-no-auth" };
+}
+
+async function release(variables: AdminSdk.ReleaseNotificationRecoveryDeferralForClaimByIdVariables): Promise<number> {
+  return (await sdk.releaseNotificationRecoveryDeferralForClaimById(db, variables)).data.notificationDelivery_updateMany;
+}
+
+async function patch(row: Row, literalData: string): Promise<Row> {
+  await db.executeGraphql(`mutation PatchLocalNotificationFixture($id: UUID!) {
+    notificationDelivery_update(key: {id: $id}, data: {${literalData}})
+  }`, { variables: { id: row.id } });
+  return (await rawRow(row.id))!;
+}
+
 async function rawRow(id: string): Promise<Row | null> {
   const result = await db.executeGraphql<{ notificationDelivery: Row | null }, { id: string }>(`query ReadLocalFixture($id: UUID!) {
-    notificationDelivery(key: {id: $id}) {id channel deliveryKey notificationType recoveryPayload deliveryMode recipientUserId booking {id} user {id} status provider providerMessageId attemptCount lastAttemptedAt sentAt skippedAt skipReason lastErrorCode lastErrorMessage createdAt}
+    notificationDelivery(key: {id: $id}) {id channel deliveryKey notificationType recoveryPayload deliveryMode recipientUserId booking {id} user {id} status provider providerMessageId attemptCount lastAttemptedAt recoveryDeferredAt recoveryDeferredReason sentAt skippedAt skipReason lastErrorCode lastErrorMessage createdAt}
   }`, { variables: { id } });
   return result.data.notificationDelivery;
 }
@@ -92,6 +123,11 @@ afterEach(async () => {
   await db.executeGraphql("mutation RemoveLocalNotificationFixtures($ids: [UUID!]!) { notificationDelivery_deleteMany(where: {id: {in: $ids}}) }",
     { variables: { ids: ownedIds } });
   ownedIds = [];
+  if (ownedUserIds.length) {
+    await db.executeGraphql("mutation RemoveLocalSubjectFixtures($ids: [String!]!) { user_deleteMany(where: {id: {in: $ids}}) }",
+      { variables: { ids: ownedUserIds } });
+    ownedUserIds = [];
+  }
 });
 
 afterAll(async () => {
@@ -140,6 +176,8 @@ describe("actual local SQL notification recovery claims", () => {
         ["payload nullness", { expectedRecoveryPayload: null, expectedRecoveryPayloadIsNull: true }],
         ["delivery mode", { expectedDeliveryMode: "LIVE" }],
         ["delivery mode nullness", { expectedDeliveryMode: null, expectedDeliveryModeIsNull: true }],
+        ["recipient value", { expectedRecipientUserId: "different-recipient", expectedRecipientUserIdIsNull: false }],
+        ["recipient nullness", { expectedRecipientUserIdIsNull: false }],
       ])("rejects a changed %s without a write", async (_label, changed) => {
         const row = await seed();
         expect(await recover(operation, { ...claimSnapshot(row), ...changed } as Claim)).toBe(0);
@@ -222,6 +260,121 @@ describe("actual local SQL notification recovery claims", () => {
     const results = await Promise.all([recover("claim", snapshot, db), recover("failure", snapshot, otherDb)]);
     expect(results.sort()).toEqual([0, 1]);
     expect((await rawRow(row.id))!.attemptCount).toBe(6);
+  });
+
+  describe("durable deferral removes ambiguous rows from both bounded automatic queues", () => {
+    it.each(["FAILED", "PENDING"] as const)("reaches newer valid %s work after more than 25 older ambiguous rows across repeated scans", async status => {
+      const blockers: Row[] = [];
+      for (let index = 0; index < 26; index += 1) blockers.push(await seed({ status: sdk.NotificationDeliveryStatus[status],
+        deliveryMode: null, lastAttemptedAt: minutesAgo(60 + index) }));
+      const valid = await seed({ status: sdk.NotificationDeliveryStatus[status], lastAttemptedAt: minutesAgo(20) });
+      const scan = async () => (status === "FAILED"
+        ? await sdk.listFailedNotificationDeliveriesForAutomaticRecovery(db, { limit: 25 })
+        : await sdk.listStalePendingNotificationDeliveriesForAutomaticRecovery(db, { limit: 25 })).data.notificationDeliveries;
+      // Old deployed workers retain their original operation names and variable signatures.
+      const oldVariables = { attemptedBefore: now(), maxAttemptCount: 6, limit: 25 };
+      const oldFirst = status === "FAILED" ? await sdk.listFailedNotificationDeliveriesForRecovery(db, oldVariables)
+        : await sdk.listStalePendingNotificationDeliveriesForRecovery(db, oldVariables);
+      expect(oldFirst.data.notificationDeliveries).toHaveLength(25);
+      const first = await scan();
+      expect(first).toHaveLength(25); expect(first.some(row => row.id === valid.id)).toBe(false);
+      for (const row of first) expect(await defer(row as Row)).toBe(1);
+      const second = await scan();
+      expect(second).toHaveLength(2); expect(second[1].id).toBe(valid.id);
+      expect(await defer(second[0] as Row)).toBe(1);
+      expect(await recover("claim", claimSnapshot(valid))).toBe(1);
+      expect(await scan()).toEqual([]); expect(await scan()).toEqual([]);
+      for (const row of blockers) expect(await rawRow(row.id)).toEqual({ ...row,
+        recoveryDeferredAt: expect.any(String),
+        recoveryDeferredReason: sdk.NotificationRecoveryDeferredReason.RECOVERY_DELIVERY_MODE_UNVERIFIABLE });
+      expect(await rawRow(valid.id)).toMatchObject({ status: "PENDING", attemptCount: 6, recoveryDeferredAt: null });
+    });
+
+    it.each([
+      ["recipient value", { expectedRecipientUserId: "replacement", expectedRecipientUserIdIsNull: false }],
+      ["recipient nullness", { expectedRecipientUserIdIsNull: false }],
+      ["payload", { expectedRecoveryPayload: "different" }],
+      ["mode", { expectedDeliveryMode: "LIVE" }],
+      ["attempt", { expectedAttemptCount: 4 }],
+      ["timestamp", { expectedLastAttemptedAt: "2020-01-01T00:00:00Z" }],
+    ])("rejects a stale deferral %s without touching history", async (_label, changed) => {
+      const row = await seed();
+      expect((await sdk.markNotificationRecoveryDeferredForClaimById(db, { ...deferSnapshot(row), ...changed } as AdminSdk.MarkNotificationRecoveryDeferredForClaimByIdVariables))
+        .data.notificationDelivery_updateMany).toBe(0);
+      expect(await rawRow(row.id)).toEqual(row);
+    });
+
+    it("rejects actual recipient drift after listing and rejects recovery mutations once deferred", async () => {
+      const listed = await seed();
+      const changed = await patch(listed, "recipientUserId: \"replacement-recipient\"");
+      expect(await defer(listed)).toBe(0); expect(await rawRow(listed.id)).toEqual(changed);
+      expect(await defer(changed)).toBe(1);
+      const marked = (await rawRow(listed.id))!;
+      expect(await recover("claim", claimSnapshot(marked))).toBe(0);
+      expect(await recover("failure", claimSnapshot(marked))).toBe(0);
+      expect(await defer(changed)).toBe(0); expect(await rawRow(listed.id)).toEqual(marked);
+    });
+
+    it.each(["claim", "failure"] as const)("serializes deferral against %s with one winner and no extra attempt", async operation => {
+      const row = await seed(); const snapshot = claimSnapshot(row);
+      const results = await Promise.all([defer(row, db), recover(operation, snapshot, otherDb)]);
+      expect(results.sort()).toEqual([0, 1]);
+      const current = (await rawRow(row.id))!;
+      if (current.recoveryDeferredAt) expect(current).toEqual({ ...row, recoveryDeferredAt: expect.any(String),
+        recoveryDeferredReason: sdk.NotificationRecoveryDeferredReason.RECOVERY_DELIVERY_MODE_UNVERIFIABLE });
+      else expect(current).toMatchObject({ attemptCount: 6, recoveryDeferredAt: null });
+    });
+  });
+
+  describe("guarded reviewed release", () => {
+    it.each([null, "TEAM_TEST"] as const)("releases an exactly reviewed row with original mode %s while retaining its history", async mode => {
+      const original = await seed({ deliveryMode: mode == null ? null : sdk.GovNotifyDeliveryMode[mode] });
+      expect(await defer(original)).toBe(1);
+      const marked = (await rawRow(original.id))!; const variables = releaseSnapshot(marked);
+      expect(await release(variables)).toBe(1);
+      expect(await rawRow(original.id)).toEqual({ ...marked, recoveryDeferredAt: null, deliveryMode: "TEAM_TEST" });
+      expect(await release(variables)).toBe(0);
+      expect((await sdk.listFailedNotificationDeliveriesForAutomaticRecovery(db, { limit: 25 })).data.notificationDeliveries.map(row => row.id)).toEqual([original.id]);
+    });
+
+    it.each([
+      ["marker timestamp", { expectedDeferredAt: "2020-01-01T00:00:00Z" }],
+      ["marker reason", { expectedDeferredReason: "RECOVERY_DELIVERY_MODE_CONFLICT" }],
+      ["recipient", { expectedRecipientUserId: "replacement", expectedRecipientUserIdIsNull: false }],
+      ["payload", { expectedRecoveryPayload: "replacement-payload" }],
+      ["booking subject", { expectedBookingId: "11111111-1111-4111-8111-111111111111", expectedBookingIdIsNull: false }],
+      ["user subject", { expectedUserId: "different-subject", expectedUserIdIsNull: false }],
+      ["known mode override", { verifiedDeliveryMode: "LIVE" }],
+    ])("rejects stale release %s without writing", async (_label, changed) => {
+      const row = await seed(); expect(await defer(row)).toBe(1);
+      const marked = (await rawRow(row.id))!;
+      expect(await release({ ...releaseSnapshot(marked), ...changed } as AdminSdk.ReleaseNotificationRecoveryDeferralForClaimByIdVariables)).toBe(0);
+      expect(await rawRow(row.id)).toEqual(marked);
+    });
+
+    it.each([
+      ["advanced count", "attemptCount: 6"],
+      ["fresh active lease", "status: PENDING, lastAttemptedAt: \"FRESH_TIME\""],
+      ["sent terminal", "status: SENT"],
+      ["skipped terminal", "status: SKIPPED"],
+    ])("rejects a matching snapshot whose state is now %s", async (_label, literal) => {
+      const row = await seed(); expect(await defer(row)).toBe(1);
+      const current = await patch(row, literal.replace("FRESH_TIME", now()));
+      expect(await release(releaseSnapshot(current))).toBe(0);
+      expect(await rawRow(row.id)).toEqual(current);
+    });
+
+    it("rejects genuine subject-FK drift after review and retains its marker", async () => {
+      const row = await seed(); expect(await defer(row)).toBe(1);
+      const variables = releaseSnapshot((await rawRow(row.id))!);
+      const subjectId = `${prefix}-subject`;
+      await db.executeGraphql(`mutation InsertLocalSubject($id: String!) {
+        user_insert(data: {id: $id, firstName: "Local", lastName: "Fixture", email: "local@example.invalid", serviceNumber: "LOCAL", createdBy: "local-fixture", updatedBy: "local-fixture"})
+      }`, { variables: { id: subjectId } });
+      ownedUserIds.push(subjectId);
+      const current = await patch(row, `userId: ${JSON.stringify(subjectId)}`);
+      expect(await release(variables)).toBe(0); expect(await rawRow(row.id)).toEqual(current);
+    });
   });
 
   it("keeps the ordinary direct/manual FAILED6 to attempt-seven retry semantics", async () => {

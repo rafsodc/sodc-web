@@ -8,6 +8,8 @@ export interface StoredTestDelivery extends RecoverableNotificationDelivery {
   skippedAt?: string | null;
   skipReason?: string | null;
   lastErrorCode?: string | null;
+  recoveryDeferredAt?: string | null;
+  recoveryDeferredReason?: string | null;
 }
 
 export function notificationTestRepository(initial: StoredTestDelivery[] = [], serverNow?: () => string) {
@@ -47,6 +49,7 @@ export function notificationTestRepository(initial: StoredTestDelivery[] = [], s
         row.attemptCount !== claim.attemptCount || row.attemptCount < 0 || row.attemptCount >= 6 ||
         row.lastAttemptedAt !== claim.lastAttemptedAt || row.recoveryPayload !== claim.recoveryPayload ||
         (row.deliveryMode ?? null) !== claim.deliveryMode ||
+        (row.recipientUserId ?? null) !== claim.recipientUserId || row.recoveryDeferredAt != null ||
         ![NotificationDeliveryStatus.FAILED, NotificationDeliveryStatus.PENDING].includes(row.status) ||
         Date.parse(databaseNow) - Date.parse(row.lastAttemptedAt!) < waitMs) return false;
       Object.assign(row, { status: NotificationDeliveryStatus.PENDING, attemptCount: row.attemptCount + 1, lastAttemptedAt });

@@ -168,7 +168,7 @@ describe("scheduled recovery failure operation compatibility", () => {
     expect(guarded).toHaveBeenCalledExactlyOnceWith({ id: original.id, channel: original.channel, deliveryKey: original.deliveryKey,
       notificationType: original.notificationType, expectedStatus: original.status, expectedAttemptCount: 5,
       expectedLastAttemptedAt: original.lastAttemptedAt, expectedRecoveryPayload: original.recoveryPayload, expectedRecoveryPayloadIsNull: false,
-      expectedDeliveryMode: "LIVE", expectedDeliveryModeIsNull: false, lastAttemptedAt: now,
+      expectedDeliveryMode: "LIVE", expectedDeliveryModeIsNull: false, expectedRecipientUserId: null, expectedRecipientUserIdIsNull: true, lastAttemptedAt: now,
       lastErrorCode: "RECOVERY_DISPATCH_FAILED", lastErrorMessage: "Recovery dispatch did not complete the notification delivery" });
     expect(legacy).not.toHaveBeenCalled();
     legacy.mockRestore(); guarded.mockRestore();

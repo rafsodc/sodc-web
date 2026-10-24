@@ -60,7 +60,7 @@ describe("recovery policy reaches every final notification sender", () => {
     expect(request.deliveryMode).toBe("LIVE");
     expect(request.recoveryClaim).toEqual({ id: row.id, channel: row.channel, notificationType: row.notificationType,
       deliveryKey: row.deliveryKey, status: row.status, attemptCount: 5, lastAttemptedAt: OLD,
-      recoveryPayload: row.recoveryPayload, deliveryMode: "LIVE" });
+      recoveryPayload: row.recoveryPayload, deliveryMode: "LIVE", recipientUserId: row.recipientUserId ?? null });
     expect(request.recoveryPayload).not.toHaveProperty("recoveryClaim");
     expect(provider).not.toHaveBeenCalled();
   });

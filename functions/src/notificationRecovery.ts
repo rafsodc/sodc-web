@@ -1,22 +1,17 @@
+import { markNotificationRecoveryDeferred, notificationRecoveryClaimVariables } from "./notificationRecoveryDeferral";
+import { notificationRecoveryIdentity } from "./notificationRecoveryIdentity";
+export { notificationRecoveryIdentity } from "./notificationRecoveryIdentity";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 import {
   getNotificationDeliveryByChannelAndKey,
-  listFailedNotificationDeliveriesForRecovery,
-  listStalePendingNotificationDeliveriesForRecovery,
+  listFailedNotificationDeliveriesForAutomaticRecovery,
+  listStalePendingNotificationDeliveriesForAutomaticRecovery,
   recordNotificationRecoveryFailureForClaimById,
   NotificationChannel,
   NotificationDeliveryStatus,
-  GovNotifyDeliveryMode as DataConnectGovNotifyDeliveryMode,
 } from "@dataconnect/admin-generated";
 import {
-  bookingChangesRequestedDeliveryKey,
-  bookingApprovedDeliveryKey,
-  bookingConfirmationDeliveryKey,
-  bookingPendingMemberDeliveryKey,
-  bookingPendingModeratorDeliveryKey,
-  bookingPendingModeratorUidDeliveryKey,
-  bookingRevisionDeliveryKey,
   notifyBookingChangesRequestedEmail,
   notifyBookingApprovedEmail,
   notifyBookingConfirmationEmail,
@@ -24,14 +19,10 @@ import {
   notifyBookingRevisionEmail,
 } from "./bookingEmailDispatcher";
 import {
-  classifyMembershipStatusEmailTransition,
-  membershipStatusDeliveryKey,
   notifyMembershipStatusEmailIfNeeded,
 } from "./membershipStatusEmailDispatcher";
 import {
   notifyAdminsUserPendingApproval,
-  pendingApprovalDeliveryKey,
-  pendingApprovalUidDeliveryKey,
 } from "./pendingApprovalAdminAlert";
 import {
   createGovNotifyTicketOrderLifecycleDispatcher,
@@ -40,16 +31,11 @@ import {
 import {
   notifyPaymentOpsDisputeSideState,
   notifyPaymentOpsReconciliationExceptionOpened,
-  paymentDisputeOpsDeliveryKey,
-  paymentReconciliationOpsDeliveryKey,
 } from "./paymentOpsInternalAlerts";
 import {
   emitPaymentLifecycleNotification,
-  paymentLifecycleDeliveryKey,
-  type PaymentLifecycleNotification,
 } from "./paymentNotifications";
 import {
-  DEFAULT_NOTIFICATION_DELIVERY_LEASE_MS,
   sendNotificationOnce,
 } from "./notificationDelivery";
 import {
@@ -57,6 +43,7 @@ import {
   NOTIFICATION_RECOVERY_MAX_ATTEMPTS,
   NOTIFICATION_RECOVERY_RETRY_DELAY_MS,
   runNotificationRecoveryBatch,
+  fairNotificationRecoveryCandidates,
   type RecoverableNotificationDelivery,
 } from "./notificationRecoveryEngine";
 import type { NotificationRecoveryPayload } from "./notificationRecoveryPayload";
@@ -71,113 +58,6 @@ import { APP_BASE_URL } from "./paymentConfig";
 import { FUNCTIONS_REGION } from "./constants";
 import { govNotifySecrets, GOV_NOTIFY_PROVIDER } from "./mailer";
 import { govNotifyReferenceForMode } from "./govNotifyDeliveryMode";
-
-export function notificationRecoveryIdentity(payload: NotificationRecoveryPayload): {
-  notificationType: string;
-  deliveryKey: string;
-} {
-  switch (payload.kind) {
-    case "BOOKING_CONFIRMATION":
-      return {
-        notificationType: "BOOKING_CONFIRMATION",
-        deliveryKey: bookingConfirmationDeliveryKey(
-          payload.bookingId,
-          payload.idempotencyKey
-        ),
-      };
-    case "BOOKING_REVISION":
-      return {
-        notificationType: "BOOKING_REVISION",
-        deliveryKey: bookingRevisionDeliveryKey(
-          payload.bookingId,
-          payload.idempotencyKey
-        ),
-      };
-    case "BOOKING_PENDING_MEMBER":
-      return {
-        notificationType: "BOOKING_PENDING_APPROVAL_MEMBER",
-        deliveryKey: bookingPendingMemberDeliveryKey(payload.bookingId, payload.idempotencyKey),
-      };
-    case "BOOKING_PENDING_MODERATOR":
-      return {
-        notificationType: "BOOKING_PENDING_APPROVAL_MODERATOR",
-        deliveryKey: payload.version === 2
-          ? bookingPendingModeratorUidDeliveryKey(payload.bookingId, payload.recipientUserId)
-          : bookingPendingModeratorDeliveryKey(payload.bookingId, payload.recipientEmail),
-      };
-    case "BOOKING_CHANGES_REQUESTED":
-      return {
-        notificationType: "BOOKING_CHANGES_REQUESTED",
-        deliveryKey: bookingChangesRequestedDeliveryKey(payload.bookingId),
-      };
-    case "BOOKING_APPROVED":
-      return {
-        notificationType: "BOOKING_APPROVED",
-        deliveryKey: bookingApprovedDeliveryKey(payload.bookingId),
-      };
-    case "MEMBERSHIP_STATUS": {
-      const transition = classifyMembershipStatusEmailTransition(
-        payload.previousStatus,
-        payload.newStatus
-      );
-      if (!transition) {
-        throw new Error("Membership recovery payload does not describe an email transition");
-      }
-      return {
-        notificationType:
-          transition === "activation"
-            ? "MEMBERSHIP_ACTIVATED"
-            : "MEMBERSHIP_ACCESS_RESTRICTED",
-        deliveryKey: membershipStatusDeliveryKey({
-          kind: transition,
-          userId: payload.userId,
-          previousStatus: payload.previousStatus,
-          newStatus: payload.newStatus,
-        }),
-      };
-    }
-    case "USER_PENDING_APPROVAL":
-      return {
-        notificationType: "USER_PENDING_APPROVAL",
-        deliveryKey: payload.version === 2
-          ? pendingApprovalUidDeliveryKey(payload.userId, payload.recipientUserId)
-          : pendingApprovalDeliveryKey(payload.userId, payload.recipientEmail),
-      };
-    case "PAYMENT_LIFECYCLE": {
-      const notification: PaymentLifecycleNotification = {
-        type: payload.type,
-        orderId: payload.orderId,
-        eventId: payload.eventId,
-        stripeEventId: payload.stripeEventId,
-        status: payload.status ?? undefined,
-        occurredAt: payload.occurredAt,
-      };
-      return {
-        notificationType: payload.type,
-        deliveryKey: paymentLifecycleDeliveryKey(notification),
-      };
-    }
-    case "PAYMENT_RECONCILIATION_OPS":
-      return {
-        notificationType: "RECONCILIATION_EXCEPTION_OPEN",
-        deliveryKey: paymentReconciliationOpsDeliveryKey({
-          orderId: payload.orderId,
-          exceptionType: payload.exceptionType,
-          stripeEventId: payload.stripeEventId,
-          recipientEmail: payload.recipientEmail,
-        }),
-      };
-    case "PAYMENT_DISPUTE_OPS":
-      return {
-        notificationType: "DISPUTE_OPS_EVENT",
-        deliveryKey: paymentDisputeOpsDeliveryKey({
-          orderId: payload.orderId,
-          stripeEventId: payload.stripeEventId,
-          recipientEmail: payload.recipientEmail,
-        }),
-      };
-  }
-}
 
 type PaymentLifecycleRecoveryPayload = Extract<
   NotificationRecoveryPayload,
@@ -262,6 +142,7 @@ export function createNotificationRecoveryDispatcher(
           channel: candidate.channel, notificationType: candidate.notificationType,
           deliveryKey: candidate.deliveryKey, preserveDeliveryKey: true,
           recoveryPayload: payload,
+          recipientUserId: candidate.recipientUserId ?? undefined,
           recoveryClaim,
           send: async () => ({ outcome: "skipped", reason: "LEGACY_RECIPIENT_IDENTITY_UNVERIFIABLE" }),
         });
@@ -400,6 +281,8 @@ function mapRecoveryRow(row: {
   booking?: { id: string } | null;
   user?: { id: string } | null;
   deliveryMode?: GovNotifyDeliveryMode | null;
+  recoveryDeferredAt?: string | null;
+  recoveryDeferredReason?: string | null;
 }): RecoverableNotificationDelivery {
   return {
     id: row.id,
@@ -415,6 +298,8 @@ function mapRecoveryRow(row: {
     subjectBookingId: row.booking?.id ?? null,
     subjectUserId: row.user?.id ?? null,
     deliveryMode: row.deliveryMode ?? null,
+    recoveryDeferredAt: row.recoveryDeferredAt ?? null,
+    recoveryDeferredReason: row.recoveryDeferredReason ?? null,
   };
 }
 
@@ -425,17 +310,7 @@ export async function recordNotificationRecoveryFailureForClaim(
 ): Promise<boolean> {
   const claim = createNotificationRecoveryClaim(candidate);
   const result = await recordNotificationRecoveryFailureForClaimById({
-    id: claim.id,
-    channel: claim.channel,
-    deliveryKey: claim.deliveryKey,
-    notificationType: claim.notificationType,
-    expectedStatus: claim.status,
-    expectedAttemptCount: claim.attemptCount,
-    expectedLastAttemptedAt: claim.lastAttemptedAt,
-    expectedRecoveryPayload: claim.recoveryPayload,
-    expectedRecoveryPayloadIsNull: claim.recoveryPayload === null,
-    expectedDeliveryMode: claim.deliveryMode as DataConnectGovNotifyDeliveryMode | null,
-    expectedDeliveryModeIsNull: claim.deliveryMode === null,
+    ...notificationRecoveryClaimVariables(claim),
     lastAttemptedAt: now,
     lastErrorCode: "RECOVERY_DISPATCH_FAILED",
     lastErrorMessage: "Recovery dispatch did not complete the notification delivery",
@@ -454,36 +329,19 @@ export const recoverNotificationDeliveries = onSchedule(
   async () => {
     const startedAt = Date.now();
     const now = new Date(startedAt).toISOString();
-    const failedAttemptedBefore = new Date(
-      startedAt - NOTIFICATION_RECOVERY_RETRY_DELAY_MS
-    ).toISOString();
-    const stalePendingBefore = new Date(
-      startedAt - DEFAULT_NOTIFICATION_DELIVERY_LEASE_MS
-    ).toISOString();
-
     const [failedResult, pendingResult] = await Promise.all([
-      listFailedNotificationDeliveriesForRecovery({
-        attemptedBefore: failedAttemptedBefore,
-        maxAttemptCount: NOTIFICATION_RECOVERY_MAX_ATTEMPTS,
+      listFailedNotificationDeliveriesForAutomaticRecovery({
         limit: NOTIFICATION_RECOVERY_BATCH_LIMIT,
       }),
-      listStalePendingNotificationDeliveriesForRecovery({
-        attemptedBefore: stalePendingBefore,
-        maxAttemptCount: NOTIFICATION_RECOVERY_MAX_ATTEMPTS,
+      listStalePendingNotificationDeliveriesForAutomaticRecovery({
         limit: NOTIFICATION_RECOVERY_BATCH_LIMIT,
       }),
     ]);
 
-    const candidates = [
-      ...(failedResult.data?.notificationDeliveries ?? []),
-      ...(pendingResult.data?.notificationDeliveries ?? []),
-    ]
-      .map(mapRecoveryRow)
-      .sort((left, right) =>
-        (left.lastAttemptedAt ?? left.createdAt).localeCompare(
-          right.lastAttemptedAt ?? right.createdAt
-        )
-      );
+    const candidates = fairNotificationRecoveryCandidates(
+      (failedResult.data?.notificationDeliveries ?? []).map(mapRecoveryRow),
+      (pendingResult.data?.notificationDeliveries ?? []).map(mapRecoveryRow),
+    );
     const dispatch = createNotificationRecoveryDispatcher(APP_BASE_URL);
     const summary = await runNotificationRecoveryBatch({
       candidates,
@@ -498,6 +356,10 @@ export const recoverNotificationDeliveries = onSchedule(
         return row ? mapRecoveryRow(row) : null;
       },
       recordFailure: (candidate) => recordNotificationRecoveryFailureForClaim(candidate, now),
+      defer: markNotificationRecoveryDeferred,
+      onDeferred: (candidate, reason, persisted) => {
+        logger.warn("notification recovery deferred without sending", { deliveryId: candidate.id, reason, persisted });
+      },
       onError: (candidate, error) => {
         logger.error("notification recovery attempt failed", {
           deliveryId: candidate.id,

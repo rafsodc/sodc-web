@@ -506,6 +506,20 @@
   {
     "connector": "api",
     "file": "admin-mutations.gql",
+    "operation": "ListFailedNotificationDeliveriesForAutomaticRecovery",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ListStalePendingNotificationDeliveriesForAutomaticRecovery",
+    "kind": "query",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
     "operation": "CreateNotificationDelivery",
     "kind": "mutation",
     "classification": "service-only"
@@ -535,6 +549,20 @@
     "connector": "api",
     "file": "admin-mutations.gql",
     "operation": "RecordNotificationRecoveryFailureForClaimById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "MarkNotificationRecoveryDeferredForClaimById",
+    "kind": "mutation",
+    "classification": "service-only"
+  },
+  {
+    "connector": "api",
+    "file": "admin-mutations.gql",
+    "operation": "ReleaseNotificationRecoveryDeferralForClaimById",
     "kind": "mutation",
     "classification": "service-only"
   },

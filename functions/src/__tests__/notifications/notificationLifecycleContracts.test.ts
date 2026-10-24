@@ -104,7 +104,9 @@ describe("atomic recovery claim source contracts", () => {
         "deliveryKey: { eq: $deliveryKey }", "notificationType: { eq: $notificationType }", "status: { eq: $expectedStatus }",
         "attemptCount: { eq: $expectedAttemptCount, ge: 0, lt: 6 }", "lastAttemptedAt: { eq: $expectedLastAttemptedAt }",
         "recoveryPayload: { eq: $expectedRecoveryPayload, isNull: $expectedRecoveryPayloadIsNull }",
-        "deliveryMode: { eq: $expectedDeliveryMode, isNull: $expectedDeliveryModeIsNull }", "attemptCount_update: { inc: 1 }",
+        "deliveryMode: { eq: $expectedDeliveryMode, isNull: $expectedDeliveryModeIsNull }",
+        "recipientUserId: { eq: $expectedRecipientUserId, isNull: $expectedRecipientUserIdIsNull }",
+        "recoveryDeferredAt: { isNull: true }", "attemptCount_update: { inc: 1 }",
         "status: { eq: FAILED }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 15 } } }",
         "status: { eq: PENDING }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 10 } } }"]) expect(block, `${name}: ${guard}`).toContain(guard);
       expect(block).not.toContain("$attemptCount:");

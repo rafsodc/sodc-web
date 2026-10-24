@@ -1,3 +1,5 @@
+import { paymentLifecycleDeliveryKey } from "./notificationDeliveryKeys";
+export { paymentLifecycleDeliveryKey } from "./notificationDeliveryKeys";
 import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import { NotificationChannel, TicketOrderStatus } from "@dataconnect/admin-generated";
@@ -35,10 +37,6 @@ type NotificationSender = typeof sendNotificationOnce;
 
 async function defaultDispatcher(notification: PaymentLifecycleNotification): Promise<void> {
   logger.info("payment lifecycle notification", notification);
-}
-
-export function paymentLifecycleDeliveryKey(notification: PaymentLifecycleNotification): string {
-  return `payment:${notification.orderId}:${notification.type}:${notification.stripeEventId}`;
 }
 
 export async function emitPaymentLifecycleNotification(

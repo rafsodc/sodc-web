@@ -1,3 +1,5 @@
+import { bookingConfirmationDeliveryKey, bookingRevisionDeliveryKey, bookingPendingMemberDeliveryKey, bookingPendingModeratorUidDeliveryKey, bookingChangesRequestedDeliveryKey, bookingApprovedDeliveryKey } from "./notificationDeliveryKeys";
+export { bookingConfirmationDeliveryKey, bookingRevisionDeliveryKey, bookingPendingMemberDeliveryKey, bookingPendingModeratorDeliveryKey, bookingPendingModeratorUidDeliveryKey, bookingChangesRequestedDeliveryKey, bookingApprovedDeliveryKey } from "./notificationDeliveryKeys";
 import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import {
@@ -157,34 +159,6 @@ function buildBasePersonalisation(args: {
     sectionBookingsUrl: `${base}/sections/${booking.event.section.id}`,
     myPaymentsUrl: `${base}/payments`,
   };
-}
-
-export function bookingConfirmationDeliveryKey(bookingId: string, idempotencyKey: string): string {
-  return `booking-confirm:${bookingId}:${idempotencyKey}`;
-}
-
-export function bookingRevisionDeliveryKey(bookingId: string, idempotencyKey: string): string {
-  return `booking-revision:${bookingId}:${idempotencyKey}`;
-}
-
-export function bookingPendingMemberDeliveryKey(bookingId: string, idempotencyKey: string): string {
-  return `booking-pending-member:${bookingId}:${idempotencyKey}`;
-}
-
-export function bookingPendingModeratorDeliveryKey(bookingId: string, moderatorEmail: string): string {
-  return `booking-pending-mod:${bookingId}:${moderatorEmail.trim().toLowerCase()}`;
-}
-
-export function bookingPendingModeratorUidDeliveryKey(bookingId: string, recipientUserId: string): string {
-  return `booking-pending-mod-v2:${bookingId}:${encodeURIComponent(recipientUserId)}`;
-}
-
-export function bookingChangesRequestedDeliveryKey(bookingId: string): string {
-  return `booking-changes-requested:${bookingId}`;
-}
-
-export function bookingApprovedDeliveryKey(bookingId: string): string {
-  return `booking-approved:${bookingId}`;
 }
 
 export function createBookingMailer(): ReturnType<typeof createConfiguredGovNotifyMailer<BookingEmailTemplates>> {
