@@ -29,6 +29,7 @@ import {
   NOTIFICATION_RECOVERY_RETRY_DELAY_MS,
   type NotificationRecoveryClaim,
 } from "./notificationRecoveryClaim";
+import { notificationDeliveryTimestampsEqual } from "./notificationDeliveryTimestamp";
 
 const MAX_ERROR_CODE_LENGTH = 120;
 const MAX_ERROR_MESSAGE_LENGTH = 500;
@@ -405,7 +406,7 @@ async function claimNotificationDelivery(
     const claim = request.recoveryClaim;
     if (!existing) return { outcome: "duplicate", reason: "recovery_row_missing" };
     if (existing.id !== claim.id || existing.status !== claim.status ||
-      existing.attemptCount !== claim.attemptCount || existing.lastAttemptedAt !== claim.lastAttemptedAt ||
+      existing.attemptCount !== claim.attemptCount || !notificationDeliveryTimestampsEqual(existing.lastAttemptedAt, claim.lastAttemptedAt) ||
       (existing.recipientUserId ?? null) !== claim.recipientUserId || existing.recoveryDeferredAt != null) {
       return { outcome: "duplicate", reason: "recovery_candidate_changed", deliveryId: existing.id, attemptCount: existing.attemptCount };
     }
@@ -528,7 +529,7 @@ export async function sendNotificationOnce(
     const assertOwnership = async () => {
       const current = await repository.getByChannelAndKey({ channel: request.channel, deliveryKey: request.deliveryKey });
       if (!current || current.id !== claimResult.delivery.id || current.status !== NotificationDeliveryStatus.PENDING ||
-        current.attemptCount !== claimResult.attemptCount || current.lastAttemptedAt !== attemptStartedAt ||
+        current.attemptCount !== claimResult.attemptCount || !notificationDeliveryTimestampsEqual(current.lastAttemptedAt, attemptStartedAt) ||
         (request.recoveryClaim && ((current.recipientUserId ?? null) !== request.recoveryClaim.recipientUserId || current.recoveryDeferredAt != null)) ||
         isNotificationDeliveryLeaseExpired(current.lastAttemptedAt, now(), leaseMs)) {
         throw Object.assign(new Error("Notification delivery lease is no longer owned"), { code: "NOTIFICATION_DELIVERY_OWNERSHIP_LOST" });
@@ -557,7 +558,7 @@ export async function sendNotificationOnce(
         return { outcome: "skipped", reason: "already_skipped", deliveryId: current.id, attemptCount: current.attemptCount };
       }
       if (current?.status === NotificationDeliveryStatus.SENT) return duplicateResult("already_sent", current);
-      if (current && (current.attemptCount !== claimResult.attemptCount || current.lastAttemptedAt !== attemptStartedAt)) {
+      if (current && (current.attemptCount !== claimResult.attemptCount || !notificationDeliveryTimestampsEqual(current.lastAttemptedAt, attemptStartedAt))) {
         return duplicateResult("in_progress", current);
       }
       throw new Error("NOTIFICATION_SKIP_NOT_PERSISTED");
