@@ -41,6 +41,8 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetNotificationDeliveryByChannelAndKey*](#getnotificationdeliverybychannelandkey)
   - [*ListFailedNotificationDeliveriesForRecovery*](#listfailednotificationdeliveriesforrecovery)
   - [*ListStalePendingNotificationDeliveriesForRecovery*](#liststalependingnotificationdeliveriesforrecovery)
+  - [*ListFailedNotificationDeliveriesForAutomaticRecovery*](#listfailednotificationdeliveriesforautomaticrecovery)
+  - [*ListStalePendingNotificationDeliveriesForAutomaticRecovery*](#liststalependingnotificationdeliveriesforautomaticrecovery)
   - [*ListLegacyBookingStaffNotificationDeliveries*](#listlegacybookingstaffnotificationdeliveries)
   - [*ListLegacyApplicantStaffNotificationDeliveries*](#listlegacyapplicantstaffnotificationdeliveries)
   - [*GetPaymentReconciliationExceptionByOrderAndType*](#getpaymentreconciliationexceptionbyorderandtype)
@@ -170,7 +172,11 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreatePaymentWebhookEvent*](#createpaymentwebhookevent)
   - [*CreateNotificationDelivery*](#createnotificationdelivery)
   - [*ClaimNotificationDeliveryById*](#claimnotificationdeliverybyid)
+  - [*ClaimNotificationDeliveryForRecoveryById*](#claimnotificationdeliveryforrecoverybyid)
   - [*RecordNotificationRecoveryFailureById*](#recordnotificationrecoveryfailurebyid)
+  - [*RecordNotificationRecoveryFailureForClaimById*](#recordnotificationrecoveryfailureforclaimbyid)
+  - [*MarkNotificationRecoveryDeferredForClaimById*](#marknotificationrecoverydeferredforclaimbyid)
+  - [*ReleaseNotificationRecoveryDeferralForClaimById*](#releasenotificationrecoverydeferralforclaimbyid)
   - [*MarkNotificationDeliverySentById*](#marknotificationdeliverysentbyid)
   - [*MarkNotificationDeliverySkippedById*](#marknotificationdeliveryskippedbyid)
   - [*DeleteNotificationDeliveryIntegrationFixture*](#deletenotificationdeliveryintegrationfixture)
@@ -3895,6 +3901,7 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     deliveryKey: string;
     notificationType: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -3907,6 +3914,8 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     providerMessageId?: string | null;
     attemptCount: number;
     lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
     sentAt?: TimestampString | null;
     skippedAt?: TimestampString | null;
     skipReason?: string | null;
@@ -4032,6 +4041,7 @@ export interface ListFailedNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -4164,6 +4174,7 @@ export interface ListStalePendingNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
     recipientUserId?: string | null;
     booking?: {
       id: UUIDString;
@@ -4231,6 +4242,264 @@ const ref = listStalePendingNotificationDeliveriesForRecoveryRef({ attemptedBefo
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = listStalePendingNotificationDeliveriesForRecoveryRef(dataConnect, listStalePendingNotificationDeliveriesForRecoveryVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+## ListFailedNotificationDeliveriesForAutomaticRecovery
+You can execute the `ListFailedNotificationDeliveriesForAutomaticRecovery` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listFailedNotificationDeliveriesForAutomaticRecovery(vars: ListFailedNotificationDeliveriesForAutomaticRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListFailedNotificationDeliveriesForAutomaticRecoveryData, ListFailedNotificationDeliveriesForAutomaticRecoveryVariables>;
+
+interface ListFailedNotificationDeliveriesForAutomaticRecoveryRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListFailedNotificationDeliveriesForAutomaticRecoveryVariables): QueryRef<ListFailedNotificationDeliveriesForAutomaticRecoveryData, ListFailedNotificationDeliveriesForAutomaticRecoveryVariables>;
+}
+export const listFailedNotificationDeliveriesForAutomaticRecoveryRef: ListFailedNotificationDeliveriesForAutomaticRecoveryRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listFailedNotificationDeliveriesForAutomaticRecovery(dc: DataConnect, vars: ListFailedNotificationDeliveriesForAutomaticRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListFailedNotificationDeliveriesForAutomaticRecoveryData, ListFailedNotificationDeliveriesForAutomaticRecoveryVariables>;
+
+interface ListFailedNotificationDeliveriesForAutomaticRecoveryRef {
+  ...
+  (dc: DataConnect, vars: ListFailedNotificationDeliveriesForAutomaticRecoveryVariables): QueryRef<ListFailedNotificationDeliveriesForAutomaticRecoveryData, ListFailedNotificationDeliveriesForAutomaticRecoveryVariables>;
+}
+export const listFailedNotificationDeliveriesForAutomaticRecoveryRef: ListFailedNotificationDeliveriesForAutomaticRecoveryRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listFailedNotificationDeliveriesForAutomaticRecoveryRef:
+```typescript
+const name = listFailedNotificationDeliveriesForAutomaticRecoveryRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListFailedNotificationDeliveriesForAutomaticRecovery` query requires an argument of type `ListFailedNotificationDeliveriesForAutomaticRecoveryVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListFailedNotificationDeliveriesForAutomaticRecoveryVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListFailedNotificationDeliveriesForAutomaticRecovery` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListFailedNotificationDeliveriesForAutomaticRecoveryData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListFailedNotificationDeliveriesForAutomaticRecoveryData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    notificationType: string;
+    deliveryKey: string;
+    recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
+    status: NotificationDeliveryStatus;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+```
+### Using `ListFailedNotificationDeliveriesForAutomaticRecovery`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listFailedNotificationDeliveriesForAutomaticRecovery, ListFailedNotificationDeliveriesForAutomaticRecoveryVariables } from '@dataconnect/generated';
+
+// The `ListFailedNotificationDeliveriesForAutomaticRecovery` query requires an argument of type `ListFailedNotificationDeliveriesForAutomaticRecoveryVariables`:
+const listFailedNotificationDeliveriesForAutomaticRecoveryVars: ListFailedNotificationDeliveriesForAutomaticRecoveryVariables = {
+  limit: ..., 
+};
+
+// Call the `listFailedNotificationDeliveriesForAutomaticRecovery()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listFailedNotificationDeliveriesForAutomaticRecovery(listFailedNotificationDeliveriesForAutomaticRecoveryVars);
+// Variables can be defined inline as well.
+const { data } = await listFailedNotificationDeliveriesForAutomaticRecovery({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listFailedNotificationDeliveriesForAutomaticRecovery(dataConnect, listFailedNotificationDeliveriesForAutomaticRecoveryVars);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+listFailedNotificationDeliveriesForAutomaticRecovery(listFailedNotificationDeliveriesForAutomaticRecoveryVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+### Using `ListFailedNotificationDeliveriesForAutomaticRecovery`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listFailedNotificationDeliveriesForAutomaticRecoveryRef, ListFailedNotificationDeliveriesForAutomaticRecoveryVariables } from '@dataconnect/generated';
+
+// The `ListFailedNotificationDeliveriesForAutomaticRecovery` query requires an argument of type `ListFailedNotificationDeliveriesForAutomaticRecoveryVariables`:
+const listFailedNotificationDeliveriesForAutomaticRecoveryVars: ListFailedNotificationDeliveriesForAutomaticRecoveryVariables = {
+  limit: ..., 
+};
+
+// Call the `listFailedNotificationDeliveriesForAutomaticRecoveryRef()` function to get a reference to the query.
+const ref = listFailedNotificationDeliveriesForAutomaticRecoveryRef(listFailedNotificationDeliveriesForAutomaticRecoveryVars);
+// Variables can be defined inline as well.
+const ref = listFailedNotificationDeliveriesForAutomaticRecoveryRef({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listFailedNotificationDeliveriesForAutomaticRecoveryRef(dataConnect, listFailedNotificationDeliveriesForAutomaticRecoveryVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+## ListStalePendingNotificationDeliveriesForAutomaticRecovery
+You can execute the `ListStalePendingNotificationDeliveriesForAutomaticRecovery` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+listStalePendingNotificationDeliveriesForAutomaticRecovery(vars: ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListStalePendingNotificationDeliveriesForAutomaticRecoveryData, ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables>;
+
+interface ListStalePendingNotificationDeliveriesForAutomaticRecoveryRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables): QueryRef<ListStalePendingNotificationDeliveriesForAutomaticRecoveryData, ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables>;
+}
+export const listStalePendingNotificationDeliveriesForAutomaticRecoveryRef: ListStalePendingNotificationDeliveriesForAutomaticRecoveryRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+listStalePendingNotificationDeliveriesForAutomaticRecovery(dc: DataConnect, vars: ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables, options?: ExecuteQueryOptions): QueryPromise<ListStalePendingNotificationDeliveriesForAutomaticRecoveryData, ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables>;
+
+interface ListStalePendingNotificationDeliveriesForAutomaticRecoveryRef {
+  ...
+  (dc: DataConnect, vars: ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables): QueryRef<ListStalePendingNotificationDeliveriesForAutomaticRecoveryData, ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables>;
+}
+export const listStalePendingNotificationDeliveriesForAutomaticRecoveryRef: ListStalePendingNotificationDeliveriesForAutomaticRecoveryRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the listStalePendingNotificationDeliveriesForAutomaticRecoveryRef:
+```typescript
+const name = listStalePendingNotificationDeliveriesForAutomaticRecoveryRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ListStalePendingNotificationDeliveriesForAutomaticRecovery` query requires an argument of type `ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables {
+  limit: number;
+}
+```
+### Return Type
+Recall that executing the `ListStalePendingNotificationDeliveriesForAutomaticRecovery` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ListStalePendingNotificationDeliveriesForAutomaticRecoveryData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ListStalePendingNotificationDeliveriesForAutomaticRecoveryData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    notificationType: string;
+    deliveryKey: string;
+    recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
+    status: NotificationDeliveryStatus;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+```
+### Using `ListStalePendingNotificationDeliveriesForAutomaticRecovery`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, listStalePendingNotificationDeliveriesForAutomaticRecovery, ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables } from '@dataconnect/generated';
+
+// The `ListStalePendingNotificationDeliveriesForAutomaticRecovery` query requires an argument of type `ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables`:
+const listStalePendingNotificationDeliveriesForAutomaticRecoveryVars: ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables = {
+  limit: ..., 
+};
+
+// Call the `listStalePendingNotificationDeliveriesForAutomaticRecovery()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await listStalePendingNotificationDeliveriesForAutomaticRecovery(listStalePendingNotificationDeliveriesForAutomaticRecoveryVars);
+// Variables can be defined inline as well.
+const { data } = await listStalePendingNotificationDeliveriesForAutomaticRecovery({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await listStalePendingNotificationDeliveriesForAutomaticRecovery(dataConnect, listStalePendingNotificationDeliveriesForAutomaticRecoveryVars);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+listStalePendingNotificationDeliveriesForAutomaticRecovery(listStalePendingNotificationDeliveriesForAutomaticRecoveryVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+### Using `ListStalePendingNotificationDeliveriesForAutomaticRecovery`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, listStalePendingNotificationDeliveriesForAutomaticRecoveryRef, ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables } from '@dataconnect/generated';
+
+// The `ListStalePendingNotificationDeliveriesForAutomaticRecovery` query requires an argument of type `ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables`:
+const listStalePendingNotificationDeliveriesForAutomaticRecoveryVars: ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables = {
+  limit: ..., 
+};
+
+// Call the `listStalePendingNotificationDeliveriesForAutomaticRecoveryRef()` function to get a reference to the query.
+const ref = listStalePendingNotificationDeliveriesForAutomaticRecoveryRef(listStalePendingNotificationDeliveriesForAutomaticRecoveryVars);
+// Variables can be defined inline as well.
+const ref = listStalePendingNotificationDeliveriesForAutomaticRecoveryRef({ limit: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = listStalePendingNotificationDeliveriesForAutomaticRecoveryRef(dataConnect, listStalePendingNotificationDeliveriesForAutomaticRecoveryVars);
 
 // Call `executeQuery()` on the reference to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
@@ -20121,6 +20390,157 @@ executeMutation(ref).then((response) => {
 });
 ```
 
+## ClaimNotificationDeliveryForRecoveryById
+You can execute the `ClaimNotificationDeliveryForRecoveryById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+claimNotificationDeliveryForRecoveryById(vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationPromise<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+
+interface ClaimNotificationDeliveryForRecoveryByIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationRef<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+}
+export const claimNotificationDeliveryForRecoveryByIdRef: ClaimNotificationDeliveryForRecoveryByIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+claimNotificationDeliveryForRecoveryById(dc: DataConnect, vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationPromise<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+
+interface ClaimNotificationDeliveryForRecoveryByIdRef {
+  ...
+  (dc: DataConnect, vars: ClaimNotificationDeliveryForRecoveryByIdVariables): MutationRef<ClaimNotificationDeliveryForRecoveryByIdData, ClaimNotificationDeliveryForRecoveryByIdVariables>;
+}
+export const claimNotificationDeliveryForRecoveryByIdRef: ClaimNotificationDeliveryForRecoveryByIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the claimNotificationDeliveryForRecoveryByIdRef:
+```typescript
+const name = claimNotificationDeliveryForRecoveryByIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ClaimNotificationDeliveryForRecoveryById` mutation requires an argument of type `ClaimNotificationDeliveryForRecoveryByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ClaimNotificationDeliveryForRecoveryByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  expectedRecipientUserId?: string | null;
+  expectedRecipientUserIdIsNull: boolean;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+}
+```
+### Return Type
+Recall that executing the `ClaimNotificationDeliveryForRecoveryById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ClaimNotificationDeliveryForRecoveryByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ClaimNotificationDeliveryForRecoveryByIdData {
+  notificationDelivery_updateMany: number;
+}
+```
+### Using `ClaimNotificationDeliveryForRecoveryById`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, claimNotificationDeliveryForRecoveryById, ClaimNotificationDeliveryForRecoveryByIdVariables } from '@dataconnect/generated';
+
+// The `ClaimNotificationDeliveryForRecoveryById` mutation requires an argument of type `ClaimNotificationDeliveryForRecoveryByIdVariables`:
+const claimNotificationDeliveryForRecoveryByIdVars: ClaimNotificationDeliveryForRecoveryByIdVariables = {
+  id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
+  expectedRecipientUserId: ..., // optional
+  expectedRecipientUserIdIsNull: ..., 
+  lastAttemptedAt: ..., 
+  provider: ..., // optional
+};
+
+// Call the `claimNotificationDeliveryForRecoveryById()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await claimNotificationDeliveryForRecoveryById(claimNotificationDeliveryForRecoveryByIdVars);
+// Variables can be defined inline as well.
+const { data } = await claimNotificationDeliveryForRecoveryById({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., expectedRecipientUserId: ..., expectedRecipientUserIdIsNull: ..., lastAttemptedAt: ..., provider: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await claimNotificationDeliveryForRecoveryById(dataConnect, claimNotificationDeliveryForRecoveryByIdVars);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+claimNotificationDeliveryForRecoveryById(claimNotificationDeliveryForRecoveryByIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
+### Using `ClaimNotificationDeliveryForRecoveryById`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, claimNotificationDeliveryForRecoveryByIdRef, ClaimNotificationDeliveryForRecoveryByIdVariables } from '@dataconnect/generated';
+
+// The `ClaimNotificationDeliveryForRecoveryById` mutation requires an argument of type `ClaimNotificationDeliveryForRecoveryByIdVariables`:
+const claimNotificationDeliveryForRecoveryByIdVars: ClaimNotificationDeliveryForRecoveryByIdVariables = {
+  id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
+  expectedRecipientUserId: ..., // optional
+  expectedRecipientUserIdIsNull: ..., 
+  lastAttemptedAt: ..., 
+  provider: ..., // optional
+};
+
+// Call the `claimNotificationDeliveryForRecoveryByIdRef()` function to get a reference to the mutation.
+const ref = claimNotificationDeliveryForRecoveryByIdRef(claimNotificationDeliveryForRecoveryByIdVars);
+// Variables can be defined inline as well.
+const ref = claimNotificationDeliveryForRecoveryByIdRef({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., expectedRecipientUserId: ..., expectedRecipientUserIdIsNull: ..., lastAttemptedAt: ..., provider: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = claimNotificationDeliveryForRecoveryByIdRef(dataConnect, claimNotificationDeliveryForRecoveryByIdVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
 ## RecordNotificationRecoveryFailureById
 You can execute the `RecordNotificationRecoveryFailureById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
 ```typescript
@@ -20234,6 +20654,477 @@ const ref = recordNotificationRecoveryFailureByIdRef({ id: ..., expectedStatus: 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
 const ref = recordNotificationRecoveryFailureByIdRef(dataConnect, recordNotificationRecoveryFailureByIdVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
+## RecordNotificationRecoveryFailureForClaimById
+You can execute the `RecordNotificationRecoveryFailureForClaimById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+recordNotificationRecoveryFailureForClaimById(vars: RecordNotificationRecoveryFailureForClaimByIdVariables): MutationPromise<RecordNotificationRecoveryFailureForClaimByIdData, RecordNotificationRecoveryFailureForClaimByIdVariables>;
+
+interface RecordNotificationRecoveryFailureForClaimByIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: RecordNotificationRecoveryFailureForClaimByIdVariables): MutationRef<RecordNotificationRecoveryFailureForClaimByIdData, RecordNotificationRecoveryFailureForClaimByIdVariables>;
+}
+export const recordNotificationRecoveryFailureForClaimByIdRef: RecordNotificationRecoveryFailureForClaimByIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+recordNotificationRecoveryFailureForClaimById(dc: DataConnect, vars: RecordNotificationRecoveryFailureForClaimByIdVariables): MutationPromise<RecordNotificationRecoveryFailureForClaimByIdData, RecordNotificationRecoveryFailureForClaimByIdVariables>;
+
+interface RecordNotificationRecoveryFailureForClaimByIdRef {
+  ...
+  (dc: DataConnect, vars: RecordNotificationRecoveryFailureForClaimByIdVariables): MutationRef<RecordNotificationRecoveryFailureForClaimByIdData, RecordNotificationRecoveryFailureForClaimByIdVariables>;
+}
+export const recordNotificationRecoveryFailureForClaimByIdRef: RecordNotificationRecoveryFailureForClaimByIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the recordNotificationRecoveryFailureForClaimByIdRef:
+```typescript
+const name = recordNotificationRecoveryFailureForClaimByIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `RecordNotificationRecoveryFailureForClaimById` mutation requires an argument of type `RecordNotificationRecoveryFailureForClaimByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface RecordNotificationRecoveryFailureForClaimByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  expectedRecipientUserId?: string | null;
+  expectedRecipientUserIdIsNull: boolean;
+  lastAttemptedAt: TimestampString;
+  lastErrorCode: string;
+  lastErrorMessage: string;
+}
+```
+### Return Type
+Recall that executing the `RecordNotificationRecoveryFailureForClaimById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `RecordNotificationRecoveryFailureForClaimByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface RecordNotificationRecoveryFailureForClaimByIdData {
+  notificationDelivery_updateMany: number;
+}
+```
+### Using `RecordNotificationRecoveryFailureForClaimById`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, recordNotificationRecoveryFailureForClaimById, RecordNotificationRecoveryFailureForClaimByIdVariables } from '@dataconnect/generated';
+
+// The `RecordNotificationRecoveryFailureForClaimById` mutation requires an argument of type `RecordNotificationRecoveryFailureForClaimByIdVariables`:
+const recordNotificationRecoveryFailureForClaimByIdVars: RecordNotificationRecoveryFailureForClaimByIdVariables = {
+  id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
+  expectedRecipientUserId: ..., // optional
+  expectedRecipientUserIdIsNull: ..., 
+  lastAttemptedAt: ..., 
+  lastErrorCode: ..., 
+  lastErrorMessage: ..., 
+};
+
+// Call the `recordNotificationRecoveryFailureForClaimById()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await recordNotificationRecoveryFailureForClaimById(recordNotificationRecoveryFailureForClaimByIdVars);
+// Variables can be defined inline as well.
+const { data } = await recordNotificationRecoveryFailureForClaimById({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., expectedRecipientUserId: ..., expectedRecipientUserIdIsNull: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await recordNotificationRecoveryFailureForClaimById(dataConnect, recordNotificationRecoveryFailureForClaimByIdVars);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+recordNotificationRecoveryFailureForClaimById(recordNotificationRecoveryFailureForClaimByIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
+### Using `RecordNotificationRecoveryFailureForClaimById`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, recordNotificationRecoveryFailureForClaimByIdRef, RecordNotificationRecoveryFailureForClaimByIdVariables } from '@dataconnect/generated';
+
+// The `RecordNotificationRecoveryFailureForClaimById` mutation requires an argument of type `RecordNotificationRecoveryFailureForClaimByIdVariables`:
+const recordNotificationRecoveryFailureForClaimByIdVars: RecordNotificationRecoveryFailureForClaimByIdVariables = {
+  id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
+  expectedRecipientUserId: ..., // optional
+  expectedRecipientUserIdIsNull: ..., 
+  lastAttemptedAt: ..., 
+  lastErrorCode: ..., 
+  lastErrorMessage: ..., 
+};
+
+// Call the `recordNotificationRecoveryFailureForClaimByIdRef()` function to get a reference to the mutation.
+const ref = recordNotificationRecoveryFailureForClaimByIdRef(recordNotificationRecoveryFailureForClaimByIdVars);
+// Variables can be defined inline as well.
+const ref = recordNotificationRecoveryFailureForClaimByIdRef({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., expectedRecipientUserId: ..., expectedRecipientUserIdIsNull: ..., lastAttemptedAt: ..., lastErrorCode: ..., lastErrorMessage: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = recordNotificationRecoveryFailureForClaimByIdRef(dataConnect, recordNotificationRecoveryFailureForClaimByIdVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
+## MarkNotificationRecoveryDeferredForClaimById
+You can execute the `MarkNotificationRecoveryDeferredForClaimById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+markNotificationRecoveryDeferredForClaimById(vars: MarkNotificationRecoveryDeferredForClaimByIdVariables): MutationPromise<MarkNotificationRecoveryDeferredForClaimByIdData, MarkNotificationRecoveryDeferredForClaimByIdVariables>;
+
+interface MarkNotificationRecoveryDeferredForClaimByIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: MarkNotificationRecoveryDeferredForClaimByIdVariables): MutationRef<MarkNotificationRecoveryDeferredForClaimByIdData, MarkNotificationRecoveryDeferredForClaimByIdVariables>;
+}
+export const markNotificationRecoveryDeferredForClaimByIdRef: MarkNotificationRecoveryDeferredForClaimByIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+markNotificationRecoveryDeferredForClaimById(dc: DataConnect, vars: MarkNotificationRecoveryDeferredForClaimByIdVariables): MutationPromise<MarkNotificationRecoveryDeferredForClaimByIdData, MarkNotificationRecoveryDeferredForClaimByIdVariables>;
+
+interface MarkNotificationRecoveryDeferredForClaimByIdRef {
+  ...
+  (dc: DataConnect, vars: MarkNotificationRecoveryDeferredForClaimByIdVariables): MutationRef<MarkNotificationRecoveryDeferredForClaimByIdData, MarkNotificationRecoveryDeferredForClaimByIdVariables>;
+}
+export const markNotificationRecoveryDeferredForClaimByIdRef: MarkNotificationRecoveryDeferredForClaimByIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the markNotificationRecoveryDeferredForClaimByIdRef:
+```typescript
+const name = markNotificationRecoveryDeferredForClaimByIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `MarkNotificationRecoveryDeferredForClaimById` mutation requires an argument of type `MarkNotificationRecoveryDeferredForClaimByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface MarkNotificationRecoveryDeferredForClaimByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  expectedRecipientUserId?: string | null;
+  expectedRecipientUserIdIsNull: boolean;
+  deferredReason: NotificationRecoveryDeferredReason;
+}
+```
+### Return Type
+Recall that executing the `MarkNotificationRecoveryDeferredForClaimById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `MarkNotificationRecoveryDeferredForClaimByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface MarkNotificationRecoveryDeferredForClaimByIdData {
+  notificationDelivery_updateMany: number;
+}
+```
+### Using `MarkNotificationRecoveryDeferredForClaimById`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, markNotificationRecoveryDeferredForClaimById, MarkNotificationRecoveryDeferredForClaimByIdVariables } from '@dataconnect/generated';
+
+// The `MarkNotificationRecoveryDeferredForClaimById` mutation requires an argument of type `MarkNotificationRecoveryDeferredForClaimByIdVariables`:
+const markNotificationRecoveryDeferredForClaimByIdVars: MarkNotificationRecoveryDeferredForClaimByIdVariables = {
+  id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
+  expectedRecipientUserId: ..., // optional
+  expectedRecipientUserIdIsNull: ..., 
+  deferredReason: ..., 
+};
+
+// Call the `markNotificationRecoveryDeferredForClaimById()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await markNotificationRecoveryDeferredForClaimById(markNotificationRecoveryDeferredForClaimByIdVars);
+// Variables can be defined inline as well.
+const { data } = await markNotificationRecoveryDeferredForClaimById({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., expectedRecipientUserId: ..., expectedRecipientUserIdIsNull: ..., deferredReason: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await markNotificationRecoveryDeferredForClaimById(dataConnect, markNotificationRecoveryDeferredForClaimByIdVars);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+markNotificationRecoveryDeferredForClaimById(markNotificationRecoveryDeferredForClaimByIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
+### Using `MarkNotificationRecoveryDeferredForClaimById`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, markNotificationRecoveryDeferredForClaimByIdRef, MarkNotificationRecoveryDeferredForClaimByIdVariables } from '@dataconnect/generated';
+
+// The `MarkNotificationRecoveryDeferredForClaimById` mutation requires an argument of type `MarkNotificationRecoveryDeferredForClaimByIdVariables`:
+const markNotificationRecoveryDeferredForClaimByIdVars: MarkNotificationRecoveryDeferredForClaimByIdVariables = {
+  id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
+  expectedRecipientUserId: ..., // optional
+  expectedRecipientUserIdIsNull: ..., 
+  deferredReason: ..., 
+};
+
+// Call the `markNotificationRecoveryDeferredForClaimByIdRef()` function to get a reference to the mutation.
+const ref = markNotificationRecoveryDeferredForClaimByIdRef(markNotificationRecoveryDeferredForClaimByIdVars);
+// Variables can be defined inline as well.
+const ref = markNotificationRecoveryDeferredForClaimByIdRef({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., expectedRecipientUserId: ..., expectedRecipientUserIdIsNull: ..., deferredReason: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = markNotificationRecoveryDeferredForClaimByIdRef(dataConnect, markNotificationRecoveryDeferredForClaimByIdVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
+## ReleaseNotificationRecoveryDeferralForClaimById
+You can execute the `ReleaseNotificationRecoveryDeferralForClaimById` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+releaseNotificationRecoveryDeferralForClaimById(vars: ReleaseNotificationRecoveryDeferralForClaimByIdVariables): MutationPromise<ReleaseNotificationRecoveryDeferralForClaimByIdData, ReleaseNotificationRecoveryDeferralForClaimByIdVariables>;
+
+interface ReleaseNotificationRecoveryDeferralForClaimByIdRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ReleaseNotificationRecoveryDeferralForClaimByIdVariables): MutationRef<ReleaseNotificationRecoveryDeferralForClaimByIdData, ReleaseNotificationRecoveryDeferralForClaimByIdVariables>;
+}
+export const releaseNotificationRecoveryDeferralForClaimByIdRef: ReleaseNotificationRecoveryDeferralForClaimByIdRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+releaseNotificationRecoveryDeferralForClaimById(dc: DataConnect, vars: ReleaseNotificationRecoveryDeferralForClaimByIdVariables): MutationPromise<ReleaseNotificationRecoveryDeferralForClaimByIdData, ReleaseNotificationRecoveryDeferralForClaimByIdVariables>;
+
+interface ReleaseNotificationRecoveryDeferralForClaimByIdRef {
+  ...
+  (dc: DataConnect, vars: ReleaseNotificationRecoveryDeferralForClaimByIdVariables): MutationRef<ReleaseNotificationRecoveryDeferralForClaimByIdData, ReleaseNotificationRecoveryDeferralForClaimByIdVariables>;
+}
+export const releaseNotificationRecoveryDeferralForClaimByIdRef: ReleaseNotificationRecoveryDeferralForClaimByIdRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the releaseNotificationRecoveryDeferralForClaimByIdRef:
+```typescript
+const name = releaseNotificationRecoveryDeferralForClaimByIdRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `ReleaseNotificationRecoveryDeferralForClaimById` mutation requires an argument of type `ReleaseNotificationRecoveryDeferralForClaimByIdVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface ReleaseNotificationRecoveryDeferralForClaimByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  expectedRecipientUserId?: string | null;
+  expectedRecipientUserIdIsNull: boolean;
+  expectedBookingId?: UUIDString | null;
+  expectedBookingIdIsNull: boolean;
+  expectedUserId?: string | null;
+  expectedUserIdIsNull: boolean;
+  expectedDeferredAt: TimestampString;
+  expectedDeferredReason: NotificationRecoveryDeferredReason;
+  verifiedDeliveryMode: GovNotifyDeliveryMode;
+  actorId: string;
+}
+```
+### Return Type
+Recall that executing the `ReleaseNotificationRecoveryDeferralForClaimById` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `ReleaseNotificationRecoveryDeferralForClaimByIdData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface ReleaseNotificationRecoveryDeferralForClaimByIdData {
+  notificationDelivery_updateMany: number;
+}
+```
+### Using `ReleaseNotificationRecoveryDeferralForClaimById`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, releaseNotificationRecoveryDeferralForClaimById, ReleaseNotificationRecoveryDeferralForClaimByIdVariables } from '@dataconnect/generated';
+
+// The `ReleaseNotificationRecoveryDeferralForClaimById` mutation requires an argument of type `ReleaseNotificationRecoveryDeferralForClaimByIdVariables`:
+const releaseNotificationRecoveryDeferralForClaimByIdVars: ReleaseNotificationRecoveryDeferralForClaimByIdVariables = {
+  id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
+  expectedRecipientUserId: ..., // optional
+  expectedRecipientUserIdIsNull: ..., 
+  expectedBookingId: ..., // optional
+  expectedBookingIdIsNull: ..., 
+  expectedUserId: ..., // optional
+  expectedUserIdIsNull: ..., 
+  expectedDeferredAt: ..., 
+  expectedDeferredReason: ..., 
+  verifiedDeliveryMode: ..., 
+  actorId: ..., 
+};
+
+// Call the `releaseNotificationRecoveryDeferralForClaimById()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await releaseNotificationRecoveryDeferralForClaimById(releaseNotificationRecoveryDeferralForClaimByIdVars);
+// Variables can be defined inline as well.
+const { data } = await releaseNotificationRecoveryDeferralForClaimById({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., expectedRecipientUserId: ..., expectedRecipientUserIdIsNull: ..., expectedBookingId: ..., expectedBookingIdIsNull: ..., expectedUserId: ..., expectedUserIdIsNull: ..., expectedDeferredAt: ..., expectedDeferredReason: ..., verifiedDeliveryMode: ..., actorId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await releaseNotificationRecoveryDeferralForClaimById(dataConnect, releaseNotificationRecoveryDeferralForClaimByIdVars);
+
+console.log(data.notificationDelivery_updateMany);
+
+// Or, you can use the `Promise` API.
+releaseNotificationRecoveryDeferralForClaimById(releaseNotificationRecoveryDeferralForClaimByIdVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDelivery_updateMany);
+});
+```
+
+### Using `ReleaseNotificationRecoveryDeferralForClaimById`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, releaseNotificationRecoveryDeferralForClaimByIdRef, ReleaseNotificationRecoveryDeferralForClaimByIdVariables } from '@dataconnect/generated';
+
+// The `ReleaseNotificationRecoveryDeferralForClaimById` mutation requires an argument of type `ReleaseNotificationRecoveryDeferralForClaimByIdVariables`:
+const releaseNotificationRecoveryDeferralForClaimByIdVars: ReleaseNotificationRecoveryDeferralForClaimByIdVariables = {
+  id: ..., 
+  channel: ..., 
+  deliveryKey: ..., 
+  notificationType: ..., 
+  expectedStatus: ..., 
+  expectedAttemptCount: ..., 
+  expectedLastAttemptedAt: ..., 
+  expectedRecoveryPayload: ..., // optional
+  expectedRecoveryPayloadIsNull: ..., 
+  expectedDeliveryMode: ..., // optional
+  expectedDeliveryModeIsNull: ..., 
+  expectedRecipientUserId: ..., // optional
+  expectedRecipientUserIdIsNull: ..., 
+  expectedBookingId: ..., // optional
+  expectedBookingIdIsNull: ..., 
+  expectedUserId: ..., // optional
+  expectedUserIdIsNull: ..., 
+  expectedDeferredAt: ..., 
+  expectedDeferredReason: ..., 
+  verifiedDeliveryMode: ..., 
+  actorId: ..., 
+};
+
+// Call the `releaseNotificationRecoveryDeferralForClaimByIdRef()` function to get a reference to the mutation.
+const ref = releaseNotificationRecoveryDeferralForClaimByIdRef(releaseNotificationRecoveryDeferralForClaimByIdVars);
+// Variables can be defined inline as well.
+const ref = releaseNotificationRecoveryDeferralForClaimByIdRef({ id: ..., channel: ..., deliveryKey: ..., notificationType: ..., expectedStatus: ..., expectedAttemptCount: ..., expectedLastAttemptedAt: ..., expectedRecoveryPayload: ..., expectedRecoveryPayloadIsNull: ..., expectedDeliveryMode: ..., expectedDeliveryModeIsNull: ..., expectedRecipientUserId: ..., expectedRecipientUserIdIsNull: ..., expectedBookingId: ..., expectedBookingIdIsNull: ..., expectedUserId: ..., expectedUserIdIsNull: ..., expectedDeferredAt: ..., expectedDeferredReason: ..., verifiedDeliveryMode: ..., actorId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = releaseNotificationRecoveryDeferralForClaimByIdRef(dataConnect, releaseNotificationRecoveryDeferralForClaimByIdVars);
 
 // Call `executeMutation()` on the reference to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.

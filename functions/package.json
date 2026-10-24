@@ -18,13 +18,15 @@
     "test:admin-safety-integration": "node scripts/run-admin-safety-integration.mjs",
     "test:security-integration": "node scripts/run-security-integration.mjs",
     "test:watch": "vitest",
+    "test:notification-recovery-integration": "node scripts/run-notification-recovery-integration.mjs",
     "test:notification-integration": "node scripts/run-notification-integration.mjs",
     "dev-reset": "ts-node --project tsconfig.scripts.json scripts/cli-dev-reset.ts",
     "legacy-user-import": "ts-node --project tsconfig.scripts.json scripts/legacy-user-import.ts",
     "legacy-user-postflight": "ts-node --project tsconfig.scripts.json scripts/legacy-user-postflight.ts",
     "legacy-user-preflight-review": "ts-node --project tsconfig.scripts.json scripts/legacy-user-preflight-review.ts",
     "legacy-bcrypt-pilot": "ts-node --project tsconfig.scripts.json scripts/legacy-bcrypt-pilot.ts",
-    "security-state-admin": "ts-node --project tsconfig.scripts.json scripts/security-state-admin.ts"
+    "security-state-admin": "ts-node --project tsconfig.scripts.json scripts/security-state-admin.ts",
+    "notification-recovery-admin": "node scripts/notification-recovery-admin.mjs"
   },
   "engines": {
     "node": "24"

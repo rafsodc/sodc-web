@@ -8,10 +8,19 @@ import {
   type NotificationRecoveryPayload,
 } from "./notificationRecoveryPayload";
 import { isNotificationDeliveryLeaseExpired } from "./notificationDelivery";
+import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
 
-export const NOTIFICATION_RECOVERY_BATCH_LIMIT = 25;
-export const NOTIFICATION_RECOVERY_MAX_ATTEMPTS = 6;
-export const NOTIFICATION_RECOVERY_RETRY_DELAY_MS = 15 * 60 * 1000;
+import {
+  NOTIFICATION_RECOVERY_BATCH_LIMIT,
+  NOTIFICATION_RECOVERY_MAX_ATTEMPTS,
+  NOTIFICATION_RECOVERY_RETRY_DELAY_MS,
+  NotificationRecoveryDeferredError,
+} from "./notificationRecoveryClaim";
+export {
+  NOTIFICATION_RECOVERY_BATCH_LIMIT,
+  NOTIFICATION_RECOVERY_MAX_ATTEMPTS,
+  NOTIFICATION_RECOVERY_RETRY_DELAY_MS,
+} from "./notificationRecoveryClaim";
 
 export interface RecoverableNotificationDelivery {
   id: UUIDString;
@@ -26,6 +35,9 @@ export interface RecoverableNotificationDelivery {
   recipientUserId?: string | null;
   subjectBookingId?: string | null;
   subjectUserId?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode | null;
+  recoveryDeferredAt?: string | null;
+  recoveryDeferredReason?: string | null;
 }
 
 export interface NotificationRecoveryBatchSummary {
@@ -38,6 +50,7 @@ export interface NotificationRecoveryBatchSummary {
   notDue: number;
   exhausted: number;
   invalid: number;
+  deferred: number;
 }
 
 export interface NotificationRecoveryBatchDependencies {
@@ -53,6 +66,8 @@ export interface NotificationRecoveryBatchDependencies {
   recordFailure?: (
     candidate: RecoverableNotificationDelivery
   ) => Promise<boolean>;
+  defer?: (candidate: RecoverableNotificationDelivery, reason: string) => Promise<boolean>;
+  onDeferred?: (candidate: RecoverableNotificationDelivery, reason: string, persisted: boolean) => void;
   maxAttempts?: number;
   retryDelayMs?: number;
   batchLimit?: number;
@@ -70,6 +85,7 @@ function emptySummary(): NotificationRecoveryBatchSummary {
     notDue: 0,
     exhausted: 0,
     invalid: 0,
+    deferred: 0,
   };
 }
 
@@ -111,6 +127,10 @@ export async function runNotificationRecoveryBatch(
 
   for (const candidate of dependencies.candidates.slice(0, batchLimit)) {
     summary.scanned += 1;
+    if (candidate.recoveryDeferredAt != null) {
+      summary.deferred += 1;
+      continue;
+    }
     if (candidate.status === NotificationDeliveryStatus.SKIPPED) {
       summary.skipped += 1;
       continue;
@@ -167,6 +187,8 @@ export async function runNotificationRecoveryBatch(
         summary.skipped += 1;
       } else if (current?.status === NotificationDeliveryStatus.SENT) {
         summary.recovered += 1;
+      } else if (current?.recoveryDeferredAt != null) {
+        summary.deferred += 1;
       } else if (current?.status === NotificationDeliveryStatus.PENDING) {
         summary.inProgress += 1;
       } else {
@@ -181,6 +203,17 @@ export async function runNotificationRecoveryBatch(
         summary.failed += 1;
       }
     } catch (error: unknown) {
+      if (error instanceof NotificationRecoveryDeferredError) {
+        try {
+          const persisted = await dependencies.defer?.(candidate, error.code) ?? false;
+          summary.deferred += 1;
+          dependencies.onDeferred?.(candidate, error.code, persisted);
+        } catch (deferError: unknown) {
+          summary.failed += 1;
+          dependencies.onError?.(candidate, deferError);
+        }
+        continue;
+      }
       summary.failed += 1;
       await recordRecoveryFailure(dependencies, candidate);
       dependencies.onError?.(candidate, error);
@@ -188,4 +221,18 @@ export async function runNotificationRecoveryBatch(
   }
 
   return summary;
+}
+
+
+/** Bounded FIFO within each lane; neither FAILED nor stale PENDING can take every slot. */
+export function fairNotificationRecoveryCandidates(
+  failed: readonly RecoverableNotificationDelivery[],
+  pending: readonly RecoverableNotificationDelivery[],
+): RecoverableNotificationDelivery[] {
+  const candidates: RecoverableNotificationDelivery[] = [];
+  for (let index = 0; index < Math.max(failed.length, pending.length); index += 1) {
+    if (failed[index]) candidates.push(failed[index]);
+    if (pending[index]) candidates.push(pending[index]);
+  }
+  return candidates;
 }

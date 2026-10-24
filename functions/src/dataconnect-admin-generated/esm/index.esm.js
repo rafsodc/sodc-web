@@ -52,6 +52,11 @@ export const NotificationDeliveryStatus = {
   SKIPPED: "SKIPPED",
 }
 
+export const NotificationRecoveryDeferredReason = {
+  RECOVERY_DELIVERY_MODE_UNVERIFIABLE: "RECOVERY_DELIVERY_MODE_UNVERIFIABLE",
+  RECOVERY_DELIVERY_MODE_CONFLICT: "RECOVERY_DELIVERY_MODE_CONFLICT",
+}
+
 export const NotifyDeliveryReceiptOutcome = {
   APPLIED: "APPLIED",
   IGNORED_STATUS: "IGNORED_STATUS",
@@ -578,6 +583,18 @@ export function listStalePendingNotificationDeliveriesForRecovery(dcOrVarsOrOpti
   return dcInstance.executeQuery('ListStalePendingNotificationDeliveriesForRecovery', inputVars, inputOpts);
 }
 
+export function listFailedNotificationDeliveriesForAutomaticRecovery(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListFailedNotificationDeliveriesForAutomaticRecovery', inputVars, inputOpts);
+}
+
+export function listStalePendingNotificationDeliveriesForAutomaticRecovery(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListStalePendingNotificationDeliveriesForAutomaticRecovery', inputVars, inputOpts);
+}
+
 export function createNotificationDelivery(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -590,10 +607,34 @@ export function claimNotificationDeliveryById(dcOrVarsOrOptions, varsOrOptions, 
   return dcInstance.executeMutation('ClaimNotificationDeliveryById', inputVars, inputOpts);
 }
 
+export function claimNotificationDeliveryForRecoveryById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ClaimNotificationDeliveryForRecoveryById', inputVars, inputOpts);
+}
+
 export function recordNotificationRecoveryFailureById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('RecordNotificationRecoveryFailureById', inputVars, inputOpts);
+}
+
+export function recordNotificationRecoveryFailureForClaimById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordNotificationRecoveryFailureForClaimById', inputVars, inputOpts);
+}
+
+export function markNotificationRecoveryDeferredForClaimById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationRecoveryDeferredForClaimById', inputVars, inputOpts);
+}
+
+export function releaseNotificationRecoveryDeferralForClaimById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ReleaseNotificationRecoveryDeferralForClaimById', inputVars, inputOpts);
 }
 
 export function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOptions, options) {

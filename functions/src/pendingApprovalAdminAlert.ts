@@ -1,3 +1,6 @@
+import { pendingApprovalUidDeliveryKey } from "./notificationDeliveryKeys";
+export { pendingApprovalDeliveryKey, pendingApprovalUidDeliveryKey } from "./notificationDeliveryKeys";
+import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import { serviceGetUserById as getUserById, NotificationChannel } from "@dataconnect/admin-generated";
 import {
@@ -31,14 +34,6 @@ export function createPendingApprovalAlertMailer(): ReturnType<
   return createConfiguredGovNotifyMailer([...PENDING_APPROVAL_ALERT_TEMPLATE_KEYS]);
 }
 
-export function pendingApprovalDeliveryKey(userId: string, adminEmail: string): string {
-  return `pending-approval:${userId}:${adminEmail}`;
-}
-
-export function pendingApprovalUidDeliveryKey(userId: string, recipientUserId: string): string {
-  return `pending-approval-v2:${encodeURIComponent(userId)}:${encodeURIComponent(recipientUserId)}`;
-}
-
 /** e.g. "Regular, Reserve" or "Not specified" if none of the flags are set. */
 export function summarizeServiceBackground(profile: {
   isRegular?: boolean | null;
@@ -70,6 +65,7 @@ export async function notifyAdminsUserPendingApproval(args: {
   recoveryDeliveryKey?: string;
   getMailer?: () => ReturnType<typeof createPendingApprovalAlertMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   try {
     const row = await getUserById({ id: args.userId });
@@ -115,14 +111,15 @@ export async function notifyAdminsUserPendingApproval(args: {
         await sendPrivilegedNotification({
           channel: NotificationChannel.EMAIL,
           notificationType: "USER_PENDING_APPROVAL",
-          deliveryKey,
-          preserveDeliveryKey: Boolean(args.recoveryDeliveryKey),
+          deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+          preserveDeliveryKey: Boolean(args.recoveryClaim || args.recoveryDeliveryKey),
           recipientUserId,
           scope: { kind: "ADMIN" },
           event: { kind: "APPLICANT", subjectUserId: args.userId },
           userId: args.userId,
           provider: GOV_NOTIFY_PROVIDER,
           deliveryMode: args.deliveryMode,
+          recoveryClaim: args.recoveryClaim,
           recoveryPayload: {
             version: 2,
             kind: "USER_PENDING_APPROVAL",

@@ -1,6 +1,7 @@
 import * as logger from "firebase-functions/logger";
 import {
   claimNotificationDeliveryById,
+  claimNotificationDeliveryForRecoveryById,
   createNotificationDelivery,
   getNotificationDeliveryByChannelAndKey,
   markNotificationDeliveryFailedById,
@@ -20,6 +21,14 @@ import {
   type GovNotifyDeliveryMode,
 } from "./govNotifyDeliveryMode";
 import { resolveRuntimeGovNotifyDeliveryMode } from "./govNotifyDeliveryConfiguration";
+import {
+  createNotificationRecoveryClaim,
+  NotificationRecoveryDeferredError,
+  recoveryDeliveryMode,
+  NOTIFICATION_RECOVERY_PENDING_LEASE_MS,
+  NOTIFICATION_RECOVERY_RETRY_DELAY_MS,
+  type NotificationRecoveryClaim,
+} from "./notificationRecoveryClaim";
 
 const MAX_ERROR_CODE_LENGTH = 120;
 const MAX_ERROR_MESSAGE_LENGTH = 500;
@@ -30,6 +39,10 @@ export interface NotificationSkipResult {
   reason: string;
   providerMessageId?: never;
   deliveryMode?: never;
+}
+
+function isNotificationSkipResult(result: NotificationSendResult | NotificationSkipResult | void): result is NotificationSkipResult {
+  return Boolean(result && "outcome" in result && result.outcome === "skipped");
 }
 
 export interface NotificationSendResult {
@@ -50,6 +63,8 @@ export interface SendNotificationOnceRequest {
   recipientUserId?: string;
   /** Recovery already has the exact persisted, mode-scoped key. */
   preserveDeliveryKey?: boolean;
+  /** Internal recovery-list policy, deliberately separate from recoveryPayload. */
+  recoveryClaim?: NotificationRecoveryClaim;
   send: (deliveryMode?: GovNotifyDeliveryMode, assertOwnership?: () => Promise<void>) => Promise<NotificationSendResult | NotificationSkipResult | void>;
 }
 
@@ -65,6 +80,8 @@ interface NotificationDeliveryRecord {
   status: NotificationDeliveryStatus;
   attemptCount: number;
   lastAttemptedAt: string | null;
+  recipientUserId?: string | null;
+  recoveryDeferredAt?: string | null;
 }
 
 export interface NotificationDeliveryRepository {
@@ -94,6 +111,11 @@ export interface NotificationDeliveryRepository {
     lastAttemptedAt: string;
     provider?: string | null;
     recoveryPayload?: string | null;
+  }): Promise<boolean>;
+  tryMarkPendingForRecovery(args: {
+    claim: NotificationRecoveryClaim;
+    lastAttemptedAt: string;
+    provider?: string | null;
   }): Promise<boolean>;
   markSent(args: {
     id: UUIDString;
@@ -142,6 +164,8 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       status: row.status,
       attemptCount: row.attemptCount,
       lastAttemptedAt: row.lastAttemptedAt ?? null,
+      recipientUserId: row.recipientUserId ?? null,
+      recoveryDeferredAt: row.recoveryDeferredAt ?? null,
     };
   },
 
@@ -178,6 +202,27 @@ const dataConnectNotificationDeliveryRepository: NotificationDeliveryRepository 
       lastAttemptedAt: args.lastAttemptedAt,
       provider: args.provider ?? null,
       recoveryPayload: args.recoveryPayload ?? null,
+    });
+    return claimed.data.notificationDelivery_updateMany === 1;
+  },
+
+  async tryMarkPendingForRecovery(args) {
+    const claimed = await claimNotificationDeliveryForRecoveryById({
+      id: args.claim.id,
+      channel: args.claim.channel,
+      deliveryKey: args.claim.deliveryKey,
+      notificationType: args.claim.notificationType,
+      expectedStatus: args.claim.status,
+      expectedAttemptCount: args.claim.attemptCount,
+      expectedLastAttemptedAt: args.claim.lastAttemptedAt,
+      expectedRecoveryPayload: args.claim.recoveryPayload,
+      expectedRecoveryPayloadIsNull: args.claim.recoveryPayload === null,
+      expectedRecipientUserId: args.claim.recipientUserId,
+      expectedRecipientUserIdIsNull: args.claim.recipientUserId === null,
+      expectedDeliveryMode: args.claim.deliveryMode as DataConnectGovNotifyDeliveryMode | null,
+      expectedDeliveryModeIsNull: args.claim.deliveryMode === null,
+      lastAttemptedAt: args.lastAttemptedAt,
+      provider: args.provider ?? null,
     });
     return claimed.data.notificationDelivery_updateMany === 1;
   },
@@ -356,6 +401,25 @@ async function claimNotificationDelivery(
     channel: request.channel,
     deliveryKey: request.deliveryKey,
   });
+  if (request.recoveryClaim) {
+    const claim = request.recoveryClaim;
+    if (!existing) return { outcome: "duplicate", reason: "recovery_row_missing" };
+    if (existing.id !== claim.id || existing.status !== claim.status ||
+      existing.attemptCount !== claim.attemptCount || existing.lastAttemptedAt !== claim.lastAttemptedAt ||
+      (existing.recipientUserId ?? null) !== claim.recipientUserId || existing.recoveryDeferredAt != null) {
+      return { outcome: "duplicate", reason: "recovery_candidate_changed", deliveryId: existing.id, attemptCount: existing.attemptCount };
+    }
+    const waitMs = claim.status === NotificationDeliveryStatus.FAILED
+      ? NOTIFICATION_RECOVERY_RETRY_DELAY_MS : NOTIFICATION_RECOVERY_PENDING_LEASE_MS;
+    if (!isNotificationDeliveryLeaseExpired(claim.lastAttemptedAt, attemptStartedAt, waitMs)) {
+      return { outcome: "duplicate", reason: "recovery_not_due", deliveryId: existing.id, attemptCount: existing.attemptCount };
+    }
+    const claimed = await repository.tryMarkPendingForRecovery({ claim, lastAttemptedAt: attemptStartedAt, provider: request.provider });
+    if (!claimed) return { outcome: "duplicate", reason: "recovery_claim_lost", deliveryId: existing.id, attemptCount: existing.attemptCount };
+    const attemptCount = claim.attemptCount + 1;
+    return { delivery: { id: claim.id, status: NotificationDeliveryStatus.PENDING,
+      attemptCount, lastAttemptedAt: attemptStartedAt }, attemptCount };
+  }
   if (existing) {
     return claimExistingNotificationDelivery(
       request,
@@ -410,6 +474,22 @@ export async function sendNotificationOnce(
   request: SendNotificationOnceRequest,
   dependencies: SendNotificationOnceDependencies = {}
 ): Promise<SendNotificationOnceResult> {
+  if (request.recoveryClaim) {
+    const claim = createNotificationRecoveryClaim(request.recoveryClaim);
+    const originalMode = recoveryDeliveryMode(claim, request.deliveryMode, request.deliveryKey);
+    if (request.provider === "govuk_notify" && !originalMode) {
+      throw new NotificationRecoveryDeferredError("RECOVERY_DELIVERY_MODE_UNVERIFIABLE");
+    }
+    const scopedKey = originalMode ? govNotifyReferenceForMode(request.deliveryKey, originalMode) : request.deliveryKey;
+    const keyMatches = request.deliveryKey === claim.deliveryKey || (!request.preserveDeliveryKey && scopedKey === claim.deliveryKey);
+    if (request.channel !== claim.channel || request.notificationType !== claim.notificationType || !keyMatches ||
+      (request.recipientUserId ?? null) !== claim.recipientUserId) {
+      throw new Error("NOTIFICATION_RECOVERY_CLAIM_IDENTITY_MISMATCH");
+    }
+    request = { ...request, recoveryClaim: claim, deliveryKey: claim.deliveryKey, preserveDeliveryKey: true,
+      deliveryMode: originalMode ?? request.deliveryMode };
+  }
+  const requestedRecoveryMode = request.recoveryClaim ? request.deliveryMode : undefined;
   const deliveryMode = request.provider === "govuk_notify"
     ? (await resolveRuntimeGovNotifyDeliveryMode(request.deliveryMode ?? "LIVE")).effectiveMode
     : request.deliveryMode;
@@ -445,15 +525,22 @@ export async function sendNotificationOnce(
   }
 
   try {
-    const sendResult = await request.send(deliveryMode, async () => {
+    const assertOwnership = async () => {
       const current = await repository.getByChannelAndKey({ channel: request.channel, deliveryKey: request.deliveryKey });
-      if (!current || current.status !== NotificationDeliveryStatus.PENDING ||
+      if (!current || current.id !== claimResult.delivery.id || current.status !== NotificationDeliveryStatus.PENDING ||
         current.attemptCount !== claimResult.attemptCount || current.lastAttemptedAt !== attemptStartedAt ||
+        (request.recoveryClaim && ((current.recipientUserId ?? null) !== request.recoveryClaim.recipientUserId || current.recoveryDeferredAt != null)) ||
         isNotificationDeliveryLeaseExpired(current.lastAttemptedAt, now(), leaseMs)) {
         throw Object.assign(new Error("Notification delivery lease is no longer owned"), { code: "NOTIFICATION_DELIVERY_OWNERSHIP_LOST" });
       }
-    });
-    if (sendResult && "outcome" in sendResult && sendResult.outcome === "skipped") {
+    };
+    // Some domain senders do not use the callback. Recovery must still revalidate
+    // the persisted recipient and lease before invoking any provider path.
+    if (request.recoveryClaim) await assertOwnership();
+    const sendResult: NotificationSendResult | NotificationSkipResult | void = requestedRecoveryMode && requestedRecoveryMode !== deliveryMode
+        ? { outcome: "skipped" as const, reason: "DELIVERY_MODE_CHANGED" }
+        : await request.send(deliveryMode, assertOwnership);
+    if (isNotificationSkipResult(sendResult)) {
       const completed = await repository.markSkipped({
         id: claimResult.delivery.id,
         attemptCount: claimResult.attemptCount,
