@@ -59,10 +59,12 @@ export function assertAdditiveSql(diffs){
   const strings=value=>typeof value==='string'?[value]:Array.isArray(value)?value.flatMap(strings):value&&typeof value==='object'?Object.values(value).flatMap(strings):[];
   for(const sql of strings(diffs)){
     assert(!/\b(DROP|TRUNCATE|RENAME)\b/i.test(sql)&&!/(?:^|;)\s*(?:DELETE|UPDATE)\b/i.test(sql),'DESTRUCTIVE_SQL_REVIEW_REQUIRED');
+    // Unknown comment formatting requires review; this guard is not a SQL parser.
+    assert(!sql.includes('--')&&!sql.includes('/*')&&!sql.includes('*/'),'NON_ADDITIVE_SQL_REVIEW_REQUIRED');
     // The pinned provider emits one additive enum statement without a terminator.
     // Keep every other ALTER TYPE form behind explicit review, including comments.
     const enumAddition=/^ALTER TYPE "[A-Za-z_][A-Za-z0-9_]*"\."[A-Za-z_][A-Za-z0-9_]*" ADD VALUE '[A-Za-z_][A-Za-z0-9_]*'$/.test(sql.trim());
-    const alterType=/\bALTER(?:\s|\/\*[\s\S]*?\*\/|--[^\r\n]*(?:\r?\n|$))+TYPE\b/i.test(sql);
+    const alterType=/\bALTER\s+TYPE\b/i.test(sql);
     assert((!alterType||enumAddition)&&!/\bALTER\s+COLUMN\b|\bSET\s+NOT\s+NULL\b|\b(?:DO|EXECUTE|CREATE\s+(?:FUNCTION|PROCEDURE|TRIGGER))\b/i.test(sql),'NON_ADDITIVE_SQL_REVIEW_REQUIRED');
   }
 }

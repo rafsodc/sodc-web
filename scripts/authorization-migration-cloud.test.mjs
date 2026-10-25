@@ -244,6 +244,25 @@ test('additive enum review accepts only the pinned fully quoted single-statement
     assert.throws(()=>assertAdditiveSql([{sql},{sql:invalid}]),/SQL_REVIEW_REQUIRED/);
   }
 });
+test('SQL preview refuses comment markers instead of parsing PostgreSQL comments',()=>{
+  const target='TYPE "public"."notification_delivery_status" ';
+  for(const action of ["ADD VALUE 'SKIPPED'",'OWNER TO other']){
+    for(const newline of ['\n','\r\n','\r']){
+      const sql='ALTER -- comment'+newline+target+action;
+      assert.throws(()=>assertAdditiveSql([{sql}]),/NON_ADDITIVE_SQL_REVIEW_REQUIRED/,JSON.stringify(sql));
+    }
+    for(const prefix of ['ALTER /* comment */ ', 'ALTER /*outer /*inner*/ tail */ ',
+      'ALTER /*one /*two /*three*/ two*/ one*/ ']){
+      const sql=prefix+target+action;
+      assert.throws(()=>assertAdditiveSql([{sql}]),/NON_ADDITIVE_SQL_REVIEW_REQUIRED/,sql);
+    }
+  }
+  // Unknown provider formatting fails closed even outside an ALTER TYPE clause.
+  for(const sql of ['CREATE TABLE x(id text) -- comment','CREATE TABLE x(id text) /* comment */',
+    'CREATE TABLE x(id text) */', "CREATE TABLE x(value text DEFAULT '--')"]){
+    assert.throws(()=>assertAdditiveSql([{sql}]),/NON_ADDITIVE_SQL_REVIEW_REQUIRED/,sql);
+  }
+});
 test('IAM refusal is distinct from ordinary callable role denial or malformed requests',()=>{assert.equal(isPlatformIamRefusal(403,'application/json','{"error":{"status":"PERMISSION_DENIED"}}'),false);assert.equal(isPlatformIamRefusal(401,'text/html','<html><title>Error: Forbidden</title></html>'),false);assert.equal(isPlatformIamRefusal(400,'text/html','<html>Error: Forbidden</html>'),false);assert.equal(isPlatformIamRefusal(403,'text/html','<html>ordinary application response</html>'),false);assert.equal(isPlatformIamRefusal(403,'text/html','<html><title>Error: Forbidden</title></html>'),true);});
 test('platform refusal recognizes the actual Google HTML401 separately from HTML403',()=>{
   assert.equal(isPlatformIamRefusal(401,'text/html; charset=UTF-8',platformHtml(401)),true);
