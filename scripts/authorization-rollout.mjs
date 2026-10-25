@@ -1,7 +1,5 @@
-#!/usr/bin/env node
 import { cp, mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 export const AUTHORIZATION_PROJECTS = ["sodc-web", "sodc-web-beta", "sodc-web-production"];
 export const LEGACY_POTENTIAL_LOST_OPERATIONS = ["ConfirmPotentialLostWithSecurityState", "ConfirmPotentialLost"];
@@ -77,15 +75,3 @@ export async function prepareAuthorizationRollout({repositoryRoot, output, proje
   }, null, 2) + "\n");
   return output;
 }
-
-async function main() {
-  const args = process.argv.slice(2); const options = {};
-  for (let index = 0; index < args.length; index += 2) {
-    if (!["--project", "--output", "--expires"].includes(args[index]) || !args[index + 1]) throw new Error("Usage: --project <project-id> --output <new-absolute-temp-dir> --expires <ISO-timestamp-within-48h>");
-    options[args[index].slice(2)] = args[index + 1];
-  }
-  const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-  const output = await prepareAuthorizationRollout({repositoryRoot, output: options.output, projectId: options.project, expiresAt: options.expires});
-  console.log(`Prepared temporary compatibility sources at ${output}. No deployment performed. Follow docs/operations/current-authorization.md.`);
-}
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) void main().catch(error => {console.error(error.message); process.exitCode = 1;});

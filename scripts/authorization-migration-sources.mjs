@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { cp, lstat, mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { AUTHORIZATION_PROJECTS, prepareAuthorizationRollout } from "./prepare-authorization-rollout.mjs";
+import { AUTHORIZATION_PROJECTS, prepareAuthorizationRollout } from "./authorization-rollout.mjs";
 
 const MANIFEST = "AUTHORIZATION-MIGRATION-ARTIFACT.json";
 const SCHEMA_VERSION = "sodc-authorization-migration-artifact/v1";

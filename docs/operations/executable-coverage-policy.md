@@ -13,6 +13,12 @@ belongs under `functions/src`, where it is included in the ratcheted Functions
 coverage gate. CLI adapters are protected by focused source-contract tests,
 safe dry runs or build execution, and the manual checks below.
 
+Historical member-import helpers remain under `functions/src` for CLI use and
+unit coverage. The production build and Firebase upload exclude those helpers
+and their import/pilot entry points. The artifact verifier rejects their
+compiled output, including stale files from an earlier build. Keep the CLI
+TypeScript configuration separate from the production build boundary.
+
 The malware-scanner service has an independent Node test and coverage gate.
 PR CI measures `scanner.js` against these minimums:
 
@@ -50,7 +56,7 @@ step. Do not lower a coverage threshold merely to accommodate new code.
 | `notification-recovery-admin.mjs` | `functions/src/__tests__/notifications/notificationRecoveryAdmin.test.ts` covers project/transport rejection before SDK loading, reviewed snapshot hashes, canonical compact/hyphenated UUID and ID/key selection, all three write outcomes, preserved stdout failure receipts, cleanup failures, history readback, the real release planner and explicit generated-connector wiring. Reusable parsing/planning/orchestration lives under `functions/src` in the coverage gate. | Build Functions, read and review a single-row release plan, then use the same intent with exact project confirmation and plan hash only for an approved release. Imports no mailer and calls no provider; released work can be sent by a later normal scheduled recovery run. No live release was run during implementation. |
 | `run-notification-recovery-integration.mjs` | `functions/src/__tests__/notifications/notificationRecoveryIntegrationGate.test.ts` validates the fixed demo/loopback/runner-owned temporary context before SDK imports. The separate actual SQL suite exercises recovery claim and failure races, cap, cooldown and full snapshot ownership, plus real operator inspection/planning/release with database-returned UUIDs and equivalent selector hashes, without any provider. | `RUN_NOTIFICATION_RECOVERY_INTEGRATION=1 NOTIFICATION_RECOVERY_INTEGRATION_PROJECT=demo-sodc-notification-recovery npm --prefix functions run test:notification-recovery-integration`; append `-- --check` for pure targeting validation. Owns a fresh local PostgreSQL/Data Connect instance and removes only its temporary directory after shutdown. No cloud, Auth or mailer target is accepted. |
 | `run-notification-integration.mjs` | `functions/src/__tests__/notifications/notificationIntegrationGate.test.ts` verifies explicit Dev/Beta confirmation, project conflict, config and emulator rejection before credentials/network imports; in-process staff delivery/recovery suites cover orchestration with fake services. | After schema/operations release, opt in with matching `RUN_SECURITY_INTEGRATION=1`, `SECURITY_INTEGRATION_PROJECT`, and `SECURITY_INTEGRATION_CONFIRM`, then run `npm --prefix functions run test:notification-integration`. It creates only random synthetic profiles/ledger rows, checks actual SKIPPED CAS, terminal retry exclusions and legacy modes, then removes its fixtures. No mailer/provider is imported. Never run against Production. |
-| `verify-functions-build.mjs` | `functions/src/__tests__/cross-cutting/contracts/functionsBuildArtifact.test.ts` executes the verifier against nested `__tests__`, `.test` and `.spec` artifacts and validates the required entry point. | Run `npm --prefix functions run build`; the command must fail if a forbidden artifact is seeded under `functions/lib`. |
+| `verify-functions-build.mjs` | `functions/src/__tests__/cross-cutting/contracts/functionsBuildArtifact.test.ts` executes the verifier against nested test artifacts and historical member-import helper output, validates the required entry point, and checks the production/upload boundary. | Run `npm --prefix functions run build`; the command must fail if a forbidden artifact is seeded under `functions/lib`. |
 
 ## Malware-scanner inventory
 

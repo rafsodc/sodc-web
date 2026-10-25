@@ -735,73 +735,6 @@ test('two fresh 942-revision retirement proofs remain below the rolling Run read
   for(const original of originalPaths)assert.equal(reads.filter(request=>request.path===original).length,2);
 },30_000);
 
-async function abortable(t,options={}){
-  withProbe(t);const fixture=await setup(t,{auditReady:true,allExistingFunctions:true,...options});
-  const baseline=await fixture.adapter.observe(),context=fixture.context(baseline);
-  if(fixture.plan.projectId!=='sodc-web')context.gates.backup={details:{backupReference:'reviewed-backup',restoreTestReference:'reviewed-restore'}};
-  const freeze=await fixture.adapter.perform('freeze',context);
-  context.checkpoints={inspect:{status:'complete'},freeze:{status:'incomplete',result:freeze}};
-  context.reason='Restore unchanged strict Dev after a failed freeze verification';
-  context.recoverySource={schemaVersion:'sodc-authorization-abort-source/v1',originalPlanSha:fixture.plan.gitSha,recoveryToolSha:'b'.repeat(40),changedPaths:['scripts/authorization-migration-cloud.mjs'],applicationSourceUnchanged:true,diffHash:'c'.repeat(64)};
-  context.abortIntent={schemaVersion:'sodc-authorization-abort-freeze-intent/v1',projectId:fixture.plan.projectId,gitSha:fixture.plan.gitSha,runId:fixture.plan.runId,planHash:stableHash(fixture.plan),baselineHash:stableHash(baseline),freezeCheckpointHash:stableHash(context.checkpoints.freeze),reason:context.reason,initialRecoverySource:context.recoverySource,createdAt:at};
-  await writeFile(path.join(fixture.runDirectory,'abort-freeze-intent.json'),JSON.stringify(context.abortIntent),{mode:0o600});
-  return {fixture,context};
-}
-const abortMutations=fixture=>fixture.commands.filter(item=>item.args.includes('deploy')||item.args.includes('set-iam-policy')||item.args.includes('resume')||item.args.includes('pause')||item.args.includes('dataconnect:sql:migrate')).length;
-
-test('abort restores only the unchanged strict Dev API, original invokers and two jobs without claiming migration receipt',async t=>{
-  const {fixture,context}=await abortable(t);assert.equal(context.baseline.functions.length,82);assert.equal(context.baseline.policies.length,11);assert.equal(context.baseline.jobs.length,2);
-  const offset=fixture.commands.length;fixture.setControlVersion(2);
-  const result=await fixture.adapter.abortFreeze(context);assert.equal(result.ok,true);assert.equal(result.evidence.gitSha,fixture.plan.gitSha);assert.equal(result.evidence.recoveryToolSha,context.recoverySource.recoveryToolSha);assert.equal(result.evidence.abortIntentHash,stableHash(context.abortIntent));assert.ok(Object.values(result.evidence.assertions).every(value=>value===true));
-  const observed=await fixture.adapter.observe();assert.deepEqual(observed.functions,context.baseline.functions);assert.deepEqual(observed.api.files,context.baseline.api.files);assert.ok([...fixture.policies.values()].every(hasPublicInvoker));assert.ok(fixture.jobs.every(job=>job.state==='ENABLED'));
-  assert.equal(fixture.commands.slice(offset).filter(item=>item.args.includes('deploy')).length,1);
-  assert.ok(fixture.commands.slice(offset).every(item=>!item.args.includes('dataconnect:sql:migrate')&&!item.args.some(arg=>arg.startsWith('functions:')||arg.endsWith('security-state-admin.ts'))));
-  const before=abortMutations(fixture);const repeated=await fixture.adapter.abortFreeze(context);assert.equal(repeated.ok,true);assert.equal(abortMutations(fixture),before);
-});
-test('abort resumes an interrupted restoration without redeploying the already restored API',async t=>{
-  const {fixture,context}=await abortable(t);fixture.failRestore();await assert.rejects(()=>fixture.adapter.abortFreeze(context),/PROVIDER_COMMAND_FAILED/);
-  assert.deepEqual(fixture.getApi(),context.baseline.api.files);const deployments=fixture.commands.filter(item=>item.args.includes('deploy')).length;
-  const result=await fixture.adapter.abortFreeze(context);assert.equal(result.ok,true);assert.equal(fixture.commands.filter(item=>item.args.includes('deploy')).length,deployments);assert.ok(fixture.jobs.every(job=>job.state==='ENABLED'));
-});
-for(const [name,mutate,code]of[
-  ['changed function',({fixture})=>fixture.setFunctionSource('grantAdmin','unreviewed.zip'),'ABORT_FUNCTIONS_CHANGED'],
-  ['maintenance revision',({fixture})=>fixture.deployRevision('grantAdmin','maintenance'),'ABORT_FUNCTIONS_CHANGED'],
-  ['changed schema',({fixture})=>{fixture.schema[0].content+='\n# changed';},'ABORT_SCHEMA_CHANGED'],
-  ['changed authorization connector',({fixture})=>{fixture.authorization[0].content+='\n# changed';},'ABORT_AUTHORIZATION_CHANGED'],
-  ['unexpected API',({fixture})=>fixture.setApi(fixture.getApi().map((file,index)=>index?file:{...file,content:file.content+'\n# changed'})),'ABORT_API_DRIFT'],
-  ['changed authority',({fixture})=>fixture.changeAuthority(),'ABORT_AUTHORITY_CHANGED'],
-  ['decreasing control version',({fixture})=>fixture.setControlVersion(0),'ABORT_AUTHORITY_CHANGED'],
-  ['changed private IAM',({fixture})=>fixture.policies.get('grantAdmin').bindings.push({role:'roles/run.viewer',members:['user:unreviewed@example.invalid']}),'ABORT_IAM_DRIFT'],
-  ['changed job configuration',({fixture})=>{fixture.jobs[0].schedule='different';},'ABORT_JOB_DRIFT'],
-  ['later native checkpoint',({context})=>{context.checkpoints.schema={status:'incomplete'};},'ABORT_EARLY_FAILED_FREEZE_ONLY'],
-  ['unapproved source lineage',({context})=>{context.recoverySource={...context.recoverySource,applicationSourceUnchanged:false};},'ABORT_REVIEWED_RECOVERY_SOURCE_REQUIRED'],
-  ['substituted durable intent',({context})=>{context.abortIntent.baselineHash='0'.repeat(64);},'ABORT_DURABLE_INTENT_REQUIRED'],
-])test('abort refuses '+name+' before any restoration mutation',async t=>{
-  const state=await abortable(t);mutate(state);const before=abortMutations(state.fixture);await assert.rejects(()=>state.fixture.adapter.abortFreeze(state.context),new RegExp(code));assert.equal(abortMutations(state.fixture),before);
-});
-test('abort refuses retained later provider work even when checkpoint input omits it',async t=>{
-  const {fixture,context}=await abortable(t);await writeFile(path.join(fixture.runDirectory,'provider-phase-backfill.json'),'{}');const before=abortMutations(fixture);await assert.rejects(()=>fixture.adapter.abortFreeze(context),/ABORT_LATER_PROVIDER_WORK_FOUND/);assert.equal(abortMutations(fixture),before);
-});
-test('abort is forbidden outside Dev',async t=>{const {fixture,context}=await abortable(t,{projectId:'sodc-web-beta'});const before=abortMutations(fixture);await assert.rejects(()=>fixture.adapter.abortFreeze(context),/ABORT_STRICT_DEV_ONLY/);assert.equal(abortMutations(fixture),before);});
-test('abort lost IAM response resumes actual remaining restores without replaying committed service policy',async t=>{
-  const {fixture,context}=await abortable(t);fixture.failRestoreAfterCommit();await assert.rejects(()=>fixture.adapter.abortFreeze(context),/PROVIDER_COMMAND_FAILED/);
-  const restored=[...fixture.policies].filter(([,value])=>hasPublicInvoker(value)).map(([name])=>name);assert.equal(restored.length,1);
-  const before=fixture.commands.filter(item=>item.args.includes('set-iam-policy')&&item.args[3]===restored[0].toLowerCase()).length;
-  assert.equal((await fixture.adapter.abortFreeze(context)).ok,true);
-  assert.equal(fixture.commands.filter(item=>item.args.includes('set-iam-policy')&&item.args[3]===restored[0].toLowerCase()).length,before);
-});
-test('abort detects function drift between restoration writes and stops the remaining policies and jobs',async t=>{
-  const {fixture,context}=await abortable(t);fixture.onRestore(()=>fixture.setFunctionSource('grantAdmin','concurrent-source-change.zip'));
-  await assert.rejects(()=>fixture.adapter.abortFreeze(context),/ABORT_FUNCTIONS_CHANGED/);assert.equal([...fixture.policies.values()].filter(hasPublicInvoker).length,1);assert.ok(fixture.jobs.every(job=>job.state==='PAUSED'));
-});
-test('abort compares the persisted durable intent before any restoration mutation',async t=>{
-  const {fixture,context}=await abortable(t);await writeFile(path.join(fixture.runDirectory,'abort-freeze-intent.json'),JSON.stringify({...context.abortIntent,reason:'substituted'}));const before=abortMutations(fixture);await assert.rejects(()=>fixture.adapter.abortFreeze(context),/ABORT_PERSISTED_INTENT_MISMATCH/);assert.equal(abortMutations(fixture),before);
-});
-test('abort accepts a pure-reviewed same-source recovery tool with an empty diff',async t=>{
-  const {fixture,context}=await abortable(t);context.recoverySource={...context.recoverySource,recoveryToolSha:fixture.plan.gitSha,changedPaths:[],diffHash:stableHash('')};context.abortIntent.initialRecoverySource=context.recoverySource;
-  await writeFile(path.join(fixture.runDirectory,'abort-freeze-intent.json'),JSON.stringify(context.abortIntent));assert.equal((await fixture.adapter.abortFreeze(context)).ok,true);
-});
-
 
 test('source refusal blocks provider observation before metadata, authority or credential commands',async t=>{
   const fixture=await setup(t,{sourceCheck:async()=>{throw Object.assign(Error('CHECKOUT_DIRTY'),{code:'CHECKOUT_DIRTY'});}});
@@ -932,8 +865,5 @@ test('a new staged URL-bearing proof refuses URL drift before any opening mutati
   const {fixture,context}=await staged(t);fixture.setFunctionUrl('grantAdmin',`https://europe-west2-${project}.cloudfunctions.net/otherFunction`);
   const before=mutationCount(fixture);await assert.rejects(fixture.adapter.perform('open',context),/OLD_WRITER_REVIEWED_SERVING_FUNCTION_REQUIRED/);assert.equal(mutationCount(fixture),before);
 });
-test('historical abort baseline without URL tolerates only newly observed URL metadata',async t=>{
-  const {fixture,context}=await abortable(t,{providerFunctionUrl:false});
-  for(const fn of context.baseline.functions)fixture.setFunctionUrl(fn.name,`https://europe-west2-${project}.cloudfunctions.net/${fn.name}`);
-  assert.equal((await fixture.adapter.abortFreeze(context)).ok,true);
-});
+
+test('default adapter no longer exposes completed-cutover abort restoration',()=>{const commands=[];const adapter=createCloudMigrationAdapter({repositoryRoot,runDirectory:'/private/tmp/retired-abort-must-not-write',plan:{projectId:project,gitSha:sha},command:(...args)=>{commands.push(args);throw Error('Provider must stay lazy');}});assert.deepEqual(Object.keys(adapter).sort(),['observe','perform','verify']);assert.equal(adapter.abortFreeze,undefined);assert.equal(commands.length,0);});
