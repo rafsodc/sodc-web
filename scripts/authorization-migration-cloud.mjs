@@ -337,7 +337,7 @@ scheduler.createOrReplaceJob=async(job)=>{
       assert(stableHash(observed.functions)===stableHash(context.baseline.functions),'LIVE_FUNCTION_BASELINE_CHANGED');
       const oldWriterInventory=captureOldWriterInventory({projectId:project,services:await readOldWriterServices(oldWriterServiceNames(observed))});
       await save('provider-old-writer-inventory.json',{...identity(context),capturedAt:clock(),inventory:oldWriterInventory,inventoryHash:stableHash(oldWriterInventory)});
-      state=await save('provider-freeze.json',{...identity(context),startedAt:clock(),oldWriterInventory,originalPolicies:context.baseline.policies,originalJobs:context.baseline.jobs,appliedPolicies:[],pausedJobs:[],apiFrozen:false,artifact:prepared.liveFrozen});}
+      await save('provider-freeze.json',{...identity(context),startedAt:clock(),oldWriterInventory,originalPolicies:context.baseline.policies,originalJobs:context.baseline.jobs,appliedPolicies:[],pausedJobs:[],apiFrozen:false,artifact:prepared.liveFrozen});}
     state=await freezeState(context);
     assert(state.oldWriterInventory?.projectId===project,'OLD_WRITER_INVENTORY_REQUIRED');
     for(const original of state.originalPolicies){

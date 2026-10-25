@@ -34,7 +34,6 @@ export async function runNotificationIntegration(env = process.env) {
   const runId = randomUUID();
   const subjectUserId = `notification-integration-${runId}`;
   const created = [];
-  let profileCreated = false;
   let failure;
   const now = new Date().toISOString();
   const ancient = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -42,7 +41,6 @@ export async function runNotificationIntegration(env = process.env) {
   // Deliberately beyond the scheduler's retry limit. Even an overlapping recovery worker cannot select fixtures.
   const fixtureAttempt = 100;
   try {
-    profileCreated = true; // Also clean up if the write succeeds but its response is lost.
     await sdk.createUser(dc, { userId: subjectUserId, firstName: "Synthetic", lastName: "Notification fixture",
       email: `${runId}@example.invalid`, serviceNumber: `fixture-${runId}`, membershipStatus: sdk.MembershipStatus.PENDING, now });
     for (const [index, mode] of ["LIVE", "TEAM_TEST", "SIMULATION"].entries()) {
@@ -94,7 +92,8 @@ export async function runNotificationIntegration(env = process.env) {
         if (id) await sdk.deleteNotificationDeliveryIntegrationFixture(dc, { id, deliveryKey: row.deliveryKey });
       } catch { cleanupFailed = true; }
     }
-    if (profileCreated && !cleanupFailed) {
+    // Also clean up if the profile write succeeded but its response was lost.
+    if (!cleanupFailed) {
       try { await sdk.deleteUser(dc, { userId: subjectUserId }); } catch { cleanupFailed = true; }
     }
     await deleteApp(app);
