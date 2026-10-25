@@ -34,6 +34,37 @@ const verify = value => verifyOldWriterRetirement(value);
 const getOld = value => value.services[0].exactRevisions[0];
 
 describe("positive old-writer retirement", () => {
+  it.each([['bare', 'bare'], ['bare', 'full'], ['full', 'bare']])("captures and verifies provider parent shapes: list=%s GET=%s", (listedShape, exactShape) => {
+    const input = fixture();
+    const originalProof = verify(input);
+    for (const raw of input.services[0].revisions) if (listedShape === 'bare') raw.service = resource.split('/').at(-1);
+    for (const raw of input.services[0].exactRevisions) if (exactShape === 'bare') raw.service = resource.split('/').at(-1);
+    const captured = captureOldWriterInventory({projectId, services: [{service: input.services[0].service, revisions: [input.services[0].revisions[0]]}]});
+    expect(captured).toEqual(input.inventory);
+    expect(verify(input)).toEqual(originalProof);
+  });
+
+  it.each([
+    ['missing parent', raw => {delete raw.service;}],
+    ['another bare service', raw => {raw.service = 'another-writer';}],
+    ['a foreign project with the same leaf', raw => {raw.service = resource.replace('sodc-web/', 'sodc-web-beta/');}],
+    ['a foreign region with the same leaf', raw => {raw.service = resource.replace('europe-west2', 'europe-west1');}],
+    ['a misleading parent suffix', raw => {raw.service = 'prefix/' + resource.split('/').at(-1);}],
+    ['a deceptive full revision name with the expected leaf', raw => {raw.service = resource.split('/').at(-1); raw.name = raw.name.replace('sodc-web/', 'sodc-web-beta/');}],
+    ['a revision path traversal with the expected leaf', raw => {raw.service = resource.split('/').at(-1); raw.name = resource + '/revisions/../foreign';}],
+  ])("refuses %s even when the other identity fields match", (_label, mutate) => {
+    const raw = revision('old-writer');
+    mutate(raw);
+    expect(() => revisionIdentity(raw, resource)).toThrow(/OLD_WRITER_[A-Z_]+/);
+  });
+
+  it("requires a full expected service resource even when both raw parent fields are misleading", () => {
+    const raw = revision('old-writer');
+    raw.service = 'status-writer';
+    raw.name = 'status-writer/revisions/old-writer';
+    expect(() => revisionIdentity(raw, 'status-writer')).toThrow(/OLD_WRITER_[A-Z_]+/);
+  });
+
   it("requires independently observed exact retirement and emits only a safe stable hash", () => {
     const input = fixture();
     const result = verify(input);

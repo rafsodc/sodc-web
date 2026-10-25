@@ -76,12 +76,12 @@ function minimalFunction(fn){return {name:resourceName(fn.name),resource:fn.name
 function typeFields(files,type){const block=files.map(file=>file.content).join('\n').match(new RegExp('type\\s+'+type+'\\b[^\\{]*\\{([\\s\\S]*?)^\\}','m'))?.[1];return block?new Set([...block.matchAll(/^\s+(\w+)\s*:/gm)].map(match=>match[1])):null;}
 
 /** Cloud execution is lazy; importing/constructing an adapter performs no I/O or authentication. */
-export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,now=()=>new Date(),command=commandDefault,fetch:fetcher=globalThis.fetch,adminFactory=adminDefault}){
+export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,now=()=>new Date(),command=commandDefault,fetch:fetcher=globalThis.fetch,adminFactory=adminDefault,delay=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds))}){
   assert(PROJECTS.has(plan?.projectId),'EXPLICIT_SUPPORTED_PROJECT_REQUIRED');
   assert(path.isAbsolute(repositoryRoot??'')&&path.isAbsolute(runDirectory??''),'ABSOLUTE_DIRECTORIES_REQUIRED');
   assert(/^[a-f0-9]{40}$/.test(plan.gitSha??''),'REVIEWED_SHA_REQUIRED');
   const project=plan.projectId;const base=`projects/${project}/locations/${MIGRATION_REGION}/services/${MIGRATION_SERVICE}`;
-  let token;let tools;let raw;let lastObservation;
+  let token;let tools;let raw;let lastObservation;let runReadSlot=Promise.resolve();
   const clock=()=>date(typeof now==='function'?now():now);
   const env=()=>{const values={...process.env,GCLOUD_PROJECT:project,GOOGLE_CLOUD_PROJECT:project,CLOUDSDK_CORE_DISABLE_PROMPTS:'1',FIREBASE_CLI_DISABLE_UPDATE_CHECK:'1',CI:'1'};for(const key of Object.keys(values))if(key.startsWith('AUTHORIZATION_MIGRATION_PROBE_'))delete values[key];return values;};
   async function run(file,args,{cwd=repositoryRoot,timeoutMs=45_000,environment=env()}={}){
@@ -99,7 +99,10 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
   }
   async function accessToken(){if(!token)token=(await run('gcloud',['auth','print-access-token','--project',project])).trim();assert(token,'CLOUD_CREDENTIAL_REQUIRED');return token;}
   async function metadata(host,resource,allowMissing=false){
-    const response=await fetcher(`https://${host}${resource}`,{method:'GET',headers:{Authorization:'Bearer '+await accessToken(),'X-Goog-User-Project':project},signal:AbortSignal.timeout(45_000),redirect:'error'});
+    const credential=await accessToken();
+    // Pace starts, not responses: retain overlap and let subsequent reads survive a failed request.
+    if(host==='run.googleapis.com'){const slot=runReadSlot.then(()=>delay(25));runReadSlot=slot.catch(()=>{});await slot;}
+    const response=await fetcher(`https://${host}${resource}`,{method:'GET',headers:{Authorization:'Bearer '+credential,'X-Goog-User-Project':project},signal:AbortSignal.timeout(45_000),redirect:'error'});
     if(response.status===404&&allowMissing)return null;assert(response.ok,'CLOUD_METADATA_READ_FAILED');return response.json();
   }
   async function listMetadata(host,resource,key,pageSize=1000){

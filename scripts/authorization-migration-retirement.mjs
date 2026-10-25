@@ -39,7 +39,11 @@ function canonicalIdentity(identity, service) {
 }
 /** Identities contain no environment values, tokens, claims or mutable image tags. */
 export function revisionIdentity(raw, service) {
-  need(raw && raw.service === service && typeof raw.uid === "string" && UID.test(raw.uid) && Array.isArray(raw.containers), "OLD_WRITER_IDENTITY_INVALID");
+  need(typeof service === "string", "OLD_WRITER_SERVICE_INVALID");
+  serviceName(service, service.split("/")[1]);
+  // Run v2 reports a bare service ID; the full revision name must still bind the exact parent.
+  need(raw && (raw.service === service || raw.service === service.split("/").at(-1)) &&
+    typeof raw.uid === "string" && UID.test(raw.uid) && Array.isArray(raw.containers), "OLD_WRITER_IDENTITY_INVALID");
   return canonicalIdentity({name: raw.name, uid: raw.uid, images: raw.containers.map(container => container?.image)}, service);
 }
 function normalizeInventory(inventory) {

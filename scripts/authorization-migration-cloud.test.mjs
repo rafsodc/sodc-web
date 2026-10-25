@@ -1,4 +1,4 @@
-import {test} from 'vitest';
+import {test,vi} from 'vitest';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,readFile,readdir,rm,writeFile} from 'node:fs/promises';
 import os from 'node:os';
@@ -18,7 +18,7 @@ const files=async directory=>Promise.all((await readdir(directory)).filter(name=
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}});
 const uuid=value=>{const hash=stableHash(value);return `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`;};
 
-async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,schedulerList}={}){
+async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,schedulerList,delay=async()=>{},requestHook}={}){
   const project=projectId;
   const directory=await mkdtemp(path.join(os.tmpdir(),'authorization-cloud-offline-'));t.onTestFinished(()=>rm(directory,{recursive:true,force:true}));
   const runDirectory=path.join(directory,'run');await mkdir(runDirectory);
@@ -38,13 +38,14 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
   const runServices=new Map(),runRevisions=new Map(),functionRevisions=new Map(),functionUpdateTimes=new Map(),missingRunResources=new Set();let runServiceReadHook;
   const serviceResource=name=>`projects/${project}/locations/europe-west2/services/${name.toLowerCase()}`;
   const functionForService=service=>functionNames.find(name=>name.toLowerCase()===service.split('/').at(-1));
+  const revisionParent=revision=>revision.name.slice(0,revision.name.lastIndexOf('/revisions/'));
   function retireRevision(revision){revision.conditions[1]={type:'Active',state:'CONDITION_FAILED',revisionReason:'RETIRED'};
     if(!revision.conditions.some(condition=>condition.type==='ResourcesAvailable'))revision.conditions.push({type:'ResourcesAvailable',state:'CONDITION_RECONCILING',revisionReason:'RETIRED'});}
   function deployRevision(name,kind){
     const serviceName=serviceResource(name);const before=runServices.get(serviceName);const generation=String(Number(before?.generation??0)+1);
-    if(kind==='candidate')for(const revision of runRevisions.values())if(revision.service===serviceName&&revision.name.includes('-reviewed-maintenance-'))retireRevision(revision);
+    if(kind==='candidate')for(const revision of runRevisions.values())if(revisionParent(revision)===serviceName&&revision.name.includes('-reviewed-maintenance-'))retireRevision(revision);
     const revisionName=serviceName+'/revisions/'+name.toLowerCase()+'-'+kind+'-'+generation;
-    const revision={name:revisionName,service:serviceName,uid:uuid(revisionName),generation:'1',observedGeneration:'1',reconciling:false,
+    const revision={name:revisionName,service:name.toLowerCase(),uid:uuid(revisionName),generation:'1',observedGeneration:'1',reconciling:false,
       containers:[{image:`europe-west2-docker.pkg.dev/${project}/functions/${name.toLowerCase()}@sha256:${stableHash(name)}`,env:[{name:'NEVER_PERSIST',value:'secret-value'}]}],
       conditions:[{type:'Ready',state:'CONDITION_SUCCEEDED'},{type:'Active',state:'CONDITION_SUCCEEDED'}]};
     runRevisions.set(revisionName,revision);functionRevisions.set(name,revisionName.split('/').at(-1));functionUpdateTimes.set(name,new Date(milliseconds).toISOString());
@@ -56,7 +57,7 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
   async function approveSuccessors(context){
     const state=JSON.parse(await readFile(path.join(runDirectory,'provider-freeze.json'),'utf8'));
     const originals=new Set(state.oldWriterInventory.services.flatMap(service=>service.revisions.map(revision=>revision.name)));
-    const successorRevisions=state.oldWriterInventory.services.flatMap(service=>[...runRevisions.values()].filter(revision=>revision.service===service.name&&!originals.has(revision.name)).map(revision=>revisionIdentity(revision,service.name)));
+    const successorRevisions=state.oldWriterInventory.services.flatMap(service=>[...runRevisions.values()].filter(revision=>revisionParent(revision)===service.name&&!originals.has(revision.name)).map(revision=>revisionIdentity(revision,service.name)));
     context.gates['old-writers']={details:{method:'cloud-run-retirement',freezeStateHash:stableHash(state),inventoryHash:stableHash(state.oldWriterInventory),
       successorRevisions,externalOperationsReference:'reviewed-external-provider-operations-terminal'}};
   }
@@ -121,7 +122,8 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
     throw Error('UNEXPECTED_OFFLINE_COMMAND');
   };
   const fetch=async(url,options)=>{
-    const target=new URL(url);requests.push({hostname:target.hostname,path:target.pathname,query:target.search,method:options.method});
+    const target=new URL(url);requests.push({hostname:target.hostname,path:target.pathname,query:target.search,method:options.method,startedAt:Date.now()});
+    await requestHook?.(target,options);
     assert.equal(options.redirect,'error');
     if(target.hostname.endsWith('.cloudfunctions.net')){assert.equal(options.method,'GET');assert.equal(options.body,undefined);return callableRoleDenial?json({error:{status:'PERMISSION_DENIED'}},403):new Response('<html><title>Error: Forbidden</title>Your client does not have permission to access this URL.</html>',{status:403,headers:{'content-type':'text/html'}});}
     if(target.hostname==='cloudscheduler.googleapis.com'&&['POST','PATCH'].includes(options.method)){const body=JSON.parse(options.body);let job=jobs.find(job=>job.name===body.name);if(job)Object.assign(job,body);else{job={...body,state:createJobsPaused?'PAUSED':'ENABLED'};jobs.push(job);}return json(job);}
@@ -132,7 +134,7 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
     if(target.hostname==='run.googleapis.com'){
       const name=target.pathname.slice('/v2/'.length);
       if(missingRunResources.has(name))return json({error:{status:'NOT_FOUND'}},404);
-      if(name.endsWith('/revisions'))return json({revisions:[...runRevisions.values()].filter(revision=>revision.service===name.slice(0,-'/revisions'.length))});
+      if(name.endsWith('/revisions'))return json({revisions:[...runRevisions.values()].filter(revision=>revisionParent(revision)===name.slice(0,-'/revisions'.length))});
       if(runServices.has(name))runServiceReadHook?.(name,runServices.get(name));
       const value=runServices.get(name)??runRevisions.get(name);return value?json(value):json({error:{status:'NOT_FOUND'}},404);
     }
@@ -149,7 +151,7 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
     throw Error('UNEXPECTED_OFFLINE_METADATA');
   };
   const plan={schemaVersion:1,projectId:project,environment:'dev',gitSha:sha,runId:'offline-test',installation:'strict',operator:'reviewer',reason:'reviewed test',importAdmins:false,artifactDirectory:path.join(directory,'artifacts'),createdAt:at,phaseOperationIds:{'control-create':'stable-control',backfill:'stable-backfill',activate:'stable-activate'}};
-  const adapter=createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,command,fetch,adminFactory,now:()=>new Date(milliseconds)});
+  const adapter=createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,command,fetch,adminFactory,now:()=>new Date(milliseconds),delay});
   const gates={backup:{details:{waiverReference:'user-dev-waiver'}},'freeze-scope':{details:{entrypoints:[...SECURITY_WRITERS],jobNames:jobs.map(job=>job.name),externalWritersReference:'approved-inventory',probeUserId:member.id,probeReference:'approved-existing-profile'}}};
   return {adapter,plan,gates,commands,requests,runDirectory,policies,jobs,member,runServices,runRevisions,missingRunResources,approveSuccessors,maintainAndRetire,deployRevision,onRunServiceRead:hook=>runServiceReadHook=hook,onBootstrap:hook=>bootstrapHook=hook,setAuthorityPending:(pending,operationId='stable-backfill:'+member.id)=>{pendingCount=pending?1:0;runtimeSyncStatus=pending?'PENDING':'READY';pendingOperationId=operationId;},context:baseline=>({baseline,gates,planHash:stableHash(plan)}),advance:seconds=>milliseconds+=seconds*1000,changeAuthority:()=>authorityVersion++,setApi:next=>api=next,getApi:()=>api,setFunctionState:(name,state)=>functionStates.set(name,state),setFunctionSource:(name,source)=>functionSources.set(name,source),onDeferredDeploy:hook=>deferredHook=hook,failRestore:()=>failNextRestore=true,addLatentAdmin:()=>{extraIdentities.push({uid:'unapproved-latent',disabled:true,emailVerified:false,customClaims:{admin:true}});extraProfiles.push({id:'unapproved-latent',membershipStatus:'PENDING'});}};
 }
@@ -301,7 +303,7 @@ test('final receipt independently rechecks original retirement after successful 
 
 function reviewedMaintenance(fixture,context){
   const service=[...fixture.runServices.values()].find(service=>service.name.endsWith('/grantadmin'));
-  const revisions=[...fixture.runRevisions.values()].filter(revision=>revision.service===service.name);
+  const revisions=[...fixture.runRevisions.values()].filter(revision=>revision.name.startsWith(service.name+'/revisions/'));
   const original=revisions.find(revision=>revision.name.includes('-original-'));
   const maintenance=revisions.find(revision=>revision.name.includes('-reviewed-maintenance-'));
   const candidate=revisions.find(revision=>revision.name===service.latestCreatedRevision);
@@ -413,4 +415,47 @@ test('repeated Scheduler cursors fail closed instead of looping or accepting par
 test('an unreachable Scheduler page fails the audit before any cutover mutation',async t=>{
   const fixture=await setup(t,{schedulerList:()=>json({jobs:[],unreachable:['projects/sodc-web/locations/europe-west2']})});
   await assert.rejects(fixture.adapter.observe(),/UNREACHABLE_CLOUD_RESOURCE/);assert.equal(mutationCount(fixture),0);
+});
+
+async function pacedRetirement(t,requestHook){
+  withProbe(t);let pacing=false,slotQueued;
+  const fixture=await setup(t,{requestHook,delay:milliseconds=>{
+    if(!pacing)return Promise.resolve();slotQueued?.();slotQueued=undefined;
+    return new Promise(resolve=>setTimeout(resolve,milliseconds));
+  }});
+  const context=fixture.context(await fixture.adapter.observe());const freeze=await fixture.adapter.perform('freeze',context);
+  context.checkpoints={freeze:{result:freeze}};await fixture.maintainAndRetire(context);fixture.advance(76);
+  vi.useFakeTimers({toFake:['setTimeout','clearTimeout','Date']});vi.setSystemTime(0);t.onTestFinished(()=>vi.useRealTimers());pacing=true;
+  return {fixture,context,freeze,waitForSlot:()=>new Promise(resolve=>slotQueued=resolve)};
+}
+
+test('concurrent Run reads have spaced starts while slow responses overlap and other hosts stay unpaced',async t=>{
+  let holdFirst=false,release;const held=new Promise(resolve=>release=resolve);
+  const {fixture,context,freeze,waitForSlot}=await pacedRetirement(t,async target=>{
+    if(holdFirst&&target.hostname==='run.googleapis.com'){holdFirst=false;await held;}
+  });
+  const offset=fixture.requests.length;holdFirst=true;const waiting=waitForSlot();
+  const pending=fixture.adapter.verify('freeze',{...context,result:freeze});pending.catch(()=>{});
+  try{
+    await Promise.race([waiting,pending.then(()=>{throw Error('Expected a pending Run read');})]);
+    await vi.advanceTimersByTimeAsync(24);assert.equal(fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com').length,0);
+    await vi.advanceTimersByTimeAsync(1);assert.equal(fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com').length,1);
+    await vi.advanceTimersByTimeAsync(75);assert.ok(fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com').length>1);
+    let otherHostsFinished=false;const before=Date.now();const observation=fixture.adapter.observe().then(value=>{otherHostsFinished=true;return value;});
+    await new Promise(resolve=>setImmediate(resolve));assert.equal(otherHostsFinished,true);assert.equal(Date.now(),before);await observation;
+    release();await vi.runAllTimersAsync();assert.equal((await pending).ok,true);
+    const starts=fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com').map(request=>request.startedAt);
+    assert.ok(starts.length>20);for(let index=1;index<starts.length;index++)assert.ok(starts[index]-starts[index-1]>=25);
+  }finally{release();await vi.runAllTimersAsync();await pending.catch(()=>{});}
+});
+
+test('a failed Run response does not poison later launch slots or cause an automatic retry',async t=>{
+  let failFirst=false,failures=0;
+  const {fixture,context,freeze,waitForSlot}=await pacedRetirement(t,target=>{
+    if(failFirst&&target.hostname==='run.googleapis.com'){failFirst=false;failures++;throw Error('simulated Run transport failure');}
+  });
+  failFirst=true;const firstSlot=waitForSlot();const failed=fixture.adapter.verify('freeze',{...context,result:freeze}).catch(error=>error);
+  await firstSlot;await vi.runAllTimersAsync();assert.match((await failed).message,/PROVIDER_OPERATION_FAILED/);assert.equal(failures,1);
+  const laterSlot=waitForSlot();const retried=fixture.adapter.verify('freeze',{...context,result:freeze});
+  await laterSlot;await vi.runAllTimersAsync();assert.equal((await retried).ok,true);assert.equal(failures,1);
 });
