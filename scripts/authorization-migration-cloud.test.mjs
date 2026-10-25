@@ -15,10 +15,11 @@ const repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'
 const project='sodc-web';const sha='a'.repeat(40);const at='2026-10-23T10:00:00.000Z';
 const policy={version:3,etag:'original',bindings:[{role:'roles/run.invoker',members:['allUsers','allAuthenticatedUsers','serviceAccount:runtime@example.invalid']},{role:'roles/run.viewer',members:['user:operator@example.invalid']}]};
 const files=async directory=>Promise.all((await readdir(directory)).filter(name=>name.endsWith('.gql')).map(async name=>({path:name,content:await readFile(path.join(directory,name),'utf8')})));
+const platformHtml=(status,name='grantAdmin')=>`<html><head><title>${status} ${status===401?'Unauthorized':'Forbidden'}</title></head><body><h1>Error: ${status===401?'Unauthorized':'Forbidden'}</h1><h2>Your client does not have permission to the requested URL <code>/${name}</code>.</h2></body></html>`;
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}});
 const uuid=value=>{const hash=stableHash(value);return `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`;};
 
-async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,allExistingFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,schedulerList,delay=async()=>{},requestHook}={}){
+async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,callableRefusal,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,allExistingFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,schedulerList,delay=async()=>{},requestHook,sourceCheck}={}){
   const project=projectId;
   const directory=await mkdtemp(path.join(os.tmpdir(),'authorization-cloud-offline-'));t.onTestFinished(()=>rm(directory,{recursive:true,force:true}));
   const runDirectory=path.join(directory,'run');await mkdir(runDirectory);
@@ -126,7 +127,7 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
     const target=new URL(url);requests.push({hostname:target.hostname,path:target.pathname,query:target.search,method:options.method,startedAt:Date.now()});
     await requestHook?.(target,options);
     assert.equal(options.redirect,'error');
-    if(target.hostname.endsWith('.cloudfunctions.net')){assert.equal(options.method,'GET');assert.equal(options.body,undefined);return callableRoleDenial?json({error:{status:'PERMISSION_DENIED'}},403):new Response('<html><title>Error: Forbidden</title>Your client does not have permission to access this URL.</html>',{status:403,headers:{'content-type':'text/html'}});}
+    if(target.hostname.endsWith('.cloudfunctions.net')){assert.equal(options.method,'GET');assert.equal(options.body,undefined);assert.equal(options.headers.Authorization,'Bearer PRIVATE-PROBE-JWT');assert.equal(options.headers['X-Firebase-AppCheck'],'PRIVATE-APP-CHECK');return callableRoleDenial?json({error:{status:'PERMISSION_DENIED'}},403):new Response(callableRefusal?.body??'<html><title>Error: Forbidden</title>Your client does not have permission to access this URL.</html>',{status:callableRefusal?.status??403,headers:{'content-type':callableRefusal?.contentType??'text/html'}});}
     if(target.hostname==='cloudscheduler.googleapis.com'&&['POST','PATCH'].includes(options.method)){const body=JSON.parse(options.body);let job=jobs.find(job=>job.name===body.name);if(job)Object.assign(job,body);else{job={...body,state:createJobsPaused?'PAUSED':'ENABLED'};jobs.push(job);}return json(job);}
     if(options.method==='POST'){
       assert.equal(target.hostname,'firebasedataconnect.googleapis.com');if(target.pathname.endsWith(':executeQuery'))return positiveQueryDenied?json({error:{status:'PERMISSION_DENIED'}},403):json({data:{user:{id:member.id}}});return json({error:{status:'PERMISSION_DENIED'}},403);
@@ -152,7 +153,7 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
     throw Error('UNEXPECTED_OFFLINE_METADATA');
   };
   const plan={schemaVersion:1,projectId:project,environment:'dev',gitSha:sha,runId:'offline-test',installation:'strict',operator:'reviewer',reason:'reviewed test',importAdmins:false,artifactDirectory:path.join(directory,'artifacts'),createdAt:at,phaseOperationIds:{'control-create':'stable-control',backfill:'stable-backfill',activate:'stable-activate'}};
-  const adapter=createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,command,fetch,adminFactory,now:()=>new Date(milliseconds),delay});
+  const adapter=createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,command,fetch,adminFactory,now:()=>new Date(milliseconds),delay,sourceCheck});
   const gates={backup:{details:{waiverReference:'user-dev-waiver'}},'freeze-scope':{details:{entrypoints:[...policies.keys()],jobNames:jobs.map(job=>job.name),externalWritersReference:'approved-inventory',probeUserId:member.id,probeReference:'approved-existing-profile'}}};
   return {adapter,plan,gates,commands,requests,runDirectory,policies,jobs,schema,authorization,member,setControlVersion:version=>controlVersion=version,runServices,runRevisions,missingRunResources,approveSuccessors,maintainAndRetire,deployRevision,onRunServiceRead:hook=>runServiceReadHook=hook,onBootstrap:hook=>bootstrapHook=hook,setAuthorityPending:(pending,operationId='stable-backfill:'+member.id)=>{pendingCount=pending?1:0;runtimeSyncStatus=pending?'PENDING':'READY';pendingOperationId=operationId;},context:baseline=>({baseline,gates,planHash:stableHash(plan)}),advance:seconds=>milliseconds+=seconds*1000,changeAuthority:()=>authorityVersion++,setApi:next=>api=next,getApi:()=>api,setFunctionState:(name,state)=>functionStates.set(name,state),setFunctionSource:(name,source)=>functionSources.set(name,source),onDeferredDeploy:hook=>deferredHook=hook,failRestore:()=>failNextRestore=true,failRestoreAfterCommit:()=>failRestoreAfterCommit=true,onRestore:hook=>restoreHook=hook,addLatentAdmin:()=>{extraIdentities.push({uid:'unapproved-latent',disabled:true,emailVerified:false,customClaims:{admin:true}});extraProfiles.push({id:'unapproved-latent',membershipStatus:'PENDING'});}};
 }
@@ -169,6 +170,50 @@ test('additive SQL review allows foreign key ON DELETE but rejects destructive a
   for(const sql of ['DROP TABLE users;','DELETE FROM users;','CREATE TABLE x(id INT); UPDATE users SET name=\'x\';','ALTER TABLE users ALTER COLUMN name TYPE text;','ALTER TABLE users ALTER COLUMN name SET NOT NULL;','DO $$ BEGIN EXECUTE \'something\'; END $$;'])assert.throws(()=>assertAdditiveSql([{sql}]),/SQL_REVIEW_REQUIRED/);
 });
 test('IAM refusal is distinct from ordinary callable role denial or malformed requests',()=>{assert.equal(isPlatformIamRefusal(403,'application/json','{"error":{"status":"PERMISSION_DENIED"}}'),false);assert.equal(isPlatformIamRefusal(401,'text/html','<html><title>Error: Forbidden</title></html>'),false);assert.equal(isPlatformIamRefusal(400,'text/html','<html>Error: Forbidden</html>'),false);assert.equal(isPlatformIamRefusal(403,'text/html','<html>ordinary application response</html>'),false);assert.equal(isPlatformIamRefusal(403,'text/html','<html><title>Error: Forbidden</title></html>'),true);});
+test('platform refusal recognizes the actual Google HTML401 separately from HTML403',()=>{
+  assert.equal(isPlatformIamRefusal(401,'text/html; charset=UTF-8',platformHtml(401)),true);
+  assert.equal(isPlatformIamRefusal(403,'text/html; charset=UTF-8',platformHtml(403)),true);
+  assert.equal(isPlatformIamRefusal(403,'text/html','<html><title>Error: Forbidden</title></html>'),true);
+});
+for(const [name,status,contentType,body]of[
+  ['JSON unauthenticated',401,'application/json',JSON.stringify({error:{status:'UNAUTHENTICATED'}})],
+  ['plain text',401,'text/plain','401 Unauthorized: Your client does not have permission'],
+  ['HTML-looking plaintext',401,'text/plain',platformHtml(401)],
+  ['JSON with misleading parameter',401,'application/json; note=text/html',platformHtml(401)],
+  ['HTML-like media type',401,'text/htmlish',platformHtml(401)],
+  ['Forbidden title at401',401,'text/html',platformHtml(403)],
+  ['Unauthorized title at403',403,'text/html',platformHtml(401)],
+  ['bare unauthorized title',401,'text/html',platformHtml(401).replace('401 Unauthorized','Unauthorized')],
+  ['missing permission message',401,'text/html','<html><title>401 Unauthorized</title><body>Application login needed.</body></html>'],
+  ['missing HTML document',401,'text/html','<title>401 Unauthorized</title>Your client does not have permission'],
+  ['missing title',401,'text/html','<html>Your client does not have permission</html>'],
+  ['duplicate titles',401,'text/html',platformHtml(401).replace('</head>','<title>403 Forbidden</title></head>')],
+  ['invalid token',401,'text/html',platformHtml(401).replace('</body>','<p>Invalid token.</p></body>')],
+  ['expired token',401,'text/html',platformHtml(401).replace('</body>','<p>The token has expired.</p></body>')],
+  ['malformed credentials',401,'text/html',platformHtml(401).replace('</body>','<p>Malformed credentials.</p></body>')],
+  ['invalid token at403',403,'text/html',platformHtml(403).replace('</body>','<p>Invalid token.</p></body>')],
+  ...[200,400,404,429,500,503].map(status=>['unreviewed status'+status,status,'text/html',platformHtml(401)]),
+])test('platform refusal rejects '+name,()=>assert.equal(isPlatformIamRefusal(status,contentType,body),false));
+test('valid Firebase and AppCheck credentials can prove platform HTML401 ingress refusal after positive retirement',async t=>{
+  withProbe(t);const fixture=await setup(t,{allExistingFunctions:true,callableRefusal:{status:401,contentType:'text/html; charset=UTF-8',body:platformHtml(401)}}),context=fixture.context(await fixture.adapter.observe());
+  const result=await fixture.adapter.perform('freeze',context);await fixture.maintainAndRetire(context);fixture.advance(76);const writes=mutationCount(fixture),requests=fixture.requests.length;
+  const verification=await fixture.adapter.verify('freeze',{...context,result});assert.equal(verification.ok,true);assert.equal(mutationCount(fixture),writes);
+  const calls=fixture.requests.slice(requests).filter(item=>item.hostname.endsWith('.cloudfunctions.net'));assert.equal(calls.length,11);assert(calls.every(item=>item.method==='GET'));assert.equal(fixture.requests.slice(requests).filter(item=>item.path.endsWith(':executeQuery')).length,1);assert.equal(fixture.requests.slice(requests).filter(item=>item.path.endsWith(':executeMutation')).length,1);
+  assert.equal(verification.evidence.assertions.oldWritersRetired,true);assert.equal(verification.evidence.assertions.signedRefusalVerified,true);
+});
+for(const [name,body,contentType]of[
+  ['callable JSON401',JSON.stringify({error:{status:'UNAUTHENTICATED'}}),'application/json'],
+  ['HTML invalid-token401',platformHtml(401).replace('</body>','<p>Expired token.</p></body>'),'text/html'],
+])test(name+' cannot satisfy freeze despite valid probe and retired revisions',async t=>{
+  withProbe(t);const fixture=await setup(t,{callableRefusal:{status:401,contentType,body}}),context=fixture.context(await fixture.adapter.observe()),result=await fixture.adapter.perform('freeze',context);await fixture.maintainAndRetire(context);fixture.advance(76);const writes=mutationCount(fixture),verified=await fixture.adapter.verify('freeze',{...context,result});assert.equal(verified.ok,false);assert(verified.blockers.includes('signedRefusalVerified'));assert.equal(verified.evidence.assertions.oldWritersRetired,true);assert.equal(mutationCount(fixture),writes);
+});
+test('platform HTML401 cannot bypass same-credential positive-query or valid-token checks',async t=>{
+  withProbe(t);const callableRefusal={status:401,contentType:'text/html',body:platformHtml(401)};
+  const fixture=await setup(t,{callableRefusal,positiveQueryDenied:true}),context=fixture.context(await fixture.adapter.observe()),result=await fixture.adapter.perform('freeze',context);await fixture.maintainAndRetire(context);fixture.advance(76);const verified=await fixture.adapter.verify('freeze',{...context,result});assert.equal(verified.ok,false);assert(verified.blockers.includes('signedRefusalVerified'));assert.equal(fixture.requests.filter(item=>item.path.endsWith(':executeMutation')).length,0);
+  for(const options of [{claimsOverride:{aud:'wrong-project'}},{claimsOverride:{exp:1}},{claimsOverride:{uid:'wrong-user'}},{appCheckInvalid:true}]){
+    const invalid=await setup(t,{callableRefusal,...options}),context=invalid.context(await invalid.adapter.observe());await assert.rejects(()=>invalid.adapter.perform('freeze',context),/SIGNED_PROBE_/);assert.equal(mutationCount(invalid),0);assert.equal(invalid.requests.filter(item=>item.hostname.endsWith('.cloudfunctions.net')).length,0);
+  }
+});
 test('new repair endpoints are deferred but existing endpoints stay in update set',()=>{const names=['grantAdmin','getMyAuthorizationStatus','reconcilePendingSecurityTransitions'];assert.deepEqual(selectStagedFunctions(names,[]),['grantAdmin']);assert.deepEqual(selectStagedFunctions(names,['getMyAuthorizationStatus']),['grantAdmin','getMyAuthorizationStatus']);});
 test('source comparison ignores file ordering only',()=>{assert.equal(sourceHash([{path:'b.gql',content:'b'},{path:'a.gql',content:'a'}]),sourceHash([{path:'a.gql',content:'a'},{path:'b.gql',content:'b'}]));assert.notEqual(sourceHash([{path:'a.gql',content:'a'}]),sourceHash([{path:'a.gql',content:'a\n'}]));});
 test('factory is lazy and rejects implicit/unreviewed targets',()=>{let calls=0;const options={repositoryRoot,runDirectory:'/private/tmp/offline-unused',plan:{projectId:project,gitSha:sha},command:()=>calls++};createCloudMigrationAdapter(options);assert.equal(calls,0);assert.throws(()=>createCloudMigrationAdapter({...options,plan:{projectId:'production',gitSha:sha}}),/EXPLICIT_SUPPORTED_PROJECT_REQUIRED/);assert.throws(()=>createCloudMigrationAdapter({...options,plan:{projectId:project,gitSha:'main'}}),/REVIEWED_SHA_REQUIRED/);});
@@ -544,4 +589,21 @@ test('abort compares the persisted durable intent before any restoration mutatio
 test('abort accepts a pure-reviewed same-source recovery tool with an empty diff',async t=>{
   const {fixture,context}=await abortable(t);context.recoverySource={...context.recoverySource,recoveryToolSha:fixture.plan.gitSha,changedPaths:[],diffHash:stableHash('')};context.abortIntent.initialRecoverySource=context.recoverySource;
   await writeFile(path.join(fixture.runDirectory,'abort-freeze-intent.json'),JSON.stringify(context.abortIntent));assert.equal((await fixture.adapter.abortFreeze(context)).ok,true);
+});
+
+
+test('source refusal blocks provider observation before metadata, authority or credential commands',async t=>{
+  const fixture=await setup(t,{sourceCheck:async()=>{throw Object.assign(Error('CHECKOUT_DIRTY'),{code:'CHECKOUT_DIRTY'});}});
+  await assert.rejects(()=>fixture.adapter.observe(),{code:'PROVIDER_OPERATION_FAILED'});assert.equal(fixture.commands.length,0);assert.equal(fixture.requests.length,0);
+});
+for(const method of ['perform','verify'])test('source refusal at '+method+' entry prevents all provider work',async t=>{
+  let denied=false;const fixture=await setup(t,{sourceCheck:async()=>{if(denied)throw Object.assign(Error('TOOL_SOURCE_DIFF_CHANGED'),{code:'TOOL_SOURCE_DIFF_CHANGED'});}}),context=fixture.context(await fixture.adapter.observe());
+  denied=true;const commands=fixture.commands.length,requests=fixture.requests.length;await assert.rejects(()=>fixture.adapter[method]('freeze',context),{code:'PROVIDER_OPERATION_FAILED'});assert.equal(fixture.commands.length,commands);assert.equal(fixture.requests.length,requests);
+});
+for(const phase of ['strict-api','backfill'])test('source drift after observation blocks '+(phase==='backfill'?'authority command':'Firebase deployment')+' before dispatch',async t=>{
+  withProbe(t);let armed=false,denied=false,checks=0;
+  const fixture=await setup(t,{auditReady:true,sourceCheck:async()=>{checks++;if(denied)throw Object.assign(Error('TOOL_SOURCE_DIFF_CHANGED'),{code:'TOOL_SOURCE_DIFF_CHANGED'});},requestHook:target=>{if(armed&&target.pathname.endsWith('/connectors/authorization-service'))denied=true;}}),context=fixture.context(await fixture.adapter.observe());
+  await fixture.adapter.perform('freeze',context);await fixture.maintainAndRetire(context);fixture.advance(76);armed=true;
+  const calls=fixture.commands.length,before=checks;await assert.rejects(()=>fixture.adapter.perform(phase,context),{code:'PROVIDER_OPERATION_FAILED'});assert.equal(checks-before,2);assert.equal(mutationCount(fixture),fixture.commands.slice(0,calls).filter(item=>item.args.includes('deploy')||item.args.includes('set-iam-policy')||item.args.includes('resume')).length);
+  assert.equal(fixture.commands.slice(calls).some(item=>item.args.includes('deploy')||item.args.some(arg=>arg.endsWith('security-state-admin.ts'))),false);
 });

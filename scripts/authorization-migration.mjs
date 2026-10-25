@@ -11,6 +11,7 @@ import {
   migrationRunDirectory, phasesFor, prepareMigrationRun, recordMigrationGate, summarizeRun, unlockMigrationRun, abortMigrationFreeze,
 } from "./authorization-migration-state.mjs";
 import {abortSourceProof, assertAbortScope} from "./authorization-migration-abort.mjs";
+import {adoptMigrationToolSource, verifyMigrationToolSource} from "./authorization-migration-tool-source.mjs";
 
 const repositoryDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const execFileAsync = promisify(execFile);
@@ -24,6 +25,7 @@ const allowed = Object.freeze({
   apply: ["project", "run-id", "phase", "confirm-project"],
   unlock: ["project", "run-id", "reason"],
   "abort-freeze": ["project", "run-id", "reason", "confirm-project"],
+  "adopt-tool-source": ["project", "run-id", "reason", "confirm-project", "tool-sha", "review-reference"],
 });
 const required = Object.freeze({
   plan: ["project"],
@@ -34,6 +36,7 @@ const required = Object.freeze({
   apply: ["project", "run-id", "phase", "confirm-project"],
   unlock: ["project", "run-id", "reason"],
   "abort-freeze": ["project", "run-id", "reason", "confirm-project"],
+  "adopt-tool-source": ["project", "run-id", "reason", "confirm-project", "tool-sha", "review-reference"],
 });
 const fail = (code, message) => {throw new MigrationError(code, message);};
 
@@ -66,6 +69,10 @@ export function parseMigrationArguments(argv) {
     if (flags["confirm-project"] !== flags.project) fail("CONFIRM_PROJECT_REQUIRED", "Repeat the exact project ID in --confirm-project.");
   }
   if (command === "abort-freeze" && (flags.project !== "sodc-web" || flags["confirm-project"] !== "sodc-web")) fail("ABORT_STRICT_DEV_ONLY", "Abort-freeze is restricted to the literal Dev project sodc-web.");
+  if (command === "adopt-tool-source") {
+    if (flags.project !== "sodc-web" || flags["confirm-project"] !== "sodc-web") fail("TOOL_SOURCE_STRICT_DEV_ONLY", "Tool-source adoption is restricted to the literal Dev project sodc-web.");
+    if (!/^[a-f0-9]{40}$/.test(flags["tool-sha"])) fail("TOOL_SOURCE_SHA_REQUIRED", "Repeat the full reviewed tool commit.");
+  }
   return {command, flags};
 }
 
@@ -138,7 +145,7 @@ export async function runMigrationCli(argv, {
   git = gitDefault, loadAdapter = cloudAdapterDefault, now = () => new Date(),
 } = {}) {
   const {command, flags} = parseMigrationArguments(argv);
-  if (command === "help") return {usage: "npm run authorization:migrate -- <plan|prepare|status|audit|gate|apply|unlock|abort-freeze> --project <literal-project-id> [command flags]",
+  if (command === "help") return {usage: "npm run authorization:migrate -- <plan|prepare|status|audit|gate|apply|unlock|abort-freeze|adopt-tool-source> --project <literal-project-id> [command flags]",
     guide: "docs/operations/authorization-migration-tool.md", cloudChanges: false};
   const projectId = flags.project;
   if (command === "plan") return {schemaVersion: "sodc-authorization-migration-outline/v1", projectId,
@@ -166,7 +173,7 @@ export async function runMigrationCli(argv, {
   }
   if (command === "gate") {
     const run = await loadMigrationRun(options);
-    await reviewedSource(repositoryRoot, git, run.plan.gitSha);
+    await verifyMigrationToolSource(run, {repositoryRoot, git});
     const gate = await evidenceFile(flags.evidence, repositoryRoot);
     if (gate.gate !== flags.name) fail("GATE_NAME_MISMATCH", "The evidence gate must match --name.");
     const recorded = await recordMigrationGate(options, gate, now());
@@ -174,6 +181,12 @@ export async function runMigrationCli(argv, {
       limitation: "Recorded operator review; live phase verification remains required."};
   }
   const run = options.runId ? await loadMigrationRun(options) : null;
+  if (command === "adopt-tool-source") {
+    const source = await adoptMigrationToolSource(options, {confirmProject: flags["confirm-project"], toolSha: flags["tool-sha"],
+      reviewReference: flags["review-reference"], reason: flags.reason, git, now: now()});
+    return {projectId, runId: run.plan.runId, ...source, cloudChanges: false,
+      limitation: "Only migration-tool source was adopted. The original release plan and every live verification remain required."};
+  }
   if (command === "abort-freeze") {
     assertAbortScope(run);
     await reviewedAbortSource(repositoryRoot, git, run.plan.gitSha);
@@ -187,18 +200,22 @@ export async function runMigrationCli(argv, {
     } finally {await adapter.close?.();}
   }
   if (command === "apply" && !phasesFor(run.plan).includes(flags.phase)) fail("PHASE_INVALID", "Compatibility cannot run against an already strict installation.");
-  const gitSha = await reviewedSource(repositoryRoot, git, run?.plan.gitSha);
+  const toolSource = run ? await verifyMigrationToolSource(run, {repositoryRoot, git}) : null;
+  const gitSha = run?.plan.gitSha ?? await reviewedSource(repositoryRoot, git);
   const runDirectory = run?.directory ?? path.join(repositoryRoot, ".firebase/authorization-migration/runs", projectId, "read-only-audit");
   const plan = run?.plan ?? createMigrationPlan({projectId, gitSha, runId: "read-only-audit", operator: "read-only-audit",
     reason: "Read-only provider inspection; this does not authorize migration.", installation: "strict",
     artifactDirectory: path.join(tmpdir(), "sodc-authorization-read-only-audit"), now: now()});
-  const adapter = await loadAdapter({repositoryRoot, runDirectory, plan, now});
+  const checkRunSource = run ? async () => verifyMigrationToolSource(await loadMigrationRun(options), {repositoryRoot, git}) :
+    async () => reviewedSource(repositoryRoot, git, gitSha);
+  const adapter = await loadAdapter({repositoryRoot, runDirectory, plan, now, sourceCheck: checkRunSource});
   try {
     if (command === "audit") return auditSummary(await adapter.observe(), plan, Boolean(run));
     // Parsing guarantees exactly one explicit phase and matching target confirmation.
     const outcome = await executeMigrationPhase(options, {phase: flags.phase, confirmProject: flags["confirm-project"], adapter,
-      sourceCheck: checkedPlan => reviewedSource(repositoryRoot, git, checkedPlan.gitSha), now});
+      sourceCheck: checkRunSource, now});
     return {projectId, runId: plan.runId, gitSha, phase: outcome.phase, status: outcome.status,
+      ...(toolSource?.amendmentHash ? {toolSha: toolSource.toolSha, toolSourceAmendmentHash: toolSource.amendmentHash} : {}),
       observedAt: outcome.evidence?.observedAt ?? null, directory: migrationRunDirectory(repositoryRoot, projectId, plan.runId),
       limitation: "Only the requested phase ran; review its evidence before continuing."};
   } finally {await adapter.close?.();}

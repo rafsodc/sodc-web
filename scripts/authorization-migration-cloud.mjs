@@ -52,7 +52,17 @@ export function assertAdditiveSql(diffs){
     assert(!/\bALTER\s+(?:COLUMN|TYPE)\b|\bSET\s+NOT\s+NULL\b|\b(?:DO|EXECUTE|CREATE\s+(?:FUNCTION|PROCEDURE|TRIGGER))\b/i.test(sql),'NON_ADDITIVE_SQL_REVIEW_REQUIRED');
   }
 }
-export function isPlatformIamRefusal(status,contentType,body){return status===403&&String(contentType).includes('text/html')&&/<(?:html|title)\b/i.test(body)&&/Your client does not have permission|not have permission to access|Error: Forbidden/i.test(body);}
+export function isPlatformIamRefusal(status,contentType,body){
+  if(![401,403].includes(status)||!/^\s*text\/html(?:\s*;|\s*$)/i.test(String(contentType))||typeof body!=='string'||!/<html\b/i.test(body)||/\b(?:invalid|expired|malformed)\b/i.test(body))return false;
+  const titles=[...body.matchAll(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/gi)];
+  if(titles.length!==1)return false;
+  const title=titles[0][1].trim();
+  // A verified Firebase project-audience token is not a service-audience IAM token.
+  // Cloud Run can refuse it with HTML401 before the callable wrapper is reached:
+  // https://docs.cloud.google.com/run/docs/troubleshooting#unauthorized-client
+  if(status===401)return /^401\s+Unauthorized$/i.test(title)&&/Your client does not have permission/i.test(body);
+  return /^(?:403\s+Forbidden|Error:\s*Forbidden)$/i.test(title)&&/Your client does not have permission|not have permission to access|Error:\s*Forbidden/i.test(body);
+}
 export function selectStagedFunctions(names,existing){return names.filter(name=>!DEFERRED_FUNCTIONS.includes(name)||existing.includes(name));}
 async function commandDefault(file,args,options={}){
   try{const result=await execFileAsync(file,args,{cwd:options.cwd,env:options.env,timeout:options.timeoutMs??45_000,maxBuffer:32*1024*1024,shell:false});return {...result,code:0};}
@@ -76,7 +86,7 @@ function minimalFunction(fn){return {name:resourceName(fn.name),resource:fn.name
 function typeFields(files,type){const block=files.map(file=>file.content).join('\n').match(new RegExp('type\\s+'+type+'\\b[^\\{]*\\{([\\s\\S]*?)^\\}','m'))?.[1];return block?new Set([...block.matchAll(/^\s+(\w+)\s*:/gm)].map(match=>match[1])):null;}
 
 /** Cloud execution is lazy; importing/constructing an adapter performs no I/O or authentication. */
-export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,now=()=>new Date(),command=commandDefault,fetch:fetcher=globalThis.fetch,adminFactory=adminDefault,delay=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds))}){
+export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,now=()=>new Date(),sourceCheck,command=commandDefault,fetch:fetcher=globalThis.fetch,adminFactory=adminDefault,delay=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds))}){
   assert(PROJECTS.has(plan?.projectId),'EXPLICIT_SUPPORTED_PROJECT_REQUIRED');
   assert(path.isAbsolute(repositoryRoot??'')&&path.isAbsolute(runDirectory??''),'ABSOLUTE_DIRECTORIES_REQUIRED');
   assert(/^[a-f0-9]{40}$/.test(plan.gitSha??''),'REVIEWED_SHA_REQUIRED');
@@ -124,6 +134,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     }finally{await admin.close?.();}
   }
   async function observe(){
+    await sourceCheck?.();
     await versions();
     for(const[key,value]of Object.entries(process.env))assert(!key.endsWith('_EMULATOR_HOST')||!value,'EMULATOR_OVERRIDE_FORBIDDEN');
     for(const key of ['GCLOUD_PROJECT','GOOGLE_CLOUD_PROJECT'])assert(!process.env[key]||process.env[key]===project,'PROJECT_ENVIRONMENT_CONFLICT');
@@ -179,6 +190,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     await mkdir(runDirectory,{recursive:true,mode:0o700});await writeFile(filename,content+schedulerGuard,{mode:0o600});return filename;
   }
   async function firebase(args,observed,{cwd=repositoryRoot,timeoutMs=1_800_000}={}){
+    await sourceCheck?.();
     const runtime=await versions();const preload=await guard(observed);
     return run(process.execPath,['--require',preload,runtime.firebaseExecutable,...args,'--project',project,'--non-interactive'],{cwd,timeoutMs});
   }
@@ -341,6 +353,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     }finally{await admin.close?.();}
   }
   async function authorityCommand(mode,phase,context){
+    await sourceCheck?.();
     const operationId=plan.phaseOperationIds?.[phase];assert(typeof operationId==='string'&&operationId.length>0,'STABLE_PHASE_OPERATION_REQUIRED');
     const args=[path.join(repositoryRoot,'functions/node_modules/ts-node/dist/bin.js'),'--project',path.join(repositoryRoot,'functions/tsconfig.scripts.json'),path.join(repositoryRoot,'functions/scripts/security-state-admin.ts'),'--project',project,'--all','--mode',mode,'--apply','--confirm-project',project,'--actor',plan.operator,'--reason',plan.reason,'--operation-id',operationId];
     if(mode==='bootstrap'&&plan.importAdmins===true)args.push('--import-admins');

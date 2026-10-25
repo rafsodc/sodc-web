@@ -238,13 +238,29 @@ npm run authorization:migrate -- abort-freeze \
   --reason "Reviewed original-boundary restoration reference"
 ```
 
-The recovery-tool commit must descend from the planned commit. Differences may contain only authorization-migration scripts/tests and this operation guide. Application/runtime/configuration/schema files must remain byte-identical to the planned release. This exception applies only to `abort-freeze`: normal phases still require their original exact Git SHA.
+The recovery-tool commit must descend from the planned commit. Differences may contain only authorization-migration scripts/tests and this operation guide. Application/runtime/configuration/schema files must remain byte-identical to the planned release. This abort exception does not authorize normal phases; those require the original exact Git SHA or the explicit tool-only amendment below.
 
 Before restoring anything, the provider checks every installed Function's original metadata/revision, the original schema and authorization connector, original authority, original scheduler configurations and the exact original-or-bound-frozen API/IAM boundary. An environment-epoch maintenance update, even with unchanged application code, prevents this early abort. The provider deploys only the sealed original API connector if needed, restores only original public invoker bindings using fresh policy ETags, and returns the two jobs to their original states. It repeats the full boundary checks between operations and after restoration. No schema, Functions, Auth, authorization version, unrelated IAM or notification configuration is changed by this command.
 
 The original plan, failed freeze checkpoint, evidence and migration receipt stay intact. A durable abort intent blocks all normal phases and new gates. If restoration stops after a partial result, retain the restrictions and retry **only this abort command with the same reason** after reviewing live state. It reconciles exact original/frozen states; it does not guess that an uncertain provider response left things unchanged.
 
 Only verified original-boundary restoration marks the old run `ABORTED` and releases project ownership for a new immutable run. An aborted journal uses a terminal schema that the original tool cannot resume. It remains visible through `status`, keeps the freeze historically incomplete, and never creates a migration receipt. A crash after terminal persistence but before ownership release can be reconciled with the same abort command; an already active successor run cannot be displaced. After reviewing the abort proof, prepare a new run from the corrected reviewed commit rather than changing the old plan or treating the failed rehearsal as acceptance.
+
+### Adopt a reviewed tool-only fix during a failed strict Dev freeze
+
+If a native verifier defect is discovered after maintenance revisions have changed, the original-boundary abort is unavailable. Preserve the failed proof and the original inventory. A clean, independently reviewed descendant may be adopted explicitly for **strict Dev only**, before any phase after the incomplete freeze has been attempted:
+
+```sh
+npm run authorization:migrate -- adopt-tool-source \
+  --project sodc-web --run-id <original-interrupted-dev-run> \
+  --confirm-project sodc-web --tool-sha <full-reviewed-tool-commit> \
+  --review-reference "Independent review evidence reference" \
+  --reason "Reviewed verifier defect and correction"
+```
+
+This local command records a durable, immutable tool-source amendment. It does not change the original plan, release SHA, operation IDs, failed checkpoints, artifacts or provider observations. The full original-to-tool diff must contain only migration scripts/tests and this guide, with regular file modes and no application, configuration, dependency or schema change. Every subsequent gate, audit and phase checks the clean adopted commit and the exact retained diff again; all provider evidence continues to bind the original release plan. There is no generic source override and this command is unavailable in Beta or Production. Inspect the amendment and rerun the same native failed phase; no checkpoint becomes complete until fresh live verification passes.
+
+The handler-inert callable probe distinguishes Google's HTML IAM refusal from a callable application response. A valid Firebase user token can receive Google's HTML **401 Unauthorized** because the private Cloud Run endpoint expects a separate service-audience IAM token. The known Google **403 Forbidden** response is also accepted. JSON callable errors, arbitrary 401 responses, invalid or expired application credentials and failed positive Data Connect reads never establish the freeze. See [Cloud Run authentication troubleshooting](https://docs.cloud.google.com/run/docs/troubleshooting#unauthorized-client) and [end-user authentication](https://docs.cloud.google.com/run/docs/authenticating/end-users).
 
 Resume the same run and phase after correcting the cause. The source revision, artifact hashes, gate evidence and live prerequisites must still match. Stable operation references let the operator distinguish a committed transition from work that needs retrying. If backfill commits a PENDING transition before an Auth failure, the same backfill phase may resume only work with this run’s exact per-user operation reference. Unrelated pending work remains blocked for explicit review; the next phase cannot proceed until backfill’s full audit passes. Recheck IAM and jobs after a deployment: new Functions or schedules can have different invocation behavior from an updated resource.
 
