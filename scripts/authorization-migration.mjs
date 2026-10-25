@@ -13,7 +13,7 @@ import {
 
 const repositoryDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const execFileAsync = promisify(execFile);
-const gates = new Set(["backup", "freeze-scope", "sql-review", "acceptance"]);
+const gates = new Set(["backup", "freeze-scope", "old-writers", "sql-review", "acceptance"]);
 const allowed = Object.freeze({
   plan: ["project", "installation"],
   prepare: ["project", "run-id", "operator", "reason", "installation", "artifact-directory", "import-admins"],
