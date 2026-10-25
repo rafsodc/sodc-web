@@ -102,8 +102,8 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     const response=await fetcher(`https://${host}${resource}`,{method:'GET',headers:{Authorization:'Bearer '+await accessToken(),'X-Goog-User-Project':project},signal:AbortSignal.timeout(45_000),redirect:'error'});
     if(response.status===404&&allowMissing)return null;assert(response.ok,'CLOUD_METADATA_READ_FAILED');return response.json();
   }
-  async function listMetadata(host,resource,key){
-    const result=[];let cursor;const seen=new Set();do{const response=await metadata(host,resource+(resource.includes('?')?'&':'?')+'pageSize=1000'+(cursor?'&pageToken='+encodeURIComponent(cursor):''));assert(!response.unreachable?.length,'UNREACHABLE_CLOUD_RESOURCE');result.push(...response[key]??[]);cursor=response.nextPageToken;if(cursor){assert(!seen.has(cursor),'REPEATED_CLOUD_PAGE');seen.add(cursor);}}while(cursor);return result;
+  async function listMetadata(host,resource,key,pageSize=1000){
+    const result=[];let cursor;const seen=new Set();do{const response=await metadata(host,resource+(resource.includes('?')?'&':'?')+'pageSize='+pageSize+(cursor?'&pageToken='+encodeURIComponent(cursor):''));assert(!response.unreachable?.length,'UNREACHABLE_CLOUD_RESOURCE');result.push(...response[key]??[]);cursor=response.nextPageToken;if(cursor){assert(!seen.has(cursor),'REPEATED_CLOUD_PAGE');seen.add(cursor);}}while(cursor);return result;
   }
   async function readAuthority(schemaFiles){
     const admin=await adminFactory({projectId:project,repositoryRoot});
@@ -131,7 +131,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     assert(!missingApis.length,'REQUIRED_APIS_NOT_ENABLED');
     const[schema,api,authorization,functions,jobs]=await Promise.all([
       metadata('firebasedataconnect.googleapis.com','/v1/'+base+'/schemas/main'),metadata('firebasedataconnect.googleapis.com','/v1/'+base+'/connectors/api'),metadata('firebasedataconnect.googleapis.com','/v1/'+base+'/connectors/authorization-service',true),
-      listMetadata('cloudfunctions.googleapis.com',`/v2/projects/${project}/locations/${MIGRATION_REGION}/functions`,'functions'),listMetadata('cloudscheduler.googleapis.com',`/v1/projects/${project}/locations/${MIGRATION_REGION}/jobs`,'jobs')]);
+      listMetadata('cloudfunctions.googleapis.com',`/v2/projects/${project}/locations/${MIGRATION_REGION}/functions`,'functions'),listMetadata('cloudscheduler.googleapis.com',`/v1/projects/${project}/locations/${MIGRATION_REGION}/jobs`,'jobs',500)]);
     assert(schema.name===base+'/schemas/main'&&api.name===base+'/connectors/api'&&schema.source?.files?.length&&api.source?.files?.length,'DEPLOYED_SOURCES_REQUIRED');
     const postgres=schema.datasources?.find(source=>source.postgresql)?.postgresql;const instance=postgres?.cloudSql?.instance;
     let databaseProtection=null;

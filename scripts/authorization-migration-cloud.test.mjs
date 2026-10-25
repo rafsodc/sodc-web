@@ -18,7 +18,7 @@ const files=async directory=>Promise.all((await readdir(directory)).filter(name=
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}});
 const uuid=value=>{const hash=stableHash(value);return `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`;};
 
-async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false}={}){
+async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,schedulerList}={}){
   const project=projectId;
   const directory=await mkdtemp(path.join(os.tmpdir(),'authorization-cloud-offline-'));t.onTestFinished(()=>rm(directory,{recursive:true,force:true}));
   const runDirectory=path.join(directory,'run');await mkdir(runDirectory);
@@ -121,7 +121,7 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
     throw Error('UNEXPECTED_OFFLINE_COMMAND');
   };
   const fetch=async(url,options)=>{
-    const target=new URL(url);requests.push({hostname:target.hostname,path:target.pathname,method:options.method});
+    const target=new URL(url);requests.push({hostname:target.hostname,path:target.pathname,query:target.search,method:options.method});
     assert.equal(options.redirect,'error');
     if(target.hostname.endsWith('.cloudfunctions.net')){assert.equal(options.method,'GET');assert.equal(options.body,undefined);return callableRoleDenial?json({error:{status:'PERMISSION_DENIED'}},403):new Response('<html><title>Error: Forbidden</title>Your client does not have permission to access this URL.</html>',{status:403,headers:{'content-type':'text/html'}});}
     if(target.hostname==='cloudscheduler.googleapis.com'&&['POST','PATCH'].includes(options.method)){const body=JSON.parse(options.body);let job=jobs.find(job=>job.name===body.name);if(job)Object.assign(job,body);else{job={...body,state:createJobsPaused?'PAUSED':'ENABLED'};jobs.push(job);}return json(job);}
@@ -141,7 +141,12 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
     if(target.pathname.endsWith('/connectors/api'))return json({name:base+'/connectors/api',source:{files:api}});
     if(target.pathname.endsWith('/connectors/authorization-service'))return json({name:base+'/connectors/authorization-service',source:{files:authorization}});
     if(target.pathname.endsWith('/functions'))return json({functions:functionNames.map(name=>({name:`projects/${project}/locations/europe-west2/functions/${name}`,environment:'GEN_2',state:functionStates.get(name)??'ACTIVE',updateTime:functionUpdateTimes.get(name),buildConfig:{runtime:'nodejs24',entryPoint:name,source:{storageSource:{bucket:'source-bucket',object:functionSources.get(name)??'reviewed.zip',generation:'1'}}},serviceConfig:{service:serviceResource(name),revision:functionRevisions.get(name),uri:`https://${name}.a.run.app`,serviceAccountEmail:'123456789-compute@developer.gserviceaccount.com',timeoutSeconds:name==='recoverNotificationDeliveries'?scheduledTimeout:60,environmentVariables:{NEVER_PERSIST:'secret-value'}}}))});
-    if(target.pathname.endsWith('/jobs'))return json({jobs});throw Error('UNEXPECTED_OFFLINE_METADATA');
+    if(target.hostname==='cloudscheduler.googleapis.com'&&target.pathname.endsWith('/jobs')){
+      const pageSize=Number(target.searchParams.get('pageSize')??500);
+      if(!Number.isInteger(pageSize)||pageSize<1||pageSize>500)return json({error:{status:'INVALID_ARGUMENT'}},400);
+      return schedulerList?schedulerList(target,jobs):json({jobs});
+    }
+    throw Error('UNEXPECTED_OFFLINE_METADATA');
   };
   const plan={schemaVersion:1,projectId:project,environment:'dev',gitSha:sha,runId:'offline-test',installation:'strict',operator:'reviewer',reason:'reviewed test',importAdmins:false,artifactDirectory:path.join(directory,'artifacts'),createdAt:at,phaseOperationIds:{'control-create':'stable-control',backfill:'stable-backfill',activate:'stable-activate'}};
   const adapter=createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,command,fetch,adminFactory,now:()=>new Date(milliseconds)});
@@ -368,4 +373,44 @@ test('backfill cannot use its retry exception to absorb unrelated pending work',
   const before=mutationCount(fixture);await assert.rejects(fixture.adapter.perform('backfill',context),/UNREVIEWED_PENDING_BACKFILL_WORK/);
   assert.equal(bootstrapCalls,0);assert.equal(mutationCount(fixture),before);
   assert.equal(fixture.commands.some(command=>command.args.some(arg=>arg.endsWith('/security-state-admin.ts'))),false);
+});
+
+test('Scheduler list uses its supported page limit without changing Functions pagination',async t=>{
+  const fixture=await setup(t);const observed=await fixture.adapter.observe();assert.equal(observed.jobs.length,1);
+  const scheduler=fixture.requests.filter(request=>request.hostname==='cloudscheduler.googleapis.com'&&request.path.endsWith('/jobs'));
+  assert.equal(scheduler.length,1);assert.equal(new URLSearchParams(scheduler[0].query).get('pageSize'),'500');
+  const functions=fixture.requests.find(request=>request.hostname==='cloudfunctions.googleapis.com'&&request.path.endsWith('/functions'));
+  assert.equal(new URLSearchParams(functions.query).get('pageSize'),'1000');assert.equal(mutationCount(fixture),0);
+});
+
+test('Scheduler pagination preserves both scoped jobs through an empty page and encoded opaque cursors',async t=>{
+  const first='next/cursor+one =?&';const second='last/page+two=?&';const seen=[];
+  const fixture=await setup(t,{schedulerList:(target,jobs)=>{
+    const token=target.searchParams.get('pageToken');seen.push(token);
+    if(token===null)return json({jobs:[jobs[0]],nextPageToken:first});
+    if(token===first)return json({jobs:[],nextPageToken:second});
+    assert.equal(token,second);return json({jobs:[{...jobs[0],name:jobs[0].name.replace('recoverNotificationDeliveries','reconcilePendingSecurityTransitions')}]});
+  }});
+  const observed=await fixture.adapter.observe();assert.deepEqual(seen,[null,first,second]);
+  assert.deepEqual(observed.jobs.map(job=>job.name.split('/').at(-1)).sort(),['firebase-schedule-reconcilePendingSecurityTransitions-europe-west2','firebase-schedule-recoverNotificationDeliveries-europe-west2']);
+  const queries=fixture.requests.filter(request=>request.hostname==='cloudscheduler.googleapis.com'&&request.path.endsWith('/jobs')).map(request=>request.query);
+  assert.ok(queries[1].includes('pageToken='+encodeURIComponent(first)));assert.ok(queries[2].includes('pageToken='+encodeURIComponent(second)));
+  assert.ok(queries.every(query=>new URLSearchParams(query).get('pageSize')==='500'));assert.equal(mutationCount(fixture),0);
+});
+
+test('a later Scheduler page error rejects the complete audit instead of accepting partial scope',async t=>{
+  const fixture=await setup(t,{schedulerList:(target,jobs)=>target.searchParams.has('pageToken')?json({error:{status:'INTERNAL'}},500):json({jobs,nextPageToken:'page-two'})});
+  await assert.rejects(fixture.adapter.observe(),/CLOUD_METADATA_READ_FAILED/);
+  assert.equal(fixture.requests.filter(request=>request.hostname==='cloudscheduler.googleapis.com').length,2);assert.equal(mutationCount(fixture),0);
+});
+
+test('repeated Scheduler cursors fail closed instead of looping or accepting partial scope',async t=>{
+  const fixture=await setup(t,{schedulerList:()=>json({jobs:[],nextPageToken:'repeated/cursor+='})});
+  await assert.rejects(fixture.adapter.observe(),/REPEATED_CLOUD_PAGE/);
+  assert.equal(fixture.requests.filter(request=>request.hostname==='cloudscheduler.googleapis.com').length,2);assert.equal(mutationCount(fixture),0);
+});
+
+test('an unreachable Scheduler page fails the audit before any cutover mutation',async t=>{
+  const fixture=await setup(t,{schedulerList:()=>json({jobs:[],unreachable:['projects/sodc-web/locations/europe-west2']})});
+  await assert.rejects(fixture.adapter.observe(),/UNREACHABLE_CLOUD_RESOURCE/);assert.equal(mutationCount(fixture),0);
 });
