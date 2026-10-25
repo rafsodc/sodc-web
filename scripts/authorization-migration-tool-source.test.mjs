@@ -1,5 +1,6 @@
 import {afterEach, expect, it, vi} from 'vitest';
-import {mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, unlink} from 'node:fs/promises';
+import {mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, unlink, realpath} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {createMigrationPlan, prepareMigrationRun, loadMigrationRun, migrationHash} from './authorization-migration-state.mjs';
 import {adoptMigrationToolSource, verifyMigrationToolSource, inspectMigrationToolSource, parseToolSourceDiff} from './authorization-migration-tool-source.mjs';
@@ -20,7 +21,7 @@ function sourceGit({head = tool, status = '', ancestry = true, rawDiff = raw, pa
   });
 }
 async function fixture({projectId = 'sodc-web', installation = 'strict'} = {}) {
-  const root = await mkdtemp('/private/tmp/migration-tool-source-'); roots.push(root);
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'migration-tool-source-'))); roots.push(root);
   const repositoryRoot = path.join(root, 'repo'); await mkdir(repositoryRoot);
   const options = {repositoryRoot, projectId, runId: 'interrupted-tool-run'};
   const plan = createMigrationPlan({...options, gitSha: original, installation, operator: 'operator', reason: 'reviewed Dev rehearsal', artifactDirectory: path.join(root, 'artifacts'), now});
