@@ -1,6 +1,7 @@
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {createRequire} from 'node:module';
+import {randomUUID} from 'node:crypto';
 import {mkdir,readFile,readdir,realpath,writeFile,rename} from 'node:fs/promises';
 import path from 'node:path';
 import {stableHash,classifyApi,denyOnboarding,prepareMigrationSources,verifyMigrationArtifact} from './authorization-migration-sources.mjs';
@@ -24,6 +25,15 @@ const assert=(condition,code)=>{if(!condition)throw new MigrationCloudError(code
 const date=value=>new Date(value).toISOString();
 const resourceName=value=>typeof value==='string'?value.split('/').at(-1):null;
 const deep=value=>JSON.parse(JSON.stringify(value));
+// Scheduler defaults an omitted OIDC audience to the exact target URI, including
+// its query: https://docs.cloud.google.com/scheduler/docs/http-target-auth
+const effectiveOidcAudience=(audience,uri)=>audience===undefined?uri:audience;
+// Accept only the provider's empty HTTPS root spelling; paths, queries and
+// explicit OIDC audiences retain their exact captured strings.
+const schedulerTargetUris=uri=>{
+  const target=new URL(uri);
+  return target.protocol==='https:'&&(uri===target.origin||uri===target.origin+'/')?[target.origin,target.origin+'/']:[uri];
+};
 const canonicalFiles=files=>files.map(({path:filename,content})=>({path:filename.replace(/^\.\//,''),content})).sort((a,b)=>a.path.localeCompare(b.path));
 export const sourceHash=files=>stableHash(canonicalFiles(files));
 export function frozenInvokerPolicy(policy){
@@ -52,7 +62,17 @@ export function assertAdditiveSql(diffs){
     assert(!/\bALTER\s+(?:COLUMN|TYPE)\b|\bSET\s+NOT\s+NULL\b|\b(?:DO|EXECUTE|CREATE\s+(?:FUNCTION|PROCEDURE|TRIGGER))\b/i.test(sql),'NON_ADDITIVE_SQL_REVIEW_REQUIRED');
   }
 }
-export function isPlatformIamRefusal(status,contentType,body){return status===403&&String(contentType).includes('text/html')&&/<(?:html|title)\b/i.test(body)&&/Your client does not have permission|not have permission to access|Error: Forbidden/i.test(body);}
+export function isPlatformIamRefusal(status,contentType,body){
+  if(![401,403].includes(status)||!/^\s*text\/html(?:\s*;|\s*$)/i.test(String(contentType))||typeof body!=='string'||!/<html\b/i.test(body)||/\b(?:invalid|expired|malformed)\b/i.test(body))return false;
+  const titles=[...body.matchAll(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/gi)];
+  if(titles.length!==1)return false;
+  const title=titles[0][1].trim();
+  // A verified Firebase project-audience token is not a service-audience IAM token.
+  // Cloud Run can refuse it with HTML401 before the callable wrapper is reached:
+  // https://docs.cloud.google.com/run/docs/troubleshooting#unauthorized-client
+  if(status===401)return /^401\s+Unauthorized$/i.test(title)&&/Your client does not have permission/i.test(body);
+  return /^(?:403\s+Forbidden|Error:\s*Forbidden)$/i.test(title)&&/Your client does not have permission|not have permission to access|Error:\s*Forbidden/i.test(body);
+}
 export function selectStagedFunctions(names,existing){return names.filter(name=>!DEFERRED_FUNCTIONS.includes(name)||existing.includes(name));}
 async function commandDefault(file,args,options={}){
   try{const result=await execFileAsync(file,args,{cwd:options.cwd,env:options.env,timeout:options.timeoutMs??45_000,maxBuffer:32*1024*1024,shell:false});return {...result,code:0};}
@@ -76,12 +96,12 @@ function minimalFunction(fn){return {name:resourceName(fn.name),resource:fn.name
 function typeFields(files,type){const block=files.map(file=>file.content).join('\n').match(new RegExp('type\\s+'+type+'\\b[^\\{]*\\{([\\s\\S]*?)^\\}','m'))?.[1];return block?new Set([...block.matchAll(/^\s+(\w+)\s*:/gm)].map(match=>match[1])):null;}
 
 /** Cloud execution is lazy; importing/constructing an adapter performs no I/O or authentication. */
-export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,now=()=>new Date(),command=commandDefault,fetch:fetcher=globalThis.fetch,adminFactory=adminDefault}){
+export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,now=()=>new Date(),sourceCheck,command=commandDefault,fetch:fetcher=globalThis.fetch,adminFactory=adminDefault,delay=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds))}){
   assert(PROJECTS.has(plan?.projectId),'EXPLICIT_SUPPORTED_PROJECT_REQUIRED');
   assert(path.isAbsolute(repositoryRoot??'')&&path.isAbsolute(runDirectory??''),'ABSOLUTE_DIRECTORIES_REQUIRED');
   assert(/^[a-f0-9]{40}$/.test(plan.gitSha??''),'REVIEWED_SHA_REQUIRED');
   const project=plan.projectId;const base=`projects/${project}/locations/${MIGRATION_REGION}/services/${MIGRATION_SERVICE}`;
-  let token;let tools;let raw;let lastObservation;
+  let token;let tools;let raw;let lastObservation;let runReadSlot=Promise.resolve();
   const clock=()=>date(typeof now==='function'?now():now);
   const env=()=>{const values={...process.env,GCLOUD_PROJECT:project,GOOGLE_CLOUD_PROJECT:project,CLOUDSDK_CORE_DISABLE_PROMPTS:'1',FIREBASE_CLI_DISABLE_UPDATE_CHECK:'1',CI:'1'};for(const key of Object.keys(values))if(key.startsWith('AUTHORIZATION_MIGRATION_PROBE_'))delete values[key];return values;};
   async function run(file,args,{cwd=repositoryRoot,timeoutMs=45_000,environment=env()}={}){
@@ -99,11 +119,19 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
   }
   async function accessToken(){if(!token)token=(await run('gcloud',['auth','print-access-token','--project',project])).trim();assert(token,'CLOUD_CREDENTIAL_REQUIRED');return token;}
   async function metadata(host,resource,allowMissing=false){
-    const response=await fetcher(`https://${host}${resource}`,{method:'GET',headers:{Authorization:'Bearer '+await accessToken(),'X-Goog-User-Project':project},signal:AbortSignal.timeout(45_000),redirect:'error'});
-    if(response.status===404&&allowMissing)return null;assert(response.ok,'CLOUD_METADATA_READ_FAILED');return response.json();
+    const credential=await accessToken();
+    // Pace starts with headroom below the observed 1,200/minute regional quota,
+    // including consecutive full proofs. Responses may overlap; failures are not replayed.
+    if(host==='run.googleapis.com'){const slot=runReadSlot.then(()=>delay(75));runReadSlot=slot.catch(()=>{});await slot;}
+    const response=await fetcher(`https://${host}${resource}`,{method:'GET',headers:{Authorization:'Bearer '+credential,'X-Goog-User-Project':project},signal:AbortSignal.timeout(45_000),redirect:'error'});
+    if(response.status===404&&allowMissing)return null;
+    if(!response.ok)await save('provider-metadata-read-failure-'+randomUUID()+'.json',{
+      ...identity(),observedAt:clock(),method:'GET',host,resource:resource.split('?')[0],httpStatus:response.status,
+    });
+    assert(response.ok,'CLOUD_METADATA_READ_FAILED');return response.json();
   }
-  async function listMetadata(host,resource,key){
-    const result=[];let cursor;const seen=new Set();do{const response=await metadata(host,resource+(resource.includes('?')?'&':'?')+'pageSize=1000'+(cursor?'&pageToken='+encodeURIComponent(cursor):''));assert(!response.unreachable?.length,'UNREACHABLE_CLOUD_RESOURCE');result.push(...response[key]??[]);cursor=response.nextPageToken;if(cursor){assert(!seen.has(cursor),'REPEATED_CLOUD_PAGE');seen.add(cursor);}}while(cursor);return result;
+  async function listMetadata(host,resource,key,pageSize=1000){
+    const result=[];let cursor;const seen=new Set();do{const response=await metadata(host,resource+(resource.includes('?')?'&':'?')+'pageSize='+pageSize+(cursor?'&pageToken='+encodeURIComponent(cursor):''));assert(!response.unreachable?.length,'UNREACHABLE_CLOUD_RESOURCE');result.push(...response[key]??[]);cursor=response.nextPageToken;if(cursor){assert(!seen.has(cursor),'REPEATED_CLOUD_PAGE');seen.add(cursor);}}while(cursor);return result;
   }
   async function readAuthority(schemaFiles){
     const admin=await adminFactory({projectId:project,repositoryRoot});
@@ -121,6 +149,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     }finally{await admin.close?.();}
   }
   async function observe(){
+    await sourceCheck?.();
     await versions();
     for(const[key,value]of Object.entries(process.env))assert(!key.endsWith('_EMULATOR_HOST')||!value,'EMULATOR_OVERRIDE_FORBIDDEN');
     for(const key of ['GCLOUD_PROJECT','GOOGLE_CLOUD_PROJECT'])assert(!process.env[key]||process.env[key]===project,'PROJECT_ENVIRONMENT_CONFLICT');
@@ -131,7 +160,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     assert(!missingApis.length,'REQUIRED_APIS_NOT_ENABLED');
     const[schema,api,authorization,functions,jobs]=await Promise.all([
       metadata('firebasedataconnect.googleapis.com','/v1/'+base+'/schemas/main'),metadata('firebasedataconnect.googleapis.com','/v1/'+base+'/connectors/api'),metadata('firebasedataconnect.googleapis.com','/v1/'+base+'/connectors/authorization-service',true),
-      listMetadata('cloudfunctions.googleapis.com',`/v2/projects/${project}/locations/${MIGRATION_REGION}/functions`,'functions'),listMetadata('cloudscheduler.googleapis.com',`/v1/projects/${project}/locations/${MIGRATION_REGION}/jobs`,'jobs')]);
+      listMetadata('cloudfunctions.googleapis.com',`/v2/projects/${project}/locations/${MIGRATION_REGION}/functions`,'functions'),listMetadata('cloudscheduler.googleapis.com',`/v1/projects/${project}/locations/${MIGRATION_REGION}/jobs`,'jobs',500)]);
     assert(schema.name===base+'/schemas/main'&&api.name===base+'/connectors/api'&&schema.source?.files?.length&&api.source?.files?.length,'DEPLOYED_SOURCES_REQUIRED');
     const postgres=schema.datasources?.find(source=>source.postgresql)?.postgresql;const instance=postgres?.cloudSql?.instance;
     let databaseProtection=null;
@@ -142,7 +171,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     const authority=evaluateAuthority({...raw,requireBackfill:false});
     const safeAuthority={passed:authority.passed,counts:authority.counts,violations:authority.violations,control:authority.control,backfillComplete:authority.backfillComplete,controlReady:authority.controlReady,private:{eligibleLegacyAdminUIDs:authority.private?.eligibleLegacyAdminUIDs??[],legacyAdminUIDs:authority.private?.legacyAdminUIDs??[],legacyAdminFingerprint:authority.private?.legacyAdminFingerprint??null,rosterFingerprint:authority.private?.rosterFingerprint??null}};
     const installation=classifyApi(api.source.files);
-    const safeJobs=jobs.filter(job=>SCHEDULED.some(name=>resourceName(job.name)===`firebase-schedule-${name}-${MIGRATION_REGION}`)).map(job=>({name:job.name,state:job.state,schedule:job.schedule,timeZone:job.timeZone??null,retryConfig:job.retryConfig??{},attemptDeadline:job.attemptDeadline??null,targetFingerprint:stableHash(deep({httpTarget:job.httpTarget?{uri:job.httpTarget.uri,httpMethod:job.httpTarget.httpMethod,serviceAccount:job.httpTarget.oidcToken?.serviceAccountEmail,audience:job.httpTarget.oidcToken?.audience??null}:null,pubsubTarget:job.pubsubTarget?.topicName??null})),configurationHash:stableHash(deep({schedule:job.schedule,timeZone:job.timeZone,httpTarget:job.httpTarget,pubsubTarget:job.pubsubTarget,retryConfig:job.retryConfig,attemptDeadline:job.attemptDeadline}))})).sort((a,b)=>a.name.localeCompare(b.name));
+    const safeJobs=jobs.filter(job=>SCHEDULED.some(name=>resourceName(job.name)===`firebase-schedule-${name}-${MIGRATION_REGION}`)).map(job=>({name:job.name,state:job.state,schedule:job.schedule,timeZone:job.timeZone??null,retryConfig:job.retryConfig??{},attemptDeadline:job.attemptDeadline??null,targetFingerprint:stableHash(deep({httpTarget:job.httpTarget?{uri:job.httpTarget.uri,httpMethod:job.httpTarget.httpMethod,serviceAccount:job.httpTarget.oidcToken?.serviceAccountEmail,audience:effectiveOidcAudience(job.httpTarget.oidcToken?.audience,job.httpTarget.uri)}:null,pubsubTarget:job.pubsubTarget?.topicName??null})),configurationHash:stableHash(deep({schedule:job.schedule,timeZone:job.timeZone,httpTarget:job.httpTarget,pubsubTarget:job.pubsubTarget,retryConfig:job.retryConfig,attemptDeadline:job.attemptDeadline}))})).sort((a,b)=>a.name.localeCompare(b.name));
     lastObservation={schemaVersion:'sodc-authorization-provider-observation/v1',projectId:project,projectNumber:String(target.projectNumber),gitSha:plan.gitSha,observedAt:clock(),installation,enabledApis,databaseProtection,schema:{name:schema.name,updateTime:schema.updateTime,files:canonicalFiles(schema.source.files)},api:{name:api.name,updateTime:api.updateTime,files:canonicalFiles(api.source.files)},authorization:authorization?{name:authorization.name,updateTime:authorization.updateTime,files:canonicalFiles(authorization.source?.files??[])}:null,functions:selectedFunctions,policies,jobs:safeJobs,authority:safeAuthority};
     return deep(lastObservation);
   }
@@ -176,6 +205,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     await mkdir(runDirectory,{recursive:true,mode:0o700});await writeFile(filename,content+schedulerGuard,{mode:0o600});return filename;
   }
   async function firebase(args,observed,{cwd=repositoryRoot,timeoutMs=1_800_000}={}){
+    await sourceCheck?.();
     const runtime=await versions();const preload=await guard(observed);
     return run(process.execPath,['--require',preload,runtime.firebaseExecutable,...args,'--project',project,'--non-interactive'],{cwd,timeoutMs});
   }
@@ -338,6 +368,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     }finally{await admin.close?.();}
   }
   async function authorityCommand(mode,phase,context){
+    await sourceCheck?.();
     const operationId=plan.phaseOperationIds?.[phase];assert(typeof operationId==='string'&&operationId.length>0,'STABLE_PHASE_OPERATION_REQUIRED');
     const args=[path.join(repositoryRoot,'functions/node_modules/ts-node/dist/bin.js'),'--project',path.join(repositoryRoot,'functions/tsconfig.scripts.json'),path.join(repositoryRoot,'functions/scripts/security-state-admin.ts'),'--project',project,'--all','--mode',mode,'--apply','--confirm-project',project,'--actor',plan.operator,'--reason',plan.reason,'--operation-id',operationId];
     if(mode==='bootstrap'&&plan.importAdmins===true)args.push('--import-admins');
@@ -364,7 +395,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
   }
   const schedulerIntents=specs=>specs.map(spec=>({name:spec.name,specHash:stableHash(spec)}));
   async function resolveSchedulerIntents(observed,intents){const result=[];for(const intent of intents??[]){const name=SCHEDULED.find(name=>resourceName(intent.name)===jobBase(name));assert(name,'UNKNOWN_SCHEDULER_INTENT');const [spec]=await capturedSchedulers(observed,[name]);assert(spec.name===intent.name&&stableHash(spec)===intent.specHash,'SCHEDULER_INTENT_CHANGED');result.push(spec);}return result;}
-  const schedulerMatches=(job,spec)=>Boolean(job&&job.schedule===spec.schedule&&(job.timeZone??'UTC')===spec.timeZone&&(spec.attemptDeadline===undefined||job.attemptDeadline===spec.attemptDeadline)&&Object.entries(spec.retryConfig??{}).every(([key,value])=>job.retryConfig?.[key]===value)&&job.targetFingerprint===stableHash({httpTarget:{uri:spec.httpTarget.uri,httpMethod:spec.httpTarget.httpMethod,serviceAccount:spec.httpTarget.oidcIdentity.serviceAccountEmail,audience:spec.httpTarget.oidcIdentity.audience??null},pubsubTarget:null}));
+  const schedulerMatches=(job,spec)=>Boolean(job&&job.schedule===spec.schedule&&(job.timeZone??'UTC')===spec.timeZone&&(spec.attemptDeadline===undefined||job.attemptDeadline===spec.attemptDeadline)&&Object.entries(spec.retryConfig??{}).every(([key,value])=>job.retryConfig?.[key]===value)&&schedulerTargetUris(spec.httpTarget.uri).some(uri=>job.targetFingerprint===stableHash({httpTarget:{uri,httpMethod:spec.httpTarget.httpMethod,serviceAccount:spec.httpTarget.oidcIdentity.serviceAccountEmail,audience:effectiveOidcAudience(spec.httpTarget.oidcIdentity.audience,uri)},pubsubTarget:null})));
   async function applyScheduler(spec,observed){
     const body=deep(spec);body.httpTarget.oidcToken=body.httpTarget.oidcIdentity;delete body.httpTarget.oidcIdentity;
     const exists=observed.jobs.some(job=>job.name===spec.name);const mask=Object.keys(body).filter(key=>key!=='name').join(',');const endpoint=exists?`/v1/${spec.name}?updateMask=${mask}`:`/v1/projects/${project}/locations/${MIGRATION_REGION}/jobs`;
@@ -456,7 +487,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
       const stagedRecord=phase==='functions'?context.result:context.checkpoints?.functions?.result;const openRecord=phase==='open'?context.result:context.checkpoints?.open?.result;const proofs=[...stagedRecord?.functionProofs??[],...openRecord?.deferredProofs??[]];
       const fullFunctions=source.contracts.functions.every(name=>observed.functions.some(fn=>fn.name===name&&provenFunction(fn,proofs)));
       const strictOpen=matches(observed.api.files,source.api,'api');const strictFrozen=matches(observed.api.files,denyOnboarding(source.api),'api');
-      const restored=state.originalPolicies.every(original=>{const current=observed.policies.find(item=>item.functionName===original.functionName);if(!current)return false;const originalPublic=original.policy.bindings.filter(binding=>binding.role==='roles/run.invoker').flatMap(binding=>(binding.members??[]).filter(member=>PUBLIC.has(member)).map(member=>stableHash({member,condition:binding.condition??null})));const currentPublic=current.policy.bindings.filter(binding=>binding.role==='roles/run.invoker').flatMap(binding=>(binding.members??[]).filter(member=>PUBLIC.has(member)).map(member=>stableHash({member,condition:binding.condition??null})));return stableHash(originalPublic.sort())===stableHash(currentPublic.sort());});
+      const restored=state.originalPolicies.every(original=>{const current=observed.policies.find(item=>item.functionName===original.functionName);if(!current)return false;const originalPublic=(original.policy.bindings??[]).filter(binding=>binding.role==='roles/run.invoker').flatMap(binding=>(binding.members??[]).filter(member=>PUBLIC.has(member)).map(member=>stableHash({member,condition:binding.condition??null})));const currentPublic=(current.policy.bindings??[]).filter(binding=>binding.role==='roles/run.invoker').flatMap(binding=>(binding.members??[]).filter(member=>PUBLIC.has(member)).map(member=>stableHash({member,condition:binding.condition??null})));return stableHash(originalPublic.sort())===stableHash(currentPublic.sort());});
       const securityOriginally=expectedJob(context.baseline,'reconcilePendingSecurityTransitions');
       const reviewedSchedulers=await resolveSchedulerIntents(observed,[...stagedRecord?.schedulerIntents??[],...openRecord?.deferredSchedulerIntents??[]]);
       const schedulers=state.originalJobs.every(original=>observed.jobs.some(job=>job.name===original.name&&job.state===original.state))&&expectedJob(observed,'reconcilePendingSecurityTransitions')?.state===(securityOriginally?.state??'ENABLED')&&reviewedSchedulers.every(spec=>{const job=observed.jobs.find(job=>job.name===spec.name);return schedulerMatches(job,spec)&&job.state===(context.baseline.jobs.find(original=>original.name===spec.name)?.state??'ENABLED');});
@@ -486,6 +517,77 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     }
     const blockers=Object.entries(assertions).filter(([,value])=>!value).map(([key])=>key);return {ok:blockers.length===0,observed,evidence:{...identity(context),observedAt:clock(),assertions,...oldWriterProof?{oldWriterProofHash:oldWriterProof.proofHash,oldWriterGateHash:oldWriterProof.gateHash}:{}},blockers};
   }
+  function abortPolicy(policy){
+    assert(policy&&Array.isArray(policy.bindings??[]),'ABORT_IAM_POLICY_INVALID');
+    const value=deep(policy);delete value.etag;delete value.version;
+    value.bindings=(policy.bindings??[]).map(binding=>{
+      assert(typeof binding.role==='string'&&Array.isArray(binding.members??[])&&(binding.members??[]).every(member=>typeof member==='string'),'ABORT_IAM_POLICY_INVALID');
+      return {...binding,members:[...binding.members??[]].sort()};
+    }).filter(binding=>binding.members.length).sort((a,b)=>stableHash(a).localeCompare(stableHash(b)));
+    return value;
+  }
+  function abortAuthority(authority){const value=deep(authority);if(value.control)delete value.control.version;return value;}
+  async function abortFreeze(context={}){
+    const {baseline,abortIntent:intent,recoverySource:recovery}=context;
+    assert(project==='sodc-web'&&plan.installation==='strict'&&baseline?.installation==='strict','ABORT_STRICT_DEV_ONLY');
+    assert(baseline.projectId===project&&baseline.gitSha===plan.gitSha&&planHash(context)===stableHash(plan),'ABORT_BASELINE_IDENTITY_MISMATCH');
+    assert(typeof context.reason==='string'&&context.reason.trim()&&intent?.schemaVersion==='sodc-authorization-abort-freeze-intent/v1'&&intent.projectId===project&&intent.gitSha===plan.gitSha&&intent.runId===plan.runId&&intent.planHash===stableHash(plan)&&intent.baselineHash===stableHash(baseline)&&intent.freezeCheckpointHash===stableHash(context.checkpoints?.freeze)&&intent.reason===context.reason,'ABORT_DURABLE_INTENT_REQUIRED');
+    assert(recovery?.schemaVersion==='sodc-authorization-abort-source/v1'&&recovery.originalPlanSha===plan.gitSha&&/^[a-f0-9]{40}$/.test(recovery.recoveryToolSha??'')&&recovery.applicationSourceUnchanged===true&&/^[a-f0-9]{64}$/.test(recovery.diffHash??'')&&Array.isArray(recovery.changedPaths)&&recovery.changedPaths.every(file=>typeof file==='string')&&intent.initialRecoverySource?.originalPlanSha===plan.gitSha,'ABORT_REVIEWED_RECOVERY_SOURCE_REQUIRED');
+    assert(context.checkpoints?.inspect?.status==='complete'&&Object.keys(context.checkpoints??{}).every(phase=>['inspect','freeze'].includes(phase))&&context.checkpoints?.freeze?.status==='incomplete','ABORT_EARLY_FAILED_FREEZE_ONLY');
+    assert(stableHash(await load('abort-freeze-intent.json'))===stableHash(intent),'ABORT_PERSISTED_INTENT_MISMATCH');
+    assert(!(await readdir(runDirectory)).some(name=>name.startsWith('provider-phase-')||name.startsWith('scheduler-')),'ABORT_LATER_PROVIDER_WORK_FOUND');
+    const state=await freezeState(context);
+    assert(state.apiFrozen===true&&state.completedAt&&state.originalPolicies.length===11&&state.originalJobs.length===2,'ABORT_COMPLETED_BOUNDARY_REQUIRED');
+    const prepared=await artifacts(baseline);
+    const restoreApi=await filesIn(path.join(prepared.strictOpen.directory,'dataconnect/api'));
+    const frozenApi=await filesIn(path.join(state.artifact.directory,'dataconnect/api'));
+    assert(matches(restoreApi,baseline.api.files,'api')&&matches(frozenApi,denyOnboarding(baseline.api.files),'api'),'ABORT_ARTIFACT_NOT_ORIGINAL_API');
+    const source=await candidate();
+    assert(baseline.functions.length===source.contracts.functions.length&&stableHash(baseline.functions.map(fn=>fn.name).sort())===stableHash(source.contracts.functions),'ABORT_ORIGINAL_FUNCTION_SCOPE_REQUIRED');
+    assert(baseline.authority?.passed&&baseline.authority.controlReady&&baseline.authority.control?.status==='READY'&&baseline.authority.control.readyAdminCount>0,'ABORT_ORIGINAL_AUTHORITY_NOT_READY');
+    function compatible(observed){
+      assert(stableHash(observed.functions)===stableHash(baseline.functions),'ABORT_FUNCTIONS_CHANGED');
+      assert(matches(observed.schema.files,baseline.schema.files,'schema'),'ABORT_SCHEMA_CHANGED');
+      assert(matches(observed.authorization?.files,baseline.authorization?.files,'authorization-service'),'ABORT_AUTHORIZATION_CHANGED');
+      assert(observed.installation==='strict'&&(matches(observed.api.files,baseline.api.files,'api')||matches(observed.api.files,frozenApi,'api')),'ABORT_API_DRIFT');
+      assert(stableHash(abortAuthority(observed.authority))===stableHash(abortAuthority(baseline.authority))&&Number.isSafeInteger(observed.authority.control?.version)&&observed.authority.control.version>=baseline.authority.control.version,'ABORT_AUTHORITY_CHANGED');
+      assert(observed.policies.length===state.originalPolicies.length&&state.originalPolicies.every(original=>{
+        const current=observed.policies.find(item=>item.functionName===original.functionName);
+        return current&&current.service===original.service&&[original.policy,frozenInvokerPolicy(original.policy)].some(allowed=>stableHash(abortPolicy(current.policy))===stableHash(abortPolicy(allowed)));
+      }),'ABORT_IAM_DRIFT');
+      assert(observed.jobs.length===state.originalJobs.length&&state.originalJobs.every(original=>{
+        const current=observed.jobs.find(job=>job.name===original.name);
+        return current&&['ENABLED','PAUSED'].includes(original.state)&&[original.state,'PAUSED'].includes(current.state)&&stableHash({...current,state:original.state})===stableHash(original);
+      }),'ABORT_JOB_DRIFT');
+      return observed;
+    }
+    // Baseline retains aggregate authority/roster fingerprints; full fixture-cleanup proof remains external.
+    let observed=compatible(await observe());
+    if(!matches(observed.api.files,baseline.api.files,'api')){
+      await deploy(`dataconnect:${MIGRATION_SERVICE}:api`,prepared.strictOpen,observed);
+      observed=compatible(await observe());assert(matches(observed.api.files,baseline.api.files,'api'),'ABORT_API_NOT_RESTORED');
+    }
+    for(const original of state.originalPolicies){
+      observed=compatible(await observe());
+      const current=await gcloud(['run','services','get-iam-policy',original.service,'--region',MIGRATION_REGION]);
+      assert([original.policy,frozenInvokerPolicy(original.policy)].some(allowed=>stableHash(abortPolicy(current))===stableHash(abortPolicy(allowed))),'ABORT_IAM_DRIFT');
+      if(stableHash(abortPolicy(current))!==stableHash(abortPolicy(original.policy))){
+        const restored=restoreInvokerPolicy(current,original.policy);
+        if((original.policy.bindings??[]).some(binding=>binding.condition)||original.policy.version===3)restored.version=3;
+        assert(stableHash(abortPolicy(restored))===stableHash(abortPolicy(original.policy)),'ABORT_IAM_RESTORE_MISMATCH');
+        await setPolicy(original.service,restored);
+      }
+    }
+    for(const original of state.originalJobs){
+      observed=compatible(await observe());const current=observed.jobs.find(job=>job.name===original.name);
+      if(current.state!==original.state)await gcloud(['scheduler','jobs',original.state==='PAUSED'?'pause':'resume',resourceName(original.name),'--location',MIGRATION_REGION]);
+    }
+    observed=compatible(await observe());
+    assert(matches(observed.api.files,baseline.api.files,'api')&&state.originalPolicies.every(original=>{
+      const current=observed.policies.find(item=>item.functionName===original.functionName);return current&&stableHash(abortPolicy(current.policy))===stableHash(abortPolicy(original.policy));
+    })&&state.originalJobs.every(original=>observed.jobs.some(job=>stableHash(job)===stableHash(original))),'ABORT_BASELINE_NOT_RESTORED');
+    return {ok:true,evidence:{...identity(context),observedAt:clock(),recoveryToolSha:recovery.recoveryToolSha,abortIntentHash:stableHash(intent),authorityVerificationScope:'Native aggregates, classifications and administrator-roster fingerprints; full real-account probe cleanup is verified separately.',assertions:{originalFunctionsUnchanged:true,originalSchemaUnchanged:true,originalAuthorizationUnchanged:true,originalApiRestored:true,originalInvokersRestored:true,originalJobsRestored:true,originalAuthorityRestored:true}}};
+  }
   const guarded=method=>async(...args)=>{try{return await method(...args);}catch(error){if(error instanceof MigrationCloudError)throw error;throw new MigrationCloudError('PROVIDER_OPERATION_FAILED');}};
-  return {observe:guarded(observe),perform:guarded(perform),verify:guarded(verify)};
+  return {observe:guarded(observe),perform:guarded(perform),verify:guarded(verify),abortFreeze:guarded(abortFreeze)};
 }

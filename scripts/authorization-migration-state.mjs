@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, open, readFile, rename, lstat, realpath, unlink } from "node:fs/promises";
+import { mkdir, open, readFile, rename, lstat, realpath, unlink, readdir } from "node:fs/promises";
 import path from "node:path";
 import { hostname } from "node:os";
 import { AUTHORIZATION_MIGRATION_ID } from "./check-authorization-migration.mjs";
@@ -155,7 +155,9 @@ export async function loadMigrationRun({repositoryRoot, projectId, runId}) {
   requireThat(plan?.schemaVersion === "sodc-authorization-migration-plan/v1" && plan.migrationId === AUTHORIZATION_MIGRATION_ID && plan.projectId === projectId && plan.runId === runId && migrationHash(plan) === planHash && journal.planHash === planHash, "PLAN_CHANGED", "Migration plan or journal does not match this immutable run.");
   const createdAt = new Date(plan.createdAt);
   requireThat(Number.isFinite(createdAt.getTime()) && migrationHash(createMigrationPlan({...plan, now: createdAt})) === planHash, "PLAN_CHANGED", "Migration plan fields or operation IDs are invalid.");
-  requireThat(journal.schemaVersion === "sodc-authorization-migration-journal/v1" && object(journal.checkpoints) && object(journal.gates) && Array.isArray(journal.events), "JOURNAL_INVALID", "Migration journal is malformed.");
+  const journalSchema = journal.schemaVersion === "sodc-authorization-migration-journal/v1" ||
+    (journal.schemaVersion === "sodc-authorization-migration-aborted-journal/v1" && journal.status === "ABORTED" && journal.terminal?.status === "ABORTED" && journal.terminal.kind === "abort-freeze" && journal.abortFreeze?.status === "complete");
+  requireThat(journalSchema && object(journal.checkpoints) && object(journal.gates) && Array.isArray(journal.events), "JOURNAL_INVALID", "Migration journal is malformed.");
   return {directory, plan, planHash, journal};
 }
 async function withRunLock(directory, work) {
@@ -176,7 +178,7 @@ async function withProjectLock(run, work) {
     const ownerFile = path.join(path.dirname(run.directory), "active-run.json");
     let owner;
     try { owner = await readRecord(ownerFile); } catch (error) { if (error.code !== "ENOENT") throw error; }
-    requireThat(!owner || owner.planHash === run.planHash || owner.status === "complete", "PROJECT_RUN_ACTIVE", "This project has an unfinished migration. Resume its original run; never open traffic from another run.");
+    requireThat(!owner || owner.planHash === run.planHash || ["complete", "aborted"].includes(owner.status), "PROJECT_RUN_ACTIVE", "This project has an unfinished migration. Resume its original run; never open traffic from another run.");
     if (owner?.planHash !== run.planHash) await atomicRecord(ownerFile, {runId: run.plan.runId, planHash: run.planHash, status: "active"});
     return await work(ownerFile);
   } finally { await handle.close(); await unlink(file); }
@@ -227,8 +229,9 @@ export function validateMigrationGate(gate, plan, now = new Date()) {
 }
 export async function recordMigrationGate(options, gate, now = new Date()) {
   const initial = await loadMigrationRun(options);
+  await assertNotAborting(initial);
   return withRunLock(initial.directory, async () => {
-    const run = await loadMigrationRun(options); validateMigrationGate(gate, run.plan, now);
+    const run = await loadMigrationRun(options); await assertNotAborting(run); validateMigrationGate(gate, run.plan, now);
     const filename = `gates/${gate.gate}-${migrationHash(gate)}.json`;
     await atomicRecord(path.join(run.directory, filename), gate);
     run.journal.gates[gate.gate] = {file: filename, hash: migrationHash(gate)};
@@ -269,10 +272,11 @@ async function readVerifiedCheckpoint(run, phase) {
 }
 export async function executeMigrationPhase(options, {phase, confirmProject, adapter, sourceCheck, now = () => new Date()}) {
   const initial = await loadMigrationRun(options);
+  await assertNotAborting(initial);
   requireThat(confirmProject === initial.plan.projectId, "CONFIRM_PROJECT_REQUIRED", "--confirm-project must exactly repeat the target project ID.");
   requireThat(phasesFor(initial.plan).includes(phase), "PHASE_INVALID", "Unknown phase or compatibility requested for an already strict installation.");
   return withProjectLock(initial, ownerFile => withRunLock(initial.directory, async () => {
-    const run = await loadMigrationRun(options); await sourceCheck(run.plan);
+    const run = await loadMigrationRun(options); await assertNotAborting(run); await sourceCheck(run.plan);
     const sequence = phasesFor(run.plan); const index = sequence.indexOf(phase);
     const checkpoints = {...run.journal.checkpoints};
     for (const previous of sequence.slice(0, index)) {
@@ -329,6 +333,82 @@ export async function executeMigrationPhase(options, {phase, confirmProject, ada
     }
   }));
 }
+async function assertNotAborting(run) {
+  requireThat(!run.journal.terminal && !run.journal.abortFreeze, "RUN_ABORTED_OR_ABORTING", "An aborting or aborted run cannot resume normal phases or accept gates.");
+  try { await lstat(path.join(run.directory, "abort-freeze-intent.json")); }
+  catch (error) { if (error.code === "ENOENT") return; throw error; }
+  throw new MigrationError("RUN_ABORTED_OR_ABORTING", "A durable abort intent blocks all normal phases, including after an interrupted journal write.");
+}
+async function syncDirectory(directory) { const handle = await open(directory, "r"); try { await handle.sync(); } finally { await handle.close(); } }
+async function immutableAbortRecord(file, value) {
+  assertNoCredentials(value); const handle = await open(file, "wx", 0o600);
+  try { await handle.writeFile(JSON.stringify(value, null, 2) + "\n"); await handle.sync(); } finally { await handle.close(); }
+  await syncDirectory(path.dirname(file));
+}
+
+/** Explicit restoration of an untouched strict Dev release after only its freeze failed. */
+export async function abortMigrationFreeze(options, {confirmProject, reason, adapter, sourceCheck, now = () => new Date()}) {
+  const {assertAbortScope, validateAbortSource, assertAbortEvidence} = await import("./authorization-migration-abort.mjs");
+  const initial = await loadMigrationRun(options); assertAbortScope(initial);
+  requireThat(confirmProject === "sodc-web" && text(reason), "ABORT_CONFIRMATION_REQUIRED", "Repeat literal sodc-web and explain the interrupted-freeze restoration.");
+  return withProjectLock(initial, ownerFile => withRunLock(initial.directory, async () => {
+    const run = await loadMigrationRun(options); assertAbortScope(run);
+    const recoverySource = validateAbortSource(await sourceCheck(run.plan), run.plan);
+    const inspected = await readVerifiedCheckpoint(run, "inspect");
+    const baseline = inspected.result.baseline;
+    requireThat(object(baseline) && migrationHash(baseline) === migrationHash(run.journal.baseline), "BASELINE_CHANGED", "Abort requires the original hash-bound inspected baseline.");
+    const files = await readdir(run.directory);
+    requireThat(!files.some(name => /^provider-phase-(?!freeze(?:\.|-))/.test(name)), "ABORT_LATER_PROVIDER_PHASE", "A later provider operation prevents early-freeze recovery.");
+    const identity = {schemaVersion: "sodc-authorization-abort-freeze-intent/v1", projectId: run.plan.projectId, gitSha: run.plan.gitSha,
+      runId: run.plan.runId, planHash: run.planHash, baselineHash: migrationHash(baseline), freezeCheckpointHash: migrationHash(run.journal.checkpoints.freeze), reason};
+    const intentFile = path.join(run.directory, "abort-freeze-intent.json");
+    let intent;
+    try { intent = await readRecord(intentFile); }
+    catch (error) { if (error.code !== "ENOENT") throw error; }
+    if (intent) {
+      requireThat(Object.entries(identity).every(([key, value]) => migrationHash(intent[key]) === migrationHash(value)), "ABORT_INTENT_CHANGED", "Retry only the exact original abort intent and reason.");
+      validateAbortSource(intent.initialRecoverySource, run.plan);
+    } else {
+      intent = {...identity, initialRecoverySource: recoverySource, createdAt: now().toISOString()};
+      await immutableAbortRecord(intentFile, intent);
+    }
+    const prior = run.journal.abortFreeze;
+    requireThat(!prior || prior.intentHash === migrationHash(intent), "ABORT_INTENT_CHANGED", "The retained abort journal must bind its original immutable intent.");
+    // Preserve all original checkpoints and outcomes. This is not a completed migration phase.
+    run.journal.abortFreeze = {...prior, status: "incomplete", intentHash: migrationHash(intent), attempt: (prior?.attempt ?? 0) + 1,
+      recoveryToolSha: recoverySource.recoveryToolSha, startedAt: now().toISOString()};
+    if (run.journal.terminal) {
+      // An already verified terminal record is retained during ownership reconciliation.
+      run.journal.abortFreeze.status = "complete";
+    }
+    await atomicRecord(path.join(run.directory, "journal.json"), run.journal); await syncDirectory(run.directory);
+    try {
+      requireThat(typeof adapter.abortFreeze === "function", "ABORT_PROVIDER_UNAVAILABLE", "The reviewed provider must support explicit interrupted-freeze restoration.");
+      const verification = await adapter.abortFreeze({baseline, planHash: run.planHash, checkpoints: run.journal.checkpoints, reason, recoverySource, abortIntent: intent});
+      const evidence = assertAbortEvidence(verification, run, recoverySource, now(), migrationHash(intent)); assertNoCredentials(evidence);
+      const record = {schemaVersion: "sodc-authorization-abort-freeze/v1", planHash: run.planHash, intentHash: migrationHash(intent), reason, recoverySource, evidence};
+      const evidenceFile = "evidence/abort-freeze-" + migrationHash(record) + ".json";
+      try { await immutableAbortRecord(path.join(run.directory, evidenceFile), record); }
+      catch (error) { if (error.code !== "EEXIST") throw error; requireThat(migrationHash(await readRecord(path.join(run.directory, evidenceFile))) === migrationHash(record), "ABORT_EVIDENCE_CHANGED", "Existing recovery proof must remain immutable."); }
+      Object.assign(run.journal.abortFreeze, {status: "complete", completedAt: now().toISOString(), evidenceFile, evidenceHash: migrationHash(record)});
+      run.journal.status = "ABORTED";
+      run.journal.terminal ??= {status: "ABORTED", kind: "abort-freeze", reason, recoveryToolSha: recoverySource.recoveryToolSha, evidenceFile, evidenceHash: migrationHash(record), recordedAt: now().toISOString()};
+      // The original tool deliberately cannot read this terminal schema and resume old phases.
+      run.journal.schemaVersion = "sodc-authorization-migration-aborted-journal/v1";
+      run.journal.events.push({event: "freeze-aborted-original-boundary-restored", reason, recoveryToolSha: recoverySource.recoveryToolSha, evidenceFile, at: now().toISOString()});
+      await atomicRecord(path.join(run.directory, "journal.json"), run.journal); await syncDirectory(run.directory);
+      await atomicRecord(ownerFile, {runId: run.plan.runId, planHash: run.planHash, status: "aborted", evidenceHash: migrationHash(record)}); await syncDirectory(path.dirname(ownerFile));
+      return {status: "ABORTED", evidence, evidenceFile, recoveryToolSha: recoverySource.recoveryToolSha};
+    } catch (error) {
+      if (!run.journal.terminal) {
+        run.journal.abortFreeze.status = "incomplete";
+        run.journal.abortFreeze.lastError = /^[A-Z][A-Z0-9_]{2,80}$/.test(error.code ?? "") ? error.code : "ABORT_INCOMPLETE";
+        await atomicRecord(path.join(run.directory, "journal.json"), run.journal); await syncDirectory(run.directory);
+      }
+      throw error;
+    }
+  }));
+}
 async function writeMigrationReceipt(repositoryRoot, run, evidence) {
   for (const phase of phasesFor(run.plan)) {
     if (phase === "receipt") continue;
@@ -350,7 +430,7 @@ async function writeMigrationReceipt(repositoryRoot, run, evidence) {
 export function summarizeRun(run) {
   const retirement = run.journal.checkpoints.freeze?.result?.retirement;
   return {projectId: run.plan.projectId, runId: run.plan.runId, gitSha: run.plan.gitSha, installation: run.plan.installation,
-    importAdmins: run.plan.importAdmins, phases: phasesFor(run.plan).map(phase => ({phase, status: run.journal.checkpoints[phase]?.status ?? "pending", attempts: run.journal.checkpoints[phase]?.attempt ?? 0})),
+    importAdmins: run.plan.importAdmins, ...(run.journal.terminal ? {status: run.journal.terminal.status, aborted: {reason: run.journal.terminal.reason, recoveryToolSha: run.journal.terminal.recoveryToolSha}} : run.journal.abortFreeze ? {status: "ABORTING"} : {}), phases: phasesFor(run.plan).map(phase => ({phase, status: run.journal.checkpoints[phase]?.status ?? "pending", attempts: run.journal.checkpoints[phase]?.attempt ?? 0})),
     gates: Object.keys(run.journal.gates), ...(object(retirement) ? {retirement: {
       freezeStateHash: retirement.freezeStateHash, inventoryHash: retirement.inventoryHash,
       inventoryFile: retirement.inventoryFile, requiredMethod: retirement.requiredMethod,
