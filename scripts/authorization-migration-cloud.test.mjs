@@ -170,6 +170,80 @@ test('additive SQL review allows foreign key ON DELETE but rejects destructive a
   assert.doesNotThrow(()=>assertAdditiveSql([{sql:'ALTER TABLE security ADD CONSTRAINT owner FOREIGN KEY (uid) REFERENCES users(id) ON DELETE CASCADE;'}]));
   for(const sql of ['DROP TABLE users;','DELETE FROM users;','CREATE TABLE x(id INT); UPDATE users SET name=\'x\';','ALTER TABLE users ALTER COLUMN name TYPE text;','ALTER TABLE users ALTER COLUMN name SET NOT NULL;','DO $$ BEGIN EXECUTE \'something\'; END $$;'])assert.throws(()=>assertAdditiveSql([{sql}]),/SQL_REVIEW_REQUIRED/);
 });
+test('additive SQL review accepts the exact eleven-diff Production provider preview',()=>{
+  const diffs=[
+  {
+    "sql": "ALTER TYPE \"public\".\"notification_delivery_status\" ADD VALUE 'SKIPPED'",
+    "description": "add value to enum type: \"notification_delivery_status\""
+  },
+  {
+    "sql": "CREATE TYPE \"public\".\"admin_safety_status\" AS ENUM ('BOOTSTRAP', 'READY', 'RECOVERY_REQUIRED')",
+    "description": "create enum type \"admin_safety_status\""
+  },
+  {
+    "sql": "CREATE TYPE \"public\".\"notification_recovery_deferred_reason\" AS ENUM ('RECOVERY_DELIVERY_MODE_UNVERIFIABLE', 'RECOVERY_DELIVERY_MODE_CONFLICT')",
+    "description": "create enum type \"notification_recovery_deferred_reason\""
+  },
+  {
+    "sql": "CREATE TYPE \"public\".\"security_actor_kind\" AS ENUM ('ADMIN', 'SELF', 'SELF_VERIFICATION', 'OPERATOR', 'DRIFT')",
+    "description": "create enum type \"security_actor_kind\""
+  },
+  {
+    "sql": "CREATE TYPE \"public\".\"security_sync_status\" AS ENUM ('PENDING', 'READY', 'SUPERSEDED')",
+    "description": "create enum type \"security_sync_status\""
+  },
+  {
+    "sql": "ALTER TABLE \"public\".\"notification_delivery\" ADD COLUMN \"recipient_user_id\" text NULL, ADD COLUMN \"recovery_deferred_at\" timestamptz NULL, ADD COLUMN \"recovery_deferred_reason\" \"public\".\"notification_recovery_deferred_reason\" NULL, ADD COLUMN \"skip_reason\" text NULL, ADD COLUMN \"skipped_at\" timestamptz NULL",
+    "description": "modify \"notification_delivery\" table"
+  },
+  {
+    "sql": "CREATE TABLE \"public\".\"admin_safety_audit\" (\"operation_id\" text NOT NULL, \"action\" text NOT NULL, \"actor_id\" text NOT NULL, \"control_version\" integer NOT NULL, \"created_at\" timestamptz NOT NULL, \"intent_hash\" text NOT NULL, \"ready_admin_count\" integer NOT NULL, \"reason\" text NOT NULL, PRIMARY KEY (\"operation_id\"))",
+    "description": "create \"admin_safety_audit\" table"
+  },
+  {
+    "sql": "CREATE TABLE \"public\".\"admin_safety_control\" (\"id\" text NOT NULL, \"ready_admin_count\" integer NOT NULL, \"status\" \"public\".\"admin_safety_status\" NOT NULL, \"updated_at\" timestamptz NOT NULL, \"version\" integer NOT NULL, PRIMARY KEY (\"id\"))",
+    "description": "create \"admin_safety_control\" table"
+  },
+  {
+    "sql": "CREATE TABLE \"public\".\"security_transition\" (\"operation_id\" text NOT NULL, \"actor_id\" text NOT NULL, \"actor_kind\" \"public\".\"security_actor_kind\" NOT NULL DEFAULT 'OPERATOR'::\"public\".\"security_actor_kind\", \"actor_security_version\" integer NULL, \"attempts\" integer NOT NULL DEFAULT 0, \"auth_disabled\" boolean NULL, \"completed_admin_delta\" integer NOT NULL DEFAULT 0, \"completed_control_version\" integer NULL, \"created_at\" timestamptz NOT NULL, \"desired_admin\" boolean NOT NULL, \"desired_enabled\" boolean NOT NULL, \"intent_hash\" text NOT NULL, \"last_error\" text NULL, \"membership_status\" \"public\".\"membership_status\" NOT NULL, \"no_op\" boolean NOT NULL DEFAULT false, \"reason\" text NOT NULL, \"security_version\" integer NOT NULL, \"started_admin_delta\" integer NOT NULL DEFAULT 0, \"started_control_version\" integer NULL, \"sync_status\" \"public\".\"security_sync_status\" NOT NULL, \"updated_at\" timestamptz NOT NULL, \"user_id\" text NOT NULL, \"verification_email\" text NULL, PRIMARY KEY (\"operation_id\"))",
+    "description": "create \"security_transition\" table"
+  },
+  {
+    "sql": "CREATE TABLE \"public\".\"user_security_state\" (\"user_id\" text NOT NULL, \"access_ready\" boolean NOT NULL, \"admin_ready\" boolean NOT NULL, \"desired_admin\" boolean NOT NULL, \"desired_enabled\" boolean NOT NULL, \"membership_status\" \"public\".\"membership_status\" NOT NULL, \"operation_id\" text NOT NULL, \"security_version\" integer NOT NULL, \"sync_status\" \"public\".\"security_sync_status\" NOT NULL, \"updated_at\" timestamptz NOT NULL, \"verification_email\" text NULL, PRIMARY KEY (\"user_id\"), CONSTRAINT \"user_security_state_user_id_fkey\" FOREIGN KEY (\"user_id\") REFERENCES \"public\".\"user\" (\"id\") ON DELETE CASCADE)",
+    "description": "create \"user_security_state\" table"
+  },
+  {
+    "sql": "CREATE INDEX \"user_security_state_userId_idx\" ON \"public\".\"user_security_state\" (\"user_id\")",
+    "description": "create index \"user_security_state_userId_idx\" to table: \"user_security_state\""
+  }
+];
+  assert.equal(diffs.length,11);
+  assert.equal(stableHash(diffs),'48c4ffb6d5f4f507f40c4fd5b4e7031e35219c001757850df4c8f19cdb5f2673');
+  assert.doesNotThrow(()=>assertAdditiveSql(diffs));
+});
+test('additive enum review accepts only the pinned fully quoted single-statement grammar',()=>{
+  const sql="ALTER TYPE \"public\".\"notification_delivery_status\" ADD VALUE 'SKIPPED'";
+  assert.doesNotThrow(()=>assertAdditiveSql([{sql}]));
+  assert.doesNotThrow(()=>assertAdditiveSql([{sql:'  '+sql+'\n'}]));
+  for(const invalid of [
+    sql+';',sql+'; SELECT 1',sql+"; UPDATE users SET name='changed'",sql+'; DROP TABLE users',
+    sql+" BEFORE 'FAILED'",sql+" AFTER 'FAILED'",sql.replace('ADD VALUE','ADD VALUE IF NOT EXISTS'),
+    sql.replace('ADD VALUE',"RENAME VALUE 'FAILED' TO"),sql.replace("ADD VALUE 'SKIPPED'",'RENAME TO other'),
+    sql.replace("ADD VALUE 'SKIPPED'",'OWNER TO other'),sql.replace("ADD VALUE 'SKIPPED'",'SET SCHEMA other'),
+    sql.replace('"public".',''),sql.replace('"public"."notification_delivery_status"','public.notification_delivery_status'),
+    sql.replace("'SKIPPED'","'SKIP''PED'"),sql.replace("'SKIPPED'","E'SKIPPED'"),
+    sql.replace("'SKIPPED'","'SKIP' || 'PED'"),sql.replace("'SKIPPED'","'SKIPPED; SELECT 1'"),
+    sql.replace("'SKIPPED'","'SKIPPED--comment'"),sql.replace('ALTER TYPE','alter type'),
+    '-- comment\n'+sql,'/* comment */ '+sql,sql+' -- comment',sql+' /* comment */',
+    sql.replace('ALTER TYPE','ALTER /* comment */ TYPE'),sql.replace('ALTER TYPE','ALTER/* outer /* inner */ outer */TYPE'),
+    sql.replace('ALTER TYPE','ALTER -- comment\nTYPE'),sql.replace('ADD VALUE','ADD /* comment */ VALUE'),
+  ])assert.throws(()=>assertAdditiveSql([{sql:invalid}]),/SQL_REVIEW_REQUIRED/,invalid);
+  // A permitted enum entry never exempts a second diff from the existing guards.
+  for(const invalid of ['DROP TABLE users','ALTER TABLE users ALTER COLUMN name TYPE text',
+    'ALTER TABLE users ALTER COLUMN name SET NOT NULL','DO $$ BEGIN EXECUTE \'something\'; END $$']){
+    assert.throws(()=>assertAdditiveSql([{sql},{sql:invalid}]),/SQL_REVIEW_REQUIRED/);
+  }
+});
 test('IAM refusal is distinct from ordinary callable role denial or malformed requests',()=>{assert.equal(isPlatformIamRefusal(403,'application/json','{"error":{"status":"PERMISSION_DENIED"}}'),false);assert.equal(isPlatformIamRefusal(401,'text/html','<html><title>Error: Forbidden</title></html>'),false);assert.equal(isPlatformIamRefusal(400,'text/html','<html>Error: Forbidden</html>'),false);assert.equal(isPlatformIamRefusal(403,'text/html','<html>ordinary application response</html>'),false);assert.equal(isPlatformIamRefusal(403,'text/html','<html><title>Error: Forbidden</title></html>'),true);});
 test('platform refusal recognizes the actual Google HTML401 separately from HTML403',()=>{
   assert.equal(isPlatformIamRefusal(401,'text/html; charset=UTF-8',platformHtml(401)),true);
