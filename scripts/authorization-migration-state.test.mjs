@@ -26,15 +26,22 @@ function gate(plan, name, details) {
   return {schemaVersion: "sodc-authorization-migration-gate/v1", gate: name, projectId: plan.projectId, gitSha: plan.gitSha, runId: plan.runId,
     reviewedBy: "reviewer", observedAt: now.toISOString(), evidence: "https://example.test/review", details};
 }
+function oldWritersDetails(plan) {
+  return {method: "cloud-run-retirement", freezeStateHash: "c".repeat(64), inventoryHash: "d".repeat(64),
+    successorRevisions: [{name: `projects/${plan.projectId}/locations/europe-west2/services/security-writer/revisions/security-writer-00002-new`,
+      uid: "12345678-1234-4123-8123-123456789012", images: [`europe-west2-docker.pkg.dev/${plan.projectId}/functions/security-writer@sha256:${"e".repeat(64)}`]}],
+    externalOperationsReference: "reviewed-external-operations"};
+}
 function gates(plan) {
   return [
     gate(plan, "backup", {backupReference: "backup-1", restoreTestReference: "isolated-restore-1"}),
     gate(plan, "freeze-scope", {entrypoints: ["updateMembershipStatus"], jobNames: [], externalWritersReference: "review-1", probeUserId: "nonadmin", probeReference: "probe-approved"}),
+    gate(plan, "old-writers", oldWritersDetails(plan)),
     gate(plan, "sql-review", {diffSha256: "b".repeat(64)}),
-    gate(plan, "acceptance", {sourceProjectId: plan.environment === "prod" ? "sodc-web-beta" : plan.projectId, backendTestReference: "backend", browserReviewReference: "browser", notificationsReference: "notifications", schedulerVolumeReference: "volume", appCheckReference: "appcheck"}),
+    gate(plan, "acceptance", {sourceProjectId: plan.environment === "prod" ? "sodc-web" : plan.projectId, backendTestReference: "backend", browserReviewReference: "browser", notificationsReference: "notifications", schedulerVolumeReference: "volume", appCheckReference: "appcheck"}),
   ];
 }
-async function recordGates(run, names = ["backup", "freeze-scope", "sql-review", "acceptance"]) {
+async function recordGates(run, names = ["backup", "freeze-scope", "old-writers", "sql-review", "acceptance"]) {
   for (const item of gates(run.plan).filter(value => names.includes(value.gate))) await recordMigrationGate(run.options, item, now);
 }
 function provider(plan, hooks = {}) {
@@ -95,18 +102,87 @@ describe("typed manual gates", () => {
     const run = await fixture(); const valid = gates(run.plan)[0];
     for (const changed of [{...valid, passed: true}, {...valid, projectId: "sodc-web"}, {...valid, gitSha: "c".repeat(40)}, {...valid, runId: "different"}, {...valid, observedAt: "2026-10-21T12:00:00Z"}, {...valid, observedAt: "2026-10-24T12:00:00Z"}, {...valid, evidence: ""}]) expect(() => validateMigrationGate(changed, run.plan, now)).toThrow();
   });
-  it("allows only explicit Dev backup waivers and requires Beta evidence for production", async () => {
+  it("allows only explicit Dev backup waivers", async () => {
     for (const projectId of ["sodc-web-beta", "sodc-web-production"]) {
       const run = await fixture({projectId});
       expect(() => validateMigrationGate(gate(run.plan, "backup", {waiverReference: "Dev waiver"}), run.plan, now)).toThrow();
     }
     const dev = await fixture({projectId: "sodc-web"});
     expect(() => validateMigrationGate(gate(dev.plan, "backup", {waiverReference: "Dev waived"}), dev.plan, now)).not.toThrow();
+  });
+  it("records reviewed Dev acceptance for the bound production run", async () => {
     const prod = await fixture({projectId: "sodc-web-production"});
     const acceptance = gates(prod.plan).find(value => value.gate === "acceptance");
+    expect(acceptance.details.sourceProjectId).toBe("sodc-web");
     expect(() => validateMigrationGate(acceptance, prod.plan, now)).not.toThrow();
-    acceptance.details.sourceProjectId = "sodc-web";
-    expect(() => validateMigrationGate(acceptance, prod.plan, now)).toThrow();
+    await expect(recordMigrationGate(prod.options, acceptance, now)).resolves.toMatchObject({gate: "acceptance", hash: migrationHash(acceptance)});
+    expect((await loadMigrationRun(prod.options)).journal.gates.acceptance.hash).toBe(migrationHash(acceptance));
+  });
+  it.each(["sodc-web-beta", "sodc-web-production", "unknown-project"])("rejects %s as production acceptance source", async sourceProjectId => {
+    const prod = await fixture({projectId: "sodc-web-production"});
+    const acceptance = gates(prod.plan).find(value => value.gate === "acceptance");
+    acceptance.details.sourceProjectId = sourceProjectId;
+    expect(() => validateMigrationGate(acceptance, prod.plan, now)).toThrow(expect.objectContaining({code: "ACCEPTANCE_REQUIRED"}));
+  });
+  it("keeps production Dev acceptance bound to target, revision, run, reviewer and fresh evidence", async () => {
+    const prod = await fixture({projectId: "sodc-web-production"});
+    const acceptance = gates(prod.plan).find(value => value.gate === "acceptance");
+    for (const changed of [
+      {...acceptance, projectId: "sodc-web"},
+      {...acceptance, gitSha: "c".repeat(40)},
+      {...acceptance, runId: "different"},
+    ]) expect(() => validateMigrationGate(changed, prod.plan, now)).toThrow(expect.objectContaining({code: "GATE_TARGET_MISMATCH"}));
+    for (const changed of [
+      {...acceptance, reviewedBy: ""},
+      {...acceptance, observedAt: "2026-10-22T11:59:59Z"},
+      {...acceptance, observedAt: "2026-10-23T12:00:31Z"},
+      {...acceptance, evidence: ""},
+    ]) expect(() => validateMigrationGate(changed, prod.plan, now)).toThrow(expect.objectContaining({code: "GATE_STALE"}));
+    for (const key of ["backendTestReference", "browserReviewReference", "notificationsReference", "schedulerVolumeReference", "appCheckReference"]) {
+      const changed = {...acceptance, details: {...acceptance.details}};
+      delete changed.details[key];
+      expect(() => validateMigrationGate(changed, prod.plan, now)).toThrow(expect.objectContaining({code: "ACCEPTANCE_REQUIRED"}));
+    }
+  });
+  it("records typed old-writer retirement identities with project-bound immutable image digests", async () => {
+    const run = await fixture({projectId: "sodc-web-production"});
+    const valid = gate(run.plan, "old-writers", oldWritersDetails(run.plan));
+    await expect(recordMigrationGate(run.options, valid, now)).resolves.toMatchObject({gate: "old-writers", hash: migrationHash(valid)});
+    expect((await loadMigrationRun(run.options)).journal.gates["old-writers"].hash).toBe(migrationHash(valid));
+  });
+  it("rejects malformed old-writer methods, hashes, inventories and unknown keys", async () => {
+    const run = await fixture();
+    const details = oldWritersDetails(run.plan), revision = details.successorRevisions[0];
+    for (const patch of [
+      {method: "elapsed-time"}, {freezeStateHash: "invalid"}, {inventoryHash: "d".repeat(63)},
+      {freezeStateHash: "c".repeat(64) + "\n"}, {externalOperationsReference: ""}, {externalOperationsReference: "x".repeat(2001)},
+      {successorRevisions: null}, {successorRevisions: Array(10001).fill(revision)},
+      {successorRevisions: [revision, {...revision, uid: "22345678-1234-4123-8123-123456789012"}]},
+    ]) expect(() => validateMigrationGate(gate(run.plan, "old-writers", {...details, ...patch}), run.plan, now)).toThrow(expect.objectContaining({code: "OLD_WRITERS_GATE_INVALID"}));
+    for (const patch of [
+      {name: revision.name.replace(run.plan.projectId, "other-project")},
+      {name: revision.name.replace("europe-west2", "us-central1")},
+      {name: revision.name + "/extra"}, {name: revision.name + "\n"},
+      {uid: "safe-but-not-a-uuid"}, {uid: "12345678-1234-1123-8123-123456789012"},
+      {images: []}, {images: ["gcr.io/project/writer:latest"]},
+      {images: [revision.images[0] + "\n"]}, {images: [{image: revision.images[0]}]},
+      {extra: {unreviewed: true}},
+    ]) expect(() => validateMigrationGate(gate(run.plan, "old-writers", {...details, successorRevisions: [{...revision, ...patch}]}), run.plan, now)).toThrow(expect.objectContaining({code: "OLD_WRITERS_GATE_INVALID"}));
+    expect(() => validateMigrationGate(gate(run.plan, "old-writers", {...details, passed: true}), run.plan, now)).toThrow(expect.objectContaining({code: "GATE_DETAILS_INVALID"}));
+    for (const key of ["method", "freezeStateHash", "inventoryHash", "successorRevisions", "externalOperationsReference"]) {
+      const missing = {...details}; delete missing[key];
+      expect(() => validateMigrationGate(gate(run.plan, "old-writers", missing), run.plan, now)).toThrow(expect.objectContaining({code: "OLD_WRITERS_GATE_INVALID"}));
+    }
+  });
+  it("keeps old-writer retirement review bound to target, release, run and reviewer freshness", async () => {
+    const run = await fixture({projectId: "sodc-web-production"});
+    const valid = gate(run.plan, "old-writers", oldWritersDetails(run.plan));
+    for (const patch of [{projectId: "sodc-web"}, {gitSha: "b".repeat(40)}, {runId: "another-run"}]) {
+      expect(() => validateMigrationGate({...valid, ...patch}, run.plan, now)).toThrow(expect.objectContaining({code: "GATE_TARGET_MISMATCH"}));
+    }
+    for (const patch of [{reviewedBy: ""}, {observedAt: "2026-10-22T11:59:59Z"}, {observedAt: "2026-10-23T12:00:31Z"}, {evidence: ""}]) {
+      expect(() => validateMigrationGate({...valid, ...patch}, run.plan, now)).toThrow(expect.objectContaining({code: "GATE_STALE"}));
+    }
   });
   it("hash-checks persisted gates before any provider action", async () => {
     const run = await fixture(); await recordGates(run); const adapter = provider(run.plan);
@@ -118,6 +194,42 @@ describe("typed manual gates", () => {
 });
 
 describe("phase ordering, verification and interrupted work", () => {
+  it("holds the initial freeze without retirement proof and exposes only the bound inventory summary", async () => {
+    const run = await fixture(); const adapter = provider(run.plan);
+    const perform = adapter.perform.getMockImplementation(), verify = adapter.verify.getMockImplementation();
+    const retirement = {freezeStateHash: "c".repeat(64), inventoryHash: "d".repeat(64), inventoryFile: "provider-old-writers.json", requiredMethod: "cloud-run-retirement"};
+    adapter.perform.mockImplementation(async (phase, context) => phase === "freeze" ? {retirement: {...retirement, privateInventory: ["do-not-expose"]}, privateResult: "do-not-expose"} : perform(phase, context));
+    adapter.verify.mockImplementation(async (phase, context) => {
+      const result = await verify(phase, context);
+      if (phase === "freeze") result.evidence.assertions.oldWritersRetired = Boolean(context.gates["old-writers"]);
+      return result;
+    });
+    await recordGates(run, ["backup", "freeze-scope"]);
+    expect(summarizeRun(await loadMigrationRun(run.options))).not.toHaveProperty("retirement");
+    await apply(run, adapter, "inspect");
+    await expect(apply(run, adapter, "freeze")).rejects.toMatchObject({code: "PHASE_NOT_VERIFIED"});
+    const held = await loadMigrationRun(run.options), summary = summarizeRun(held);
+    expect(summary.retirement).toEqual(retirement);
+    expect(JSON.stringify(summary)).not.toContain("do-not-expose");
+    expect(held.journal.checkpoints.freeze.status).toBe("incomplete");
+    expect(adapter.perform.mock.calls.map(call => call[0])).toEqual(["inspect", "freeze"]);
+    await recordMigrationGate(run.options, gate(run.plan, "old-writers", oldWritersDetails(run.plan)), now);
+    await expect(apply(run, adapter, "freeze")).resolves.toMatchObject({phase: "freeze", status: "complete"});
+    const completed = await loadMigrationRun(run.options);
+    expect(completed.journal.checkpoints.freeze.operationId).toBe(held.journal.checkpoints.freeze.operationId);
+    expect(summarizeRun(completed).retirement).toEqual(retirement);
+  });
+  it.each(["schema", "compatibility", "control-create", "backfill", "functions", "activate", "strict-api", "open", "receipt"])("requires reviewed old-writers evidence before %s reaches the provider", async phase => {
+    const run = await fixture(); const adapter = provider(run.plan); await recordGates(run);
+    const sequence = phasesFor(run.plan);
+    await through(run, adapter, sequence[sequence.indexOf(phase) - 1]);
+    await alterJournal(run, journal => {delete journal.gates["old-writers"];});
+    adapter.observe.mockClear(); adapter.perform.mockClear(); adapter.verify.mockClear();
+    await expect(apply(run, adapter, phase)).rejects.toMatchObject({code: "GATES_MISSING"});
+    expect(adapter.observe).not.toHaveBeenCalled();
+    expect(adapter.perform).not.toHaveBeenCalled();
+    expect(adapter.verify).not.toHaveBeenCalled();
+  });
   it("requires confirmation, the reviewed source and sequential verified phases", async () => {
     const run = await fixture(); const adapter = provider(run.plan);
     await expect(apply(run, adapter, "inspect", {confirmProject: "sodc-web"})).rejects.toMatchObject({code: "CONFIRM_PROJECT_REQUIRED"});
@@ -200,7 +312,7 @@ describe("project ownership and receipts", () => {
     expect((await loadMigrationRun(run.options)).journal.events.at(-1).event).toBe("stale-lock-removed");
   });
   it("requires acceptance before traffic opens and cannot issue an early receipt", async () => {
-    const run = await fixture(); const adapter = provider(run.plan); await recordGates(run, ["backup", "freeze-scope", "sql-review"]);
+    const run = await fixture(); const adapter = provider(run.plan); await recordGates(run, ["backup", "freeze-scope", "old-writers", "sql-review"]);
     await expect(apply(run, adapter, "receipt")).rejects.toMatchObject({code: "PHASE_ORDER"});
     await through(run, adapter, "strict-api");
     await expect(apply(run, adapter, "open")).rejects.toMatchObject({code: "GATES_MISSING"});

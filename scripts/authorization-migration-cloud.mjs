@@ -6,6 +6,7 @@ import path from 'node:path';
 import {stableHash,classifyApi,denyOnboarding,prepareMigrationSources,verifyMigrationArtifact} from './authorization-migration-sources.mjs';
 import {evaluateAuthority} from './authorization-migration-audit.mjs';
 import {discoverFunctionContracts} from './deployment-check-lib.mjs';
+import {captureOldWriterInventory,revisionIdentity,verifyOldWriterRetirement} from './authorization-migration-retirement.mjs';
 
 const execFileAsync=promisify(execFile);
 let adminSequence=0;
@@ -192,6 +193,60 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     const current=observed.policies.find(item=>item.functionName===original.functionName);return current&&!hasPublicInvoker(current.policy);
   })&&state.originalJobs.every(original=>observed.jobs.some(job=>job.name===original.name&&job.state==='PAUSED'))&&observed.jobs.every(job=>state.originalJobs.some(original=>original.name===job.name))&&denied(observed.api.files));
   async function freezeState(context){const state=checkJournal(await load('provider-freeze.json'),context);assert(stableHash(state.originalPolicies)===stableHash(context.baseline?.policies)&&stableHash(state.originalJobs)===stableHash(context.baseline?.jobs),'ORIGINAL_FREEZE_SNAPSHOT_CHANGED');const expected=context.checkpoints?.freeze?.result?.stateHash??context.result?.stateHash;if(expected)assert(stableHash(state)===expected,'FREEZE_JOURNAL_HASH_MISMATCH');return state;}
+  function oldWriterServiceNames(observed){
+    const names=new Set([...observed.policies.map(item=>item.functionName),...SCHEDULED.filter(name=>observed.functions.some(fn=>fn.name===name))]);
+    const services=[...names].map(name=>{const fn=observed.functions.find(fn=>fn.name===name);assert(fn?.environment==='GEN_2'&&fn.service?.startsWith(`projects/${project}/locations/${MIGRATION_REGION}/services/`),'OLD_WRITER_SERVICE_REQUIRED');return fn.service;});
+    return [...new Set(services)].sort();
+  }
+  async function boundedMap(items,operation){
+    const result=new Array(items.length);let cursor=0;
+    await Promise.all(Array.from({length:Math.min(4,items.length)},async()=>{for(;;){const index=cursor++;if(index>=items.length)return;result[index]=await operation(items[index]);}}));return result;
+  }
+  async function readOldWriterServices(names,exactNames=[]){
+    return boundedMap(names,async name=>{
+      const [service,revisions]=await Promise.all([metadata('run.googleapis.com','/v2/'+name),listMetadata('run.googleapis.com','/v2/'+name+'/revisions','revisions')]);
+      assert(service.name===name,'OLD_WRITER_SERVICE_SCOPE_INVALID');
+      const exactRevisions=await boundedMap(exactNames.filter(revision=>revision.startsWith(name+'/revisions/')),revision=>metadata('run.googleapis.com','/v2/'+revision));
+      const fresh=await metadata('run.googleapis.com','/v2/'+name);
+      const binding=value=>({name:value.name,uid:value.uid,generation:value.generation,observedGeneration:value.observedGeneration,reconciling:value.reconciling??false,latestReadyRevision:value.latestReadyRevision,latestCreatedRevision:value.latestCreatedRevision,traffic:value.traffic??[],trafficStatuses:value.trafficStatuses??[]});
+      assert(stableHash(binding(service))===stableHash(binding(fresh)),'OLD_WRITER_SERVICE_CHANGED_DURING_READ');
+      return {service,revisions,exactRevisions};
+    });
+  }
+  function safeRetirementObservation(services){return services.map(({service,revisions})=>({
+    name:service.name,uid:service.uid,generation:service.generation,observedGeneration:service.observedGeneration,reconciling:service.reconciling??false,
+    latestReadyRevision:service.latestReadyRevision,latestCreatedRevision:service.latestCreatedRevision,traffic:service.traffic??[],trafficStatuses:service.trafficStatuses??[],
+    revisions:revisions.map(revision=>({...revisionIdentity(revision,service.name),generation:revision.generation,observedGeneration:revision.observedGeneration,reconciling:revision.reconciling??false,
+      conditions:(revision.conditions??[]).map(({type,state,revisionReason,lastTransitionTime})=>({type,state,revisionReason:revisionReason??null,lastTransitionTime:lastTransitionTime??null}))}))
+  }));}
+  async function verifyOldWriters(context,state,{observed,functionProofs=context.checkpoints?.functions?.result?.functionProofs}={}){
+    assert(state.oldWriterInventory?.projectId===project,'OLD_WRITER_INVENTORY_REQUIRED');
+    const details=context.gates?.['old-writers']?.details;
+    const names=state.oldWriterInventory.services.map(service=>service.name);
+    const originals=state.oldWriterInventory.services.flatMap(service=>service.revisions.map(revision=>revision.name));
+    const successors=details?.successorRevisions??[];
+    let servingRevisions;
+    if(functionProofs!==undefined){
+      const current=observed??await observe();
+      servingRevisions=state.oldWriterInventory.services.map(service=>{
+        const fn=current.functions.find(item=>item.service===service.name);
+        assert(fn&&provenFunction(fn,functionProofs)&&typeof fn.revision==='string'&&fn.revision,'OLD_WRITER_REVIEWED_SERVING_FUNCTION_REQUIRED');
+        return fn.revision.startsWith(service.name+'/revisions/')?fn.revision:service.name+'/revisions/'+fn.revision;
+      });
+    }
+    const snapshots=await readOldWriterServices(names,[...new Set([...originals,...successors.map(revision=>revision.name)])]);
+    const evidence={...identity(context),observedAt:clock(),freezeStateHash:stableHash(state),inventoryHash:stableHash(state.oldWriterInventory),services:safeRetirementObservation(snapshots)};
+    // Persist sanitized provider observations for operator review; never persist raw containers/env.
+    await save('provider-old-writers-observed.json',evidence);
+    assert(details,'OLD_WRITER_GATE_REQUIRED');
+    assert(details.method==='cloud-run-retirement'&&details.freezeStateHash===evidence.freezeStateHash&&details.inventoryHash===evidence.inventoryHash,'OLD_WRITER_GATE_BINDING_MISMATCH');
+    assert(typeof details.externalOperationsReference==='string'&&details.externalOperationsReference.trim(),'EXTERNAL_OPERATIONS_REVIEW_REQUIRED');
+    let proof;
+    try{proof=verifyOldWriterRetirement({inventory:state.oldWriterInventory,successors,services:snapshots,servingRevisions});}
+    catch(error){throw new MigrationCloudError(/^[A-Z][A-Z0-9_]{2,100}$/.test(error.message??'')?error.message:'OLD_WRITER_RETIREMENT_NOT_VERIFIED');}
+    const result={...identity(context),observedAt:clock(),method:details.method,freezeStateHash:evidence.freezeStateHash,inventoryHash:evidence.inventoryHash,gateHash:stableHash(context.gates['old-writers']),...proof};
+    await save('provider-old-writers-proof.json',result);return result;
+  }
   async function setPolicy(service,policy){const filename=safeFile('iam-policy.json');await writeFile(filename,JSON.stringify(policy),{mode:0o600});await gcloud(['run','services','set-iam-policy',service,filename,'--region',MIGRATION_REGION]);}
   function freezeApproval(context,observed){
     const details=context.gates?.['freeze-scope']?.details;
@@ -208,8 +263,12 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     if(!(project==='sodc-web'&&backup.waiverReference))assert(backup.backupReference&&backup.restoreTestReference&&observed.databaseProtection?.automatedBackups&&observed.databaseProtection?.pointInTimeRecovery&&observed.databaseProtection?.deletionProtection,'DATABASE_RESILIENCE_NOT_VERIFIED');
     const approval=freezeApproval(context,observed);await validateProbe(approval);let state=await load('provider-freeze.json');
     if(!state){const prepared=await artifacts(context.baseline);assert(matches(observed.api.files,context.baseline.api.files,'api')&&matches(observed.schema.files,context.baseline.schema.files,'schema')&&stableHash(observed.policies)===stableHash(context.baseline.policies)&&stableHash(observed.jobs)===stableHash(context.baseline.jobs),'LIVE_BASELINE_CHANGED');
-      state=await save('provider-freeze.json',{...identity(context),startedAt:clock(),originalPolicies:context.baseline.policies,originalJobs:context.baseline.jobs,appliedPolicies:[],pausedJobs:[],apiFrozen:false,artifact:prepared.liveFrozen});}
+      assert(stableHash(observed.functions)===stableHash(context.baseline.functions),'LIVE_FUNCTION_BASELINE_CHANGED');
+      const oldWriterInventory=captureOldWriterInventory({projectId:project,services:await readOldWriterServices(oldWriterServiceNames(observed))});
+      await save('provider-old-writer-inventory.json',{...identity(context),capturedAt:clock(),inventory:oldWriterInventory,inventoryHash:stableHash(oldWriterInventory)});
+      state=await save('provider-freeze.json',{...identity(context),startedAt:clock(),oldWriterInventory,originalPolicies:context.baseline.policies,originalJobs:context.baseline.jobs,appliedPolicies:[],pausedJobs:[],apiFrozen:false,artifact:prepared.liveFrozen});}
     state=await freezeState(context);
+    assert(state.oldWriterInventory?.projectId===project,'OLD_WRITER_INVENTORY_REQUIRED');
     for(const original of state.originalPolicies){
       const current=await gcloud(['run','services','get-iam-policy',original.service,'--region',MIGRATION_REGION]);
       if(hasPublicInvoker(current))await setPolicy(original.service,frozenInvokerPolicy(current));
@@ -222,8 +281,11 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     const fresh=await observe();
     const expected=await filesIn(path.join(state.artifact.directory,'dataconnect/api'));
     if(!matches(fresh.api.files,expected,'api'))await deploy(`dataconnect:${MIGRATION_SERVICE}:api`,state.artifact,fresh);
-    if(!state.completedAt){state.apiFrozen=true;state.completedAt=clock();const scheduled=state.originalJobs.map(job=>context.baseline.functions.find(fn=>resourceName(job.name)===jobBase(fn.name)));assert(scheduled.every(Boolean),'SCHEDULED_WORKER_TIMEOUT_UNKNOWN');state.drainTimeoutSeconds=Math.max(0,...state.originalPolicies.map(item=>Number(item.timeoutSeconds)||60),...scheduled.map(fn=>Number(fn.timeoutSeconds)||60));state.drainUntil=new Date(new Date(state.completedAt).getTime()+(state.drainTimeoutSeconds+15)*1000).toISOString();await save('provider-freeze.json',state);}
-    return {startedAt:state.startedAt,completedAt:state.completedAt,drainUntil:state.drainUntil,stateHash:stableHash(state),originalPolicyCount:state.originalPolicies.length,originalJobCount:state.originalJobs.length};
+    if(!state.completedAt){
+      const currentInventory=captureOldWriterInventory({projectId:project,services:await readOldWriterServices(oldWriterServiceNames(fresh))});
+      assert(stableHash(currentInventory)===stableHash(state.oldWriterInventory),'OLD_WRITER_INVENTORY_CHANGED_DURING_FREEZE');
+      state.apiFrozen=true;state.completedAt=clock();const scheduled=state.originalJobs.map(job=>context.baseline.functions.find(fn=>resourceName(job.name)===jobBase(fn.name)));assert(scheduled.every(Boolean),'SCHEDULED_WORKER_TIMEOUT_UNKNOWN');state.drainTimeoutSeconds=Math.max(0,...state.originalPolicies.map(item=>Number(item.timeoutSeconds)||60),...scheduled.map(fn=>Number(fn.timeoutSeconds)||60));state.drainUntil=new Date(new Date(state.completedAt).getTime()+(state.drainTimeoutSeconds+15)*1000).toISOString();await save('provider-freeze.json',state);}
+    return {startedAt:state.startedAt,completedAt:state.completedAt,drainUntil:state.drainUntil,stateHash:stableHash(state),originalPolicyCount:state.originalPolicies.length,originalJobCount:state.originalJobs.length,retirement:{freezeStateHash:stableHash(state),inventoryHash:stableHash(state.oldWriterInventory),inventoryFile:safeFile('provider-old-writer-inventory.json'),requiredMethod:'cloud-run-retirement'}};
   }
   async function validateProbe(approval){
     const jwt=process.env.AUTHORIZATION_MIGRATION_PROBE_TOKEN;const appCheck=process.env.AUTHORIZATION_MIGRATION_PROBE_APP_CHECK_TOKEN;
@@ -288,7 +350,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     const result=output.result??output;assert(result.projectId===project&&Array.isArray(result.diffs),'SQL_DIFF_TARGET_INVALID');assertAdditiveSql(result.diffs);return {diffs:result.diffs,diffSha256:stableHash(result.diffs)};
   }
   async function phaseRecord(phase,context){const name='provider-phase-'+phase+'.json';let record=await load(name);if(record)checkJournal(record,context);else record=await save(name,{...identity(context),phase,startedAt:clock(),completedAt:null});return {name,record};}
-  const functionProof=fn=>deep({name:fn.name,updateTime:fn.updateTime,runtime:fn.runtime,entryPoint:fn.entryPoint,source:fn.source,revision:fn.revision,uri:fn.uri,serviceAccountEmail:fn.serviceAccountEmail});
+  const functionProof=fn=>deep({name:fn.name,updateTime:fn.updateTime,runtime:fn.runtime,entryPoint:fn.entryPoint,source:fn.source,revision:fn.revision,service:fn.service,uri:fn.uri,serviceAccountEmail:fn.serviceAccountEmail});
   const provenFunction=(fn,proofs)=>fn.state==='ACTIVE'&&fn.environment==='GEN_2'&&fn.runtime==='nodejs24'&&fn.entryPoint===fn.name&&fn.source&&proofs?.some(proof=>proof.name===fn.name&&stableHash(deep(functionProof(fn)))===stableHash(proof));
   async function capturedSchedulers(observed,names){
     const result=[];
@@ -314,7 +376,17 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     const observed=await observe();if(phase==='inspect'){assert(observed.installation===plan.installation,'INSTALLATION_PLAN_MISMATCH');const prepared=await artifacts(observed);const diff=await schemaDiff(prepared.strictFrozen,observed);await save('provider-sql-review.json',{...identity(context),...diff});return {...identity(context),capturedAt:clock(),baseline:observed,sqlDiff:diff};}
     assert(context.baseline?.projectId===project&&context.baseline.gitSha===plan.gitSha,'DURABLE_BASELINE_REQUIRED');
     if(phase==='freeze')return performFreeze(context,observed);
-    const state=await freezeState(context);const prepared=await artifacts(context.baseline);
+    const state=await freezeState(context);
+    // A completed prior checkpoint and an expired request timer never replace fresh provider proof.
+    await verifyOldWriters(context,state,{observed});
+    // Backfill can leave its own durable PENDING intent after a transport/Auth failure.
+    // Its stable operator command must be able to resume; verification still requires READY.
+    if(phase==='backfill'){
+      const operationId=plan.phaseOperationIds?.backfill;
+      const owned=item=>typeof item.userId==='string'&&item.userId.length>0&&item.operationId===operationId+':'+item.userId;
+      assert(typeof operationId==='string'&&operationId&&raw.pendingTransitions.every(owned)&&raw.states.filter(item=>item.syncStatus!=='READY').every(item=>item.syncStatus==='PENDING'&&owned(item)),'UNREVIEWED_PENDING_BACKFILL_WORK');
+    }else assert(observed.authority.counts.pendingTransitions===0&&observed.authority.violations.nonReadyStates===0,'OLD_WRITER_AUTHORITY_NOT_SETTLED');
+    const prepared=await artifacts(context.baseline);
     const opening=['open','receipt'].includes(phase);
     if(!opening)assert(frozen(observed,state),'FREEZE_NOT_PRESERVED');
     const {name,record}=await phaseRecord(phase,context);if(record.completedAt)return record;
@@ -361,11 +433,14 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
       const beforeOpen=await observe();const beforeAudit=evaluateAuthority({...raw,requireBackfill:true});
       assert(missing.every(name=>beforeOpen.functions.some(fn=>fn.name===name&&provenFunction(fn,record.deferredProofs)))&&selected.every(name=>beforeOpen.functions.some(fn=>fn.name===name&&provenFunction(fn,authoritative.functionProofs)))&&beforeAudit.passed&&beforeAudit.controlReady&&matches(beforeOpen.schema.files,source.schema,'schema')&&matches(beforeOpen.authorization?.files,source.authorization,'authorization-service'),'DEFERRED_BOUNDARY_NOT_VERIFIED');
       const reviewedSchedulers=await resolveSchedulerIntents(beforeOpen,[...authoritative.schedulerIntents??[],...record.deferredSchedulerIntents??[]]);
+      await verifyOldWriters(context,state,{observed:beforeOpen,functionProofs:authoritative.functionProofs});
       if(!record.apiOpening){assert(frozen(beforeOpen,state),'OPEN_FREEZE_NOT_PRESERVED');record.apiOpening=true;await save(name,record);}
       // Only the reviewed strict connector is reopened; no Hosting or unrelated deployment.
       assert(prepared.strictOpen,'REVIEWED_OPEN_API_ARTIFACT_REQUIRED');
       if(!matches(observed.api.files,source.api,'api'))await deploy(`dataconnect:${MIGRATION_SERVICE}:api`,prepared.strictOpen,await observe());
+      await verifyOldWriters(context,state);
       for(const original of state.originalPolicies){const current=await gcloud(['run','services','get-iam-policy',original.service,'--region',MIGRATION_REGION]);await setPolicy(original.service,restoreInvokerPolicy(current,original.policy));}
+      await verifyOldWriters(context,state);
       for(const spec of reviewedSchedulers)await applyScheduler(spec,await observe());
       for(const original of state.originalJobs){const current=await gcloud(['scheduler','jobs','describe',resourceName(original.name),'--location',MIGRATION_REGION]);assert(['ENABLED','PAUSED'].includes(original.state),'UNSUPPORTED_ORIGINAL_JOB_STATE');if(current.state!==original.state)await gcloud(['scheduler','jobs',original.state==='PAUSED'?'pause':'resume',resourceName(original.name),'--location',MIGRATION_REGION]);}
       for(const spec of reviewedSchedulers){const desired=context.baseline.jobs.find(job=>job.name===spec.name)?.state??'ENABLED';assert(['ENABLED','PAUSED'].includes(desired),'UNSUPPORTED_ORIGINAL_JOB_STATE');const current=await gcloud(['scheduler','jobs','describe',resourceName(spec.name),'--location',MIGRATION_REGION]);if(current.state!==desired)await gcloud(['scheduler','jobs',desired==='PAUSED'?'pause':'resume',resourceName(spec.name),'--location',MIGRATION_REGION]);}
@@ -374,7 +449,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
   }
   async function verify(phase,context={}){
     assert(PHASES.has(phase),'UNKNOWN_MIGRATION_PHASE');
-    const observed=await observe();const assertions={};const set=(key,value)=>assertions[key]=Boolean(value);let state;
+    const observed=await observe();const assertions={};const set=(key,value)=>assertions[key]=Boolean(value);let state;let oldWriterProof;
     if(phase==='inspect'){set('targetVerified',observed.projectId===project&&observed.installation===plan.installation);set('baselineCaptured',Boolean(context.result?.capturedAt));}
     else{
       state=await freezeState(context);const source=await candidate();const audit=evaluateAuthority({...raw,requireBackfill:true});
@@ -385,9 +460,17 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
       const securityOriginally=expectedJob(context.baseline,'reconcilePendingSecurityTransitions');
       const reviewedSchedulers=await resolveSchedulerIntents(observed,[...stagedRecord?.schedulerIntents??[],...openRecord?.deferredSchedulerIntents??[]]);
       const schedulers=state.originalJobs.every(original=>observed.jobs.some(job=>job.name===original.name&&job.state===original.state))&&expectedJob(observed,'reconcilePendingSecurityTransitions')?.state===(securityOriginally?.state??'ENABLED')&&reviewedSchedulers.every(spec=>{const job=observed.jobs.find(job=>job.name===spec.name);return schedulerMatches(job,spec)&&job.state===(context.baseline.jobs.find(original=>original.name===spec.name)?.state??'ENABLED');});
+      if(phase!=='freeze')oldWriterProof=await verifyOldWriters(context,state,{observed,functionProofs:stagedRecord?.functionProofs});
       if(phase==='freeze'){
-        const drained=Boolean(state.drainUntil)&&new Date(clock())>=new Date(state.drainUntil)&&observed.authority.counts.pendingTransitions===0&&observed.authority.violations.nonReadyStates===0;set('serverFreezeVerified',frozen(observed,state));set('onboardingDenied',denied(observed.api.files));set('jobsBlocked',state.originalJobs.every(job=>observed.jobs.some(item=>item.name===job.name&&item.state==='PAUSED')));set('drainComplete',drained);
-        let proof=null;if(drained&&assertions.serverFreezeVerified){proof=await signedRefusal(context,observed,state);await save('provider-freeze-proof.json',proof);}set('signedRefusalVerified',proof?.passed);
+        const waitComplete=Boolean(state.drainUntil)&&new Date(clock())>=new Date(state.drainUntil);
+        const authoritySettled=observed.authority.counts.pendingTransitions===0&&observed.authority.violations.nonReadyStates===0;
+        set('serverFreezeVerified',frozen(observed,state));set('onboardingDenied',denied(observed.api.files));set('jobsBlocked',state.originalJobs.every(job=>observed.jobs.some(item=>item.name===job.name&&item.state==='PAUSED')));
+        let retirement=null;
+        if(waitComplete&&authoritySettled&&assertions.serverFreezeVerified){
+          try{retirement=await verifyOldWriters(context,state);}catch(error){if(!(error instanceof MigrationCloudError))throw error;await save('provider-old-writers-blocked.json',{...identity(context),observedAt:clock(),code:error.code});}
+        }
+        oldWriterProof=retirement;set('oldWritersRetired',Boolean(retirement));set('drainComplete',waitComplete&&authoritySettled&&Boolean(retirement));
+        let proof=null;if(waitComplete&&authoritySettled&&assertions.serverFreezeVerified){proof=await signedRefusal(context,observed,state);await save('provider-freeze-proof.json',proof);}set('signedRefusalVerified',proof?.passed);
       }else if(phase==='schema'){set('schemaMatches',matches(observed.schema.files,source.schema,'schema'));set('authorizationConnectorMatches',matches(observed.authorization?.files,source.authorization,'authorization-service'));set('freezePreserved',frozen(observed,state));}
       else if(phase==='compatibility'){const prepared=await artifacts(context.baseline);set('compatibilityMatches',plan.installation==='legacy'&&Boolean(prepared.compatibilityFrozen)&&(matches(observed.api.files,await filesIn(path.join(prepared.compatibilityFrozen.directory,'dataconnect/api')),'api')||matches(observed.api.files,await filesIn(path.join(prepared.strictFrozen.directory,'dataconnect/api')),'api')));set('onboardingDenied',denied(observed.api.files));set('freezePreserved',frozen(observed,state));}
       else if(phase==='control-create'){set('controlExists',Boolean(observed.authority.control));set('freezePreserved',frozen(observed,state));}
@@ -401,7 +484,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
       else if(['open','receipt'].includes(phase)){set('schemaMatches',matches(observed.schema.files,source.schema,'schema'));set('authorizationConnectorMatches',matches(observed.authorization?.files,source.authorization,'authorization-service'));set('strictApiReady',strictOpen);set('adminSafetyControlReady',audit.controlReady);set('functionsMatch',fullFunctions);if(phase==='receipt')set('backfillComplete',audit.backfillComplete);set('invokersRestored',restored);set('schedulersVerified',schedulers);}
       else throw new MigrationCloudError('UNKNOWN_MIGRATION_PHASE');
     }
-    const blockers=Object.entries(assertions).filter(([,value])=>!value).map(([key])=>key);return {ok:blockers.length===0,observed,evidence:{...identity(context),observedAt:clock(),assertions},blockers};
+    const blockers=Object.entries(assertions).filter(([,value])=>!value).map(([key])=>key);return {ok:blockers.length===0,observed,evidence:{...identity(context),observedAt:clock(),assertions,...oldWriterProof?{oldWriterProofHash:oldWriterProof.proofHash,oldWriterGateHash:oldWriterProof.gateHash}:{}},blockers};
   }
   const guarded=method=>async(...args)=>{try{return await method(...args);}catch(error){if(error instanceof MigrationCloudError)throw error;throw new MigrationCloudError('PROVIDER_OPERATION_FAILED');}};
   return {observe:guarded(observe),perform:guarded(perform),verify:guarded(verify)};

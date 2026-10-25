@@ -3,7 +3,7 @@ import {mkdtemp, mkdir, readFile, rm, writeFile, symlink, readdir} from "node:fs
 import path from "node:path";
 import {tmpdir} from "node:os";
 import {parseMigrationArguments, runMigrationCli, safeMigrationCliError} from "./authorization-migration.mjs";
-import {loadMigrationRun, migrationHash} from "./authorization-migration-state.mjs";
+import {loadMigrationRun, migrationHash, PHASE_ASSERTIONS} from "./authorization-migration-state.mjs";
 
 const sha = "a".repeat(40);
 const instant = new Date("2026-10-23T12:00:00.000Z");
@@ -19,16 +19,30 @@ async function fixture() {
   return {directory, repositoryRoot, artifactDirectory: path.join(directory, "artifacts"),
     dependencies: {repositoryRoot, nodeVersion: "24.22.0", env: {}, git, loadAdapter, now: () => instant}};
 }
-function prepareArgs(f, {installation = "legacy", projectId = "sodc-web-beta"} = {}) {
-  return ["prepare", "--project", projectId, "--run-id", "reviewed-beta", "--operator", "operator", "--reason", "approved change",
+function prepareArgs(f, {installation = "legacy", projectId = "sodc-web-beta", runId = "reviewed-beta"} = {}) {
+  return ["prepare", "--project", projectId, "--run-id", runId, "--operator", "operator", "--reason", "approved change",
     "--installation", installation, "--artifact-directory", f.artifactDirectory];
 }
 const runFlags = ["--project", "sodc-web-beta", "--run-id", "reviewed-beta"];
 async function prepare(f, overrides) {return runMigrationCli(prepareArgs(f, overrides), f.dependencies);}
-function backupGate(projectId = "sodc-web-beta") {
+function backupGate(projectId = "sodc-web-beta", runId = "reviewed-beta") {
   return {schemaVersion: "sodc-authorization-migration-gate/v1", gate: "backup", projectId,
-    gitSha: sha, runId: "reviewed-beta", reviewedBy: "operator", observedAt: instant.toISOString(),
+    gitSha: sha, runId, reviewedBy: "operator", observedAt: instant.toISOString(),
     evidence: "approved backup record", details: {backupReference: "completed backup", restoreTestReference: "isolated restore report"}};
+}
+function oldWritersGate(projectId = "sodc-web-beta", runId = "reviewed-beta") {
+  return {...backupGate(projectId, runId), gate: "old-writers", evidence: "approved retirement review", details: {
+    method: "cloud-run-retirement", freezeStateHash: "b".repeat(64), inventoryHash: "c".repeat(64),
+    successorRevisions: [{name: `projects/${projectId}/locations/europe-west2/services/security-writer/revisions/security-writer-00002-new`,
+      uid: "12345678-1234-4123-8123-123456789012", images: [`europe-west2-docker.pkg.dev/${projectId}/functions/security-writer@sha256:${"d".repeat(64)}`]}],
+    externalOperationsReference: "reviewed external operations",
+  }};
+}
+function acceptanceGate(projectId, runId, sourceProjectId) {
+  return {...backupGate(projectId, runId), gate: "acceptance", evidence: "reviewed release evidence", details: {
+    sourceProjectId, backendTestReference: "backend", browserReviewReference: "browser review", notificationsReference: "notifications",
+    schedulerVolumeReference: "volume", appCheckReference: "appcheck",
+  }};
 }
 
 describe("authorization migration CLI boundaries", () => {
@@ -44,6 +58,8 @@ describe("authorization migration CLI boundaries", () => {
     ["status", ...runFlags, "--phase", "freeze"],
     ["plan", "--project", "sodc-web-beta", "unexpected"],
     ["plan", "--project"],
+    ["gate", ...runFlags, "--name", "retirement", "--evidence", "/tmp/review.json"],
+    ["gate", ...runFlags, "--name", "old-writers", "--evidence", "/tmp/review.json", "--method", "cloud-run-retirement"],
   ])("rejects ambiguous or unsupported targeting before execution: %j", args => {
     expect(() => parseMigrationArguments(args)).toThrow();
   });
@@ -103,6 +119,71 @@ describe("authorization migration CLI boundaries", () => {
     expect(result).toMatchObject({gate: "backup", cloudChanges: false});
     const run = await loadMigrationRun({repositoryRoot: f.repositoryRoot, projectId: "sodc-web-beta", runId: "reviewed-beta"});
     expect(run.journal.gates.backup.hash).toBe(migrationHash(backupGate()));
+    expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+  });
+
+  it("accepts the old-writers gate name and records its typed evidence without a cloud adapter", async () => {
+    const f = await fixture(); await prepare(f);
+    const record = oldWritersGate(), file = path.join(f.directory, "old-writers.json");
+    await writeFile(file, JSON.stringify(record));
+    const args = ["gate", ...runFlags, "--name", "old-writers", "--evidence", file];
+    expect(parseMigrationArguments(args)).toMatchObject({command: "gate", flags: {name: "old-writers"}});
+    await expect(runMigrationCli(args, f.dependencies)).resolves.toMatchObject({gate: "old-writers", hash: migrationHash(record), cloudChanges: false});
+    const run = await loadMigrationRun({repositoryRoot: f.repositoryRoot, projectId: record.projectId, runId: record.runId});
+    expect(run.journal.gates["old-writers"].hash).toBe(migrationHash(record));
+    expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+  });
+
+  it.each(["sodc-web", "sodc-web-beta", "sodc-web-production", "unknown-project"])("uses the Production Dev-acceptance policy through the gate CLI for %s", async sourceProjectId => {
+    const f = await fixture(), projectId = "sodc-web-production", runId = "reviewed-prod";
+    await prepare(f, {projectId, runId});
+    const record = acceptanceGate(projectId, runId, sourceProjectId), file = path.join(f.directory, "acceptance.json");
+    await writeFile(file, JSON.stringify(record));
+    const invoke = () => runMigrationCli(["gate", "--project", projectId, "--run-id", runId, "--name", "acceptance", "--evidence", file], f.dependencies);
+    if (sourceProjectId === "sodc-web") await expect(invoke()).resolves.toMatchObject({gate: "acceptance", hash: migrationHash(record), cloudChanges: false});
+    else await expect(invoke()).rejects.toMatchObject({code: "ACCEPTANCE_REQUIRED"});
+    const run = await loadMigrationRun({repositoryRoot: f.repositoryRoot, projectId, runId});
+    expect(run.journal.gates.acceptance?.hash).toBe(sourceProjectId === "sodc-web" ? migrationHash(record) : undefined);
+    expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+  });
+
+  it("resumes a held strict Dev freeze only with retirement review and exposes safe bindings through status", async () => {
+    const f = await fixture(), projectId = "sodc-web", runId = "reviewed-dev";
+    await prepare(f, {projectId, runId, installation: "strict"});
+    const flags = ["--project", projectId, "--run-id", runId], original = backupGate(projectId, runId);
+    for (const record of [original,
+      {...original, gate: "freeze-scope", details: {entrypoints: ["grantAdmin"], jobNames: [], externalWritersReference: "external review", probeUserId: "nonadmin", probeReference: "approved probe"}},
+      {...original, gate: "sql-review", details: {diffSha256: "e".repeat(64)}},
+    ]) {
+      const file = path.join(f.directory, record.gate + ".json"); await writeFile(file, JSON.stringify(record));
+      await runMigrationCli(["gate", ...flags, "--name", record.gate, "--evidence", file], f.dependencies);
+    }
+    const proof = oldWritersGate(projectId, runId), retirement = {freezeStateHash: proof.details.freezeStateHash,
+      inventoryHash: proof.details.inventoryHash, inventoryFile: "provider-old-writers.json", requiredMethod: proof.details.method};
+    const perform = vi.fn(async phase => phase === "inspect" ? {baseline: {installation: "strict", policies: []}} : phase === "freeze" ? {retirement: {...retirement, privateInventory: "do-not-print"}} : {phase});
+    const observe = vi.fn(async () => ({projectId, gitSha: sha, observedAt: instant.toISOString()}));
+    const close = vi.fn(), loadAdapter = vi.fn(async ({plan}) => ({observe, perform, close,
+      verify: vi.fn(async (phase, context) => ({ok: true, evidence: {projectId, gitSha: sha, runId, planHash: migrationHash(plan), observedAt: instant.toISOString(),
+        assertions: {...Object.fromEntries(PHASE_ASSERTIONS[phase].map(key => [key, true])), ...(phase === "freeze" ? {oldWritersRetired: Boolean(context.gates["old-writers"])} : {})},
+      }})),
+    }));
+    const dependencies = {...f.dependencies, loadAdapter};
+    const applyPhase = phase => runMigrationCli(["apply", ...flags, "--phase", phase, "--confirm-project", projectId], dependencies);
+    await applyPhase("inspect");
+    await expect(applyPhase("freeze")).rejects.toMatchObject({code: "PHASE_NOT_VERIFIED"});
+    const held = await loadMigrationRun({repositoryRoot: f.repositoryRoot, projectId, runId});
+    const status = await runMigrationCli(["status", ...flags], f.dependencies);
+    expect(status.retirement).toEqual(retirement);
+    expect(JSON.stringify(status)).not.toContain("do-not-print");
+    await expect(applyPhase("schema")).rejects.toMatchObject({code: "PHASE_ORDER"});
+    const file = path.join(f.directory, "old-writers.json"); await writeFile(file, JSON.stringify(proof));
+    await runMigrationCli(["gate", ...flags, "--name", "old-writers", "--evidence", file], f.dependencies);
+    await expect(applyPhase("freeze")).resolves.toMatchObject({phase: "freeze", status: "complete"});
+    await expect(applyPhase("schema")).resolves.toMatchObject({phase: "schema", status: "complete"});
+    const completed = await loadMigrationRun({repositoryRoot: f.repositoryRoot, projectId, runId});
+    expect(completed.journal.checkpoints.freeze.operationId).toBe(held.journal.checkpoints.freeze.operationId);
+    expect(perform.mock.calls.map(([phase]) => phase)).toEqual(["inspect", "freeze", "freeze", "schema"]);
+    expect(perform.mock.calls.at(-1)[1].gates["old-writers"].details).toEqual(proof.details);
     expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
   });
 

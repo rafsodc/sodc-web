@@ -13,7 +13,7 @@ export const MIGRATION_PHASES = Object.freeze([
 ]);
 export const PHASE_ASSERTIONS = Object.freeze({
   inspect: ["targetVerified", "baselineCaptured"],
-  freeze: ["serverFreezeVerified", "signedRefusalVerified", "onboardingDenied", "jobsBlocked", "drainComplete"],
+  freeze: ["serverFreezeVerified", "signedRefusalVerified", "onboardingDenied", "jobsBlocked", "oldWritersRetired", "drainComplete"],
   schema: ["schemaMatches", "authorizationConnectorMatches", "freezePreserved"],
   compatibility: ["compatibilityMatches", "onboardingDenied", "freezePreserved"],
   "control-create": ["controlExists", "freezePreserved"],
@@ -27,6 +27,7 @@ export const PHASE_ASSERTIONS = Object.freeze({
 const GATE_DETAILS = Object.freeze({
   backup: ["backupReference", "restoreTestReference", "waiverReference"],
   "freeze-scope": ["entrypoints", "jobNames", "externalWritersReference", "probeUserId", "probeReference"],
+  "old-writers": ["method", "freezeStateHash", "inventoryHash", "successorRevisions", "externalOperationsReference"],
   "sql-review": ["diffSha256"],
   acceptance: ["sourceProjectId", "backendTestReference", "browserReviewReference", "notificationsReference", "schedulerVolumeReference", "appCheckReference"],
 });
@@ -209,10 +210,18 @@ export function validateMigrationGate(gate, plan, now = new Date()) {
   } else if (gate.gate === "freeze-scope") {
     for (const name of ["entrypoints", "jobNames"]) requireThat(Array.isArray(details[name]) && details[name].every(value => typeof value === "string" && /^[A-Za-z0-9_/-]{1,250}$/.test(value)) && new Set(details[name]).size === details[name].length, "FREEZE_SCOPE_INVALID", "Freeze entrypoints/jobs must be explicit unique provider names.");
     requireThat(details.entrypoints.length > 0 && text(details.externalWritersReference, 2000) && /^[A-Za-z0-9_-]{1,128}$/.test(details.probeUserId ?? "") && text(details.probeReference, 2000), "FREEZE_SCOPE_INVALID", "Freeze approval must cover external writers and an approved existing nonadmin probe identity.");
+  } else if (gate.gate === "old-writers") {
+    const revisions = details.successorRevisions;
+    const digest = value => typeof value === "string" && value.length === 64 && /^[a-f0-9]{64}$/.test(value);
+    requireThat(details.method === "cloud-run-retirement" && digest(details.freezeStateHash) && digest(details.inventoryHash) && text(details.externalOperationsReference, 2000) && Array.isArray(revisions) && revisions.length <= 10000, "OLD_WRITERS_GATE_INVALID", "Record the bound retirement method, hashes, successors and external-operation review.");
+    const name = new RegExp(`^projects/${plan.projectId}/locations/europe-west2/services/[a-z][a-z0-9-]*/revisions/[a-z][a-z0-9-]*$`);
+    const image = /^[A-Za-z0-9.-]+(?::[0-9]+)?\/[A-Za-z0-9_./-]+@sha256:[a-f0-9]{64}$/;
+    requireThat(revisions.every(revision => exactKeys(revision, ["name", "uid", "images"]) && typeof revision.name === "string" && !/\s/.test(revision.name) && name.test(revision.name) && typeof revision.uid === "string" && revision.uid.length === 36 && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(revision.uid) && Array.isArray(revision.images) && revision.images.length > 0 && revision.images.every(value => typeof value === "string" && !/\s/.test(value) && image.test(value))), "OLD_WRITERS_GATE_INVALID", "Successors must be flat target revision identities with UUIDv4 UIDs and immutable image digests.");
+    requireThat(new Set(revisions.map(revision => revision.name)).size === revisions.length, "OLD_WRITERS_GATE_INVALID", "Successor revision names must be unique.");
   } else if (gate.gate === "sql-review") {
     requireThat(/^[a-f0-9]{64}$/.test(details.diffSha256 ?? ""), "SQL_REVIEW_REQUIRED", "SQL review must identify the exact inspected diff SHA-256.");
   } else {
-    requireThat(details.sourceProjectId === (plan.environment === "prod" ? "sodc-web-beta" : plan.projectId) && GATE_DETAILS.acceptance.filter(key => key !== "sourceProjectId").every(key => text(details[key], 2000)), "ACCEPTANCE_REQUIRED", "Record same-release backend, browser-review, notification, volume and App Check evidence; production uses Beta acceptance.");
+    requireThat(details.sourceProjectId === (plan.environment === "prod" ? "sodc-web" : plan.projectId) && GATE_DETAILS.acceptance.filter(key => key !== "sourceProjectId").every(key => text(details[key], 2000)), "ACCEPTANCE_REQUIRED", "Record same-release backend, browser-review, notification, volume and App Check evidence; production uses Dev acceptance.");
   }
   assertNoCredentials(gate); return gate;
 }
@@ -241,7 +250,7 @@ async function verifiedGates(run, now) {
 }
 function requireGates(phase, gates) {
   const required = phase === "inspect" ? [] : ["backup", "freeze-scope"];
-  if (!["inspect", "freeze"].includes(phase)) required.push("sql-review");
+  if (!["inspect", "freeze"].includes(phase)) required.push("old-writers", "sql-review");
   if (["open", "receipt"].includes(phase)) required.push("acceptance");
   requireThat(required.every(name => gates[name]), "GATES_MISSING", `Phase ${phase} requires reviewed gates: ${[...new Set(required)].join(", ")}.`);
 }
@@ -339,7 +348,11 @@ async function writeMigrationReceipt(repositoryRoot, run, evidence) {
 }
 
 export function summarizeRun(run) {
+  const retirement = run.journal.checkpoints.freeze?.result?.retirement;
   return {projectId: run.plan.projectId, runId: run.plan.runId, gitSha: run.plan.gitSha, installation: run.plan.installation,
     importAdmins: run.plan.importAdmins, phases: phasesFor(run.plan).map(phase => ({phase, status: run.journal.checkpoints[phase]?.status ?? "pending", attempts: run.journal.checkpoints[phase]?.attempt ?? 0})),
-    gates: Object.keys(run.journal.gates)};
+    gates: Object.keys(run.journal.gates), ...(object(retirement) ? {retirement: {
+      freezeStateHash: retirement.freezeStateHash, inventoryHash: retirement.inventoryHash,
+      inventoryFile: retirement.inventoryFile, requiredMethod: retirement.requiredMethod,
+    }} : {})};
 }
