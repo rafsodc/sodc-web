@@ -210,7 +210,7 @@ describe('Dev-only reconciliation volume cloud adapter',()=>{
     await f.adapter.deleteFixtureBatch(f.manifest.fixtures);expect(f.transitions.size).toBe(1);expect(f.transitions.get(owned.operationId).syncStatus).toBe('READY');
     expect(f.identities.size).toBe(2);expect(f.profiles.size).toBe(2);expect(f.states.size).toBe(2);expect(f.rates).toEqual([]);expect(f.invocations).toEqual([]);
     const cleanup=f.commands.find(row=>row.kind==='dbCleanup');expect(cleanup.variables.ids).toEqual(f.manifest.fixtures.map(row=>row.uid));expect(cleanup.query).toContain('adminReady:{eq:false}');expect(cleanup.query).toContain('operationId:{in:$operationIds}');expect(cleanup.query).not.toContain('securityTransition_delete');expect(cleanup.query).not.toContain('adminSafety');
-    await f.adapter.restoreScheduler();expect(f.job.state).toBe('ENABLED');expect(f.commands.filter(row=>row.kind==='rest'&&row.method==='POST'&&!row.url.includes('logging.googleapis.com')).map(row=>row.url)).toEqual([`https://cloudscheduler.googleapis.com/v1/${JOB}:pause`,`https://cloudscheduler.googleapis.com/v1/${JOB}:resume`]);
+    await f.adapter.restoreScheduler();expect(f.job.state).toBe('ENABLED');expect(f.commands.filter(row=>row.kind==='rest'&&row.method==='POST'&&row.url!=='https://logging.googleapis.com/v2/entries:list').map(row=>row.url)).toEqual([`https://cloudscheduler.googleapis.com/v1/${JOB}:pause`,`https://cloudscheduler.googleapis.com/v1/${JOB}:resume`]);
   });
 
   it('resolves an uncertain committed cleanup before Auth deletion, and never deletes Auth after failed cleanup',async()=>{
