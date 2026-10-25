@@ -15,7 +15,7 @@ const FINISH_PATHS = new Set(['scripts/authorization-migration-cloud.mjs', 'scri
 const GATES = ['backup', 'freeze-scope', 'old-writers', 'sql-review', 'acceptance'];
 const gatePattern = /^gates\/(backup|freeze-scope|old-writers|sql-review|acceptance)-([a-f0-9]{64})\.json$/;
 const schedulerPattern = /^scheduler-firebase-schedule-(recoverNotificationDeliveries|reconcilePendingSecurityTransitions)-europe-west2\.json$/;
-const assert = (ok, code) => {if (!ok) throw new MigrationError(code, 'Tool-source adoption requires the reviewed, unchanged application and original strict Dev run.');};
+const assert = (ok, code) => {if (!ok) throw new MigrationError(code, 'Tool-source adoption requires the reviewed, unchanged application and original migration run and explicitly supported recovery boundary.');};
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const text = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 2000;
 const same = (a, b) => migrationHash(a) === migrationHash(b);
@@ -105,8 +105,9 @@ async function lock(file, run, work) {
   }
 }
 function strictDev(run) {assert(run.plan.projectId === 'sodc-web' && run.plan.environment === 'dev' && run.plan.installation === 'strict', 'TOOL_SOURCE_STRICT_DEV_ONLY');}
-async function frozenBoundary(run) {
-  strictDev(run);
+function legacyProduction(run) {assert(run.plan.projectId === 'sodc-web-production' && run.plan.environment === 'prod' && run.plan.installation === 'legacy', 'TOOL_SOURCE_PRODUCTION_LEGACY_ONLY');}
+async function frozenBoundary(run, productionRecovery = false) {
+  if (productionRecovery) legacyProduction(run); else strictDev(run);
   assert(!run.journal.terminal && !run.journal.abortFreeze, 'TOOL_SOURCE_EARLY_FREEZE_ONLY');
   assert(!await optional(path.join(run.directory, 'abort-freeze-intent.json')), 'TOOL_SOURCE_ABORTING');
   const owner = JSON.parse(await regularBytes(path.join(path.dirname(run.directory), 'active-run.json')));
@@ -131,10 +132,10 @@ async function adoptionScope(run) {
 }
 const evidencePattern = /^evidence\/(inspect|freeze|schema|compatibility|control-create|backfill|functions|activate|strict-api)-([a-f0-9]{64})\.json$/;
 const providerPattern = /^provider-phase-(inspect|freeze|schema|compatibility|control-create|backfill|functions|activate|strict-api)\.json$/;
-async function completedEvidence(run) {
+async function completedEvidence(run, selectedPhases) {
   const files = [];
   for (const [phase, checkpoint] of Object.entries(run.journal.checkpoints)) {
-    if (checkpoint.status !== 'complete') continue;
+    if (checkpoint.status !== 'complete' || selectedPhases && !selectedPhases.includes(phase)) continue;
     assert(evidencePattern.test(checkpoint.evidenceFile ?? '') && checkpoint.evidenceFile === 'evidence/' + phase + '-' + checkpoint.evidenceHash + '.json', 'TOOL_SOURCE_COMPLETED_EVIDENCE_INVALID');
     const record = JSON.parse(await regularBytes(path.join(run.directory, checkpoint.evidenceFile)));
     const proof = record.evidence;
@@ -239,18 +240,111 @@ async function verifyCompletionBindings(run, value) {
   }
   openRecordBinding(run, JSON.parse(await regularBytes(path.join(run.directory, 'provider-phase-open.json'))));
 }
+
+const productionOpenKeys = ['projectId', 'gitSha', 'runId', 'planHash', 'phase', 'startedAt', 'completedAt', 'openingStarted'];
+const deferredNames = ['getMyAuthorizationStatus', 'reconcilePendingSecurityTransitions'];
+function productionFailedCheckpoint(run, checkpoint) {
+  assert(keys(checkpoint, ['status', 'operationId', 'attempt', 'startedAt', 'lastError']) && checkpoint.status === 'incomplete' && checkpoint.lastError === 'SCHEDULER_TARGET_NOT_VERIFIED' && checkpoint.operationId === run.plan.phaseOperationIds.open &&
+    Number.isSafeInteger(checkpoint.attempt) && checkpoint.attempt > 0 && Number.isFinite(Date.parse(checkpoint.startedAt)) && !Object.hasOwn(checkpoint, 'result'), 'TOOL_SOURCE_PRODUCTION_FAILURE_REQUIRED');
+}
+function productionOpenRecord(run, record, initial) {
+  const allowed = [...productionOpenKeys, ...(initial ? [] : ['deferredProofs', 'deferredSchedulerIntents', 'apiOpening'])];
+  assert(record && Object.keys(record).every(key => allowed.includes(key)) && productionOpenKeys.every(key => Object.hasOwn(record, key)) &&
+    record.projectId === run.plan.projectId && record.gitSha === run.plan.gitSha && record.runId === run.plan.runId && record.planHash === run.planHash && record.phase === 'open' &&
+    Number.isFinite(Date.parse(record.startedAt)) && record.openingStarted === true && (record.completedAt === null || !initial && Number.isFinite(Date.parse(record.completedAt)) && Date.parse(record.completedAt) >= Date.parse(record.startedAt)), 'TOOL_SOURCE_PRODUCTION_OPEN_BOUNDARY_INVALID');
+  if (initial) assert(record.completedAt === null, 'TOOL_SOURCE_PRODUCTION_OPEN_BOUNDARY_INVALID');
+  else {
+    assert(record.apiOpening === undefined || record.apiOpening === true, 'TOOL_SOURCE_PRODUCTION_OPEN_BOUNDARY_INVALID');
+    if (record.deferredProofs !== undefined) assert(Array.isArray(record.deferredProofs) && record.deferredProofs.length === 2 && same(record.deferredProofs.map(row => row.name).sort(), [...deferredNames].sort()), 'TOOL_SOURCE_PRODUCTION_OPEN_BOUNDARY_INVALID');
+    if (record.deferredSchedulerIntents !== undefined) assert(Array.isArray(record.deferredSchedulerIntents) && record.deferredSchedulerIntents.length === 1 &&
+      record.deferredSchedulerIntents[0].name === `projects/${run.plan.projectId}/locations/europe-west2/jobs/firebase-schedule-reconcilePendingSecurityTransitions-europe-west2` && HASH.test(record.deferredSchedulerIntents[0].specHash ?? ''), 'TOOL_SOURCE_PRODUCTION_OPEN_BOUNDARY_INVALID');
+    if (record.apiOpening || record.completedAt !== null) assert(record.apiOpening === true && record.deferredProofs?.length === 2 && record.deferredSchedulerIntents?.length === 1, 'TOOL_SOURCE_PRODUCTION_OPEN_BOUNDARY_INVALID');
+  }
+}
+async function productionPinnedFiles(run) {
+  const prior = phasesFor(run.plan).slice(0, phasesFor(run.plan).indexOf('open'));
+  const names = await completionFiles(run), files = [...names.filter(name => name !== 'provider-phase-open.json'), ...await completedEvidence(run, prior)];
+  for (const name of (await readdir(run.directory)).filter(name => name.startsWith('provider-phase-'))) {
+    const phase = /^provider-phase-(inspect|freeze|schema|compatibility|control-create|backfill|functions|activate|strict-api|open|receipt)\.json$/.exec(name)?.[1];
+    assert(phase, 'TOOL_SOURCE_LATER_PHASE_PRESENT');
+    const record = JSON.parse(await regularBytes(path.join(run.directory, name)));
+    assert(record.projectId === run.plan.projectId && record.gitSha === run.plan.gitSha && record.runId === run.plan.runId && record.planHash === run.planHash && record.phase === phase, 'TOOL_SOURCE_PROVIDER_RECORD_INVALID');
+    if (prior.includes(phase)) {assert(same(record, run.journal.checkpoints[phase]?.result), 'TOOL_SOURCE_COMPLETED_EVIDENCE_INVALID'); files.push(name);}
+  }
+  return [...new Set(files)].sort();
+}
+async function productionRecoveryScope(run, repositoryRoot, now) {
+  legacyProduction(run);
+  const sequence = phasesFor(run.plan), prior = sequence.slice(0, sequence.indexOf('open')), c = run.journal.checkpoints;
+  assert(!run.journal.terminal && !run.journal.abortFreeze && !c.receipt && !await optional(path.join(run.directory, 'provider-phase-receipt.json')) &&
+    !await optional(path.join(repositoryRoot, '.firebase/authorization-migration', run.plan.projectId + '.json')), 'TOOL_SOURCE_PRODUCTION_PRE_API_OPEN_ONLY');
+  assert(Object.keys(c).length === prior.length + 1 && prior.every(name => c[name]?.status === 'complete') && Object.keys(c).every(name => [...prior, 'open'].includes(name)), 'TOOL_SOURCE_PRODUCTION_PRE_API_OPEN_ONLY');
+  productionFailedCheckpoint(run, c.open);
+  const failedOpenBytes = await regularBytes(path.join(run.directory, 'provider-phase-open.json')), open = JSON.parse(failedOpenBytes); productionOpenRecord(run, open, true);
+  assert(Date.parse(open.startedAt) >= Date.parse(c.open.startedAt) && Date.parse(open.startedAt) <= +now && same(c.inspect.result?.baseline, run.journal.baseline), 'TOOL_SOURCE_PRODUCTION_OPEN_BOUNDARY_INVALID');
+  assert(same(Object.keys(run.journal.gates).sort(), [...GATES].sort()), 'TOOL_SOURCE_COMPLETION_GATES_INVALID');
+  for (const gateName of GATES) {
+    const entry = run.journal.gates[gateName]; assert(gatePattern.test(entry?.file ?? ''), 'TOOL_SOURCE_COMPLETION_GATES_INVALID');
+    const gate = JSON.parse(await regularBytes(path.join(run.directory, entry.file)));
+    assert(gate.gate === gateName && migrationHash(gate) === entry.hash, 'TOOL_SOURCE_COMPLETION_GATES_INVALID'); validateMigrationGate(gate, run.plan, now);
+  }
+  const names = await productionPinnedFiles(run);
+  for (const name of names.filter(name => schedulerPattern.test(name))) {
+    const capture = JSON.parse(await regularBytes(path.join(run.directory, name))), fn = schedulerPattern.exec(name)[1], job = capture.job, target = job?.httpTarget;
+    assert(capture.projectId === run.plan.projectId && capture.gitSha === run.plan.gitSha && capture.runId === run.plan.runId && capture.planHash === run.planHash &&
+      job?.name === `projects/${run.plan.projectId}/locations/europe-west2/jobs/firebase-schedule-${fn}-europe-west2` && target?.httpMethod === 'POST' && !target.headers && !target.body && !job.pubsubTarget, 'TOOL_SOURCE_COMPLETION_SCHEDULERS_INVALID');
+    let uri; try {uri = new URL(target.uri);} catch { /* Refuse below. */ }
+    assert(uri?.protocol === 'https:' && !uri.username && !uri.password && !uri.port && !uri.search && !uri.hash &&
+      (target.uri === `https://europe-west2-${run.plan.projectId}.cloudfunctions.net/${fn}` || uri.hostname.startsWith(fn.toLowerCase() + '-') && uri.hostname.endsWith('.run.app') && uri.pathname === '/'), 'TOOL_SOURCE_COMPLETION_SCHEDULERS_INVALID');
+  }
+  for (const name of names.filter(name => gatePattern.test(name))) {
+    const gate = JSON.parse(await regularBytes(path.join(run.directory, name))), match = gatePattern.exec(name);
+    assert(gate.projectId === run.plan.projectId && gate.gitSha === run.plan.gitSha && gate.runId === run.plan.runId && gate.gate === match[1] && migrationHash(gate) === match[2], 'TOOL_SOURCE_COMPLETION_GATES_INVALID');
+  }
+  const files = []; for (const name of names) files.push({name, sha256: digest(await regularBytes(path.join(run.directory, name)))});
+  const historyFileHashes = {};
+  for (const name of [...new Set([...RECORDS, 'provider-phase-open.json', ...names])].sort()) {const bytes = await optional(path.join(run.directory, name)); if (bytes) {if (name === 'journal.json') assert(same(JSON.parse(bytes), run.journal), 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED'); historyFileHashes[name] = digest(bytes);}}
+  assert(historyFileHashes['provider-phase-open.json'] === digest(failedOpenBytes), 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+  return {...await frozenBoundary(run, true), interruptedPhase: 'open', recoveryKind: 'production-pre-api-open-scheduler-target',
+    productionRecoveryBindings: {gateEntriesHash: migrationHash(run.journal.gates), priorCheckpointHashes: Object.fromEntries(prior.map(name => [name, migrationHash(c[name])])), failedCheckpointHash: migrationHash(c.open), failedOpenFileHash: digest(failedOpenBytes), historyFileHashes, files}};
+}
+async function verifyProductionRecoveryBindings(run, value) {
+  legacyProduction(run);
+  const b = value.productionRecoveryBindings, prior = phasesFor(run.plan).slice(0, phasesFor(run.plan).indexOf('open'));
+  assert(keys(b, ['gateEntriesHash', 'priorCheckpointHashes', 'failedCheckpointHash', 'failedOpenFileHash', 'historyFileHashes', 'files']) && HASH.test(b.gateEntriesHash) && HASH.test(b.failedCheckpointHash) && HASH.test(b.failedOpenFileHash) &&
+    same(Object.keys(b.priorCheckpointHashes ?? {}).sort(), [...prior].sort()) && prior.every(name => HASH.test(b.priorCheckpointHashes[name]) && migrationHash(run.journal.checkpoints[name]) === b.priorCheckpointHashes[name]) &&
+    migrationHash(run.journal.gates) === b.gateEntriesHash && !run.journal.terminal && !run.journal.abortFreeze && !await optional(path.join(run.directory, 'abort-freeze-intent.json')), 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+  assert(b.historyFileHashes && same(Object.keys(b.historyFileHashes).sort(), value.history.map(row => row.name).sort()) && value.history.every(row => HASH.test(b.historyFileHashes[row.name]) && row.sha256 === b.historyFileHashes[row.name]), 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+  assert(Array.isArray(b.files) && same(b.files.map(row => row.name).sort(), await productionPinnedFiles(run)), 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+  for (const row of b.files) assert(keys(row, ['name', 'sha256', 'archive']) && HASH.test(row.sha256) && row.archive === 'evidence/tool-source-before-' + row.sha256 + '.json' &&
+    digest(await regularBytes(path.join(run.directory, row.archive))) === row.sha256 && digest(await regularBytes(path.join(run.directory, row.name))) === row.sha256, 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+  const archived = name => value.history.find(row => row.name === name);
+  const initialOpen = JSON.parse(await regularBytes(path.join(run.directory, archived('provider-phase-open.json')?.archive ?? 'INVALID')));
+  productionOpenRecord(run, initialOpen, true); assert(digest(await regularBytes(path.join(run.directory, archived('provider-phase-open.json').archive))) === b.failedOpenFileHash, 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+  const originalJournal = JSON.parse(await regularBytes(path.join(run.directory, archived('journal.json').archive)));
+  productionFailedCheckpoint(run, originalJournal.checkpoints?.open);
+  assert(migrationHash(originalJournal.checkpoints.open) === b.failedCheckpointHash && migrationHash(originalJournal.gates) === b.gateEntriesHash && prior.every(name => migrationHash(originalJournal.checkpoints[name]) === b.priorCheckpointHashes[name]), 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+  const current = JSON.parse(await regularBytes(path.join(run.directory, 'provider-phase-open.json'))); productionOpenRecord(run, current, false);
+  assert(productionOpenKeys.filter(key => key !== 'completedAt').every(key => same(current[key], initialOpen[key])) &&
+    Object.keys(run.journal.checkpoints).every(name => [...prior, 'open', 'receipt'].includes(name)) && run.journal.checkpoints.open?.operationId === run.plan.phaseOperationIds.open && ['incomplete', 'complete'].includes(run.journal.checkpoints.open.status) && Number.isSafeInteger(run.journal.checkpoints.open.attempt) && run.journal.checkpoints.open.attempt > 0, 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+  const receipt = run.journal.checkpoints.receipt;
+  if (receipt) assert(run.journal.checkpoints.open.status === 'complete' && receipt.operationId === run.plan.phaseOperationIds.receipt && ['incomplete', 'complete'].includes(receipt.status), 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+  if (run.journal.checkpoints.open.result !== undefined) assert(same(run.journal.checkpoints.open.result, current), 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+}
+
 function amendment(record, run, previous) {
   assert(keys(record, ['amendment', 'amendmentHash']) && HASH.test(record.amendmentHash ?? '') && migrationHash(record.amendment) === record.amendmentHash, 'TOOL_SOURCE_AMENDMENT_INVALID');
   const value = record.amendment;
   const fields = ['schemaVersion', 'projectId', 'gitSha', 'runId', 'planHash', 'toolSha', 'reviewReference', 'reason', 'adoptedAt', 'sourceProof', 'freezeStateHash', 'inventoryHash', 'history'];
-  const completion = value.schemaVersion === 'sodc-authorization-tool-source-amendment/v3';
+  const completion = value.schemaVersion === 'sodc-authorization-tool-source-amendment/v3', production = value.schemaVersion === 'sodc-authorization-tool-source-amendment/v4';
   if (previous) fields.push('previousAmendmentHash', 'interruptedPhase');
   if (completion) fields.push('completionKind', 'completionBindings', 'completionDeltaProof');
-  assert(keys(value, fields) && value.schemaVersion === 'sodc-authorization-tool-source-amendment/v' + (completion ? '3' : previous ? '2' : '1') && (!completion || previous && value.completionKind === 'completed-open-verifier') && value.projectId === run.plan.projectId && value.gitSha === run.plan.gitSha && value.runId === run.plan.runId && value.planHash === run.planHash &&
+  if (production) fields.push('recoveryKind', 'productionRecoveryBindings', 'interruptedPhase');
+  assert(keys(value, fields) && value.schemaVersion === 'sodc-authorization-tool-source-amendment/v' + (production ? '4' : completion ? '3' : previous ? '2' : '1') && (!completion || previous && value.completionKind === 'completed-open-verifier') && (!production || !previous && value.recoveryKind === 'production-pre-api-open-scheduler-target' && value.interruptedPhase === 'open') && value.projectId === run.plan.projectId && value.gitSha === run.plan.gitSha && value.runId === run.plan.runId && value.planHash === run.planHash &&
     SHA.test(value.toolSha ?? '') && value.toolSha !== value.gitSha && text(value.reviewReference) && text(value.reason) && Number.isFinite(Date.parse(value.adoptedAt)) && HASH.test(value.freezeStateHash ?? '') && HASH.test(value.inventoryHash ?? ''), 'TOOL_SOURCE_AMENDMENT_INVALID');
-  if (previous) assert(previous.amendment.schemaVersion !== 'sodc-authorization-tool-source-amendment/v3' && value.previousAmendmentHash === previous.amendmentHash && (completion ? value.interruptedPhase === 'open' : ['schema', 'compatibility', 'control-create', 'backfill', 'functions', 'activate', 'strict-api'].includes(value.interruptedPhase)) &&
+  if (previous) assert(!['sodc-authorization-tool-source-amendment/v3', 'sodc-authorization-tool-source-amendment/v4'].includes(previous.amendment.schemaVersion) && value.previousAmendmentHash === previous.amendmentHash && (completion ? value.interruptedPhase === 'open' : ['schema', 'compatibility', 'control-create', 'backfill', 'functions', 'activate', 'strict-api'].includes(value.interruptedPhase)) &&
     value.freezeStateHash === previous.amendment.freezeStateHash && value.inventoryHash === previous.amendment.inventoryHash && value.toolSha !== previous.amendment.toolSha, 'TOOL_SOURCE_CHAIN_INVALID');
-  strictDev(run); assertNoCredentials(record); return value;
+  if (production) legacyProduction(run); else strictDev(run); assertNoCredentials(record); return value;
 }
 async function history(run, includePhases = false) {
   const names = [...RECORDS];
@@ -283,7 +377,7 @@ async function verifyHistory(run, rows) {
   assert(Array.isArray(rows) && rows.length >= 4 && rows.length <= 64 && new Set(rows.map(row => row.name)).size === rows.length &&
     ['plan.json', 'journal.json', 'provider-freeze.json', 'provider-old-writer-inventory.json'].every(name => rows.some(row => row.name === name)), 'TOOL_SOURCE_HISTORY_INVALID');
   for (const row of rows) {
-    assert(keys(row, ['name', 'sha256', 'archive']) && (RECORDS.includes(row.name) || providerPattern.test(row.name) || evidencePattern.test(row.name)) && HASH.test(row.sha256 ?? '') && row.archive === 'evidence/tool-source-before-' + row.sha256 + '.json', 'TOOL_SOURCE_HISTORY_INVALID');
+    assert(keys(row, ['name', 'sha256', 'archive']) && (RECORDS.includes(row.name) || providerPattern.test(row.name) || evidencePattern.test(row.name) || row.name === 'provider-phase-open.json' || gatePattern.test(row.name) || schedulerPattern.test(row.name)) && HASH.test(row.sha256 ?? '') && row.archive === 'evidence/tool-source-before-' + row.sha256 + '.json', 'TOOL_SOURCE_HISTORY_INVALID');
     assert(digest(await regularBytes(path.join(run.directory, row.archive))) === row.sha256, 'TOOL_SOURCE_HISTORY_CHANGED');
     if (evidencePattern.test(row.name)) assert(digest(await regularBytes(path.join(run.directory, row.name))) === row.sha256, 'TOOL_SOURCE_COMPLETED_EVIDENCE_CHANGED');
   }
@@ -317,6 +411,10 @@ async function verifyChain(run, records, repositoryRoot, git) {
       assert(same(delta, value.completionDeltaProof) && delta.changes.every(change => FINISH_PATHS.has(change.path) && change.status === 'M'), 'TOOL_SOURCE_COMPLETION_DELTA_INVALID');
       await verifyCompletionBindings(run, value);
     }
+    if (value.schemaVersion === 'sodc-authorization-tool-source-amendment/v4') {
+      assert(source.changes.every(change => FINISH_PATHS.has(change.path) && change.status === 'M'), 'TOOL_SOURCE_PRODUCTION_DELTA_INVALID');
+      await verifyProductionRecoveryBindings(run, value);
+    }
     const freeze = JSON.parse(await regularBytes(path.join(run.directory, 'provider-freeze.json'))), inventory = JSON.parse(await regularBytes(path.join(run.directory, 'provider-old-writer-inventory.json')));
     assert(migrationHash(freeze) === value.freezeStateHash && inventory.inventoryHash === value.inventoryHash && migrationHash(inventory.inventory) === value.inventoryHash && same(freeze.oldWriterInventory, inventory.inventory), 'TOOL_SOURCE_FREEZE_BINDING_INVALID');
     for (const file of ['plan.json', 'provider-freeze.json', 'provider-old-writer-inventory.json']) assert(digest(await regularBytes(path.join(run.directory, file))) === value.history.find(row => row.name === file).sha256, 'TOOL_SOURCE_FREEZE_BINDING_INVALID');
@@ -325,20 +423,23 @@ async function verifyChain(run, records, repositoryRoot, git) {
 }
 
 /** Local-only amendment. It never rewrites the plan, journal, gates or provider checkpoints. */
-export async function adoptMigrationToolSource(options, {confirmProject, toolSha, reviewReference, reason, previousAmendmentHash, completedOpenVerification = false, git = gitDefault, now = new Date()} = {}) {
-  assert(confirmProject === 'sodc-web' && options.projectId === 'sodc-web', 'TOOL_SOURCE_STRICT_DEV_ONLY');
+export async function adoptMigrationToolSource(options, {confirmProject, toolSha, reviewReference, reason, previousAmendmentHash, completedOpenVerification = false, productionPreApiOpenRecovery = false, git = gitDefault, now = new Date()} = {}) {
+  assert(typeof productionPreApiOpenRecovery === 'boolean', 'TOOL_SOURCE_PRODUCTION_FLAG_REQUIRED');
+  if (productionPreApiOpenRecovery) assert(confirmProject === 'sodc-web-production' && options.projectId === 'sodc-web-production' && !completedOpenVerification && previousAmendmentHash === undefined, 'TOOL_SOURCE_PRODUCTION_RECOVERY_FLAG_INVALID');
+  else assert(confirmProject === 'sodc-web' && options.projectId === 'sodc-web', 'TOOL_SOURCE_STRICT_DEV_ONLY');
   assert(text(reviewReference) && text(reason), 'TOOL_SOURCE_REVIEW_REQUIRED');
-  const initial = await loadMigrationRun(options); strictDev(initial);
+  const initial = await loadMigrationRun(options); if (productionPreApiOpenRecovery) legacyProduction(initial); else strictDev(initial);
   assert(typeof completedOpenVerification === 'boolean', 'TOOL_SOURCE_COMPLETION_FLAG_REQUIRED');
   return lock(path.join(path.dirname(initial.directory), '.migration.lock'), initial, () => lock(path.join(initial.directory, '.phase.lock'), initial, async () => {
     const run = await loadMigrationRun(options), records = await chain(run), tip = records.at(-1)?.record;
     let filename = path.join(run.directory, FILE), boundary, completionDeltaProof;
     const stamp = new Date(typeof now === 'function' ? now() : now); assert(Number.isFinite(+stamp), 'TOOL_SOURCE_TIME_INVALID');
     const retry = tip?.amendment.toolSha === toolSha && tip.amendment.reviewReference === reviewReference && tip.amendment.reason === reason &&
-      completedOpenVerification === (tip.amendment.schemaVersion === 'sodc-authorization-tool-source-amendment/v3') &&
+      completedOpenVerification === (tip.amendment.schemaVersion === 'sodc-authorization-tool-source-amendment/v3') && productionPreApiOpenRecovery === (tip.amendment.schemaVersion === 'sodc-authorization-tool-source-amendment/v4') &&
       (records.length === 1 ? previousAmendmentHash === undefined : previousAmendmentHash === tip.amendment.previousAmendmentHash);
     if (retry) return verifyMigrationToolSource(run, {repositoryRoot: options.repositoryRoot, git});
     if (tip) {
+      assert(!productionPreApiOpenRecovery, 'TOOL_SOURCE_PRODUCTION_SINGLE_RECOVERY_ONLY');
       assert(previousAmendmentHash !== undefined, 'TOOL_SOURCE_PREVIOUS_REQUIRED');
       assert(previousAmendmentHash === tip.amendmentHash, 'TOOL_SOURCE_PREVIOUS_MISMATCH');
       assert(toolSha !== tip.amendment.toolSha, 'TOOL_SOURCE_SAME_REVISION');
@@ -356,16 +457,24 @@ export async function adoptMigrationToolSource(options, {confirmProject, toolSha
     } else {
       assert(!completedOpenVerification, 'TOOL_SOURCE_COMPLETION_PREDECESSOR_REQUIRED');
       assert(previousAmendmentHash === undefined, 'TOOL_SOURCE_PREVIOUS_MISMATCH');
-      boundary = await adoptionScope(run);
+      boundary = productionPreApiOpenRecovery ? await productionRecoveryScope(run, options.repositoryRoot, stamp) : await adoptionScope(run);
     }
     const sourceProof = await inspectMigrationToolSource(options.repositoryRoot, run.plan.gitSha, toolSha, git);
+    if (productionPreApiOpenRecovery) assert(sourceProof.changes.every(change => FINISH_PATHS.has(change.path) && change.status === 'M'), 'TOOL_SOURCE_PRODUCTION_DELTA_INVALID');
+    let productionHistory;
+    if (productionPreApiOpenRecovery) {
+      const binding = boundary.productionRecoveryBindings, files = await archiveRows(run, binding.files.map(row => row.name));
+      assert(files.length === binding.files.length && files.every((row, index) => row.name === binding.files[index].name && row.sha256 === binding.files[index].sha256), 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+      binding.files = files; productionHistory = await archiveRows(run, Object.keys(binding.historyFileHashes).sort());
+      assert(productionHistory.length === Object.keys(binding.historyFileHashes).length && productionHistory.every(row => row.sha256 === binding.historyFileHashes[row.name]), 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED');
+    }
     if (completedOpenVerification) {
       const files = await archiveRows(run, boundary.completionBindings.files.map(row => row.name));
       assert(files.every((row, index) => row.sha256 === boundary.completionBindings.files[index].sha256), 'TOOL_SOURCE_COMPLETION_BINDING_CHANGED');
       boundary.completionBindings.files = files;
     }
-    const value = {schemaVersion: 'sodc-authorization-tool-source-amendment/v' + (completedOpenVerification ? '3' : tip ? '2' : '1'), projectId: run.plan.projectId, gitSha: run.plan.gitSha, runId: run.plan.runId, planHash: run.planHash,
-      toolSha, reviewReference, reason, adoptedAt: stamp.toISOString(), sourceProof, ...boundary, history: await history(run, Boolean(tip)), ...(tip ? {previousAmendmentHash} : {})};
+    const value = {schemaVersion: 'sodc-authorization-tool-source-amendment/v' + (productionPreApiOpenRecovery ? '4' : completedOpenVerification ? '3' : tip ? '2' : '1'), projectId: run.plan.projectId, gitSha: run.plan.gitSha, runId: run.plan.runId, planHash: run.planHash,
+      toolSha, reviewReference, reason, adoptedAt: stamp.toISOString(), sourceProof, ...boundary, history: productionPreApiOpenRecovery ? productionHistory : await history(run, Boolean(tip)), ...(tip ? {previousAmendmentHash} : {})};
     if (completedOpenVerification) Object.assign(value, {completionKind: 'completed-open-verifier', completionDeltaProof});
     const record = {amendment: value, amendmentHash: migrationHash(value)}; assertNoCredentials(record);
     // Publish only after all historical bytes are durable, then re-inspect before returning.

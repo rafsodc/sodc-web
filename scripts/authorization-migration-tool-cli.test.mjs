@@ -3,7 +3,7 @@ import {mkdtemp, mkdir, readFile, writeFile, rm, unlink} from 'node:fs/promises'
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {parseMigrationArguments, runMigrationCli} from './authorization-migration.mjs';
-import {createMigrationPlan, executeMigrationPhase, loadMigrationRun, migrationHash, PHASE_ASSERTIONS, prepareMigrationRun, recordMigrationGate} from './authorization-migration-state.mjs';
+import {createMigrationPlan, executeMigrationPhase, loadMigrationRun, migrationHash, phasesFor, PHASE_ASSERTIONS, prepareMigrationRun, recordMigrationGate} from './authorization-migration-state.mjs';
 
 const originalSha='a'.repeat(40), toolSha='b'.repeat(40);
 const successorSha='e'.repeat(40);
@@ -318,4 +318,85 @@ it.each(['gate-entries','scheduler-bytes','provider-bytes','prior-checkpoint'])(
 it.each(['sodc-web-beta','sodc-web-production'])('never accepts the completed-open flag for %s',async project=>{
  const f=await completedOpenFixture(),args=completionAdoption(f);args[args.indexOf('--project')+1]=project;args[args.indexOf('--confirm-project')+1]=project;
  await expect(runMigrationCli(args,f.dependencies)).rejects.toMatchObject({code:'TOOL_SOURCE_STRICT_DEV_ONLY'});await expectNoCompletion(f);expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+});
+
+
+// Synthetic legacy Production recovery boundary. No live journal, provider or credential reads.
+const productionRecoveryAdoption=f=>['adopt-tool-source',...flags(f),'--confirm-project',f.plan.projectId,'--tool-sha',toolSha,'--production-pre-api-open-recovery','--review-reference','explicit human approval of reviewed pre-API-open scheduler recovery PR','--reason','resume exact failed Production opening; reviewed bounded repeat of the two deferred Functions'];
+async function productionPreApiOpenFixture({projectId='sodc-web-production',installation='legacy'}={}){
+ const f=await fixture({projectId,installation});
+ for(const[gate,details]of[
+  ['old-writers',{method:'cloud-run-retirement',freezeStateHash:migrationHash(f.freeze),inventoryHash:migrationHash(f.freeze.oldWriterInventory),successorRevisions:[],externalOperationsReference:'reviewed actual old and maintenance writer retirement'}],
+  ['sql-review',{diffSha256:'f'.repeat(64)}],
+  ['acceptance',{sourceProjectId:projectId==='sodc-web-production'?'sodc-web':projectId,backendTestReference:'same-runtime backend',browserReviewReference:'same-runtime browser limitations',notificationsReference:'reviewed notifications',schedulerVolumeReference:'reviewed volume',appCheckReference:'reviewed attestation'}],
+ ])await recordMigrationGate(f.options,{schemaVersion:'sodc-authorization-migration-gate/v1',projectId,gitSha:originalSha,runId:f.plan.runId,gate,reviewedBy:'operator',observedAt:now.toISOString(),evidence:'reviewed original Production scope',details},now);
+ const account='reviewed-scheduler@example.invalid';
+ f.schedulerJobs=['recoverNotificationDeliveries','reconcilePendingSecurityTransitions'].map(functionName=>({functionName,job:{name:'projects/'+projectId+'/locations/europe-west2/jobs/firebase-schedule-'+functionName+'-europe-west2',schedule:'every 5 minutes',timeZone:'UTC',attemptDeadline:'300s',retryConfig:{retryCount:0},httpTarget:{uri:functionName==='reconcilePendingSecurityTransitions'?'https://europe-west2-'+projectId+'.cloudfunctions.net/'+functionName:'https://recovernotificationdeliveries-fixture-nw.a.run.app',httpMethod:'POST',oidcToken:{serviceAccountEmail:account}}}}));
+ const intent=job=>({name:job.name,specHash:migrationHash({name:job.name,schedule:job.schedule,timeZone:job.timeZone,attemptDeadline:job.attemptDeadline,retryConfig:job.retryConfig,httpTarget:{uri:job.httpTarget.uri,httpMethod:'POST',oidcIdentity:{serviceAccountEmail:account}}})});
+ f.deferredProofs=['getMyAuthorizationStatus','reconcilePendingSecurityTransitions'].map(name=>({name,uri:'https://'+name.toLowerCase()+'-fixture-nw.a.run.app',url:'https://europe-west2-'+projectId+'.cloudfunctions.net/'+name,serviceAccountEmail:account}));
+ f.adapter.perform.mockImplementation(async phase=>{
+  if(phase==='freeze')return {stateHash:migrationHash(f.freeze)};
+  const result={projectId,gitSha:originalSha,runId:f.plan.runId,planHash:f.planHash,phase,startedAt:now.toISOString(),completedAt:phase==='open'?null:now.toISOString(),...(phase==='functions'?{selected:['recoverNotificationDeliveries'],functionProofs:[{name:'recoverNotificationDeliveries',uri:f.schedulerJobs[0].job.httpTarget.uri,serviceAccountEmail:account}],schedulerIntents:[intent(f.schedulerJobs[0].job)]}:{}),...(phase==='open'?{openingStarted:true}:{})};
+  await writeFile(path.join(f.directory,'provider-phase-'+phase+'.json'),JSON.stringify(result),{mode:0o600});
+  if(phase==='open')throw Object.assign(Error('provider Scheduler target refused before API opening'),{code:'SCHEDULER_TARGET_NOT_VERIFIED'});
+  return result;
+ });
+ f.adapter.verify.mockImplementation(async phase=>({ok:true,evidence:{projectId,gitSha:originalSha,runId:f.plan.runId,planHash:f.planHash,observedAt:now.toISOString(),assertions:Object.fromEntries(PHASE_ASSERTIONS[phase].map(flag=>[flag,true]))}}));
+ for(const phase of phasesFor(f.plan).slice(1,phasesFor(f.plan).indexOf('open')))await executeMigrationPhase(f.options,{phase,confirmProject:projectId,adapter:f.adapter,sourceCheck:async()=>{},now:()=>now});
+ for(const {job}of f.schedulerJobs)await writeFile(path.join(f.directory,'scheduler-'+job.name.split('/').at(-1)+'.json'),JSON.stringify({projectId,gitSha:originalSha,runId:f.plan.runId,planHash:f.planHash,job}),{mode:0o600});
+ await expect(executeMigrationPhase(f.options,{phase:'open',confirmProject:projectId,adapter:f.adapter,sourceCheck:async()=>{},now:()=>now})).rejects.toMatchObject({code:'SCHEDULER_TARGET_NOT_VERIFIED'});
+ const run=await loadMigrationRun(f.options);expect(run.journal.checkpoints.open.result).toBeUndefined();return f;
+}
+async function mutateProductionRecovery(f,work){const run=await loadMigrationRun(f.options);await work(run);await writeFile(path.join(f.directory,'journal.json'),JSON.stringify(run.journal));}
+
+it('parses only explicit literal-Production pre-API-open recovery and forwards the named boolean',()=>{
+ const args=productionRecoveryAdoption({plan:{projectId:'sodc-web-production',runId:'reviewed-production'}});
+ expect(parseMigrationArguments(args)).toMatchObject({command:'adopt-tool-source',flags:{project:'sodc-web-production','production-pre-api-open-recovery':true}});
+ for(const extra of [['--completed-open-verification'],['--previous-amendment','1'.repeat(64)]])expect(()=>parseMigrationArguments([...args,...extra])).toThrow();
+ const dev=[...args];dev[dev.indexOf('--project')+1]='sodc-web';dev[dev.indexOf('--confirm-project')+1]='sodc-web';expect(()=>parseMigrationArguments(dev)).toThrow();
+});
+it('publishes only the v4 Production recovery amendment; original failed attempt and all completed legacy evidence remain untouched',async()=>{
+ const f=await productionPreApiOpenFixture(),before=await loadMigrationRun(f.options);
+ const names=['plan.json','journal.json','provider-phase-open.json','provider-freeze.json','provider-old-writer-inventory.json',...Object.values(before.journal.checkpoints).flatMap(cp=>cp.evidenceFile?[cp.evidenceFile]:[]),...f.schedulerJobs.map(({job})=>'scheduler-'+job.name.split('/').at(-1)+'.json'),...Object.values(before.journal.gates).map(g=>g.file)];
+ const bytes=await Promise.all(names.map(name=>readFile(path.join(f.directory,name))));
+ const result=await runMigrationCli(productionRecoveryAdoption(f),f.dependencies);
+ expect(result).toMatchObject({projectId:'sodc-web-production',originalPlanSha:originalSha,toolSha,cloudChanges:false});expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+ for(let i=0;i<names.length;i++)expect(await readFile(path.join(f.directory,names[i]))).toEqual(bytes[i]);
+ const amendment=JSON.parse(await readFile(path.join(f.directory,'tool-source-amendment.json'),'utf8'));
+ expect(amendment.amendment.schemaVersion).toBe('sodc-authorization-tool-source-amendment/v4');
+ const after=await loadMigrationRun(f.options);expect(after.planHash).toBe(f.planHash);expect(after.plan.gitSha).toBe(originalSha);expect(after.journal.checkpoints.compatibility.status).toBe('complete');expect(after.journal.checkpoints.open).toEqual(before.journal.checkpoints.open);
+});
+it('valid Production recovery retries are idempotent and never load a provider',async()=>{const f=await productionPreApiOpenFixture(),a=await runMigrationCli(productionRecoveryAdoption(f),f.dependencies),file=path.join(f.directory,'tool-source-amendment.json'),bytes=await readFile(file);expect(await runMigrationCli(productionRecoveryAdoption(f),f.dependencies)).toMatchObject({amendmentHash:a.amendmentHash});expect(await readFile(file)).toEqual(bytes);expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();});
+it('keeps original release identity through audited opening and receipt progress after v4 recovery',async()=>{
+ const f=await productionPreApiOpenFixture();await runMigrationCli(productionRecoveryAdoption(f),f.dependencies);const oldBytes=await readFile(path.join(f.directory,'provider-phase-open.json'));
+ const loadAdapter=vi.fn(async options=>{expect(options.plan.gitSha).toBe(originalSha);expect(migrationHash(options.plan)).toBe(f.planHash);expect(await options.sourceCheck()).toMatchObject({originalPlanSha:originalSha,toolSha});return f.adapter;});const deps={...f.dependencies,loadAdapter};
+ await expect(runMigrationCli(['audit',...flags(f)],deps)).resolves.toMatchObject({gitSha:originalSha});
+ f.adapter.perform.mockImplementation(async phase=>{const result=phase==='open'?{...JSON.parse(oldBytes),deferredProofs:f.deferredProofs,deferredSchedulerIntents:[{name:f.schedulerJobs[1].job.name,specHash:migrationHash({name:f.schedulerJobs[1].job.name,schedule:'every 5 minutes',timeZone:'UTC',attemptDeadline:'300s',retryConfig:{retryCount:0},httpTarget:{uri:f.schedulerJobs[1].job.httpTarget.uri,httpMethod:'POST',oidcIdentity:f.schedulerJobs[1].job.httpTarget.oidcToken}})}],apiOpening:true,completedAt:now.toISOString()}:{projectId:f.plan.projectId,gitSha:originalSha,runId:f.plan.runId,planHash:f.planHash,phase,startedAt:now.toISOString(),completedAt:now.toISOString()};await writeFile(path.join(f.directory,'provider-phase-'+phase+'.json'),JSON.stringify(result),{mode:0o600});return result;});
+ await expect(runMigrationCli(['apply',...flags(f),'--phase','open','--confirm-project',f.plan.projectId],deps)).resolves.toMatchObject({gitSha:originalSha,phase:'open',status:'complete'});
+ await expect(runMigrationCli(['audit',...flags(f)],deps)).resolves.toMatchObject({gitSha:originalSha});
+ await expect(runMigrationCli(['apply',...flags(f),'--phase','receipt','--confirm-project',f.plan.projectId],deps)).resolves.toMatchObject({gitSha:originalSha,phase:'receipt',status:'complete'});
+ const receipt=JSON.parse(await readFile(path.join(f.options.repositoryRoot,'.firebase/authorization-migration/sodc-web-production.json'),'utf8'));expect(receipt.gitSha).toBe(originalSha);expect(receipt.migrationPlanHash).toBe(f.planHash);
+ const ownerFile=path.join(path.dirname(f.directory),'active-run.json'),ownerBefore=await readFile(ownerFile);expect(JSON.parse(ownerBefore).status).toBe('complete');
+ await expect(runMigrationCli(['audit',...flags(f)],deps)).resolves.toMatchObject({gitSha:originalSha});
+ expect(await readFile(ownerFile)).toEqual(ownerBefore);
+ expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+});
+it.each(['wrong error','API opening','completed provider open','missing opening marker','wrong operation','extra receipt checkpoint','terminal','abort'])('refuses Production recovery boundary drift: %s',async kind=>{
+ const f=await productionPreApiOpenFixture();
+ if(['API opening','completed provider open','missing opening marker'].includes(kind)){const file=path.join(f.directory,'provider-phase-open.json'),record=JSON.parse(await readFile(file,'utf8'));if(kind==='API opening')record.apiOpening=true;else if(kind==='completed provider open')record.completedAt=now.toISOString();else delete record.openingStarted;await writeFile(file,JSON.stringify(record));}
+ else await mutateProductionRecovery(f,async run=>{if(kind==='wrong error')run.journal.checkpoints.open.lastError='PHASE_NOT_VERIFIED';else if(kind==='wrong operation')run.journal.checkpoints.open.operationId='other';else if(kind==='extra receipt checkpoint')run.journal.checkpoints.receipt={status:'incomplete'};else if(kind==='terminal')run.journal.terminal={status:'COMPLETE'};else run.journal.abortFreeze={status:'incomplete'};});
+ await expect(runMigrationCli(productionRecoveryAdoption(f),f.dependencies)).rejects.toThrow();expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+});
+it.each(['sodc-web','sodc-web-beta'])('never enables the Production recovery flag for %s',async projectId=>{const f=await productionPreApiOpenFixture({projectId});await expect(runMigrationCli(productionRecoveryAdoption(f),f.dependencies)).rejects.toThrow();expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();});
+it('refuses strict Production recovery; this exception is the reviewed legacy cutover only',async()=>{const f=await productionPreApiOpenFixture({installation:'strict'});await expect(runMigrationCli(productionRecoveryAdoption(f),f.dependencies)).rejects.toThrow();expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();});
+it.each(['functions/src/index.ts','dataconnect/api/queries.gql','firebase.json','scripts/unrelated.mjs'])('rejects Production recovery app/runtime/unrelated diffs before provider loading: %s',async filename=>{const f=await productionPreApiOpenFixture();f.gitState.raw=rawDiff(filename);await expect(runMigrationCli(productionRecoveryAdoption(f),f.dependencies)).rejects.toThrow();expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();});
+it('rejects dirty Production tool source before provider loading',async()=>{const f=await productionPreApiOpenFixture();f.gitState.status='?? scripts/unreviewed.mjs\n';await expect(runMigrationCli(productionRecoveryAdoption(f),f.dependencies)).rejects.toThrow();expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();});
+it.each(['project','run'])('Production recovery respects the existing %s lock',async kind=>{const f=await productionPreApiOpenFixture(),file=path.join(kind==='project'?path.dirname(f.directory):f.directory,kind==='project'?'.migration.lock':'.phase.lock');await writeFile(file,'{"owner":"other"}',{mode:0o600});await expect(runMigrationCli(productionRecoveryAdoption(f),f.dependencies)).rejects.toThrow();expect(await readFile(file,'utf8')).toBe('{"owner":"other"}');expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();});
+it.each(['gate','scheduler','prior checkpoint','initial provider open'])('pins unchanged Production recovery history on ordinary audit: %s',async kind=>{
+ const f=await productionPreApiOpenFixture();await runMigrationCli(productionRecoveryAdoption(f),f.dependencies);
+ if(kind==='gate'){const run=await loadMigrationRun(f.options);await writeFile(path.join(f.directory,run.journal.gates.acceptance.file),'{}');}
+ else if(kind==='scheduler')await writeFile(path.join(f.directory,'scheduler-'+f.schedulerJobs[1].job.name.split('/').at(-1)+'.json'),'{}');
+ else if(kind==='prior checkpoint')await mutateProductionRecovery(f,async run=>{run.journal.checkpoints.backfill.attempt++;});
+ else{const file=path.join(f.directory,'provider-phase-open.json'),record=JSON.parse(await readFile(file,'utf8'));record.startedAt='2026-10-25T11:59:00Z';await writeFile(file,JSON.stringify(record));}
+ await expect(runMigrationCli(['audit',...flags(f)],f.dependencies)).rejects.toThrow();expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
 });

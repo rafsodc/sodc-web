@@ -34,6 +34,15 @@ const schedulerTargetUris=uri=>{
   const target=new URL(uri);
   return target.protocol==='https:'&&(uri===target.origin||uri===target.origin+'/')?[target.origin,target.origin+'/']:[uri];
 };
+// Only URLs actually reported for this exact Function can identify its Scheduler target.
+function functionSchedulerUrls(fn,project){
+  if(!fn||fn.resource!==`projects/${project}/locations/${MIGRATION_REGION}/functions/${fn.name}`||fn.environment!=='GEN_2'||fn.state!=='ACTIVE'||!fn.service?.startsWith(`projects/${project}/locations/${MIGRATION_REGION}/services/`))return [];
+  const urls=[];
+  try{const uri=new URL(fn.uri);if(uri.protocol==='https:'&&!uri.username&&!uri.password&&!uri.port&&!uri.search&&!uri.hash&&uri.hostname.endsWith('.a.run.app'))urls.push(fn.uri);}catch{/* Missing or malformed provider URI is not an alias. */}
+  const canonical=`https://${MIGRATION_REGION}-${project}.cloudfunctions.net/${fn.name}`;
+  if(fn.url===canonical)urls.push(fn.url);
+  return [...new Set(urls)];
+}
 const canonicalFiles=files=>files.map(({path:filename,content})=>({path:filename.replace(/^\.\//,''),content})).sort((a,b)=>a.path.localeCompare(b.path));
 export const sourceHash=files=>stableHash(canonicalFiles(files));
 export function frozenInvokerPolicy(policy){
@@ -98,7 +107,7 @@ async function filesIn(directory,prefix=''){
     else if(entry.isFile()&&/\.(gql|graphql)$/.test(entry.name))result.push({path:path.posix.join(prefix,entry.name),content:await readFile(path.join(directory,prefix,entry.name),'utf8')});
   }return canonicalFiles(result);
 }
-function minimalFunction(fn){return {name:resourceName(fn.name),resource:fn.name,environment:fn.environment,state:fn.state,updateTime:fn.updateTime,runtime:fn.buildConfig?.runtime,entryPoint:fn.buildConfig?.entryPoint,source:fn.buildConfig?.source,revision:fn.serviceConfig?.revision,service:fn.serviceConfig?.service,uri:fn.serviceConfig?.uri,serviceAccountEmail:fn.serviceConfig?.serviceAccountEmail,timeoutSeconds:fn.serviceConfig?.timeoutSeconds??60};}
+function minimalFunction(fn){return {name:resourceName(fn.name),resource:fn.name,environment:fn.environment,state:fn.state,updateTime:fn.updateTime,runtime:fn.buildConfig?.runtime,entryPoint:fn.buildConfig?.entryPoint,source:fn.buildConfig?.source,revision:fn.serviceConfig?.revision,service:fn.serviceConfig?.service,uri:fn.serviceConfig?.uri,url:fn.url,serviceAccountEmail:fn.serviceConfig?.serviceAccountEmail,timeoutSeconds:fn.serviceConfig?.timeoutSeconds??60};}
 function typeFields(files,type){const block=files.map(file=>file.content).join('\n').match(new RegExp('type\\s+'+type+'\\b[^\\{]*\\{([\\s\\S]*?)^\\}','m'))?.[1];return block?new Set([...block.matchAll(/^\s+(\w+)\s*:/gm)].map(match=>match[1])):null;}
 
 /** Cloud execution is lazy; importing/constructing an adapter performs no I/O or authentication. */
@@ -207,7 +216,33 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     const runtime=await versions();const filename=safeFile('provider-cli-guard.cjs');
     // Pinned CLI internal contracts are checked at runtime; an upgrade cannot silently remove a guard.
     const content=`'use strict';\nconst client=require(${JSON.stringify(runtime.clientPath)});\nfor(const key of ['deleteConnector','deleteSchema','deleteService']){if(typeof client[key]!=='function')throw Error('PINNED_DELETE_GUARD_UNAVAILABLE');client[key]=async()=>{throw Error('DATACONNECT_DELETION_FORBIDDEN');};}\nconst apis=require(${JSON.stringify(runtime.ensureApiPath)});const approved=new Set(${JSON.stringify(observed.enabledApis)});const projects=new Set(${JSON.stringify([project,observed.projectNumber])});\nfor(const key of ['ensure','bestEffortEnsure']){if(typeof apis[key]!=='function')throw Error('PINNED_API_GUARD_UNAVAILABLE');apis[key]=async(p,uri)=>{const name=String(uri).replace(/^https?:\\/\\//,'').split('/')[0];if(!projects.has(String(p))||!approved.has(name))throw Error('API_ENABLEMENT_FORBIDDEN');return true;};}\nif(typeof apis.enableApiURI!=='function')throw Error('PINNED_API_GUARD_UNAVAILABLE');apis.enableApiURI=async()=>{throw Error('API_ENABLEMENT_FORBIDDEN');};\n`;
-    const schedulerGuard=`\nconst fs=require('node:fs');const path=require('node:path');const scheduler=require(${JSON.stringify(runtime.schedulerPath)});if(typeof scheduler.createOrReplaceJob!=='function')throw Error('PINNED_SCHEDULER_GUARD_UNAVAILABLE');const originalScheduler=scheduler.createOrReplaceJob;const deferredNames=new Set(${JSON.stringify(SCHEDULED.map(name=>`projects/${project}/locations/${MIGRATION_REGION}/jobs/firebase-schedule-${name}-${MIGRATION_REGION}`))});scheduler.createOrReplaceJob=async(job)=>{if(!deferredNames.has(job.name))return originalScheduler(job);if(Object.keys(job).some(k=>!['name','timeZone','httpTarget','schedule','attemptDeadline','retryConfig'].includes(k))||!job.httpTarget||Object.keys(job.httpTarget).some(k=>!['uri','httpMethod','oidcToken'].includes(k))||!job.httpTarget.oidcToken||Object.keys(job.httpTarget.oidcToken).some(k=>!['serviceAccountEmail','audience'].includes(k)))throw Error('UNREVIEWED_SCHEDULER_SPEC');const value={projectId:${JSON.stringify(project)},gitSha:${JSON.stringify(plan.gitSha)},runId:${JSON.stringify(plan.runId)},planHash:${JSON.stringify(stableHash(plan))},job};const destination=path.join(${JSON.stringify(runDirectory)},'scheduler-'+job.name.split('/').pop()+'.json');const text=JSON.stringify(value);if(fs.existsSync(destination)){if(fs.readFileSync(destination,'utf8')!==text)throw Error('SCHEDULER_INTENT_CHANGED');return undefined;}const temporary=destination+'.next';const fd=fs.openSync(temporary,'wx',0o600);try{fs.writeFileSync(fd,text);fs.fsyncSync(fd);}finally{fs.closeSync(fd);}fs.renameSync(temporary,destination);return undefined;};\n`;
+    const schedulerAliases=Object.fromEntries(observed.functions.filter(fn=>SCHEDULED.includes(fn.name)).map(fn=>[`projects/${project}/locations/${MIGRATION_REGION}/jobs/firebase-schedule-${fn.name}-${MIGRATION_REGION}`,{urls:functionSchedulerUrls(fn,project),serviceAccountEmail:fn.serviceAccountEmail}]));
+    const schedulerGuard=`
+const fs=require('node:fs');const path=require('node:path');const scheduler=require(${JSON.stringify(runtime.schedulerPath)});
+if(typeof scheduler.createOrReplaceJob!=='function')throw Error('PINNED_SCHEDULER_GUARD_UNAVAILABLE');
+const originalScheduler=scheduler.createOrReplaceJob;
+const deferredNames=new Set(${JSON.stringify(SCHEDULED.map(name=>`projects/${project}/locations/${MIGRATION_REGION}/jobs/firebase-schedule-${name}-${MIGRATION_REGION}`))});
+const schedulerAliases=${JSON.stringify(schedulerAliases)};
+const canonical=value=>value&&typeof value==='object'?Array.isArray(value)?value.map(canonical):Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+const same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
+const typed=job=>job&&Object.keys(job).every(k=>['name','timeZone','httpTarget','schedule','attemptDeadline','retryConfig'].includes(k))&&job.httpTarget&&Object.keys(job.httpTarget).every(k=>['uri','httpMethod','oidcToken'].includes(k))&&job.httpTarget.oidcToken&&Object.keys(job.httpTarget.oidcToken).every(k=>['serviceAccountEmail','audience'].includes(k));
+const aliasEquivalent=(previous,current)=>{
+  if(!same({...previous,job:null},{...current,job:null}))return false;
+  const a=previous.job,b=current.job,mapping=schedulerAliases[b.name];
+  if(!typed(a)||!mapping||mapping.urls.length!==2||a.name!==b.name||a.httpTarget.uri===b.httpTarget.uri)return false;
+  for(const job of [a,b])if(!mapping.urls.includes(job.httpTarget.uri)||job.httpTarget.httpMethod!=='POST'||job.httpTarget.oidcToken.serviceAccountEmail!==mapping.serviceAccountEmail||(job.httpTarget.oidcToken.audience!==undefined&&job.httpTarget.oidcToken.audience!==job.httpTarget.uri))return false;
+  const options=job=>{const value=JSON.parse(JSON.stringify(job));delete value.httpTarget.uri;delete value.httpTarget.oidcToken.audience;return value;};
+  return same(options(a),options(b));
+};
+scheduler.createOrReplaceJob=async(job)=>{
+  if(!deferredNames.has(job.name))return originalScheduler(job);
+  if(!typed(job))throw Error('UNREVIEWED_SCHEDULER_SPEC');
+  const value={projectId:${JSON.stringify(project)},gitSha:${JSON.stringify(plan.gitSha)},runId:${JSON.stringify(plan.runId)},planHash:${JSON.stringify(stableHash(plan))},job};
+  const destination=path.join(${JSON.stringify(runDirectory)},'scheduler-'+job.name.split('/').pop()+'.json'),text=JSON.stringify(value);
+  if(fs.existsSync(destination)){const existing=fs.readFileSync(destination,'utf8');if(existing!==text&&!aliasEquivalent(JSON.parse(existing),value))throw Error('SCHEDULER_INTENT_CHANGED');return undefined;}
+  const temporary=destination+'.next',fd=fs.openSync(temporary,'wx',0o600);try{fs.writeFileSync(fd,text);fs.fsyncSync(fd);}finally{fs.closeSync(fd);}fs.renameSync(temporary,destination);return undefined;
+};
+`;
     await mkdir(runDirectory,{recursive:true,mode:0o700});await writeFile(filename,content+schedulerGuard,{mode:0o600});return filename;
   }
   async function firebase(args,observed,{cwd=repositoryRoot,timeoutMs=1_800_000}={}){
@@ -387,14 +422,16 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     const result=output.result??output;assert(result.projectId===project&&Array.isArray(result.diffs),'SQL_DIFF_TARGET_INVALID');assertAdditiveSql(result.diffs);return {diffs:result.diffs,diffSha256:stableHash(result.diffs)};
   }
   async function phaseRecord(phase,context){const name='provider-phase-'+phase+'.json';let record=await load(name);if(record)checkJournal(record,context);else record=await save(name,{...identity(context),phase,startedAt:clock(),completedAt:null});return {name,record};}
-  const functionProof=fn=>deep({name:fn.name,updateTime:fn.updateTime,runtime:fn.runtime,entryPoint:fn.entryPoint,source:fn.source,revision:fn.revision,service:fn.service,uri:fn.uri,serviceAccountEmail:fn.serviceAccountEmail});
-  const provenFunction=(fn,proofs)=>fn.state==='ACTIVE'&&fn.environment==='GEN_2'&&fn.runtime==='nodejs24'&&fn.entryPoint===fn.name&&fn.source&&proofs?.some(proof=>proof.name===fn.name&&stableHash(deep(functionProof(fn)))===stableHash(proof));
+  const functionProof=fn=>deep({name:fn.name,updateTime:fn.updateTime,runtime:fn.runtime,entryPoint:fn.entryPoint,source:fn.source,revision:fn.revision,service:fn.service,uri:fn.uri,url:fn.url,serviceAccountEmail:fn.serviceAccountEmail});
+  // Older immutable proofs did not retain the top-level URL; every other field stays exact.
+  const compatibleFunctionProof=(fn,proof)=>{const current=functionProof(fn);if(!Object.hasOwn(proof,'url'))delete current.url;return stableHash(current)===stableHash(proof);};
+  const provenFunction=(fn,proofs)=>fn.state==='ACTIVE'&&fn.environment==='GEN_2'&&fn.runtime==='nodejs24'&&fn.entryPoint===fn.name&&fn.source&&proofs?.some(proof=>proof.name===fn.name&&compatibleFunctionProof(fn,proof));
   async function capturedSchedulers(observed,names){
     const result=[];
     for(const name of SCHEDULED.filter(name=>names.includes(name))){
       const capture=await load('scheduler-'+jobBase(name)+'.json');assert(capture?.projectId===project&&capture.gitSha===plan.gitSha&&capture.runId===plan.runId&&capture.planHash===stableHash(plan),'REVIEWED_SCHEDULER_CAPTURE_REQUIRED');
-      const job=capture.job;const fn=observed.functions.find(fn=>fn.name===name);assert(job?.name===`projects/${project}/locations/${MIGRATION_REGION}/jobs/${jobBase(name)}`&&job.httpTarget?.uri===fn?.uri&&job.httpTarget?.httpMethod==='POST'&&!job.httpTarget.headers&&!job.httpTarget.body&&!job.pubsubTarget&&job.httpTarget.oidcToken?.serviceAccountEmail===fn?.serviceAccountEmail,'SCHEDULER_TARGET_NOT_VERIFIED');
-      const uri=new URL(job.httpTarget.uri);assert(uri.protocol==='https:'&&!uri.search&&!uri.hash&&typeof job.schedule==='string'&&(!job.httpTarget.oidcToken.audience||job.httpTarget.oidcToken.audience===job.httpTarget.uri),'SCHEDULER_SPEC_INVALID');
+      const job=capture.job;const fn=observed.functions.find(fn=>fn.name===name);assert(job?.name===`projects/${project}/locations/${MIGRATION_REGION}/jobs/${jobBase(name)}`&&functionSchedulerUrls(fn,project).includes(job.httpTarget?.uri)&&job.httpTarget?.httpMethod==='POST'&&!job.httpTarget.headers&&!job.httpTarget.body&&!job.pubsubTarget&&job.httpTarget.oidcToken?.serviceAccountEmail===fn?.serviceAccountEmail,'SCHEDULER_TARGET_NOT_VERIFIED');
+      const uri=new URL(job.httpTarget.uri);assert(uri.protocol==='https:'&&!uri.search&&!uri.hash&&typeof job.schedule==='string'&&(job.httpTarget.oidcToken.audience===undefined||job.httpTarget.oidcToken.audience===job.httpTarget.uri),'SCHEDULER_SPEC_INVALID');
       result.push(deep({name:job.name,schedule:job.schedule,timeZone:job.timeZone??'UTC',attemptDeadline:job.attemptDeadline,retryConfig:job.retryConfig,httpTarget:{uri:job.httpTarget.uri,httpMethod:'POST',oidcIdentity:{serviceAccountEmail:job.httpTarget.oidcToken.serviceAccountEmail,...(job.httpTarget.oidcToken.audience?{audience:job.httpTarget.oidcToken.audience}:{})}}}));
     }
     return result;
@@ -465,7 +502,12 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
       const missing=DEFERRED_FUNCTIONS.filter(item=>!context.baseline.functions.some(fn=>fn.name===item));
       if(missing.length&&!record.deferredProofs){
         await deploy(missing.map(item=>'functions:'+item).join(','),null,observed);const after=await observe();
-        assert(frozen(after,state),'DEFERRED_DEPLOY_BROKE_FREEZE');record.deferredProofs=after.functions.filter(fn=>missing.includes(fn.name)).map(functionProof);record.deferredSchedulerIntents=schedulerIntents(await capturedSchedulers(after,missing));await save(name,record);
+        assert(frozen(after,state),'DEFERRED_DEPLOY_BROKE_FREEZE');record.deferredProofs=after.functions.filter(fn=>missing.includes(fn.name)).map(functionProof);await save(name,record);
+      }
+      // Retain completed deployment proof even when Scheduler metadata needs a retry.
+      if(missing.length&&!record.deferredSchedulerIntents){
+        const after=await observe();assert(frozen(after,state)&&missing.every(name=>after.functions.some(fn=>fn.name===name&&provenFunction(fn,record.deferredProofs))),'DEFERRED_BOUNDARY_NOT_VERIFIED');
+        record.deferredSchedulerIntents=schedulerIntents(await capturedSchedulers(after,missing));await save(name,record);
       }
       const beforeOpen=await observe();const beforeAudit=evaluateAuthority({...raw,requireBackfill:true});
       assert(missing.every(name=>beforeOpen.functions.some(fn=>fn.name===name&&provenFunction(fn,record.deferredProofs)))&&selected.every(name=>beforeOpen.functions.some(fn=>fn.name===name&&provenFunction(fn,authoritative.functionProofs)))&&beforeAudit.passed&&beforeAudit.controlReady&&matches(beforeOpen.schema.files,source.schema,'schema')&&matches(beforeOpen.authorization?.files,source.authorization,'authorization-service'),'DEFERRED_BOUNDARY_NOT_VERIFIED');
@@ -552,7 +594,9 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     assert(baseline.functions.length===source.contracts.functions.length&&stableHash(baseline.functions.map(fn=>fn.name).sort())===stableHash(source.contracts.functions),'ABORT_ORIGINAL_FUNCTION_SCOPE_REQUIRED');
     assert(baseline.authority?.passed&&baseline.authority.controlReady&&baseline.authority.control?.status==='READY'&&baseline.authority.control.readyAdminCount>0,'ABORT_ORIGINAL_AUTHORITY_NOT_READY');
     function compatible(observed){
-      assert(stableHash(observed.functions)===stableHash(baseline.functions),'ABORT_FUNCTIONS_CHANGED');
+      const originalFunctions=new Map(baseline.functions.map(fn=>[fn.name,fn]));
+      const currentFunctions=observed.functions.map(fn=>{const current=deep(fn);if(originalFunctions.has(fn.name)&&!Object.hasOwn(originalFunctions.get(fn.name),'url'))delete current.url;return current;});
+      assert(stableHash(currentFunctions)===stableHash(baseline.functions),'ABORT_FUNCTIONS_CHANGED');
       assert(matches(observed.schema.files,baseline.schema.files,'schema'),'ABORT_SCHEMA_CHANGED');
       assert(matches(observed.authorization?.files,baseline.authorization?.files,'authorization-service'),'ABORT_AUTHORIZATION_CHANGED');
       assert(observed.installation==='strict'&&(matches(observed.api.files,baseline.api.files,'api')||matches(observed.api.files,frozenApi,'api')),'ABORT_API_DRIFT');

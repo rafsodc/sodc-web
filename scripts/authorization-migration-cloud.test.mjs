@@ -19,7 +19,7 @@ const platformHtml=(status,name='grantAdmin')=>`<html><head><title>${status} ${s
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}});
 const uuid=value=>{const hash=stableHash(value);return `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`;};
 
-async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,callableRefusal,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,allExistingFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,explicitSchedulerAudience=false,functionUriSuffix='',schedulerList,delay=async()=>{},requestHook,sourceCheck}={}){
+async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,callableRefusal,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,allExistingFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,explicitSchedulerAudience=false,functionUriSuffix='',schedulerFunctionUrl=false,providerFunctionUrl=true,schedulerJob,schedulerList,delay=async()=>{},requestHook,sourceCheck}={}){
   const project=projectId;
   const directory=await mkdtemp(path.join(os.tmpdir(),'authorization-cloud-offline-'));t.onTestFinished(()=>rm(directory,{recursive:true,force:true}));
   const runDirectory=path.join(directory,'run');await mkdir(runDirectory);
@@ -32,13 +32,15 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
   const base=`projects/${project}/locations/europe-west2/services/sodc-web-service`;
   const schema=await files(path.join(repositoryRoot,'dataconnect/schema'));let api=await files(path.join(repositoryRoot,'dataconnect/api'));
   const authorization=await files(path.join(repositoryRoot,'dataconnect/authorization-service'));
-  const functionNames=fullFunctions||allExistingFunctions?(await discoverFunctionContracts(path.join(repositoryRoot,'functions/src'))).functions.filter(name=>allExistingFunctions||!['getMyAuthorizationStatus','reconcilePendingSecurityTransitions'].includes(name)):[...SECURITY_WRITERS,'recoverNotificationDeliveries'];const functionStates=new Map();const functionSources=new Map();let deferredHook;let failNextRestore=false;let failRestoreAfterCommit=false;let restoreHook;const extraIdentities=[];const extraProfiles=[];
+  const functionNames=fullFunctions||allExistingFunctions?(await discoverFunctionContracts(path.join(repositoryRoot,'functions/src'))).functions.filter(name=>allExistingFunctions||!['getMyAuthorizationStatus','reconcilePendingSecurityTransitions'].includes(name)):[...SECURITY_WRITERS,'recoverNotificationDeliveries'];const functionStates=new Map();const functionSources=new Map();const functionUrls=new Map();let deferredHook;let failNextRestore=false;let failRestoreAfterCommit=false;let restoreHook;const extraIdentities=[];const extraProfiles=[];
   const policies=new Map([...SECURITY_WRITERS,...allExistingFunctions?['getMyAuthorizationStatus']:[]].map(name=>[name,structuredClone(policy)]));
   const jobs=notificationJobExists?[{name:`projects/${project}/locations/europe-west2/jobs/firebase-schedule-recoverNotificationDeliveries-europe-west2`,state:'ENABLED',schedule:'every 1 minutes'}]:[];
   if(allExistingFunctions)jobs.push({name:`projects/${project}/locations/europe-west2/jobs/firebase-schedule-reconcilePendingSecurityTransitions-europe-west2`,state:'ENABLED',schedule:'every 5 minutes'});
   let controlVersion=1;let milliseconds=new Date(at).getTime();const commands=[];const requests=[];let authorityVersion=1,pendingCount=pendingTransitions,runtimeSyncStatus='READY',pendingOperationId,bootstrapHook;
   const runServices=new Map(),runRevisions=new Map(),functionRevisions=new Map(),functionUpdateTimes=new Map(),missingRunResources=new Set();let runServiceReadHook;
   const serviceResource=name=>`projects/${project}/locations/europe-west2/services/${name.toLowerCase()}`;
+  const canonicalFunctionUrl=name=>`https://europe-west2-${project}.cloudfunctions.net/${name}`;
+  const functionUrl=name=>functionUrls.has(name)?functionUrls.get(name):providerFunctionUrl?canonicalFunctionUrl(name):undefined;
   const functionForService=service=>functionNames.find(name=>name.toLowerCase()===service.split('/').at(-1));
   const revisionParent=revision=>revision.name.slice(0,revision.name.lastIndexOf('/revisions/'));
   function retireRevision(revision){revision.conditions[1]={type:'Active',state:'CONDITION_FAILED',revisionReason:'RETIRED'};
@@ -112,12 +114,14 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
           deployRevision(name,'candidate');
           if(['recoverNotificationDeliveries','reconcilePendingSecurityTransitions'].includes(name)){
             const job={name:`projects/${project}/locations/europe-west2/jobs/firebase-schedule-${name}-europe-west2`,schedule:name==='recoverNotificationDeliveries'?'every 1 minutes':'every 5 minutes',timeZone:'UTC',attemptDeadline:'1800s',retryConfig:{retryCount:3},httpTarget:{uri:`https://${name.toLowerCase()}.a.run.app${functionUriSuffix}`,httpMethod:'POST',oidcToken:{serviceAccountEmail:`123456789-compute@developer.gserviceaccount.com`}}};
+            if(schedulerFunctionUrl===true||typeof schedulerFunctionUrl==='function'&&schedulerFunctionUrl(name))job.httpTarget.uri=canonicalFunctionUrl(name);
             if(explicitSchedulerAudience)job.httpTarget.oidcToken.audience=job.httpTarget.uri;
+            schedulerJob?.(job,name);
             const code="const{createRequire}=require('node:module');const r=createRequire(process.argv[1]);r('../gcp/cloudscheduler.js').createOrReplaceJob(JSON.parse(process.argv[2])).catch(()=>process.exitCode=1);";
             execFileSync(process.execPath,['--require',args[1],'-e',code,firebaseExecutable,JSON.stringify(job)],{stdio:'pipe'});
           }
         }
-        if(only.includes('getMyAuthorizationStatus'))deferredHook?.();return {stdout:'functions deployed'};
+        if(only.includes('getMyAuthorizationStatus'))await deferredHook?.();return {stdout:'functions deployed'};
       }
       assert.equal(only,'dataconnect:sodc-web-service:api');
       const sourceDirectory=path.dirname(args[args.indexOf('--config')+1]);api=await files(path.join(sourceDirectory,'dataconnect/api'));return {stdout:'deployed'};
@@ -145,7 +149,7 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
     if(target.pathname.endsWith('/schemas/main'))return json({name:base+'/schemas/main',datasources:[{postgresql:{cloudSql:{instance:`projects/${project}/locations/europe-west2/instances/sodc-web-instance`}}}],source:{files:schema}});
     if(target.pathname.endsWith('/connectors/api'))return json({name:base+'/connectors/api',source:{files:api}});
     if(target.pathname.endsWith('/connectors/authorization-service'))return json({name:base+'/connectors/authorization-service',source:{files:authorization}});
-    if(target.pathname.endsWith('/functions'))return json({functions:functionNames.map(name=>({name:`projects/${project}/locations/europe-west2/functions/${name}`,environment:'GEN_2',state:functionStates.get(name)??'ACTIVE',updateTime:functionUpdateTimes.get(name),buildConfig:{runtime:'nodejs24',entryPoint:name,source:{storageSource:{bucket:'source-bucket',object:functionSources.get(name)??'reviewed.zip',generation:'1'}}},serviceConfig:{service:serviceResource(name),revision:functionRevisions.get(name),uri:`https://${name.toLowerCase()}.a.run.app${functionUriSuffix}`,serviceAccountEmail:'123456789-compute@developer.gserviceaccount.com',timeoutSeconds:name==='recoverNotificationDeliveries'?scheduledTimeout:60,environmentVariables:{NEVER_PERSIST:'secret-value'}}}))});
+    if(target.pathname.endsWith('/functions'))return json({functions:functionNames.map(name=>({name:`projects/${project}/locations/europe-west2/functions/${name}`,url:functionUrl(name),environment:'GEN_2',state:functionStates.get(name)??'ACTIVE',updateTime:functionUpdateTimes.get(name),buildConfig:{runtime:'nodejs24',entryPoint:name,source:{storageSource:{bucket:'source-bucket',object:functionSources.get(name)??'reviewed.zip',generation:'1'}}},serviceConfig:{service:serviceResource(name),revision:functionRevisions.get(name),uri:`https://${name.toLowerCase()}.a.run.app${functionUriSuffix}`,serviceAccountEmail:'123456789-compute@developer.gserviceaccount.com',timeoutSeconds:name==='recoverNotificationDeliveries'?scheduledTimeout:60,environmentVariables:{NEVER_PERSIST:'secret-value'}}}))});
     if(target.hostname==='cloudscheduler.googleapis.com'&&target.pathname.endsWith('/jobs')){
       const pageSize=Number(target.searchParams.get('pageSize')??500);
       if(!Number.isInteger(pageSize)||pageSize<1||pageSize>500)return json({error:{status:'INVALID_ARGUMENT'}},400);
@@ -156,7 +160,7 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
   const plan={schemaVersion:1,projectId:project,environment:'dev',gitSha:sha,runId:'offline-test',installation:'strict',operator:'reviewer',reason:'reviewed test',importAdmins:false,artifactDirectory:path.join(directory,'artifacts'),createdAt:at,phaseOperationIds:{'control-create':'stable-control',backfill:'stable-backfill',activate:'stable-activate'}};
   const adapter=createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,command,fetch,adminFactory,now:()=>new Date(milliseconds),delay,sourceCheck});
   const gates={backup:{details:{waiverReference:'user-dev-waiver'}},'freeze-scope':{details:{entrypoints:[...policies.keys()],jobNames:jobs.map(job=>job.name),externalWritersReference:'approved-inventory',probeUserId:member.id,probeReference:'approved-existing-profile'}}};
-  return {adapter,plan,gates,commands,requests,runDirectory,policies,jobs,schema,authorization,member,setControlVersion:version=>controlVersion=version,runServices,runRevisions,missingRunResources,approveSuccessors,maintainAndRetire,deployRevision,onRunServiceRead:hook=>runServiceReadHook=hook,onBootstrap:hook=>bootstrapHook=hook,setAuthorityPending:(pending,operationId='stable-backfill:'+member.id)=>{pendingCount=pending?1:0;runtimeSyncStatus=pending?'PENDING':'READY';pendingOperationId=operationId;},context:baseline=>({baseline,gates,planHash:stableHash(plan)}),advance:seconds=>milliseconds+=seconds*1000,changeAuthority:()=>authorityVersion++,setApi:next=>api=next,getApi:()=>api,setFunctionState:(name,state)=>functionStates.set(name,state),setFunctionSource:(name,source)=>functionSources.set(name,source),onDeferredDeploy:hook=>deferredHook=hook,failRestore:()=>failNextRestore=true,failRestoreAfterCommit:()=>failRestoreAfterCommit=true,onRestore:hook=>restoreHook=hook,addLatentAdmin:()=>{extraIdentities.push({uid:'unapproved-latent',disabled:true,emailVerified:false,customClaims:{admin:true}});extraProfiles.push({id:'unapproved-latent',membershipStatus:'PENDING'});}};
+  return {adapter,plan,gates,commands,requests,runDirectory,policies,jobs,schema,authorization,member,setControlVersion:version=>controlVersion=version,runServices,runRevisions,missingRunResources,approveSuccessors,maintainAndRetire,deployRevision,onRunServiceRead:hook=>runServiceReadHook=hook,onBootstrap:hook=>bootstrapHook=hook,setAuthorityPending:(pending,operationId='stable-backfill:'+member.id)=>{pendingCount=pending?1:0;runtimeSyncStatus=pending?'PENDING':'READY';pendingOperationId=operationId;},context:baseline=>({baseline,gates,planHash:stableHash(plan)}),advance:seconds=>milliseconds+=seconds*1000,changeAuthority:()=>authorityVersion++,setApi:next=>api=next,getApi:()=>api,setFunctionState:(name,state)=>functionStates.set(name,state),setFunctionSource:(name,source)=>functionSources.set(name,source),setFunctionUrl:(name,url)=>functionUrls.set(name,url),setSchedulerFunctionUrl:value=>schedulerFunctionUrl=value,onDeferredDeploy:hook=>deferredHook=hook,failRestore:()=>failNextRestore=true,failRestoreAfterCommit:()=>failRestoreAfterCommit=true,onRestore:hook=>restoreHook=hook,addLatentAdmin:()=>{extraIdentities.push({uid:'unapproved-latent',disabled:true,emailVerified:false,customClaims:{admin:true}});extraProfiles.push({id:'unapproved-latent',membershipStatus:'PENDING'});}};
 }
 function withProbe(t){for(const [key,value]of Object.entries({AUTHORIZATION_MIGRATION_PROBE_TOKEN:'PRIVATE-PROBE-JWT',AUTHORIZATION_MIGRATION_PROBE_API_KEY:'PRIVATE-API-KEY',AUTHORIZATION_MIGRATION_PROBE_APP_CHECK_TOKEN:'PRIVATE-APP-CHECK'})){const before=process.env[key];process.env[key]=value;t.onTestFinished(()=>{if(before===undefined)delete process.env[key];else process.env[key]=before;});}}
 
@@ -353,7 +357,7 @@ test('tampering original restoration policies is detected before subsequent muta
 test('a strict installation never deploys a compatibility connector',async t=>{withProbe(t);const fixture=await setup(t);const context=fixture.context(await fixture.adapter.observe());await fixture.adapter.perform('freeze',context);await fixture.maintainAndRetire(context);await assert.rejects(fixture.adapter.perform('compatibility',context),/STRICT_INSTALLATION_CANNOT_DOWNGRADE/);assert.ok(fixture.getApi().every(file=>!file.content.includes('this-never-existed')));assert.deepEqual(fixture.getApi(),denyOnboarding(context.baseline.api.files));});
 test('drain includes the longest scheduled worker and pending durable work blocks proof',async t=>{withProbe(t);const fixture=await setup(t,{scheduledTimeout:300,pendingTransitions:1});const context=fixture.context(await fixture.adapter.observe());const result=await fixture.adapter.perform('freeze',context);assert.equal(new Date(result.drainUntil)-new Date(result.completedAt),315000);fixture.advance(400);const verification=await fixture.adapter.verify('freeze',{...context,result});assert.equal(verification.ok,false);assert.ok(verification.blockers.includes('drainComplete'));assert.equal(fixture.requests.some(item=>item.hostname.endsWith('.cloudfunctions.net')),false);});
 
-async function staged(t,options={}){withProbe(t);const fixture=await setup(t,{auditReady:true,fullFunctions:true,...options});const context=fixture.context(await fixture.adapter.observe());const freeze=await fixture.adapter.perform('freeze',context);context.checkpoints={freeze:{result:freeze}};await fixture.maintainAndRetire(context);fixture.advance(76);const functions=await fixture.adapter.perform('functions',context);context.checkpoints.functions={result:functions};await fixture.approveSuccessors(context);context.gates.acceptance={details:{sourceProjectId:project}};return {fixture,context};}
+async function staged(t,options={}){withProbe(t);const fixture=await setup(t,{auditReady:true,fullFunctions:true,...options});const context=fixture.context(await fixture.adapter.observe());if(fixture.plan.projectId!==project)context.gates.backup={details:{backupReference:'reviewed-backup',restoreTestReference:'reviewed-restore'}};const freeze=await fixture.adapter.perform('freeze',context);context.checkpoints={freeze:{result:freeze}};await fixture.maintainAndRetire(context);fixture.advance(76);const functions=await fixture.adapter.perform('functions',context);context.checkpoints.functions={result:functions};await fixture.approveSuccessors(context);context.gates.acceptance={details:{sourceProjectId:project}};return {fixture,context};}
 const mutationCount=fixture=>fixture.commands.filter(item=>item.args.includes('deploy')||item.args.includes('set-iam-policy')||item.args.includes('resume')).length;
 test('pinned CLI preload denies destructive methods and API enabling without a network call',async t=>{const fixture=await setup(t);await fixture.adapter.perform('inspect',{planHash:stableHash(fixture.plan)});const guard=path.join(fixture.runDirectory,'provider-cli-guard.cjs');const code="const{createRequire}=require('node:module');const r=createRequire(process.argv[1]);const c=r('../dataconnect/client.js');const a=r('../ensureApiEnabled.js');Promise.all([c.deleteConnector().then(()=>{throw Error('accepted')},e=>{if(e.message!=='DATACONNECT_DELETION_FORBIDDEN')throw e;}),a.enableApiURI('sodc-web','run.googleapis.com').then(()=>{throw Error('accepted')},e=>{if(e.message!=='API_ENABLEMENT_FORBIDDEN')throw e;}),a.ensure('wrong-project','run.googleapis.com').then(()=>{throw Error('accepted')},e=>{if(e.message!=='API_ENABLEMENT_FORBIDDEN')throw e;}),a.ensure('123456789','run.googleapis.com')]).catch(()=>process.exitCode=1);";const runtime=fixture.commands.find(item=>item.args.includes('dataconnect:sql:diff')).args[2];execFileSync(process.execPath,['--require',guard,'-e',code,runtime],{stdio:'pipe'});});
 test('SQL review mismatch blocks migration before SQL apply or schema deployment',async t=>{withProbe(t);const fixture=await setup(t);const context=fixture.context(await fixture.adapter.observe());await fixture.adapter.perform('freeze',context);await fixture.maintainAndRetire(context);context.reviewedSqlHash='0'.repeat(64);const before=mutationCount(fixture);await assert.rejects(fixture.adapter.perform('schema',context),/FRESH_SQL_REVIEW_HASH_REQUIRED/);assert.equal(mutationCount(fixture),before);assert.equal(fixture.commands.some(item=>item.args.includes('dataconnect:sql:migrate')),false);});
@@ -813,4 +817,123 @@ for(const phase of ['strict-api','backfill'])test('source drift after observatio
   await fixture.adapter.perform('freeze',context);await fixture.maintainAndRetire(context);fixture.advance(76);armed=true;
   const calls=fixture.commands.length,before=checks;await assert.rejects(()=>fixture.adapter.perform(phase,context),{code:'PROVIDER_OPERATION_FAILED'});assert.equal(checks-before,2);assert.equal(mutationCount(fixture),fixture.commands.slice(0,calls).filter(item=>item.args.includes('deploy')||item.args.includes('set-iam-policy')||item.args.includes('resume')).length);
   assert.equal(fixture.commands.slice(calls).some(item=>item.args.includes('deploy')||item.args.some(arg=>arg.endsWith('security-state-admin.ts'))),false);
+});
+
+
+for(const explicitSchedulerAudience of [false,true])test(`Scheduler accepts the actual canonical same-Function URL with ${explicitSchedulerAudience?'explicit':'default'} audience`,async t=>{
+  const {fixture,context}=await staged(t,{schedulerFunctionUrl:true,explicitSchedulerAudience});
+  const originalProofs=structuredClone(context.checkpoints.functions.result.functionProofs);
+  assert.ok(originalProofs.every(proof=>proof.url===`https://europe-west2-${fixture.plan.projectId}.cloudfunctions.net/${proof.name}`));
+  const result=await fixture.adapter.perform('open',context);context.checkpoints.open={result};
+  assert.equal((await fixture.adapter.verify('receipt',context)).ok,true);
+  assert.ok(fixture.jobs.every(job=>job.httpTarget.uri===`https://europe-west2-${fixture.plan.projectId}.cloudfunctions.net/${job.name.split('/').at(-1).slice('firebase-schedule-'.length,-'-europe-west2'.length)}`));
+  assert.deepEqual(context.checkpoints.functions.result.functionProofs,originalProofs);
+});
+test('Production Scheduler creation accepts only the actual canonical Function alias, retaining the captured URI',async t=>{
+  const {fixture,context}=await staged(t,{projectId:'sodc-web-production',schedulerFunctionUrl:true});
+  const result=await fixture.adapter.perform('open',context);context.checkpoints.open={result};
+  assert.equal((await fixture.adapter.verify('receipt',context)).ok,true);
+  assert.ok(fixture.jobs.every(job=>job.httpTarget.uri.startsWith('https://europe-west2-sodc-web-production.cloudfunctions.net/')));
+});
+test('historical proofs without url remain valid while new URL-bearing proofs reject URL drift',async t=>{
+  const {fixture,context}=await staged(t);
+  for(const proof of context.checkpoints.functions.result.functionProofs)delete proof.url;
+  const originalProofs=structuredClone(context.checkpoints.functions.result.functionProofs);
+  const result=await fixture.adapter.perform('open',context);context.checkpoints.open={result};
+  assert.equal((await fixture.adapter.verify('receipt',context)).ok,true);
+  assert.deepEqual(context.checkpoints.functions.result.functionProofs,originalProofs);
+  fixture.setFunctionUrl('getMyAuthorizationStatus','https://europe-west2-sodc-web.cloudfunctions.net/notTheFunction');
+  assert.ok((await fixture.adapter.verify('receipt',context)).blockers.includes('functionsMatch'));
+});
+
+
+for(const [label,change] of [
+  ['wrong project',job=>{job.httpTarget.uri=job.httpTarget.uri.replace('sodc-web.cloudfunctions.net','other-project.cloudfunctions.net');}],
+  ['wrong region',job=>{job.httpTarget.uri=job.httpTarget.uri.replace('europe-west2-','us-central1-');}],
+  ['wrong function',job=>{job.httpTarget.uri+='Other';}],
+  ['extra path',job=>{job.httpTarget.uri=job.httpTarget.uri.replace('/reconcile','/parent/reconcile');}],
+  ['encoded function',job=>{job.httpTarget.uri=job.httpTarget.uri.replace('/reconcile','/%72econcile');}],
+  ['trailing slash',job=>{job.httpTarget.uri+='/';}],
+  ['query',job=>{job.httpTarget.uri+='?unexpected=1';}],
+  ['fragment',job=>{job.httpTarget.uri+='#unexpected';}],
+  ['explicit port',job=>{job.httpTarget.uri=job.httpTarget.uri.replace('.net/','.net:443/');}],
+  ['wrong audience',job=>{job.httpTarget.oidcToken.audience='https://reconcilependingsecuritytransitions.a.run.app';}],
+  ['empty audience',job=>{job.httpTarget.oidcToken.audience='';}],
+  ['null audience',job=>{job.httpTarget.oidcToken.audience=null;}],
+  ['wrong service account',job=>{job.httpTarget.oidcToken.serviceAccountEmail='wrong@example.invalid';}],
+  ['wrong method',job=>{job.httpTarget.httpMethod='GET';}],
+])test('deferred Scheduler rejects '+label+' before API or IAM opening',async t=>{
+  const {fixture,context}=await staged(t,{schedulerFunctionUrl:name=>name==='reconcilePendingSecurityTransitions',schedulerJob:(job,name)=>{if(name==='reconcilePendingSecurityTransitions')change(job);}});
+  const api=structuredClone(fixture.getApi()),apiDeploys=fixture.commands.filter(command=>command.args.includes('dataconnect:sodc-web-service:api')).length;
+  await assert.rejects(fixture.adapter.perform('open',context),/SCHEDULER_(?:TARGET_NOT_VERIFIED|SPEC_INVALID)/);
+  assert.deepEqual(fixture.getApi(),api);assert.equal(fixture.commands.filter(command=>command.args.includes('dataconnect:sodc-web-service:api')).length,apiDeploys);
+  assert.ok(SECURITY_WRITERS.every(name=>!hasPublicInvoker(fixture.policies.get(name))));
+  assert.equal(fixture.jobs.some(job=>job.name.includes('reconcilePendingSecurityTransitions')),false);
+  const record=JSON.parse(await readFile(path.join(fixture.runDirectory,'provider-phase-open.json'),'utf8'));
+  assert.equal(record.completedAt,null);assert.equal(record.apiOpening,undefined);assert.equal(record.deferredProofs.length,2);
+});
+for(const providerUrl of [undefined,'https://europe-west2-other-project.cloudfunctions.net/reconcilePendingSecurityTransitions','https://us-central1-sodc-web.cloudfunctions.net/reconcilePendingSecurityTransitions'])test('Scheduler alias requires the actual correctly bound provider Function URL '+String(providerUrl),async t=>{
+  const {fixture,context}=await staged(t,{schedulerFunctionUrl:name=>name==='reconcilePendingSecurityTransitions'});
+  fixture.setFunctionUrl('reconcilePendingSecurityTransitions',providerUrl);
+  await assert.rejects(fixture.adapter.perform('open',context),/SCHEDULER_TARGET_NOT_VERIFIED/);
+  assert.ok(SECURITY_WRITERS.every(name=>!hasPublicInvoker(fixture.policies.get(name))));
+});
+test('durable deferred deployment proof survives Scheduler lookup failure and prevents redeployment on retry',async t=>{
+  const {fixture,context}=await staged(t,{schedulerFunctionUrl:name=>name==='reconcilePendingSecurityTransitions'});
+  fixture.setFunctionUrl('reconcilePendingSecurityTransitions',undefined);
+  await assert.rejects(fixture.adapter.perform('open',context),/SCHEDULER_TARGET_NOT_VERIFIED/);
+  const filename=path.join(fixture.runDirectory,'provider-phase-open.json'),first=JSON.parse(await readFile(filename,'utf8'));
+  assert.equal(first.deferredProofs.length,2);assert.equal(first.deferredSchedulerIntents,undefined);assert.equal(first.apiOpening,undefined);
+  const capture=path.join(fixture.runDirectory,'scheduler-firebase-schedule-reconcilePendingSecurityTransitions-europe-west2.json'),originalCapture=await readFile(capture,'utf8');
+  const deploys=fixture.commands.filter(command=>command.args.includes('deploy')).length;
+  fixture.setFunctionUrl('reconcilePendingSecurityTransitions',`https://europe-west2-${project}.cloudfunctions.net/reconcilePendingSecurityTransitions`);
+  const result=await fixture.adapter.perform('open',context);context.checkpoints.open={result};
+  assert.equal(fixture.commands.filter(command=>command.args.includes('deploy')).length,deploys+1,'Only the reviewed API is deployed on this retry');
+  assert.deepEqual(result.deferredProofs,first.deferredProofs);assert.equal(result.startedAt,first.startedAt);assert.equal(await readFile(capture,'utf8'),originalCapture);
+  assert.equal((await fixture.adapter.verify('receipt',context)).ok,true);
+});
+test('historical interrupted creation repeats only the two explicitly requested deferred deployments and preserves the original CF Scheduler intent',async t=>{
+  const {fixture,context}=await staged(t,{schedulerFunctionUrl:name=>name==='reconcilePendingSecurityTransitions'});
+  fixture.onDeferredDeploy(()=>{throw Error('simulated crash after creating Functions and capturing Scheduler intent');});
+  const baselineHash=stableHash(context.baseline);await assert.rejects(fixture.adapter.perform('open',context),/PROVIDER_COMMAND_FAILED/);
+  const recordFile=path.join(fixture.runDirectory,'provider-phase-open.json'),firstAttempt=await readFile(recordFile,'utf8'),first=JSON.parse(firstAttempt);
+  assert.equal(first.openingStarted,true);assert.equal(first.deferredProofs,undefined);assert.equal(first.apiOpening,undefined);assert.equal(first.completedAt,null);
+  const archive=path.join(fixture.runDirectory,'first-failed-open-attempt.json');await writeFile(archive,firstAttempt);
+  const capture=path.join(fixture.runDirectory,'scheduler-firebase-schedule-reconcilePendingSecurityTransitions-europe-west2.json'),originalCapture=await readFile(capture,'utf8');
+  fixture.onDeferredDeploy(undefined);fixture.setSchedulerFunctionUrl(false);
+  const functionsBefore=fixture.commands.filter(command=>command.args.some(arg=>arg.startsWith('functions:'))).length;
+  const result=await fixture.adapter.perform('open',context);context.checkpoints.open={result};
+  const deployments=fixture.commands.filter(command=>command.args.some(arg=>arg.startsWith('functions:')));
+  assert.equal(deployments.length,functionsBefore+1);assert.equal(deployments.at(-1).args[deployments.at(-1).args.indexOf('--only')+1],'functions:getMyAuthorizationStatus,functions:reconcilePendingSecurityTransitions');
+  assert.equal(await readFile(capture,'utf8'),originalCapture);assert.equal(await readFile(archive,'utf8'),firstAttempt);assert.equal(result.startedAt,first.startedAt);assert.equal(stableHash(context.baseline),baselineHash);
+  assert.equal((await fixture.adapter.verify('receipt',context)).ok,true);
+});
+test('generated retry guard accepts only the two actual aliases with identical options and retains capture bytes',async t=>{
+  const {fixture,context}=await staged(t,{schedulerFunctionUrl:name=>name==='reconcilePendingSecurityTransitions'});
+  fixture.onDeferredDeploy(()=>{throw Error('simulated first interrupted creation');});await assert.rejects(fixture.adapter.perform('open',context),/PROVIDER_COMMAND_FAILED/);
+  // A second read observes both actual Function URLs before the explicit repeat deployment.
+  fixture.onDeferredDeploy(()=>{throw Error('stop after generating the existing-Function retry guard');});fixture.setSchedulerFunctionUrl(false);
+  await assert.rejects(fixture.adapter.perform('open',context),/PROVIDER_COMMAND_FAILED/);
+  const capture=path.join(fixture.runDirectory,'scheduler-firebase-schedule-reconcilePendingSecurityTransitions-europe-west2.json'),before=await readFile(capture,'utf8'),original=JSON.parse(before).job;
+  const alternative=structuredClone(original);alternative.httpTarget.uri='https://reconcilependingsecuritytransitions.a.run.app';alternative.httpTarget.oidcToken.audience=alternative.httpTarget.uri;
+  const invocation=fixture.commands.findLast(command=>command.args.includes('--require')),preload=invocation.args[invocation.args.indexOf('--require')+1],executable=invocation.args[invocation.args.indexOf('--require')+2];
+  const code="const{createRequire}=require('node:module');const r=createRequire(process.argv[1]);r('../gcp/cloudscheduler.js').createOrReplaceJob(JSON.parse(process.argv[2])).catch(error=>{process.stderr.write(error.message);process.exitCode=1;});";
+  const invoke=job=>execFileSync(process.execPath,['--require',preload,'-e',code,executable,JSON.stringify(job)],{stdio:'pipe'});
+  assert.doesNotThrow(()=>invoke(alternative));
+  for(const change of [
+    job=>{job.httpTarget.uri+='?unexpected=1';},job=>{job.httpTarget.uri+='/unreviewed';},job=>{job.httpTarget.uri='https://europe-west2-other-project.cloudfunctions.net/reconcilePendingSecurityTransitions';},
+    job=>{job.httpTarget.oidcToken.audience=original.httpTarget.uri;},job=>{job.httpTarget.oidcToken.audience='';},job=>{job.httpTarget.oidcToken.audience=null;},job=>{job.httpTarget.oidcToken.serviceAccountEmail='wrong@example.invalid';},
+    job=>{job.httpTarget.httpMethod='GET';},job=>{job.schedule='every 30 minutes';},job=>{job.timeZone='Europe/London';},job=>{job.retryConfig.retryCount=99;},job=>{job.attemptDeadline='30s';},
+    job=>{job.httpTarget.body='payload';},job=>{job.httpTarget.headers={Authorization:'unexpected'};},
+  ]){const job=structuredClone(alternative);change(job);assert.throws(()=>invoke(job));assert.equal(await readFile(capture,'utf8'),before);}
+  assert.equal(await readFile(capture,'utf8'),before);assert.ok(SECURITY_WRITERS.every(name=>!hasPublicInvoker(fixture.policies.get(name))));
+});
+test('a new staged URL-bearing proof refuses URL drift before any opening mutation',async t=>{
+  const {fixture,context}=await staged(t);fixture.setFunctionUrl('grantAdmin',`https://europe-west2-${project}.cloudfunctions.net/otherFunction`);
+  const before=mutationCount(fixture);await assert.rejects(fixture.adapter.perform('open',context),/OLD_WRITER_REVIEWED_SERVING_FUNCTION_REQUIRED/);assert.equal(mutationCount(fixture),before);
+});
+test('historical abort baseline without URL tolerates only newly observed URL metadata',async t=>{
+  const {fixture,context}=await abortable(t,{providerFunctionUrl:false});
+  for(const fn of context.baseline.functions)fixture.setFunctionUrl(fn.name,`https://europe-west2-${project}.cloudfunctions.net/${fn.name}`);
+  assert.equal((await fixture.adapter.abortFreeze(context)).ok,true);
 });
