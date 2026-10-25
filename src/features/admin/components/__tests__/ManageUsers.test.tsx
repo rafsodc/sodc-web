@@ -128,6 +128,21 @@ describe("ManageUsers", () => {
     expect(screen.getByText("Current-user refreshes: 0")).toBeInTheDocument();
   });
 
+  it("shows an authoritative last-admin refusal when a stale list still contains two administrators", async () => {
+    mocks.listAdminUsers.mockResolvedValue({ success: true, users: [
+      { uid: "current-user", email: "current@example.com", displayName: "Current", emailVerified: true, disabled: false, metadata: {} },
+      { uid: "second-admin", email: "second@example.com", displayName: "Second", emailVerified: true, disabled: false, metadata: {} },
+    ] });
+    vi.mocked(firebaseFunctions.revokeAdminClaim).mockResolvedValue({ success: false,
+      error: "Keep at least one active, verified administrator. Give another eligible member administrator access before trying this change again." });
+    render(<Harness />);
+    await waitFor(() => expect(mocks.listAdminUsers).toHaveBeenCalledOnce());
+    await userEvent.setup().click(screen.getByRole("button", { name: "Revoke current@example.com" }));
+    expect(await screen.findByText(/Give another eligible member/)).toBeInTheDocument();
+    expect(screen.queryByText("Admin revoked")).not.toBeInTheDocument();
+    expect(mocks.listAdminUsers).toHaveBeenCalledOnce();
+  });
+
   it("renders successful grant and revoke outcomes after refreshing administrator state", async () => {
     const user = userEvent.setup();
     mocks.listAdminUsers.mockResolvedValue({

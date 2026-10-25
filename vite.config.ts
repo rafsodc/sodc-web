@@ -20,6 +20,8 @@ function currentGitSha(): string {
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
+  // An open HMR WebSocket can prevent real browser-cache restoration in acceptance.
+  ...(mode === 'session-e2e' ? { server: { hmr: false } } : {}),
   plugins: [
     react(),
     {

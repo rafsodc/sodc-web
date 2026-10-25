@@ -18,6 +18,7 @@ export default defineConfig({
         'src/**/*.spec.ts',
         'src/**/__tests__/**',
         'src/dataconnect-admin-generated/**',
+        'src/security-admin-generated/**',
         'src/generatedEmailTemplateManifest.ts',
       ],
       thresholds: {

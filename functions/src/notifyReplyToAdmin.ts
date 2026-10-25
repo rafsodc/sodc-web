@@ -125,7 +125,7 @@ async function readAdminConfiguration(): Promise<NotifyReplyToAdminConfiguration
 export const getNotifyReplyToAdminConfiguration = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<NotifyReplyToAdminConfiguration> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     return readAdminConfiguration();
   },
 );
@@ -133,7 +133,7 @@ export const getNotifyReplyToAdminConfiguration = onCall(
 export const createNotifyReplyToAddress = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<NotifyReplyToAdminConfiguration> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     const displayLabel = validateStringLength(requireString(request.data?.displayLabel, "displayLabel"), "displayLabel", 100);
     const emailAddress = validateEmail(requireString(request.data?.emailAddress, "emailAddress"));
     const notifyUuid = validateUUID(requireString(request.data?.notifyUuid, "notifyUuid"), "Notify UUID");
@@ -154,7 +154,7 @@ export const createNotifyReplyToAddress = onCall(
 export const updateNotifyReplyToAddress = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<NotifyReplyToAdminConfiguration> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     const configuration = await getOrCreateNotifyReplyToConfiguration();
     const address = requireAddress(configuration, request.data?.addressId);
     if (configuration.notifyEmailConfiguration?.defaultReplyToAddress?.id === address.id) {
@@ -182,7 +182,7 @@ export const updateNotifyReplyToAddress = onCall(
 export const sendNotifyReplyToVerificationTest = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<NotifyReplyToAdminConfiguration> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     await enforceRateLimit("sendNotifyReplyToVerificationTest", request.auth!.uid);
     const configuration = await getOrCreateNotifyReplyToConfiguration();
     const address = requireAddress(configuration, request.data?.addressId);
@@ -227,7 +227,7 @@ export const sendNotifyReplyToVerificationTest = onCall(
 export const confirmNotifyReplyToVerification = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<NotifyReplyToAdminConfiguration> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     const configuration = await getOrCreateNotifyReplyToConfiguration();
     const address = requireAddress(configuration, request.data?.addressId);
     if (address.verificationStatus !== "PROVIDER_ACCEPTED") {
@@ -247,7 +247,7 @@ export const confirmNotifyReplyToVerification = onCall(
 export const updateNotifyReplyToAvailability = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<NotifyReplyToAdminConfiguration> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     const configuration = await getOrCreateNotifyReplyToConfiguration();
     const address = requireAddress(configuration, request.data?.addressId);
     const version = expectedVersion(request.data?.expectedVersion);
@@ -296,7 +296,7 @@ export const updateNotifyReplyToAvailability = onCall(
 export const changeNotifyReplyToDefault = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<NotifyReplyToAdminConfiguration> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     const configuration = await getOrCreateNotifyReplyToConfiguration();
     const previousAddressId = configuration.notifyEmailConfiguration?.defaultReplyToAddress?.id ?? null;
     const newAddressId = request.data?.addressId
@@ -323,7 +323,7 @@ export const changeNotifyReplyToDefault = onCall(
 export const setNotifyTemplateReplyToOverride = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<NotifyReplyToAdminConfiguration> => {
-    requireAdmin(request);
+    await requireAdmin(request);
     const templateKey = requireString(request.data?.templateKey, "templateKey");
     if (!EMAIL_TEMPLATE_MANIFEST[templateKey]) throw new HttpsError("invalid-argument", "Unknown automated email template");
     const configuration = await getOrCreateNotifyReplyToConfiguration();

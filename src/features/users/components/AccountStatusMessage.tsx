@@ -1,3 +1,4 @@
+import { signOutPrivateSession } from "../../../shared/appShell/sessionLifecycle";
 import { useState } from "react";
 import {
   Alert,
@@ -6,8 +7,6 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { signOut } from "firebase/auth";
-import { auth } from "../../../config/firebase";
 import type { UserData } from "../../../types";
 
 interface AccountStatusMessageProps {
@@ -51,7 +50,7 @@ export default function AccountStatusMessage({ userData }: AccountStatusMessageP
   async function handleSignOut() {
     setSubmitting(true);
     try {
-      await signOut(auth);
+      await signOutPrivateSession();
     } catch (e: any) {
       console.error("Sign-out failed:", e);
     } finally {

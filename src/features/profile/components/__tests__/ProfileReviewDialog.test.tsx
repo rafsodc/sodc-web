@@ -9,6 +9,12 @@ import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 import type { UserData } from "../../../../types";
 import ProfileReviewDialog from "../ProfileReviewDialog";
 import { invalidateAnnouncementPreferences } from "../../../../shared/query/invalidation";
+import { auth } from "../../../../config/firebase";
+import { httpsCallable } from "firebase/functions";
+import { getMyAuthorizationStatus } from "../../../../shared/auth/authorizationStatus";
+
+vi.mock("firebase/functions", () => ({ httpsCallable: vi.fn() }));
+vi.mock("../../../../shared/auth/authorizationStatus", () => ({ getMyAuthorizationStatus: vi.fn() }));
 
 vi.mock("../../../../shared/query/invalidation", () => ({
   invalidateAnnouncementPreferences: vi.fn().mockResolvedValue(undefined),
@@ -56,7 +62,8 @@ vi.mock("@dataconnect/generated/react", () => ({
 
 vi.mock("../../../../config/firebase", () => ({
   dataConnect: {},
-  auth: { currentUser: { uid: "user-1" } },
+  functions: {},
+  auth: { currentUser: { uid: "user-1", getIdToken: vi.fn(), getIdTokenResult: vi.fn(async () => ({ claims: { enabled: true, admin: false, securityVersion: 1 } })) } },
 }));
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
@@ -334,6 +341,53 @@ describe("ProfileReviewDialog", () => {
       expect(firebaseFunctions.updateMembershipStatus).toHaveBeenCalledWith("user-1", "RESERVE");
     });
     expect(onReviewed).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])("saves the entered review after N to N+1 authority, explicit refresh retry=%s", async failFirstRefresh => {
+    let serverVersion = 1;
+    let jwtVersion = 1;
+    let committed = false;
+    let refreshCalls = 0;
+    const statusWrite = vi.fn(async () => {
+      if (jwtVersion !== serverVersion) throw new Error("SESSION_VERSION_STALE");
+      if (!committed) { serverVersion += 1; committed = true; }
+      return { data: { success: true } };
+    });
+    vi.mocked(httpsCallable).mockReturnValue(statusWrite as never);
+    vi.mocked(auth.currentUser!.getIdToken).mockImplementation(async force => {
+      if (force && ++refreshCalls === 1 && failFirstRefresh) throw new Error("offline");
+      if (force) jwtVersion = serverVersion;
+      return `jwt-v${jwtVersion}`;
+    });
+    vi.mocked(getMyAuthorizationStatus).mockImplementation(async () => ({ status: "enabled", verificationRequired: false,
+      tokenVersionCurrent: jwtVersion === serverVersion, securityVersion: serverVersion, isAdmin: false }));
+    const actual = await import("../../../../shared/utils/firebaseFunctions/userAdmin");
+    vi.mocked(firebaseFunctions.updateMembershipStatus).mockImplementation(actual.updateMembershipStatus);
+    vi.mocked(generated.confirmProfileReview).mockImplementation(async () => {
+      if (jwtVersion !== serverVersion) throw new Error("SESSION_VERSION_STALE");
+      return { data: {} } as never;
+    });
+    const interaction = userEvent.setup();
+    const onReviewed = vi.fn();
+    render(<ProfileReviewDialog userData={userData} userEmail="verified@example.com" onReviewed={onReviewed} />);
+    await interaction.clear(screen.getByLabelText(/First name/));
+    await interaction.type(screen.getByLabelText(/First name/), "Updated Alex");
+    const select = screen.getByTestId("review-membership-status-select");
+    fireEvent.mouseDown(select.querySelector('[role="combobox"]') ?? select.querySelector(".MuiSelect-select") ?? select);
+    await interaction.click(await screen.findByRole("option", { name: "Reserve" }));
+    await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
+    if (failFirstRefresh) {
+      expect(await screen.findByText(/Your membership status was saved/)).toBeInTheDocument();
+      expect(generated.confirmProfileReview).not.toHaveBeenCalled();
+      expect(screen.getByLabelText(/First name/)).toHaveValue("Updated Alex");
+      expect(statusWrite).toHaveBeenCalledOnce();
+      await interaction.click(screen.getByRole("button", { name: "Confirm profile" }));
+    }
+    await waitFor(() => expect(onReviewed).toHaveBeenCalledOnce());
+    expect(serverVersion).toBe(2);
+    expect(jwtVersion).toBe(2);
+    expect(statusWrite).toHaveBeenCalledTimes(failFirstRefresh ? 2 : 1);
+    expect(generated.confirmProfileReview).toHaveBeenCalledExactlyOnceWith(expect.anything(), expect.objectContaining({ firstName: "Updated Alex" }));
   });
 
   it("does not confirm the review when the membership status update fails", async () => {

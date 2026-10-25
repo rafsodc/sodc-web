@@ -50,6 +50,11 @@ export enum NotificationDeliveryStatus {
   PENDING = "PENDING",
   SENT = "SENT",
   FAILED = "FAILED",
+  SKIPPED = "SKIPPED",
+}
+export enum NotificationRecoveryDeferredReason {
+  RECOVERY_DELIVERY_MODE_UNVERIFIABLE = "RECOVERY_DELIVERY_MODE_UNVERIFIABLE",
+  RECOVERY_DELIVERY_MODE_CONFLICT = "RECOVERY_DELIVERY_MODE_CONFLICT",
 }
 export enum NotifyDeliveryReceiptOutcome {
   APPLIED = "APPLIED",
@@ -209,6 +214,16 @@ export interface AdminOptOutSectionAnnouncementVariables {
   sectionId: UUIDString;
 }
 
+export interface AdminSafetyAudit_Key {
+  operationId: string;
+  __typename?: 'AdminSafetyAudit_Key';
+}
+
+export interface AdminSafetyControl_Key {
+  id: string;
+  __typename?: 'AdminSafetyControl_Key';
+}
+
 export interface AnnouncementRecipient_Key {
   id: UUIDString;
   __typename?: 'AnnouncementRecipient_Key';
@@ -354,6 +369,28 @@ export interface ClaimNotificationDeliveryByIdVariables {
   recoveryPayload?: string | null;
 }
 
+export interface ClaimNotificationDeliveryForRecoveryByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface ClaimNotificationDeliveryForRecoveryByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  expectedRecipientUserId?: string | null;
+  expectedRecipientUserIdIsNull: boolean;
+  lastAttemptedAt: TimestampString;
+  provider?: string | null;
+}
+
 export interface ClaimNotifyDeliveryReceiptData {
   notifyDeliveryReceipt_updateMany: number;
 }
@@ -388,25 +425,6 @@ export interface ConfirmNotifyReplyToVerificationVariables {
   expectedVersion: number;
   changedBy: string;
   reason?: string | null;
-}
-
-export interface ConfirmPotentialLostData {
-  user_updateMany: number;
-  potentialLostReview_insert: PotentialLostReview_Key;
-}
-
-export interface ConfirmPotentialLostVariables {
-  userId: string;
-  expectedStatus: MembershipStatus;
-  expectedUpdatedAt: TimestampString;
-  expectedEmailDeliveryVersion: number;
-  reviewedBy: string;
-  reasons: string[];
-  lastSignInTime?: string | null;
-  lastActivityTime?: string | null;
-  inactivitySince?: string | null;
-  activitySource?: string | null;
-  emailBounceCount: number;
 }
 
 export interface ConfirmProfileReviewData {
@@ -576,6 +594,8 @@ export interface CreateNotificationDeliveryVariables {
   notificationType: string;
   deliveryKey: string;
   recoveryPayload?: string | null;
+  recipientUserId?: string | null;
+  deliveryMode?: GovNotifyDeliveryMode | null;
   status: NotificationDeliveryStatus;
   ticketOrderId?: UUIDString | null;
   bookingId?: UUIDString | null;
@@ -781,6 +801,15 @@ export interface DeleteEventData {
 
 export interface DeleteEventVariables {
   id: UUIDString;
+}
+
+export interface DeleteNotificationDeliveryIntegrationFixtureData {
+  notificationDelivery_deleteMany: number;
+}
+
+export interface DeleteNotificationDeliveryIntegrationFixtureVariables {
+  id: UUIDString;
+  deliveryKey: string;
 }
 
 export interface DeleteSectionData {
@@ -1916,12 +1945,24 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
     deliveryKey: string;
     notificationType: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
     status: NotificationDeliveryStatus;
     provider?: string | null;
     providerMessageId?: string | null;
     attemptCount: number;
     lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
     sentAt?: TimestampString | null;
+    skippedAt?: TimestampString | null;
+    skipReason?: string | null;
     lastErrorCode?: string | null;
     lastErrorMessage?: string | null;
     createdAt: TimestampString;
@@ -1931,6 +1972,41 @@ export interface GetNotificationDeliveryByChannelAndKeyData {
 export interface GetNotificationDeliveryByChannelAndKeyVariables {
   channel: NotificationChannel;
   deliveryKey: string;
+}
+
+export interface GetNotificationDeliveryByIdData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    deliveryKey: string;
+    notificationType: string;
+    recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
+    status: NotificationDeliveryStatus;
+    provider?: string | null;
+    providerMessageId?: string | null;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
+    sentAt?: TimestampString | null;
+    skippedAt?: TimestampString | null;
+    skipReason?: string | null;
+    lastErrorCode?: string | null;
+    lastErrorMessage?: string | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+
+export interface GetNotificationDeliveryByIdVariables {
+  id: UUIDString;
 }
 
 export interface GetNotifyCallbackUserByIdData {
@@ -2951,6 +3027,34 @@ export interface ListEventBookingsForAdminVariables {
   eventId: UUIDString;
 }
 
+export interface ListFailedNotificationDeliveriesForAutomaticRecoveryData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    notificationType: string;
+    deliveryKey: string;
+    recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
+    status: NotificationDeliveryStatus;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+
+export interface ListFailedNotificationDeliveriesForAutomaticRecoveryVariables {
+  limit: number;
+}
+
 export interface ListFailedNotificationDeliveriesForRecoveryData {
   notificationDeliveries: ({
     id: UUIDString;
@@ -2958,6 +3062,14 @@ export interface ListFailedNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
     status: NotificationDeliveryStatus;
     attemptCount: number;
     lastAttemptedAt?: TimestampString | null;
@@ -2985,6 +3097,30 @@ export interface ListGovNotifyDeliveryModeAuditsData {
 
 export interface ListGovNotifyDeliveryModeAuditsVariables {
   limit: number;
+}
+
+export interface ListLegacyApplicantStaffNotificationDeliveriesData {
+  notificationDeliveries: ({
+    deliveryKey: string;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recoveryPayload?: string | null;
+  })[];
+}
+
+export interface ListLegacyApplicantStaffNotificationDeliveriesVariables {
+  subjectUserId: string;
+}
+
+export interface ListLegacyBookingStaffNotificationDeliveriesData {
+  notificationDeliveries: ({
+    deliveryKey: string;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recoveryPayload?: string | null;
+  })[];
+}
+
+export interface ListLegacyBookingStaffNotificationDeliveriesVariables {
+  bookingId: UUIDString;
 }
 
 export interface ListLegacyUserIdentitiesByBatchData {
@@ -3308,6 +3444,34 @@ export interface ListStaleDraftBookingsForSchedulerVariables {
   limit: number;
 }
 
+export interface ListStalePendingNotificationDeliveriesForAutomaticRecoveryData {
+  notificationDeliveries: ({
+    id: UUIDString;
+    channel: NotificationChannel;
+    notificationType: string;
+    deliveryKey: string;
+    recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
+    status: NotificationDeliveryStatus;
+    attemptCount: number;
+    lastAttemptedAt?: TimestampString | null;
+    recoveryDeferredAt?: TimestampString | null;
+    recoveryDeferredReason?: NotificationRecoveryDeferredReason | null;
+    createdAt: TimestampString;
+  } & NotificationDelivery_Key)[];
+}
+
+export interface ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables {
+  limit: number;
+}
+
 export interface ListStalePendingNotificationDeliveriesForRecoveryData {
   notificationDeliveries: ({
     id: UUIDString;
@@ -3315,6 +3479,14 @@ export interface ListStalePendingNotificationDeliveriesForRecoveryData {
     notificationType: string;
     deliveryKey: string;
     recoveryPayload?: string | null;
+    deliveryMode?: GovNotifyDeliveryMode | null;
+    recipientUserId?: string | null;
+    booking?: {
+      id: UUIDString;
+    } & Booking_Key;
+    user?: {
+      id: string;
+    } & User_Key;
     status: NotificationDeliveryStatus;
     attemptCount: number;
     lastAttemptedAt?: TimestampString | null;
@@ -3482,6 +3654,39 @@ export interface MarkNotificationDeliverySentByIdVariables {
   lastErrorCode?: string | null;
   lastErrorMessage?: string | null;
   deliveryMode?: GovNotifyDeliveryMode | null;
+}
+
+export interface MarkNotificationDeliverySkippedByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface MarkNotificationDeliverySkippedByIdVariables {
+  id: UUIDString;
+  attemptCount: number;
+  lastAttemptedAt: TimestampString;
+  skippedAt: TimestampString;
+  skipReason: string;
+}
+
+export interface MarkNotificationRecoveryDeferredForClaimByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface MarkNotificationRecoveryDeferredForClaimByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  expectedRecipientUserId?: string | null;
+  expectedRecipientUserIdIsNull: boolean;
+  deferredReason: NotificationRecoveryDeferredReason;
 }
 
 export interface MarkNotifyDeliveryReceiptFailedData {
@@ -3691,6 +3896,29 @@ export interface RecordNotificationRecoveryFailureByIdVariables {
   lastErrorMessage: string;
 }
 
+export interface RecordNotificationRecoveryFailureForClaimByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface RecordNotificationRecoveryFailureForClaimByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  expectedRecipientUserId?: string | null;
+  expectedRecipientUserIdIsNull: boolean;
+  lastAttemptedAt: TimestampString;
+  lastErrorCode: string;
+  lastErrorMessage: string;
+}
+
 export interface RecordNotifyReplyToProviderAcceptanceData {
   changed: number;
   notifyReplyToAudit_insert: NotifyReplyToAudit_Key;
@@ -3736,6 +3964,34 @@ export interface RegisterForSectionData {
 
 export interface RegisterForSectionVariables {
   userGroupId: UUIDString;
+}
+
+export interface ReleaseNotificationRecoveryDeferralForClaimByIdData {
+  notificationDelivery_updateMany: number;
+}
+
+export interface ReleaseNotificationRecoveryDeferralForClaimByIdVariables {
+  id: UUIDString;
+  channel: NotificationChannel;
+  deliveryKey: string;
+  notificationType: string;
+  expectedStatus: NotificationDeliveryStatus;
+  expectedAttemptCount: number;
+  expectedLastAttemptedAt: TimestampString;
+  expectedRecoveryPayload?: string | null;
+  expectedRecoveryPayloadIsNull: boolean;
+  expectedDeliveryMode?: GovNotifyDeliveryMode | null;
+  expectedDeliveryModeIsNull: boolean;
+  expectedRecipientUserId?: string | null;
+  expectedRecipientUserIdIsNull: boolean;
+  expectedBookingId?: UUIDString | null;
+  expectedBookingIdIsNull: boolean;
+  expectedUserId?: string | null;
+  expectedUserIdIsNull: boolean;
+  expectedDeferredAt: TimestampString;
+  expectedDeferredReason: NotificationRecoveryDeferredReason;
+  verifiedDeliveryMode: GovNotifyDeliveryMode;
+  actorId: string;
 }
 
 export interface ReleaseUserEmailLeaseData {
@@ -3866,6 +4122,314 @@ export interface SectionUserGroupPurposeLink_Key {
 export interface Section_Key {
   id: UUIDString;
   __typename?: 'Section_Key';
+}
+
+export interface SecurityTransition_Key {
+  operationId: string;
+  __typename?: 'SecurityTransition_Key';
+}
+
+export interface ServiceGetEventByIdData {
+  event?: {
+    id: UUIDString;
+    section: {
+      id: UUIDString;
+    } & Section_Key;
+    title: string;
+    location?: string | null;
+    guestOfHonour?: string | null;
+    sponsors?: string | null;
+    details?: string | null;
+    startDateTime: TimestampString;
+    endDateTime: TimestampString;
+    bookingStartDateTime: TimestampString;
+    bookingEndDateTime: TimestampString;
+    maxGuestsWithoutModeratorApproval: number;
+    ticketTypes: ({
+      id: UUIDString;
+      title: string;
+      description?: string | null;
+      audience: TicketAudience;
+      price: number;
+      includesDinner: boolean;
+      includesSymposium: boolean;
+      sortOrder: number;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+    } & TicketType_Key)[];
+  } & Event_Key;
+}
+
+export interface ServiceGetEventByIdVariables {
+  id: UUIDString;
+}
+
+export interface ServiceGetEventsForSectionData {
+  section?: {
+    id: UUIDString;
+    events: ({
+      id: UUIDString;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+    } & Event_Key)[];
+  } & Section_Key;
+}
+
+export interface ServiceGetEventsForSectionVariables {
+  sectionId: UUIDString;
+}
+
+export interface ServiceGetSectionByIdData {
+  section?: {
+    id: UUIDString;
+    name: string;
+    type: SectionType;
+    description?: string | null;
+    isOpenForRegistration?: boolean | null;
+    allowedUserGroups?: UUIDString[] | null;
+    purposeLinks: ({
+      purposes?: SectionUserGroupPurpose[] | null;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+        subscribable?: boolean | null;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+    })[];
+  } & Section_Key;
+}
+
+export interface ServiceGetSectionByIdVariables {
+  id: UUIDString;
+}
+
+export interface ServiceGetUserAccessGroupsByIdData {
+  user?: {
+    id: string;
+    userGroups: ({
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        description?: string | null;
+      } & UserGroup_Key;
+    })[];
+  } & User_Key;
+}
+
+export interface ServiceGetUserAccessGroupsByIdVariables {
+  userId: string;
+}
+
+export interface ServiceGetUserByIdData {
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
+    membershipStatus: MembershipStatus;
+    requestedMembershipStatus?: MembershipStatus | null;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
+  } & User_Key;
+}
+
+export interface ServiceGetUserByIdVariables {
+  id: string;
+}
+
+export interface ServiceGetUserGroupByIdData {
+  userGroup?: {
+    id: UUIDString;
+    name: string;
+    description?: string | null;
+    membershipStatuses?: MembershipStatus[] | null;
+    subscribable?: boolean | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
+    users: ({
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        membershipStatus: MembershipStatus;
+      } & User_Key;
+    })[];
+    purposeLinks: ({
+      purposes?: SectionUserGroupPurpose[] | null;
+      section: {
+        id: UUIDString;
+        name: string;
+        type: SectionType;
+        description?: string | null;
+      } & Section_Key;
+    })[];
+  } & UserGroup_Key;
+}
+
+export interface ServiceGetUserGroupByIdVariables {
+  id: UUIDString;
+}
+
+export interface ServiceListEventBookingsForAdminData {
+  event?: {
+    id: UUIDString;
+    bookingTicketOrders: ({
+      id: UUIDString;
+      status: TicketOrderStatus;
+    } & TicketOrder_Key)[];
+    bookings: ({
+      id: UUIDString;
+      status: BookingStatus;
+      approvalStatus: BookingApprovalStatus;
+      approvalReviewedAt?: TimestampString | null;
+      approvalNote?: string | null;
+      approvalReviewedBy?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      } & User_Key;
+      revisionGroupId: UUIDString;
+      revisionNumber: number;
+      supersededAt?: TimestampString | null;
+      supersedesBooking?: {
+        id: UUIDString;
+        revisionNumber: number;
+      } & Booking_Key;
+      clientSubmissionKey?: string | null;
+      sitNextToUserIds?: string[] | null;
+      accommodationRequested: boolean;
+      accommodationNote?: string | null;
+      createdAt: TimestampString;
+      updatedAt: TimestampString;
+      createdBy?: string | null;
+      updatedBy?: string | null;
+      booker: {
+        rank?: string | null;
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        membershipStatus: MembershipStatus;
+      } & User_Key;
+      lines: ({
+        id: UUIDString;
+        sortOrder: number;
+        guestDisplayName?: string | null;
+        dietaryNote?: string | null;
+        bookingPlace: {
+          id: UUIDString;
+          attendanceVersion: number;
+          attendanceRemoved: boolean;
+          attendanceName?: string | null;
+          attendanceDietaryNote?: string | null;
+          attendanceAccommodationRequested?: boolean | null;
+          attendanceAccommodationNote?: string | null;
+          attendanceSitNextToUserIds?: string[] | null;
+          attendanceTicketType?: {
+            id: UUIDString;
+            title: string;
+            audience: TicketAudience;
+            includesDinner: boolean;
+            includesSymposium: boolean;
+          } & TicketType_Key;
+          paymentAllocations: ({
+            id: UUIDString;
+            allocatedAmountMinor: number;
+            refundedAmountMinor: number;
+            ticketOrderId: UUIDString;
+          } & BookingPlacePaymentAllocation_Key)[];
+        } & BookingPlace_Key;
+        guestUser?: {
+          rank?: string | null;
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+          membershipStatus: MembershipStatus;
+        } & User_Key;
+        ticketType: {
+          id: UUIDString;
+          title: string;
+          audience: TicketAudience;
+          price: number;
+          includesDinner: boolean;
+          includesSymposium: boolean;
+        } & TicketType_Key;
+      } & BookingLine_Key)[];
+    } & Booking_Key)[];
+  } & Event_Key;
+}
+
+export interface ServiceListEventBookingsForAdminVariables {
+  eventId: UUIDString;
+}
+
+export interface ServiceListUserNamesByIdsData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+  } & User_Key)[];
+}
+
+export interface ServiceListUserNamesByIdsVariables {
+  ids: string[];
+}
+
+export interface ServiceListUsersData {
+  users: ({
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    serviceNumber: string;
+    mobileNumber?: string | null;
+    postNominals?: string | null;
+    membershipStatus: MembershipStatus;
+    requestedMembershipStatus?: MembershipStatus | null;
+    isRegular?: boolean | null;
+    isReserve?: boolean | null;
+    isCivilServant?: boolean | null;
+    isIndustry?: boolean | null;
+    rank?: string | null;
+    shareContactInfo?: boolean | null;
+    announcementOptOutAll: boolean;
+    legacyPasswordMigrated?: boolean | null;
+    profileReviewedAt?: TimestampString | null;
+    createdAt: TimestampString;
+    updatedAt: TimestampString;
+    createdBy?: string | null;
+    updatedBy?: string | null;
+  } & User_Key)[];
 }
 
 export interface SetNotifyTemplateReplyToOverrideData {
@@ -4297,6 +4861,11 @@ export interface UserGroup_Key {
   __typename?: 'UserGroup_Key';
 }
 
+export interface UserSecurityState_Key {
+  userId: string;
+  __typename?: 'UserSecurityState_Key';
+}
+
 export interface UserUserGroup_Key {
   userId: string;
   userGroupId: UUIDString;
@@ -4658,6 +5227,11 @@ export function getNotificationDeliveryByChannelAndKey(dc: DataConnect, vars: Ge
 /** Generated Node Admin SDK operation action function for the 'GetNotificationDeliveryByChannelAndKey' Query. Allow users to pass in custom DataConnect instances. */
 export function getNotificationDeliveryByChannelAndKey(vars: GetNotificationDeliveryByChannelAndKeyVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotificationDeliveryByChannelAndKeyData>>;
 
+/** Generated Node Admin SDK operation action function for the 'GetNotificationDeliveryById' Query. Allow users to execute without passing in DataConnect. */
+export function getNotificationDeliveryById(dc: DataConnect, vars: GetNotificationDeliveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotificationDeliveryByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetNotificationDeliveryById' Query. Allow users to pass in custom DataConnect instances. */
+export function getNotificationDeliveryById(vars: GetNotificationDeliveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNotificationDeliveryByIdData>>;
+
 /** Generated Node Admin SDK operation action function for the 'ListFailedNotificationDeliveriesForRecovery' Query. Allow users to execute without passing in DataConnect. */
 export function listFailedNotificationDeliveriesForRecovery(dc: DataConnect, vars: ListFailedNotificationDeliveriesForRecoveryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListFailedNotificationDeliveriesForRecoveryData>>;
 /** Generated Node Admin SDK operation action function for the 'ListFailedNotificationDeliveriesForRecovery' Query. Allow users to pass in custom DataConnect instances. */
@@ -4667,6 +5241,16 @@ export function listFailedNotificationDeliveriesForRecovery(vars: ListFailedNoti
 export function listStalePendingNotificationDeliveriesForRecovery(dc: DataConnect, vars: ListStalePendingNotificationDeliveriesForRecoveryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListStalePendingNotificationDeliveriesForRecoveryData>>;
 /** Generated Node Admin SDK operation action function for the 'ListStalePendingNotificationDeliveriesForRecovery' Query. Allow users to pass in custom DataConnect instances. */
 export function listStalePendingNotificationDeliveriesForRecovery(vars: ListStalePendingNotificationDeliveriesForRecoveryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListStalePendingNotificationDeliveriesForRecoveryData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListFailedNotificationDeliveriesForAutomaticRecovery' Query. Allow users to execute without passing in DataConnect. */
+export function listFailedNotificationDeliveriesForAutomaticRecovery(dc: DataConnect, vars: ListFailedNotificationDeliveriesForAutomaticRecoveryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListFailedNotificationDeliveriesForAutomaticRecoveryData>>;
+/** Generated Node Admin SDK operation action function for the 'ListFailedNotificationDeliveriesForAutomaticRecovery' Query. Allow users to pass in custom DataConnect instances. */
+export function listFailedNotificationDeliveriesForAutomaticRecovery(vars: ListFailedNotificationDeliveriesForAutomaticRecoveryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListFailedNotificationDeliveriesForAutomaticRecoveryData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListStalePendingNotificationDeliveriesForAutomaticRecovery' Query. Allow users to execute without passing in DataConnect. */
+export function listStalePendingNotificationDeliveriesForAutomaticRecovery(dc: DataConnect, vars: ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListStalePendingNotificationDeliveriesForAutomaticRecoveryData>>;
+/** Generated Node Admin SDK operation action function for the 'ListStalePendingNotificationDeliveriesForAutomaticRecovery' Query. Allow users to pass in custom DataConnect instances. */
+export function listStalePendingNotificationDeliveriesForAutomaticRecovery(vars: ListStalePendingNotificationDeliveriesForAutomaticRecoveryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListStalePendingNotificationDeliveriesForAutomaticRecoveryData>>;
 
 /** Generated Node Admin SDK operation action function for the 'CreateNotificationDelivery' Mutation. Allow users to execute without passing in DataConnect. */
 export function createNotificationDelivery(dc: DataConnect, vars: CreateNotificationDeliveryVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateNotificationDeliveryData>>;
@@ -4678,15 +5262,55 @@ export function claimNotificationDeliveryById(dc: DataConnect, vars: ClaimNotifi
 /** Generated Node Admin SDK operation action function for the 'ClaimNotificationDeliveryById' Mutation. Allow users to pass in custom DataConnect instances. */
 export function claimNotificationDeliveryById(vars: ClaimNotificationDeliveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotificationDeliveryByIdData>>;
 
+/** Generated Node Admin SDK operation action function for the 'ClaimNotificationDeliveryForRecoveryById' Mutation. Allow users to execute without passing in DataConnect. */
+export function claimNotificationDeliveryForRecoveryById(dc: DataConnect, vars: ClaimNotificationDeliveryForRecoveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotificationDeliveryForRecoveryByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ClaimNotificationDeliveryForRecoveryById' Mutation. Allow users to pass in custom DataConnect instances. */
+export function claimNotificationDeliveryForRecoveryById(vars: ClaimNotificationDeliveryForRecoveryByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ClaimNotificationDeliveryForRecoveryByIdData>>;
+
 /** Generated Node Admin SDK operation action function for the 'RecordNotificationRecoveryFailureById' Mutation. Allow users to execute without passing in DataConnect. */
 export function recordNotificationRecoveryFailureById(dc: DataConnect, vars: RecordNotificationRecoveryFailureByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotificationRecoveryFailureByIdData>>;
 /** Generated Node Admin SDK operation action function for the 'RecordNotificationRecoveryFailureById' Mutation. Allow users to pass in custom DataConnect instances. */
 export function recordNotificationRecoveryFailureById(vars: RecordNotificationRecoveryFailureByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotificationRecoveryFailureByIdData>>;
 
+/** Generated Node Admin SDK operation action function for the 'RecordNotificationRecoveryFailureForClaimById' Mutation. Allow users to execute without passing in DataConnect. */
+export function recordNotificationRecoveryFailureForClaimById(dc: DataConnect, vars: RecordNotificationRecoveryFailureForClaimByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotificationRecoveryFailureForClaimByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'RecordNotificationRecoveryFailureForClaimById' Mutation. Allow users to pass in custom DataConnect instances. */
+export function recordNotificationRecoveryFailureForClaimById(vars: RecordNotificationRecoveryFailureForClaimByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RecordNotificationRecoveryFailureForClaimByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkNotificationRecoveryDeferredForClaimById' Mutation. Allow users to execute without passing in DataConnect. */
+export function markNotificationRecoveryDeferredForClaimById(dc: DataConnect, vars: MarkNotificationRecoveryDeferredForClaimByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationRecoveryDeferredForClaimByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkNotificationRecoveryDeferredForClaimById' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markNotificationRecoveryDeferredForClaimById(vars: MarkNotificationRecoveryDeferredForClaimByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationRecoveryDeferredForClaimByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ReleaseNotificationRecoveryDeferralForClaimById' Mutation. Allow users to execute without passing in DataConnect. */
+export function releaseNotificationRecoveryDeferralForClaimById(dc: DataConnect, vars: ReleaseNotificationRecoveryDeferralForClaimByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReleaseNotificationRecoveryDeferralForClaimByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ReleaseNotificationRecoveryDeferralForClaimById' Mutation. Allow users to pass in custom DataConnect instances. */
+export function releaseNotificationRecoveryDeferralForClaimById(vars: ReleaseNotificationRecoveryDeferralForClaimByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ReleaseNotificationRecoveryDeferralForClaimByIdData>>;
+
 /** Generated Node Admin SDK operation action function for the 'MarkNotificationDeliverySentById' Mutation. Allow users to execute without passing in DataConnect. */
 export function markNotificationDeliverySentById(dc: DataConnect, vars: MarkNotificationDeliverySentByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationDeliverySentByIdData>>;
 /** Generated Node Admin SDK operation action function for the 'MarkNotificationDeliverySentById' Mutation. Allow users to pass in custom DataConnect instances. */
 export function markNotificationDeliverySentById(vars: MarkNotificationDeliverySentByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationDeliverySentByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'MarkNotificationDeliverySkippedById' Mutation. Allow users to execute without passing in DataConnect. */
+export function markNotificationDeliverySkippedById(dc: DataConnect, vars: MarkNotificationDeliverySkippedByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationDeliverySkippedByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'MarkNotificationDeliverySkippedById' Mutation. Allow users to pass in custom DataConnect instances. */
+export function markNotificationDeliverySkippedById(vars: MarkNotificationDeliverySkippedByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationDeliverySkippedByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListLegacyBookingStaffNotificationDeliveries' Query. Allow users to execute without passing in DataConnect. */
+export function listLegacyBookingStaffNotificationDeliveries(dc: DataConnect, vars: ListLegacyBookingStaffNotificationDeliveriesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListLegacyBookingStaffNotificationDeliveriesData>>;
+/** Generated Node Admin SDK operation action function for the 'ListLegacyBookingStaffNotificationDeliveries' Query. Allow users to pass in custom DataConnect instances. */
+export function listLegacyBookingStaffNotificationDeliveries(vars: ListLegacyBookingStaffNotificationDeliveriesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListLegacyBookingStaffNotificationDeliveriesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListLegacyApplicantStaffNotificationDeliveries' Query. Allow users to execute without passing in DataConnect. */
+export function listLegacyApplicantStaffNotificationDeliveries(dc: DataConnect, vars: ListLegacyApplicantStaffNotificationDeliveriesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListLegacyApplicantStaffNotificationDeliveriesData>>;
+/** Generated Node Admin SDK operation action function for the 'ListLegacyApplicantStaffNotificationDeliveries' Query. Allow users to pass in custom DataConnect instances. */
+export function listLegacyApplicantStaffNotificationDeliveries(vars: ListLegacyApplicantStaffNotificationDeliveriesVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListLegacyApplicantStaffNotificationDeliveriesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'DeleteNotificationDeliveryIntegrationFixture' Mutation. Allow users to execute without passing in DataConnect. */
+export function deleteNotificationDeliveryIntegrationFixture(dc: DataConnect, vars: DeleteNotificationDeliveryIntegrationFixtureVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteNotificationDeliveryIntegrationFixtureData>>;
+/** Generated Node Admin SDK operation action function for the 'DeleteNotificationDeliveryIntegrationFixture' Mutation. Allow users to pass in custom DataConnect instances. */
+export function deleteNotificationDeliveryIntegrationFixture(vars: DeleteNotificationDeliveryIntegrationFixtureVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteNotificationDeliveryIntegrationFixtureData>>;
 
 /** Generated Node Admin SDK operation action function for the 'MarkNotificationDeliveryFailedById' Mutation. Allow users to execute without passing in DataConnect. */
 export function markNotificationDeliveryFailedById(dc: DataConnect, vars: MarkNotificationDeliveryFailedByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<MarkNotificationDeliveryFailedByIdData>>;
@@ -4988,11 +5612,6 @@ export function getPotentialLostProfile(dc: DataConnect, vars: GetPotentialLostP
 /** Generated Node Admin SDK operation action function for the 'GetPotentialLostProfile' Query. Allow users to pass in custom DataConnect instances. */
 export function getPotentialLostProfile(vars: GetPotentialLostProfileVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetPotentialLostProfileData>>;
 
-/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLost' Mutation. Allow users to execute without passing in DataConnect. */
-export function confirmPotentialLost(dc: DataConnect, vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
-/** Generated Node Admin SDK operation action function for the 'ConfirmPotentialLost' Mutation. Allow users to pass in custom DataConnect instances. */
-export function confirmPotentialLost(vars: ConfirmPotentialLostVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ConfirmPotentialLostData>>;
-
 /** Generated Node Admin SDK operation action function for the 'GetNewMemberReportMigration' Query. Allow users to execute without passing in DataConnect. */
 export function getNewMemberReportMigration(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetNewMemberReportMigrationData>>;
 /** Generated Node Admin SDK operation action function for the 'GetNewMemberReportMigration' Query. Allow users to pass in custom DataConnect instances. */
@@ -5237,6 +5856,51 @@ export function getSectionAnnouncementOptOut(vars: GetSectionAnnouncementOptOutV
 export function getMyAnnouncementPreferences(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyAnnouncementPreferencesData>>;
 /** Generated Node Admin SDK operation action function for the 'GetMyAnnouncementPreferences' Query. Allow users to pass in custom DataConnect instances. */
 export function getMyAnnouncementPreferences(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyAnnouncementPreferencesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserById' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetUserById(dc: DataConnect, vars: ServiceGetUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserById' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetUserById(vars: ServiceGetUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceListUsers' Query. Allow users to execute without passing in DataConnect. */
+export function serviceListUsers(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListUsersData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceListUsers' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceListUsers(options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListUsersData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceListUserNamesByIds' Query. Allow users to execute without passing in DataConnect. */
+export function serviceListUserNamesByIds(dc: DataConnect, vars: ServiceListUserNamesByIdsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListUserNamesByIdsData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceListUserNamesByIds' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceListUserNamesByIds(vars: ServiceListUserNamesByIdsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListUserNamesByIdsData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserAccessGroupsById' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetUserAccessGroupsById(dc: DataConnect, vars: ServiceGetUserAccessGroupsByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserAccessGroupsByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserAccessGroupsById' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetUserAccessGroupsById(vars: ServiceGetUserAccessGroupsByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserAccessGroupsByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetEventsForSection' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetEventsForSection(dc: DataConnect, vars: ServiceGetEventsForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetEventsForSectionData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetEventsForSection' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetEventsForSection(vars: ServiceGetEventsForSectionVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetEventsForSectionData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetEventById' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetEventById(dc: DataConnect, vars: ServiceGetEventByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetEventByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetEventById' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetEventById(vars: ServiceGetEventByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetEventByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetSectionById' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetSectionById(dc: DataConnect, vars: ServiceGetSectionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetSectionByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetSectionById' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetSectionById(vars: ServiceGetSectionByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetSectionByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserGroupById' Query. Allow users to execute without passing in DataConnect. */
+export function serviceGetUserGroupById(dc: DataConnect, vars: ServiceGetUserGroupByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserGroupByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceGetUserGroupById' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceGetUserGroupById(vars: ServiceGetUserGroupByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserGroupByIdData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ServiceListEventBookingsForAdmin' Query. Allow users to execute without passing in DataConnect. */
+export function serviceListEventBookingsForAdmin(dc: DataConnect, vars: ServiceListEventBookingsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListEventBookingsForAdminData>>;
+/** Generated Node Admin SDK operation action function for the 'ServiceListEventBookingsForAdmin' Query. Allow users to pass in custom DataConnect instances. */
+export function serviceListEventBookingsForAdmin(vars: ServiceListEventBookingsForAdminVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceListEventBookingsForAdminData>>;
 
 /** Generated Node Admin SDK operation action function for the 'GetTicketAttendanceForManagement' Query. Allow users to execute without passing in DataConnect. */
 export function getTicketAttendanceForManagement(dc: DataConnect, vars: GetTicketAttendanceForManagementVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetTicketAttendanceForManagementData>>;

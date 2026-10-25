@@ -69,7 +69,7 @@ function auth(overrides: Partial<UserRecord> = {}): UserRecord {
     email: "member@example.test",
     emailVerified: false,
     disabled: false,
-    customClaims: { enabled: true },
+    customClaims: { enabled: true, securityVersion: 1 },
     ...overrides,
   } as UserRecord;
 }

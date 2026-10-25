@@ -1,6 +1,6 @@
+import { signOutPrivateSession } from "../../../shared/appShell/sessionLifecycle";
 import { useState } from "react";
 import { Alert, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, TextField, Typography } from "@mui/material";
-import { signOut } from "firebase/auth";
 import { auth } from "../../../config/firebase";
 import { MAX_EMAIL_LENGTH } from "../../../constants";
 import { updateUserEmail, userEmailChangeError, type UpdateUserEmailResult } from "../../../shared/utils/firebaseFunctions";
@@ -47,7 +47,7 @@ export default function ChangeUserEmailDialog({ userId, currentEmail, onClose, o
     if (result && changingOwnEmail && result.verificationRequired) {
       setBusy(true);
       try {
-        await signOut(auth);
+        await signOutPrivateSession();
       } catch (caught) {
         reportError("profile.admin-email.sign-out", caught);
         setError("Your email has changed. Please sign out and sign in with the new address.");

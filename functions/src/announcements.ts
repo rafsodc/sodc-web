@@ -1,3 +1,4 @@
+import { currentAuthorization } from "./currentAuthorization";
 import { parseEventAnnouncementSelection, resolveEventAnnouncementAudience, type EventAnnouncementSelection } from "./eventAnnouncementAudience";
 import { createHash, randomUUID } from "node:crypto";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
@@ -6,8 +7,8 @@ import { getFunctions } from "firebase-admin/functions";
 import * as logger from "firebase-functions/logger";
 import { NotifyClient } from "notifications-node-client";
 import {
-  getSectionById,
-  getUserAccessGroupsById,
+  serviceGetSectionById as getSectionById,
+  serviceGetUserAccessGroupsById as getUserAccessGroupsById,
   getUserMembershipStatus,
   getAnnouncementAudienceSection,
   getAnnouncementAudiencePurposeLinksPaged,
@@ -279,9 +280,9 @@ export const getAnnouncementDeliveryConfiguration = onCall(
     defaultReplyToAddressId: string | null;
     replyToFallbackSource: string;
   }> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
-    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+    await requireSectionModerator(request.auth!.uid, sectionId, currentAuthorization(request).isAdmin);
     const [delivery, replyTo] = await Promise.all([
       resolveRuntimeGovNotifyDeliveryMode("LIVE"),
       listAnnouncementReplyToOptions(),
@@ -298,10 +299,10 @@ export const getAnnouncementDeliveryConfiguration = onCall(
 export const getAnnouncementTemplates = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<{ templates: AnnouncementTemplate[] }> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     await enforceRateLimit("getAnnouncementTemplates", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
-    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+    await requireSectionModerator(request.auth!.uid, sectionId, currentAuthorization(request).isAdmin);
 
     const mode = (await resolveRuntimeGovNotifyDeliveryMode("LIVE")).effectiveMode;
     const client = new NotifyClient(govNotifyApiKeyForMode(mode));
@@ -338,11 +339,11 @@ export const getAnnouncementTemplates = onCall(
 export const previewAnnouncementTemplate = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request): Promise<{ html: string; subject: string }> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     await enforceRateLimit("previewAnnouncementTemplate", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
-    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+    await requireSectionModerator(request.auth!.uid, sectionId, currentAuthorization(request).isAdmin);
 
     const mode = (await resolveRuntimeGovNotifyDeliveryMode("LIVE")).effectiveMode;
     const client = new NotifyClient(govNotifyApiKeyForMode(mode));
@@ -695,10 +696,10 @@ export async function prepareAnnouncementSendTask(
 export const previewEventAnnouncementAudience = onCall(
   { region: FUNCTIONS_REGION },
   async (request) => {
-    requireEnabled(request);
+    await requireEnabled(request);
     await enforceRateLimit("previewEventAnnouncementAudience", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
-    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+    await requireSectionModerator(request.auth!.uid, sectionId, currentAuthorization(request).isAdmin);
     const selection = parseEventAnnouncementSelection(request.data?.eventAudience);
     if (!selection) throw new HttpsError("invalid-argument", "Event audience is required");
     return (await resolveEventAnnouncementAudience(sectionId, selection)).preview;
@@ -718,11 +719,11 @@ export const sendSectionAnnouncement = onCall(
     timeoutSeconds: 120,
   },
   async (request): Promise<SendAnnouncementResult> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     await enforceRateLimit("sendSectionAnnouncement", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const callerUid = request.auth!.uid;
-    await requireSectionModerator(callerUid, sectionId, request.auth!.token?.admin === true);
+    await requireSectionModerator(callerUid, sectionId, currentAuthorization(request).isAdmin);
 
     const templateUuid = requireString(request.data?.templateUuid, "templateUuid");
     const requestId = requireString(request.data?.requestId, "requestId");
@@ -924,7 +925,7 @@ export const sendSectionAnnouncement = onCall(
 export const retryAnnouncementPreparation = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<{ preparationQueued: true }> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     await enforceRateLimit("retryAnnouncementPreparation", request.auth!.uid);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
     const sendId = requireString(request.data?.sendId, "sendId");
@@ -932,7 +933,7 @@ export const retryAnnouncementPreparation = onCall(
     if (!UUID_PATTERN.test(attemptId)) {
       throw new HttpsError("invalid-argument", "attemptId must be a UUID");
     }
-    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+    await requireSectionModerator(request.auth!.uid, sectionId, currentAuthorization(request).isAdmin);
     const sendResult = await getAnnouncementSendById({ id: sendId });
     if (!sendResult.data?.announcementSend || sendResult.data.announcementSend.sectionId !== sectionId) {
       throw new HttpsError("not-found", "Announcement send not found");
@@ -968,9 +969,9 @@ export const processAnnouncementEmail = onTaskDispatched<AnnouncementEmailTask>(
 export const getAnnouncementSendHistory = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<{ sends: AnnouncementSend[] }> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
-    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+    await requireSectionModerator(request.auth!.uid, sectionId, currentAuthorization(request).isAdmin);
 
     let result: Awaited<ReturnType<typeof dcGetAnnouncementSendHistory>>;
     try {
@@ -1051,11 +1052,11 @@ export const getAnnouncementSendHistory = onCall(
 export const getAnnouncementSendRecipients = onCall(
   { region: FUNCTIONS_REGION },
   async (request): Promise<AnnouncementRecipientPage> => {
-    requireEnabled(request);
+    await requireEnabled(request);
     await enforceRateLimit("getAnnouncementSendRecipients", request.auth!.uid);
     const sendId = requireString(request.data?.sendId, "sendId");
     const sectionId = requireString(request.data?.sectionId, "sectionId");
-    await requireSectionModerator(request.auth!.uid, sectionId, request.auth!.token?.admin === true);
+    await requireSectionModerator(request.auth!.uid, sectionId, currentAuthorization(request).isAdmin);
 
     // sendId and sectionId are independent client-supplied values — confirm the send
     // actually belongs to the section the caller was just authorized against, so a

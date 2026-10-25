@@ -1,3 +1,6 @@
+import { bookingConfirmationDeliveryKey, bookingRevisionDeliveryKey, bookingPendingMemberDeliveryKey, bookingPendingModeratorUidDeliveryKey, bookingChangesRequestedDeliveryKey, bookingApprovedDeliveryKey } from "./notificationDeliveryKeys";
+export { bookingConfirmationDeliveryKey, bookingRevisionDeliveryKey, bookingPendingMemberDeliveryKey, bookingPendingModeratorDeliveryKey, bookingPendingModeratorUidDeliveryKey, bookingChangesRequestedDeliveryKey, bookingApprovedDeliveryKey } from "./notificationDeliveryKeys";
+import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import {
   getBookingForNotification,
@@ -7,7 +10,6 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import {
   createConfiguredGovNotifyMailer,
   GOV_NOTIFY_PROVIDER,
-  recipientScopedNotifyReference,
 } from "./mailer";
 import { sanitizeMailerError } from "./mailerErrors";
 import {
@@ -18,7 +20,8 @@ import {
 import { sendNotificationOnce } from "./notificationDelivery";
 import type { BookingPaymentDelta } from "./bookingPaymentAdjustments";
 import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
-import { resolveBookingModeratorEmails } from "./bookingModerators";
+import { resolveBookingModeratorUserIds } from "./bookingModerators";
+import { sendPrivilegedNotification } from "./privilegedNotificationDelivery";
 
 export const BOOKING_MAIL_TEMPLATE_KEYS = [
   "bookingConfirmation",
@@ -158,30 +161,6 @@ function buildBasePersonalisation(args: {
   };
 }
 
-export function bookingConfirmationDeliveryKey(bookingId: string, idempotencyKey: string): string {
-  return `booking-confirm:${bookingId}:${idempotencyKey}`;
-}
-
-export function bookingRevisionDeliveryKey(bookingId: string, idempotencyKey: string): string {
-  return `booking-revision:${bookingId}:${idempotencyKey}`;
-}
-
-export function bookingPendingMemberDeliveryKey(bookingId: string, idempotencyKey: string): string {
-  return `booking-pending-member:${bookingId}:${idempotencyKey}`;
-}
-
-export function bookingPendingModeratorDeliveryKey(bookingId: string, moderatorEmail: string): string {
-  return `booking-pending-mod:${bookingId}:${moderatorEmail.trim().toLowerCase()}`;
-}
-
-export function bookingChangesRequestedDeliveryKey(bookingId: string): string {
-  return `booking-changes-requested:${bookingId}`;
-}
-
-export function bookingApprovedDeliveryKey(bookingId: string): string {
-  return `booking-approved:${bookingId}`;
-}
-
 export function createBookingMailer(): ReturnType<typeof createConfiguredGovNotifyMailer<BookingEmailTemplates>> {
   return createConfiguredGovNotifyMailer([...BOOKING_MAIL_TEMPLATE_KEYS]);
 }
@@ -201,6 +180,7 @@ export async function notifyBookingConfirmationEmail(args: {
   appBaseUrl: string;
   getMailer?: () => ReturnType<typeof createBookingMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   try {
     const booking = await loadBookingForEmail(args.bookingId);
@@ -222,11 +202,13 @@ export async function notifyBookingConfirmationEmail(args: {
     await sendNotificationOnce({
       channel: NotificationChannel.EMAIL,
       notificationType: "BOOKING_CONFIRMATION",
-      deliveryKey,
+      deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+      preserveDeliveryKey: Boolean(args.recoveryClaim),
       bookingId: args.bookingId,
       userId: booking.booker.id,
       provider: GOV_NOTIFY_PROVIDER,
       deliveryMode: args.deliveryMode,
+      recoveryClaim: args.recoveryClaim,
       recoveryPayload: {
         version: 1,
         kind: "BOOKING_CONFIRMATION",
@@ -262,6 +244,7 @@ export async function notifyBookingRevisionEmail(args: {
   paymentDelta: BookingPaymentDelta;
   getMailer?: () => ReturnType<typeof createBookingMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   try {
     const booking = await loadBookingForEmail(args.bookingId);
@@ -289,11 +272,13 @@ export async function notifyBookingRevisionEmail(args: {
     await sendNotificationOnce({
       channel: NotificationChannel.EMAIL,
       notificationType: "BOOKING_REVISION",
-      deliveryKey,
+      deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+      preserveDeliveryKey: Boolean(args.recoveryClaim),
       bookingId: args.bookingId,
       userId: booking.booker.id,
       provider: GOV_NOTIFY_PROVIDER,
       deliveryMode: args.deliveryMode,
+      recoveryClaim: args.recoveryClaim,
       recoveryPayload: {
         version: 1,
         kind: "BOOKING_REVISION",
@@ -327,10 +312,12 @@ export async function notifyBookingPendingApprovalEmails(args: {
   bookingId: UUIDString;
   idempotencyKey: string;
   appBaseUrl: string;
-  recipientEmails?: readonly string[];
+  recipientUserIds?: readonly string[];
+  recoveryDeliveryKey?: string;
   notifyMember?: boolean;
   getMailer?: () => ReturnType<typeof createBookingMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   try {
     const booking = await loadBookingForEmail(args.bookingId);
@@ -346,11 +333,13 @@ export async function notifyBookingPendingApprovalEmails(args: {
         await sendNotificationOnce({
           channel: NotificationChannel.EMAIL,
           notificationType: "BOOKING_PENDING_APPROVAL_MEMBER",
-          deliveryKey: bookingPendingMemberDeliveryKey(args.bookingId, args.idempotencyKey),
+          deliveryKey: args.recoveryClaim?.deliveryKey ?? bookingPendingMemberDeliveryKey(args.bookingId, args.idempotencyKey),
+          preserveDeliveryKey: Boolean(args.recoveryClaim),
           bookingId: args.bookingId,
           userId: booking.booker.id,
           provider: GOV_NOTIFY_PROVIDER,
           deliveryMode: args.deliveryMode,
+          recoveryClaim: args.recoveryClaim,
           recoveryPayload: {
             version: 1,
             kind: "BOOKING_PENDING_MEMBER",
@@ -379,9 +368,9 @@ export async function notifyBookingPendingApprovalEmails(args: {
       }
     }
 
-    const recipients = args.recipientEmails
-      ? Array.from(new Set(args.recipientEmails.map((email) => email.trim().toLowerCase()).filter(Boolean)))
-      : await resolveBookingModeratorEmails({
+    const recipients = args.recipientUserIds
+      ? Array.from(new Set(args.recipientUserIds))
+      : await resolveBookingModeratorUserIds({
           sectionId: booking.event.section.id,
           excludeUserId: booking.booker.id,
         });
@@ -394,41 +383,37 @@ export async function notifyBookingPendingApprovalEmails(args: {
       ticketLinesSummary: buildTicketLinesSummary(booking.lines),
       moderationUrl: `${base}/admin/sections`,
     };
-    for (const recipientEmail of recipients) {
+    for (const recipientUserId of recipients) {
       try {
-        await sendNotificationOnce({
+        await sendPrivilegedNotification({
           channel: NotificationChannel.EMAIL,
           notificationType: "BOOKING_PENDING_APPROVAL_MODERATOR",
-          deliveryKey: bookingPendingModeratorDeliveryKey(args.bookingId, recipientEmail),
+          deliveryKey: args.recoveryClaim?.deliveryKey ?? args.recoveryDeliveryKey ?? bookingPendingModeratorUidDeliveryKey(args.bookingId, recipientUserId),
+          preserveDeliveryKey: Boolean(args.recoveryClaim || args.recoveryDeliveryKey),
           bookingId: args.bookingId,
           userId: null,
+          recipientUserId,
+          scope: { kind: "BOOKING", sectionId: booking.event.section.id },
+          event: { kind: "BOOKING", bookingId: args.bookingId },
           provider: GOV_NOTIFY_PROVIDER,
           deliveryMode: args.deliveryMode,
-          recoveryPayload: {
-            version: 1,
-            kind: "BOOKING_PENDING_MODERATOR",
-            bookingId: args.bookingId,
-            recipientEmail,
-          },
-          send: async (deliveryMode) => {
+          recoveryClaim: args.recoveryClaim,
+          recoveryPayload: { version: 2, kind: "BOOKING_PENDING_MODERATOR", bookingId: args.bookingId, recipientUserId },
+          sendAuthorized: async (email, deliveryMode) => {
             const result = await mailer.sendEmail({
               templateName: "bookingPendingApprovalModerator",
-              to: recipientEmail,
+              to: email,
               personalisation: moderatorPersonalisation,
-              reference: recipientScopedNotifyReference(`BOOKING_PENDING_MODERATOR:${args.bookingId}`, recipientEmail),
+              reference: bookingPendingModeratorUidDeliveryKey(args.bookingId, recipientUserId),
               requestedDeliveryMode: deliveryMode,
             });
-            return {
-              providerMessageId: result.providerNotificationId ?? null,
-              deliveryMode: result.deliveryMode?.effectiveMode,
-            };
+            return { providerMessageId: result.providerNotificationId ?? null,
+              deliveryMode: result.deliveryMode?.effectiveMode };
           },
         });
       } catch (error) {
         logger.error("booking pending moderator email failed", {
-          bookingId: args.bookingId,
-          recipientEmail,
-          error: sanitizeMailerError(error),
+          bookingId: args.bookingId, recipientUserId, errorType: error instanceof Error ? error.name : typeof error,
         });
       }
     }
@@ -445,6 +430,7 @@ export async function notifyBookingChangesRequestedEmail(args: {
   appBaseUrl: string;
   getMailer?: () => ReturnType<typeof createBookingMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   try {
     const booking = await loadBookingForEmail(args.bookingId);
@@ -459,11 +445,13 @@ export async function notifyBookingChangesRequestedEmail(args: {
     await sendNotificationOnce({
       channel: NotificationChannel.EMAIL,
       notificationType: "BOOKING_CHANGES_REQUESTED",
-      deliveryKey: bookingChangesRequestedDeliveryKey(args.bookingId),
+      deliveryKey: args.recoveryClaim?.deliveryKey ?? bookingChangesRequestedDeliveryKey(args.bookingId),
+      preserveDeliveryKey: Boolean(args.recoveryClaim),
       bookingId: args.bookingId,
       userId: booking.booker.id,
       provider: GOV_NOTIFY_PROVIDER,
       deliveryMode: args.deliveryMode,
+      recoveryClaim: args.recoveryClaim,
       recoveryPayload: { version: 1, kind: "BOOKING_CHANGES_REQUESTED", bookingId: args.bookingId },
       send: async (deliveryMode) => {
         const result = await mailer.sendEmail({
@@ -492,6 +480,7 @@ export async function notifyBookingApprovedEmail(args: {
   appBaseUrl: string;
   getMailer?: () => ReturnType<typeof createBookingMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   try {
     const booking = await loadBookingForEmail(args.bookingId);
@@ -502,11 +491,13 @@ export async function notifyBookingApprovedEmail(args: {
     await sendNotificationOnce({
       channel: NotificationChannel.EMAIL,
       notificationType: "BOOKING_APPROVED",
-      deliveryKey: bookingApprovedDeliveryKey(args.bookingId),
+      deliveryKey: args.recoveryClaim?.deliveryKey ?? bookingApprovedDeliveryKey(args.bookingId),
+      preserveDeliveryKey: Boolean(args.recoveryClaim),
       bookingId: args.bookingId,
       userId: booking.booker.id,
       provider: GOV_NOTIFY_PROVIDER,
       deliveryMode: args.deliveryMode,
+      recoveryClaim: args.recoveryClaim,
       recoveryPayload: { version: 1, kind: "BOOKING_APPROVED", bookingId: args.bookingId },
       send: async (deliveryMode) => {
         const result = await mailer.sendEmail({

@@ -35,3 +35,7 @@ export * from "./potentialLost";
 export { getOrganiserGuestList, manageOrganiserGuest, getOrganiserGuestTicket, updateOrganiserGuestDietary, createOrganiserGuestCheckout } from "./organiserGuests";
 
 export { manageTicketAttendance, getManagedEventTickets } from "./ticketAttendance";
+
+export * from "./securityReconciliation";
+
+export * from "./authorizationStatus";

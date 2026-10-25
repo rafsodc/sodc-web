@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { assertFreshDevelopmentReset } from "../src/developmentResetSafety";
+import { initializeUserSecurityState, bootstrapAdminSafetyControl, activateAdminSafetyControl } from "../src/currentAuthorizationTransitions";
 /**
  * CLI script to call devResetAndSeed function.
  * 
@@ -41,7 +43,7 @@
 import * as admin from "firebase-admin";
 import * as readline from "readline";
 import {
-  listUsers as dcListUsers,
+  serviceListUsers as dcListUsers,
   deleteUser as dcDeleteUser,
   createUser,
   MembershipStatus,
@@ -275,6 +277,9 @@ async function main() {
 
     // Step 1: Delete all Firebase Auth users
     console.log("Step 1: Deleting all Firebase Auth users...");
+    // Refuse before the first destructive write; online reset cannot bypass the
+    // current-security foreign keys, ready-admin counter or durable audit.
+    await assertFreshDevelopmentReset();
     await deleteAllAuthUsers();
 
     // Step 2: Delete all DataConnect user rows
@@ -320,6 +325,9 @@ async function main() {
     try {
       console.log("\n🔄 Creating user profile...");
       await createUser(mutationVars);
+      await bootstrapAdminSafetyControl({operationId: `dev-reset-control-${userRecord.uid}`, actorId: "dev-reset", reason: "Fresh offline development bootstrap"});
+      await initializeUserSecurityState({userId: userRecord.uid, actorId: "dev-reset", actorKind: "OPERATOR", reason: "DEV_BOOTSTRAP", allowAdminBootstrap: true});
+      await activateAdminSafetyControl({operationId: `dev-reset-activate-${userRecord.uid}`, actorId: "dev-reset", reason: "Fresh offline development bootstrap"});
       console.log("✅ User created successfully");
     } catch (error: any) {
       console.error("\n❌ Error creating user profile:", error?.message);

@@ -1,5 +1,5 @@
 import type { EventAttendeeTicketFilters } from "../../../../functions/src/shared/attendeeFilters";
-import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "../sessionCallable";
 import { functions } from "../../../config/firebase";
 
 export type TemplateSyncStatus = "in_sync" | "drift" | "not_configured" | "fetch_error";

@@ -1,7 +1,7 @@
 import { searchSectionMembers } from "../../../shared/utils/firebaseFunctions";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter } from "react-router-dom";
-import { render, screen, fireEvent, waitFor, within } from "../../../test-utils";
+import { MemoryRouter, useNavigate } from "react-router-dom";
+import { render, screen, fireEvent, waitFor, within, act } from "../../../test-utils";
 import { guestCall, type Guest, type GuestTicket } from "../api";
 import GuestTicketPage from "../GuestTicketPage";
 import OrganiserGuestsManager from "../OrganiserGuestsManager";
@@ -86,6 +86,27 @@ describe("account-free guest ticket", () => {
     expect(
       await screen.findByText("Dietary requirements saved."),
     ).toBeInTheDocument();
+  });
+
+  it("ignores the previous guest's delayed save when the fragment changes", async () => {
+    let resolveSave!: (value: unknown) => void;
+    call.mockImplementation(async (name, input) => {
+      if (name === "updateOrganiserGuestDietary") return new Promise((resolve) => { resolveSave = resolve; });
+      return input.token === "second-token" ? { ...ticket, firstName: "Beth", dietaryRequirements: "Gluten free" } : ticket;
+    });
+    function SwitchLink() {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate("/guest-ticket#second-token")}>Switch guest link</button>;
+    }
+    render(<MemoryRouter initialEntries={["/guest-ticket#personal-token"]}><GuestTicketPage /><SwitchLink /></MemoryRouter>);
+    await screen.findByText("Dinner event");
+    fireEvent.click(screen.getByRole("button", { name: "Save dietary requirements" }));
+    await waitFor(() => expect(resolveSave).toBeDefined());
+    fireEvent.click(screen.getByText("Switch guest link"));
+    await waitFor(() => expect(screen.getByLabelText("Dietary requirements")).toHaveValue("Gluten free"));
+    await act(async () => resolveSave({ success: true }));
+    expect(screen.queryByText("Dietary requirements saved.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Dietary requirements")).toHaveValue("Gluten free");
   });
   it("allows late payment while dietary editing is closed", async () => {
     call.mockResolvedValue({ ...ticket, dietaryEditable: false });

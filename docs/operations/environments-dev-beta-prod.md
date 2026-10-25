@@ -2,7 +2,9 @@
 
 Tracked in [GitHub issue #193](https://github.com/rafsodc/sodc-web/issues/193).
 
-This document describes how we run **three isolated Firebase-backed environments** without relying on local emulators for day-to-day development. Each environment is a **separate Firebase (Google Cloud) project** so Auth, Data Connect, Cloud Functions, and Hosting stay segregated.
+The active release path is **Dev → Production**. There is no Beta environment for the current release; the Beta commands/configuration below remain optional capabilities. Each environment in use is a **separate Firebase (Google Cloud) project** so Auth, Data Connect, Cloud Functions and Hosting stay segregated. Day-to-day development uses shared cloud Dev rather than local emulators.
+
+Before the first release containing #653 into **each** project, complete the staged [current-authorization migration](./current-authorization.md#one-time-migration-in-each-project) using the [migration tool workflow](./authorization-migration-tool.md). The default strict connector cannot safely be deployed before additive service operations, backfill and compatible Functions. Normal deploy/preflight commands require the one-time project/migration receipt. A Dev receipt or backup waiver does not apply to Beta or Production.
 
 For the first deployment into a newly created production project, complete the
 [new production instance provisioning runbook](./new-production-instance.md)
@@ -13,8 +15,8 @@ before using the promotion process below.
 | Environment | Purpose |
 |-------------|---------|
 | **Dev** | Daily development from your laptop against shared cloud backends (safe to break). |
-| **Beta** | Wider testing, deployment rehearsal, stakeholders—production-like but non-production data. |
-| **Prod** | Live users only; changes arrive via promotion from Beta (or reviewed release process). |
+| **Beta (optional)** | Wider testing and deployment rehearsal if provisioned; not part of the current release path. |
+| **Prod** | Live users only; promote the same reviewed commit accepted in Dev through the approved release process. |
 
 ## Principles
 
@@ -50,7 +52,7 @@ Inspect a project without switching the default alias:
 firebase dataconnect:services:list --project beta
 ```
 
-The repo expects a **beta** Firebase project whose ID matches the `beta` entry in `.firebaserc` (currently `sodc-web-beta`). If that project does not exist yet, create it in the [Firebase Console](https://console.firebase.google.com/) with that ID **or** pick another ID and update `.firebaserc` accordingly. Until the project exists, `firebase use beta` will fail until the alias points at a real project.
+The optional `beta` alias points at `sodc-web-beta`. An alias does not establish that the project exists. Do not use Beta commands for the current Dev → Production release, and do not provision a Beta project as a prerequisite.
 
 ## Local development (laptop → cloud Dev)
 
@@ -120,6 +122,8 @@ diagnose why a deploy stopped early.
 
 ## One-command application deployment
 
+Complete the project-specific authorization migration and its verified receipt first. `npm run deploy:beta` and `npm run deploy:prod` are ordinary release commands; they do not perform the first authorization cutover. Use the [migration tool](./authorization-migration-tool.md) for that prerequisite, then return here for Hosting promotion and the full deployment audit.
+
 For an ordinary reviewed application release, use the command pinned to the
 target environment:
 
@@ -164,7 +168,7 @@ not enforce the repository's dependency-safe stage ordering.
 
 ## Full-stack rollout sequence
 
-Run this sequence independently for **Dev**, then **Beta**, then **Prod**. Complete the smoke-test checkpoint for one environment before promoting the same reviewed commit to the next. Replace `dev` below with `beta` or `prod` as appropriate.
+Run this sequence independently for **Dev**, then **Prod** for the current release. Complete the smoke-test checkpoint in Dev before promoting the same reviewed commit to Production. If an optional Beta environment is introduced later, repeat the full sequence there before Production. Replace `dev` below with the actual target as appropriate.
 
 ### 1. Pin the target and release revision
 
@@ -266,6 +270,8 @@ permissions, JSON output, authenticated smoke checks, and manual checkpoints.
 
 ## Partial failure and rollback checkpoints
 
+For the authorization migration, follow the [migration tool's failure and recovery rules](./authorization-migration-tool.md#failure-resume-and-rollback) before applying the general responses below. Once strict authorization is active, preserve its schema, versions and checks. Do not restore an older claim-only connector or Auth snapshot; recover forward while keeping the write freeze where needed.
+
 | Failure point | Safe response |
 |---|---|
 | SDK generation or either build fails | Stop. No remote state has changed; regenerate, fix, review, and restart. |
@@ -284,10 +290,10 @@ Checking out and redeploying a previous Data Connect definition cannot restore d
 A practical sequence:
 
 1. Implement and integrate on **Dev**, completing all six rollout checkpoints.
-2. Deploy the same reviewed commit to **Beta** and repeat SDK verification, Data Connect, Storage, Functions, Hosting, and smoke tests.
-3. After Beta sign-off, repeat the complete sequence for **Prod** using production secrets and Stripe configuration.
+2. Complete Dev acceptance and the corrected migration adapter rehearsal at that exact reviewed revision. Retain the browser/session recovery, signed-token, App Check, notifications and realistic-volume evidence with their actual limitations. Production migration acceptance references Dev (`sodc-web`), with its own target-bound run and receipt. A strict Dev rehearsal does not establish that a legacy initial backfill has been rehearsed; review Production's actual starting installation separately.
+3. Verify Production's existing backups and recovery references, review the maintenance window and obtain the Production go/no-go. Complete its one-time migration before the ordinary application deployment, then repeat the full sequence for **Prod** with production secrets and Stripe configuration. Verify the newly deployed notification callback in Production as agreed; the accepted shared-service Dev callback exception does not establish that result.
 
-Branch ↔ environment mapping is a **team convention** (e.g. feature branches → dev only; `main` → beta then prod). Document any automation (GitHub Actions) in the workflow repo settings.
+Branch ↔ environment mapping is a **team convention** (e.g. feature branches → Dev; reviewed releases → Production after Dev acceptance). Document any automation (GitHub Actions) in the workflow repo settings.
 
 ## Stripe and external callbacks
 
@@ -299,7 +305,7 @@ Preview channels are **optional** and apply **only within one Firebase project**
 
 - PR previews against **dev** or **beta** without overwriting the default site.
 
-They do **not** replace the Beta project for full-stack staging.
+They do **not** create an isolated full-stack staging backend; all channels in a project share that project's services.
 
 ## Related documentation
 
@@ -307,3 +313,4 @@ They do **not** replace the Beta project for full-stack staging.
 - [contributor-workflow.md](../contributor-workflow.md) — Branches, PRs, tests.
 - [stripe-webhook-endpoints.md](./stripe-webhook-endpoints.md) — Webhook URLs per deployment.
 - [deployment-checks.md](./deployment-checks.md) — Read-only configuration audit and runtime checks.
+- [authorization-migration-tool.md](./authorization-migration-tool.md) — Project-specific preparation, gated cutover phases, evidence and recovery.

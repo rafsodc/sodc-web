@@ -1,13 +1,15 @@
+import { pendingApprovalUidDeliveryKey } from "./notificationDeliveryKeys";
+export { pendingApprovalDeliveryKey, pendingApprovalUidDeliveryKey } from "./notificationDeliveryKeys";
+import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
-import { getUserById, NotificationChannel } from "@dataconnect/admin-generated";
+import { serviceGetUserById as getUserById, NotificationChannel } from "@dataconnect/admin-generated";
 import {
   createConfiguredGovNotifyMailer,
   GOV_NOTIFY_PROVIDER,
-  recipientScopedNotifyReference,
 } from "./mailer";
-import { sanitizeMailerError } from "./mailerErrors";
 import { normaliseAppBaseUrl } from "./paymentLifecycleEmailDispatcher";
-import { sendNotificationOnce } from "./notificationDelivery";
+import { sendPrivilegedNotification } from "./privilegedNotificationDelivery";
+import { selectPrivilegedNotificationRecipientIds } from "./privilegedNotificationRecipient";
 import { getAdminUsers } from "./helpers";
 import { isUserPendingApproval } from "./pendingUserApproval";
 import type { GovNotifyDeliveryMode } from "./govNotifyDeliveryMode";
@@ -30,10 +32,6 @@ export function createPendingApprovalAlertMailer(): ReturnType<
   typeof createConfiguredGovNotifyMailer<PendingApprovalAlertTemplates>
 > {
   return createConfiguredGovNotifyMailer([...PENDING_APPROVAL_ALERT_TEMPLATE_KEYS]);
-}
-
-export function pendingApprovalDeliveryKey(userId: string, adminEmail: string): string {
-  return `pending-approval:${userId}:${adminEmail}`;
 }
 
 /** e.g. "Regular, Reserve" or "Not specified" if none of the flags are set. */
@@ -63,9 +61,11 @@ export async function notifyAdminsUserPendingApproval(args: {
   userId: string;
   emailVerified: boolean;
   appBaseUrl: string;
-  recipientEmails?: readonly string[];
+  recipientUserIds?: readonly string[];
+  recoveryDeliveryKey?: string;
   getMailer?: () => ReturnType<typeof createPendingApprovalAlertMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   try {
     const row = await getUserById({ id: args.userId });
@@ -83,21 +83,9 @@ export async function notifyAdminsUserPendingApproval(args: {
       return;
     }
 
-    const recipients = args.recipientEmails
-      ? Array.from(
-          new Set(
-            args.recipientEmails
-              .map((email) => email.trim().toLowerCase())
-              .filter((email) => email.length > 0)
-          )
-        )
-      : Array.from(
-          new Set(
-            (await getAdminUsers())
-              .map((a) => a.email?.trim().toLowerCase())
-              .filter((email): email is string => !!email)
-          )
-        );
+    const recipients = args.recipientUserIds
+      ? Array.from(new Set(args.recipientUserIds))
+      : await selectPrivilegedNotificationRecipientIds((await getAdminUsers()).map((user) => user.uid), { kind: "ADMIN" });
     if (recipients.length === 0) {
       logger.warn("pending approval admin alert skipped (no admin recipients)", { userId: args.userId });
       return;
@@ -106,7 +94,6 @@ export async function notifyAdminsUserPendingApproval(args: {
     const mailer = (args.getMailer ?? createPendingApprovalAlertMailer)();
     const base = normaliseAppBaseUrl(args.appBaseUrl);
     const approveUsersUrl = `${base}/admin/users/approvals`;
-    const reference = `PENDING_APPROVAL:${args.userId}`;
 
     const personalisation: PendingApprovalAlertTemplates["newUserPendingApprovalAlert"] = {
       firstName: profile.firstName,
@@ -118,29 +105,34 @@ export async function notifyAdminsUserPendingApproval(args: {
       approveUsersUrl,
     };
 
-    for (const to of recipients) {
-      const deliveryKey = pendingApprovalDeliveryKey(args.userId, to);
+    for (const recipientUserId of recipients) {
+      const deliveryKey = args.recoveryDeliveryKey ?? pendingApprovalUidDeliveryKey(args.userId, recipientUserId);
       try {
-        await sendNotificationOnce({
+        await sendPrivilegedNotification({
           channel: NotificationChannel.EMAIL,
           notificationType: "USER_PENDING_APPROVAL",
-          deliveryKey,
+          deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+          preserveDeliveryKey: Boolean(args.recoveryClaim || args.recoveryDeliveryKey),
+          recipientUserId,
+          scope: { kind: "ADMIN" },
+          event: { kind: "APPLICANT", subjectUserId: args.userId },
           userId: args.userId,
           provider: GOV_NOTIFY_PROVIDER,
           deliveryMode: args.deliveryMode,
+          recoveryClaim: args.recoveryClaim,
           recoveryPayload: {
-            version: 1,
+            version: 2,
             kind: "USER_PENDING_APPROVAL",
             userId: args.userId,
             emailVerified: args.emailVerified,
-            recipientEmail: to,
+            recipientUserId,
           },
-          send: async (deliveryMode) => {
+          sendAuthorized: async (email, deliveryMode) => {
             const r = await mailer.sendEmail({
               templateName: "newUserPendingApprovalAlert",
-              to,
+              to: email,
               personalisation,
-              reference: recipientScopedNotifyReference(reference, to),
+              reference: pendingApprovalUidDeliveryKey(args.userId, recipientUserId),
               requestedDeliveryMode: deliveryMode,
             });
             return {
@@ -152,15 +144,15 @@ export async function notifyAdminsUserPendingApproval(args: {
       } catch (error) {
         logger.error("pending approval admin alert delivery failed", {
           userId: args.userId,
-          to,
-          error: sanitizeMailerError(error),
+          recipientUserId,
+          errorType: error instanceof Error ? error.name : typeof error,
         });
       }
     }
   } catch (error) {
     logger.error("pending approval admin alert failed", {
       userId: args.userId,
-      error: sanitizeMailerError(error),
+      errorType: error instanceof Error ? error.name : typeof error,
     });
   }
 }

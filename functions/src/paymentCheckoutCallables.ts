@@ -134,7 +134,7 @@ async function ensureStripeCustomerId(args: {
 }
 
 export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, secrets: [stripeSecret] }, async (request) => {
-  requireEnabled(request);
+  await requireEnabled(request);
   const uid = request.auth!.uid;
   await enforceRateLimit("createTicketCheckoutSession", uid);
   throw new HttpsError(
@@ -144,7 +144,7 @@ export const createTicketCheckoutSession = onCall({ region: FUNCTIONS_REGION, se
 });
 
 export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGION, secrets: [stripeSecret] }, async (request) => {
-  requireEnabled(request);
+  await requireEnabled(request);
   const uid = request.auth!.uid;
   await enforceRateLimit("createEventBookingCheckoutSession", uid);
   const eventId = validateUUID(String(request.data?.eventId), "eventId") as UUIDString;

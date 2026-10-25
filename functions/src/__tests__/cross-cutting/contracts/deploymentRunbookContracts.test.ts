@@ -38,7 +38,7 @@ describe("deployment runbook contracts", () => {
     expect(dataConnect).toBeGreaterThan(generatedStatus);
     expect(functions).toBeGreaterThan(dataConnect);
     expect(hosting).toBeGreaterThan(functions);
-    expect(rollout).toContain("**Dev**, then **Beta**, then **Prod**");
+    expect(rollout).toContain("**Dev**, then **Prod**");
     expect(rollout).not.toContain("firebase deploy --project");
   });
 

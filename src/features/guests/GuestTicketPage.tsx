@@ -1,3 +1,4 @@
+import { useLatestRequestGuard } from "../../shared/hooks/useLatestRequestGuard";
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -23,18 +24,21 @@ export default function GuestTicketPage() {
 }
 
 function GuestTicket({ token }: { token: string }) {
+  const actions = useLatestRequestGuard();
   const [dietary, setDietary] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["guest-ticket", token],
+    meta: { sessionBoundary: "capability" },
     queryFn: () =>
       guestCall<GuestTicketData>("getOrganiserGuestTicket", { token }),
     retry: false,
     gcTime: 0,
   });
   async function act(pay: boolean) {
+    const request = actions.start();
     setBusy(true);
     setError("");
     setSaved(false);
@@ -44,21 +48,22 @@ function GuestTicket({ token }: { token: string }) {
           "createOrganiserGuestCheckout",
           { token },
         );
-        window.location.assign(result.url);
+        if (actions.isCurrent(request)) window.location.assign(result.url);
       } else {
         await guestCall("updateOrganiserGuestDietary", {
           token,
           version: data!.version,
           dietaryRequirements: dietary ?? data!.dietaryRequirements,
         });
+        if (!actions.isCurrent(request)) return;
         setDietary(null);
         await refetch();
-        setSaved(true);
+        if (actions.isCurrent(request)) setSaved(true);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Please try again.");
+      if (actions.isCurrent(request)) setError(e instanceof Error ? e.message : "Please try again.");
     } finally {
-      setBusy(false);
+      if (actions.isCurrent(request)) setBusy(false);
     }
   }
   return (

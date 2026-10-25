@@ -66,7 +66,7 @@ describe("notification lifecycle contracts", () => {
       const source = readFunctionSource(fileName);
       const requests = [
         ...source.matchAll(
-          /(?:sendNotificationOnce|notificationSender)\(\{([\s\S]*?)\bsend:\s*async/g
+          /(?:sendNotificationOnce|notificationSender|sendPrivilegedNotification)\(\{([\s\S]*?)\b(?:send|sendAuthorized):\s*async/g
         ),
       ];
       expect(requests.length, `${fileName} must send at least one notification`).toBeGreaterThan(0);
@@ -77,4 +77,47 @@ describe("notification lifecycle contracts", () => {
       }
     }
   });
+});
+
+describe("staff skip source contracts", () => {
+  it("makes SKIPPED terminal with complete lease CAS and excludes it from retry queries", () => {
+    const operations = fs.readFileSync(path.resolve(process.cwd(), "..", "dataconnect", "api", "admin-mutations.gql"), "utf8");
+    const skip = operations.slice(operations.indexOf("mutation MarkNotificationDeliverySkippedById"), operations.indexOf("query ListLegacyBookingStaffNotificationDeliveries"));
+    for (const guard of ["status: { eq: PENDING }", "attemptCount: { eq: $attemptCount }", "lastAttemptedAt: { eq: $lastAttemptedAt }"]) expect(skip).toContain(guard);
+    for (const field of ["status: SKIPPED", "sentAt: null", "providerMessageId: null", "skippedAt: $skippedAt", "skipReason: $skipReason"]) expect(skip).toContain(field);
+    const queries = operations.slice(operations.indexOf("query ListFailedNotificationDeliveriesForRecovery"), operations.indexOf("mutation CreateNotificationDelivery"));
+    expect(queries).toContain("status: { eq: FAILED }"); expect(queries).toContain("status: { eq: PENDING }");
+    expect(queries).not.toContain("SKIPPED");
+  });
+});
+
+
+describe("atomic recovery claim source contracts", () => {
+  it("binds complete snapshots and database-clock limits in claims and fallback failures", () => {
+    const operations = fs.readFileSync(path.resolve(process.cwd(), "..", "dataconnect", "api", "admin-mutations.gql"), "utf8");
+    for (const name of ["ClaimNotificationDeliveryForRecoveryById", "RecordNotificationRecoveryFailureForClaimById"]) {
+      const start = operations.indexOf(`mutation ${name}(`);
+      expect(start).toBeGreaterThanOrEqual(0);
+      const end = operations.indexOf("\nmutation ", start + 1);
+      const block = operations.slice(start, end === -1 ? undefined : end);
+      for (const guard of ["@auth(level: NO_ACCESS)", "_and: [", "id: { eq: $id }", "channel: { eq: $channel }",
+        "deliveryKey: { eq: $deliveryKey }", "notificationType: { eq: $notificationType }", "status: { eq: $expectedStatus }",
+        "attemptCount: { eq: $expectedAttemptCount, ge: 0, lt: 6 }", "lastAttemptedAt: { eq: $expectedLastAttemptedAt }",
+        "recoveryPayload: { eq: $expectedRecoveryPayload, isNull: $expectedRecoveryPayloadIsNull }",
+        "deliveryMode: { eq: $expectedDeliveryMode, isNull: $expectedDeliveryModeIsNull }",
+        "recipientUserId: { eq: $expectedRecipientUserId, isNull: $expectedRecipientUserIdIsNull }",
+        "recoveryDeferredAt: { isNull: true }", "attemptCount_update: { inc: 1 }",
+        "status: { eq: FAILED }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 15 } } }",
+        "status: { eq: PENDING }, lastAttemptedAt: { le_time: { now: true, sub: { minutes: 10 } } }"]) expect(block, `${name}: ${guard}`).toContain(guard);
+      expect(block).not.toContain("$attemptCount:");
+    }
+  });
+});
+
+
+it("routes the deployed recovery worker exclusively through the guarded failure operation", () => {
+  const recovery = readFunctionSource("notificationRecovery.ts");
+  expect(recovery).toContain("recordFailure: (candidate) => recordNotificationRecoveryFailureForClaim(candidate, now)");
+  expect(recovery).toContain("await recordNotificationRecoveryFailureForClaimById(");
+  expect(recovery).not.toMatch(/\brecordNotificationRecoveryFailureById\b/);
 });

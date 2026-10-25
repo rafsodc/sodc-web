@@ -65,7 +65,19 @@ mutation UpsertUser(
   $isIndustry: Boolean
   $rank: String
   $shareContactInfo: Boolean
-) @auth(expr: "auth.token.enabled == true") {
+) @auth(expr: "auth.token.enabled == true") @transaction {
+  query @redact {
+  currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
+    @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
+    syncStatus
+    securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
+    accessReady
+    membershipStatus
+    adminReady
+    user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
+  }
+  }
+
   user_update(
     id_expr: "auth.uid"
     data: {
@@ -102,7 +114,19 @@ mutation UpdateUser(
   $isReserve: Boolean
   $isCivilServant: Boolean
   $isIndustry: Boolean
-) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") {
+) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") @transaction {
+  query @redact {
+  currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
+    @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
+    syncStatus
+    securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
+    accessReady
+    membershipStatus
+    adminReady @check(expr: "this == true", message: "ACCESS_REVOKED")
+    user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
+  }
+  }
+
   user_update(
     id: $userId
     data: {
@@ -140,7 +164,19 @@ mutation RegisterForSection(
 # Requires enabled claim (admins must also be enabled)
 mutation UnregisterFromSection(
   $userGroupId: UUID!
-) @auth(expr: "auth.token.enabled == true") {
+) @auth(expr: "auth.token.enabled == true") @transaction {
+  query @redact {
+  currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
+    @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
+    syncStatus
+    securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
+    accessReady
+    membershipStatus
+    adminReady
+    user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
+  }
+  }
+
   userUserGroup_delete(
     key: {
       userId_expr: "auth.uid"
@@ -167,7 +203,19 @@ mutation SubscribeToUserGroup(
 # Requires enabled claim (admins must also be enabled)
 mutation UnsubscribeFromUserGroup(
   $userGroupId: UUID!
-) @auth(expr: "auth.token.enabled == true") {
+) @auth(expr: "auth.token.enabled == true") @transaction {
+  query @redact {
+  currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
+    @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
+    syncStatus
+    securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
+    accessReady
+    membershipStatus
+    adminReady
+    user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
+  }
+  }
+
   userUserGroup_delete(
     key: {
       userId_expr: "auth.uid"
@@ -177,7 +225,19 @@ mutation UnsubscribeFromUserGroup(
 }
 
 # Opt the current user out of announcements for a specific section
-mutation OptOutSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
+mutation OptOutSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") @transaction {
+  query @redact {
+  currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
+    @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
+    syncStatus
+    securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
+    accessReady
+    membershipStatus
+    adminReady
+    user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
+  }
+  }
+
   sectionAnnouncementOptOut_upsert(data: {
     userId_expr: "auth.uid"
     sectionId: $sectionId
@@ -185,7 +245,19 @@ mutation OptOutSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.en
 }
 
 # Remove the current user's per-section opt-out (opt back in)
-mutation OptInSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") {
+mutation OptInSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.enabled == true") @transaction {
+  query @redact {
+  currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
+    @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
+    syncStatus
+    securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
+    accessReady
+    membershipStatus
+    adminReady
+    user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
+  }
+  }
+
   sectionAnnouncementOptOut_delete(key: { userId_expr: "auth.uid", sectionId: $sectionId })
 }
 
@@ -193,7 +265,19 @@ mutation OptInSectionAnnouncement($sectionId: UUID!) @auth(expr: "auth.token.ena
 # preferences remain stored while this is enabled and resume if it is disabled.
 mutation UpdateAnnouncementOptOutAll(
   $announcementOptOutAll: Boolean!
-) @auth(expr: "auth.token.enabled == true") {
+) @auth(expr: "auth.token.enabled == true") @transaction {
+  query @redact {
+  currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
+    @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
+    syncStatus
+    securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
+    accessReady
+    membershipStatus
+    adminReady
+    user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
+  }
+  }
+
   user_update(
     id_expr: "auth.uid"
     data: {
@@ -220,7 +304,19 @@ mutation ConfirmProfileReview(
   $isReserve: Boolean
   $isCivilServant: Boolean
   $isIndustry: Boolean
-) @auth(expr: "auth.token.enabled == true") {
+) @auth(expr: "auth.token.enabled == true") @transaction {
+  query @redact {
+  currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
+    @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
+    syncStatus
+    securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
+    accessReady
+    membershipStatus
+    adminReady
+    user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
+  }
+  }
+
   user_update(
     id_expr: "auth.uid"
     data: {

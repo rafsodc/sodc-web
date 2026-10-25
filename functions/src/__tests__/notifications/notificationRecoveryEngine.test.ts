@@ -77,6 +77,7 @@ function recoveryHarness(initial: MutableDelivery, send: () => Promise<void>) {
       stored.lastAttemptedAt = args.lastAttemptedAt;
       return true;
     },
+    async tryMarkPendingForRecovery() { throw new Error("unexpected recovery claim"); },
     async markSent(args) {
       if (
         stored.status !== NotificationDeliveryStatus.PENDING ||
@@ -87,6 +88,12 @@ function recoveryHarness(initial: MutableDelivery, send: () => Promise<void>) {
       stored.status = NotificationDeliveryStatus.SENT;
       stored.lastAttemptedAt = args.lastAttemptedAt;
       stored.providerMessageId = args.providerMessageId;
+      return true;
+    },
+    async markSkipped(args) {
+      if (stored.status !== NotificationDeliveryStatus.PENDING || stored.attemptCount !== args.attemptCount ||
+        stored.lastAttemptedAt !== args.lastAttemptedAt) return false;
+      stored.status = NotificationDeliveryStatus.SKIPPED;
       return true;
     },
     async markFailed(args) {

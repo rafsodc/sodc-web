@@ -1,3 +1,6 @@
+import { paymentReconciliationOpsDeliveryKey, paymentDisputeOpsDeliveryKey } from "./notificationDeliveryKeys";
+export { paymentReconciliationOpsDeliveryKey, paymentDisputeOpsDeliveryKey } from "./notificationDeliveryKeys";
+import type { NotificationRecoveryClaim } from "./notificationRecoveryClaim";
 import * as logger from "firebase-functions/logger";
 import {
   getTicketOrderForWebhook,
@@ -60,23 +63,6 @@ export function createPaymentOpsInternalMailer(): ReturnType<
   return createConfiguredGovNotifyMailer([...PAYMENT_OPS_ALERT_TEMPLATE_KEYS]);
 }
 
-export function paymentReconciliationOpsDeliveryKey(args: {
-  orderId: string;
-  exceptionType: string;
-  stripeEventId: string;
-  recipientEmail: string;
-}): string {
-  return `reconciliation-ops:${args.orderId}:${args.exceptionType}:${args.stripeEventId}:${args.recipientEmail}`;
-}
-
-export function paymentDisputeOpsDeliveryKey(args: {
-  orderId: string;
-  stripeEventId: string;
-  recipientEmail: string;
-}): string {
-  return `dispute-ops:${args.orderId}:${args.stripeEventId}:${args.recipientEmail}`;
-}
-
 async function loadOrderOpsContext(orderId: UUIDString): Promise<{
   eventTitle: string;
   customerDisplay: string;
@@ -104,6 +90,7 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
   recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createPaymentOpsInternalMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   const recipients = args.recipientEmails
     ? Array.from(
@@ -152,11 +139,13 @@ export async function notifyPaymentOpsReconciliationExceptionOpened(args: {
         await sendNotificationOnce({
           channel: NotificationChannel.EMAIL,
           notificationType: "RECONCILIATION_EXCEPTION_OPEN",
-          deliveryKey,
+          deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+          preserveDeliveryKey: Boolean(args.recoveryClaim),
           ticketOrderId: args.orderId,
           userId: null,
           provider: GOV_NOTIFY_PROVIDER,
           deliveryMode: args.deliveryMode,
+          recoveryClaim: args.recoveryClaim,
           recoveryPayload: {
             version: 1,
             kind: "PAYMENT_RECONCILIATION_OPS",
@@ -209,6 +198,7 @@ export async function notifyPaymentOpsDisputeSideState(args: {
   recipientEmails?: readonly string[];
   getMailer?: () => ReturnType<typeof createPaymentOpsInternalMailer>;
   deliveryMode?: GovNotifyDeliveryMode;
+  recoveryClaim?: NotificationRecoveryClaim;
 }): Promise<void> {
   const recipients = args.recipientEmails
     ? Array.from(
@@ -256,11 +246,13 @@ export async function notifyPaymentOpsDisputeSideState(args: {
         await sendNotificationOnce({
           channel: NotificationChannel.EMAIL,
           notificationType: "DISPUTE_OPS_EVENT",
-          deliveryKey,
+          deliveryKey: args.recoveryClaim?.deliveryKey ?? deliveryKey,
+          preserveDeliveryKey: Boolean(args.recoveryClaim),
           ticketOrderId: args.orderId,
           userId: null,
           provider: GOV_NOTIFY_PROVIDER,
           deliveryMode: args.deliveryMode,
+          recoveryClaim: args.recoveryClaim,
           recoveryPayload: {
             version: 1,
             kind: "PAYMENT_DISPUTE_OPS",

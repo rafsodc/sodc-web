@@ -1,3 +1,4 @@
+import { currentAuthorization } from "./currentAuthorization";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getPublicOrganiserGuestAttendance, getAttendeeEventSection, getEventAttendeeNames, type GetEventAttendeeNamesData } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
@@ -11,12 +12,12 @@ type AttendeeName = NameParts & { audience: "MEMBER" | "GUEST"; includesSymposiu
 
 export const getEventAttendees = onCall({ region: FUNCTIONS_REGION }, async (request) => {
   try {
-    requireEnabled(request);
+    await requireEnabled(request);
     const eventId = validateUUID(requireString(request.data?.eventId, "eventId"), "eventId");
     await enforceRateLimit("getEventAttendees", request.auth!.uid);
     const { data: eventData } = await getAttendeeEventSection({ eventId });
     if (!eventData.event) throw new HttpsError("not-found", "Resource not found");
-    await requireSectionAccess(eventData.event.section.id, request.auth!.uid, request.auth!.token.admin === true);
+    await requireSectionAccess(eventData.event.section.id, request.auth!.uid, currentAuthorization(request).isAdmin);
     const current = new Map<string, GetEventAttendeeNamesData["bookings"][number]>();
     const pageSize = 500;
     for (let offset = 0; ; offset += pageSize) {

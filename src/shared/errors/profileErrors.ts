@@ -15,6 +15,26 @@ const COPY: Record<ProfileErrorContext, { title: string; message: string }> = {
 };
 
 const MEMBERSHIP_DOMAIN_ERRORS: Record<string, UserFacingError> = {
+  MEMBERSHIP_STATUS_SAVED_REFRESH_FAILED: {
+    category: "precondition", title: "Status saved; session refresh needed",
+    message: "Your membership status was saved, but your session could not be refreshed. Some other changes may still need saving. Retry to finish, or reload this page.", retryable: true,
+  },
+  LAST_ADMIN_REQUIRED: {
+    category: "precondition", title: "Account access not changed",
+    message: "Keep at least one active, verified administrator. Give another eligible member administrator access before trying this change again.", retryable: false,
+  },
+  ADMIN_SAFETY_RECOVERY_REQUIRED: {
+    category: "precondition", title: "Account access needs recovery",
+    message: "Administrator access needs recovery. Contact site support before trying this change again.", retryable: false,
+  },
+  SECURITY_OPERATION_CONFLICT: {
+    category: "precondition", title: "Change not confirmed",
+    message: "This request no longer matches the original change. Close and reopen the form before trying again.", retryable: false,
+  },
+  SECURITY_CONFLICT_RETRY: {
+    category: "precondition", title: "Change not confirmed",
+    message: "The change could not be confirmed. Try again to check and finish the same request.", retryable: true,
+  },
   ADMIN_RESTRICTED_STATUS: {
     category: "validation",
     title: "Status not changed",

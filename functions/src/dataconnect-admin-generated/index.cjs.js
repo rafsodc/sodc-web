@@ -55,8 +55,15 @@ const NotificationDeliveryStatus = {
   PENDING: "PENDING",
   SENT: "SENT",
   FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
 }
 exports.NotificationDeliveryStatus = NotificationDeliveryStatus;
+
+const NotificationRecoveryDeferredReason = {
+  RECOVERY_DELIVERY_MODE_UNVERIFIABLE: "RECOVERY_DELIVERY_MODE_UNVERIFIABLE",
+  RECOVERY_DELIVERY_MODE_CONFLICT: "RECOVERY_DELIVERY_MODE_CONFLICT",
+}
+exports.NotificationRecoveryDeferredReason = NotificationRecoveryDeferredReason;
 
 const NotifyDeliveryReceiptOutcome = {
   APPLIED: "APPLIED",
@@ -656,6 +663,13 @@ function getNotificationDeliveryByChannelAndKey(dcOrVarsOrOptions, varsOrOptions
 }
 exports.getNotificationDeliveryByChannelAndKey = getNotificationDeliveryByChannelAndKey;
 
+function getNotificationDeliveryById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNotificationDeliveryById', inputVars, inputOpts);
+}
+exports.getNotificationDeliveryById = getNotificationDeliveryById;
+
 function listFailedNotificationDeliveriesForRecovery(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -669,6 +683,20 @@ function listStalePendingNotificationDeliveriesForRecovery(dcOrVarsOrOptions, va
   return dcInstance.executeQuery('ListStalePendingNotificationDeliveriesForRecovery', inputVars, inputOpts);
 }
 exports.listStalePendingNotificationDeliveriesForRecovery = listStalePendingNotificationDeliveriesForRecovery;
+
+function listFailedNotificationDeliveriesForAutomaticRecovery(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListFailedNotificationDeliveriesForAutomaticRecovery', inputVars, inputOpts);
+}
+exports.listFailedNotificationDeliveriesForAutomaticRecovery = listFailedNotificationDeliveriesForAutomaticRecovery;
+
+function listStalePendingNotificationDeliveriesForAutomaticRecovery(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListStalePendingNotificationDeliveriesForAutomaticRecovery', inputVars, inputOpts);
+}
+exports.listStalePendingNotificationDeliveriesForAutomaticRecovery = listStalePendingNotificationDeliveriesForAutomaticRecovery;
 
 function createNotificationDelivery(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -684,6 +712,13 @@ function claimNotificationDeliveryById(dcOrVarsOrOptions, varsOrOptions, options
 }
 exports.claimNotificationDeliveryById = claimNotificationDeliveryById;
 
+function claimNotificationDeliveryForRecoveryById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ClaimNotificationDeliveryForRecoveryById', inputVars, inputOpts);
+}
+exports.claimNotificationDeliveryForRecoveryById = claimNotificationDeliveryForRecoveryById;
+
 function recordNotificationRecoveryFailureById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
@@ -691,12 +726,61 @@ function recordNotificationRecoveryFailureById(dcOrVarsOrOptions, varsOrOptions,
 }
 exports.recordNotificationRecoveryFailureById = recordNotificationRecoveryFailureById;
 
+function recordNotificationRecoveryFailureForClaimById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('RecordNotificationRecoveryFailureForClaimById', inputVars, inputOpts);
+}
+exports.recordNotificationRecoveryFailureForClaimById = recordNotificationRecoveryFailureForClaimById;
+
+function markNotificationRecoveryDeferredForClaimById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationRecoveryDeferredForClaimById', inputVars, inputOpts);
+}
+exports.markNotificationRecoveryDeferredForClaimById = markNotificationRecoveryDeferredForClaimById;
+
+function releaseNotificationRecoveryDeferralForClaimById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('ReleaseNotificationRecoveryDeferralForClaimById', inputVars, inputOpts);
+}
+exports.releaseNotificationRecoveryDeferralForClaimById = releaseNotificationRecoveryDeferralForClaimById;
+
 function markNotificationDeliverySentById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('MarkNotificationDeliverySentById', inputVars, inputOpts);
 }
 exports.markNotificationDeliverySentById = markNotificationDeliverySentById;
+
+function markNotificationDeliverySkippedById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('MarkNotificationDeliverySkippedById', inputVars, inputOpts);
+}
+exports.markNotificationDeliverySkippedById = markNotificationDeliverySkippedById;
+
+function listLegacyBookingStaffNotificationDeliveries(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListLegacyBookingStaffNotificationDeliveries', inputVars, inputOpts);
+}
+exports.listLegacyBookingStaffNotificationDeliveries = listLegacyBookingStaffNotificationDeliveries;
+
+function listLegacyApplicantStaffNotificationDeliveries(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListLegacyApplicantStaffNotificationDeliveries', inputVars, inputOpts);
+}
+exports.listLegacyApplicantStaffNotificationDeliveries = listLegacyApplicantStaffNotificationDeliveries;
+
+function deleteNotificationDeliveryIntegrationFixture(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('DeleteNotificationDeliveryIntegrationFixture', inputVars, inputOpts);
+}
+exports.deleteNotificationDeliveryIntegrationFixture = deleteNotificationDeliveryIntegrationFixture;
 
 function markNotificationDeliveryFailedById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
@@ -1118,13 +1202,6 @@ function getPotentialLostProfile(dcOrVarsOrOptions, varsOrOptions, options) {
 }
 exports.getPotentialLostProfile = getPotentialLostProfile;
 
-function confirmPotentialLost(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('ConfirmPotentialLost', inputVars, inputOpts);
-}
-exports.confirmPotentialLost = confirmPotentialLost;
-
 function getNewMemberReportMigration(dcOrOptions, options) {
   const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
   dcInstance.useGen(true);
@@ -1467,6 +1544,69 @@ function getMyAnnouncementPreferences(dcOrOptions, options) {
   return dcInstance.executeQuery('GetMyAnnouncementPreferences', undefined, inputOpts);
 }
 exports.getMyAnnouncementPreferences = getMyAnnouncementPreferences;
+
+function serviceGetUserById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetUserById', inputVars, inputOpts);
+}
+exports.serviceGetUserById = serviceGetUserById;
+
+function serviceListUsers(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceListUsers', undefined, inputOpts);
+}
+exports.serviceListUsers = serviceListUsers;
+
+function serviceListUserNamesByIds(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceListUserNamesByIds', inputVars, inputOpts);
+}
+exports.serviceListUserNamesByIds = serviceListUserNamesByIds;
+
+function serviceGetUserAccessGroupsById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetUserAccessGroupsById', inputVars, inputOpts);
+}
+exports.serviceGetUserAccessGroupsById = serviceGetUserAccessGroupsById;
+
+function serviceGetEventsForSection(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetEventsForSection', inputVars, inputOpts);
+}
+exports.serviceGetEventsForSection = serviceGetEventsForSection;
+
+function serviceGetEventById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetEventById', inputVars, inputOpts);
+}
+exports.serviceGetEventById = serviceGetEventById;
+
+function serviceGetSectionById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetSectionById', inputVars, inputOpts);
+}
+exports.serviceGetSectionById = serviceGetSectionById;
+
+function serviceGetUserGroupById(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceGetUserGroupById', inputVars, inputOpts);
+}
+exports.serviceGetUserGroupById = serviceGetUserGroupById;
+
+function serviceListEventBookingsForAdmin(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ServiceListEventBookingsForAdmin', inputVars, inputOpts);
+}
+exports.serviceListEventBookingsForAdmin = serviceListEventBookingsForAdmin;
 
 function getTicketAttendanceForManagement(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);

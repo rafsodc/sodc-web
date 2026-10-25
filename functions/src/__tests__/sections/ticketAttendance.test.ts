@@ -12,9 +12,9 @@ const other = "00000000-0000-4000-8000-000000000002";
 const read = vi.spyOn(db, "getTicketAttendanceForManagement");
 const ticket = vi.spyOn(db, "getAttendanceTicketType");
 const write = vi.spyOn(db, "updateTicketAttendance");
-const list = vi.spyOn(db, "listEventBookingsForAdmin");
+const list = vi.spyOn(db, "serviceListEventBookingsForAdmin");
 const line = () => ({ id, ticketType: { audience: "MEMBER" }, bookingPlace: { id, attendanceVersion: 0, attendanceRemoved: false }, booking: { id, status: "CONFIRMED", approvalStatus: "APPROVED", supersededAt: null, event: { id, section: { id } } } });
-function request(data = {}, token: Record<string, unknown> = { enabled: true }) {
+function request(data = {}, token: Record<string, unknown> = { enabled: true, securityVersion: 1 }) {
   return { auth: { uid: "organiser", token }, data: { id, eventId: id, action: "edit", version: 0, ticketTypeId: other, attendeeName: "Updated attendee", dietaryNote: "Vegetarian", ...data } } as Parameters<typeof manageTicketAttendance.run>[0];
 }
 beforeEach(() => {
@@ -75,7 +75,7 @@ describe("attendance-only ticket management", () => {
   it("supports admins and compact UUIDs returned by Data Connect", async () => {
     const current = line(); current.booking.event.id = id.replaceAll("-", "");
     read.mockResolvedValue({ data: { bookingLine: current } } as never);
-    await manageTicketAttendance.run(request({}, { enabled: true, admin: true }));
+    await manageTicketAttendance.run(request({}, { enabled: true, securityVersion: 1, admin: true }));
     expect(requireSectionModerator).toHaveBeenCalledWith(id, "organiser", true);
   });
   it.each([{ enabled: false }, {}])("rejects disabled callers %j", async (token) => {
@@ -121,7 +121,7 @@ describe("attendance-only ticket management", () => {
   it("loads tickets for an authorised moderator", async () => {
     vi.spyOn(db, "getAttendeeEventSection").mockResolvedValue({ data: { event: { section: { id } } } });
     list.mockResolvedValue({ data: { event: { bookings: [], bookingTicketOrders: [] } } } as never);
-    vi.spyOn(db, "getEventById").mockResolvedValue({ data: { event: { ticketTypes: [] } } } as never);
+    vi.spyOn(db, "serviceGetEventById").mockResolvedValue({ data: { event: { ticketTypes: [] } } } as never);
     expect(await getManagedEventTickets.run(request())).toEqual({ seatingUsers: [], bookings: [], orders: [], ticketTypes: [] });
     expect(requireSectionModerator).toHaveBeenCalledWith(id, "organiser", false);
     expect(list).toHaveBeenCalledWith({ eventId: id });
@@ -129,9 +129,9 @@ describe("attendance-only ticket management", () => {
   it("resolves inherited seating names for the authorised moderator", async () => {
     vi.spyOn(db, "getAttendeeEventSection").mockResolvedValue({ data: { event: { section: { id } } } });
     list.mockResolvedValue({ data: { event: { bookings: [{ lines: [], sitNextToUserIds: ["friend", "friend"] }], bookingTicketOrders: [] } } } as never);
-    vi.spyOn(db, "getEventById").mockResolvedValue({ data: { event: { ticketTypes: [] } } } as never);
+    vi.spyOn(db, "serviceGetEventById").mockResolvedValue({ data: { event: { ticketTypes: [] } } } as never);
     const users = [{ id: "friend", firstName: "Alex", lastName: "Member" }];
-    const names = vi.spyOn(db, "listUserNamesByIds").mockResolvedValue({ data: { users } });
+    const names = vi.spyOn(db, "serviceListUserNamesByIds").mockResolvedValue({ data: { users } });
     expect(await getManagedEventTickets.run(request())).toMatchObject({ seatingUsers: users });
     expect(names).toHaveBeenCalledWith({ ids: ["friend"] });
   });

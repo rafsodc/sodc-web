@@ -80,10 +80,16 @@ enum NotificationChannel {
   PUSH
 }
 
+enum NotificationRecoveryDeferredReason {
+  RECOVERY_DELIVERY_MODE_UNVERIFIABLE
+  RECOVERY_DELIVERY_MODE_CONFLICT
+}
+
 enum NotificationDeliveryStatus {
   PENDING
   SENT
   FAILED
+  SKIPPED
 }
 
 enum GovNotifyDeliveryMode {
@@ -652,6 +658,8 @@ type NotificationDelivery @table @unique(fields: ["channel", "deliveryKey"]) {
   channel: NotificationChannel!
   notificationType: String!
   deliveryKey: String!
+  # Staff recipient identity is independent of the booking/applicant subject.
+  recipientUserId: String
   # Versioned minimal domain context used by the scheduled recovery dispatcher.
   recoveryPayload: String
   status: NotificationDeliveryStatus! @default(value: PENDING)
@@ -663,7 +671,12 @@ type NotificationDelivery @table @unique(fields: ["channel", "deliveryKey"]) {
   deliveryMode: GovNotifyDeliveryMode
   attemptCount: Int! @default(value: 1)
   lastAttemptedAt: Timestamp
+  # Durable nonterminal quarantine. Original attempt/identity history stays intact.
+  recoveryDeferredAt: Timestamp
+  recoveryDeferredReason: NotificationRecoveryDeferredReason
   sentAt: Timestamp
+  skippedAt: Timestamp
+  skipReason: String
   lastErrorCode: String
   lastErrorMessage: String
   # HasAudit fields
@@ -879,4 +892,70 @@ type OrganiserGuestAudit @table {
   action: String!
   actor: String!
   occurredAt: Timestamp! @default(expr: "request.time")
+}
+
+
+# Current authorization is owned by trusted services, never a client profile mutation.
+# Ready flags deny access while Auth synchronization is pending or failed.
+enum SecuritySyncStatus { PENDING READY SUPERSEDED }
+enum SecurityActorKind { ADMIN SELF SELF_VERIFICATION OPERATOR DRIFT }
+enum AdminSafetyStatus { BOOTSTRAP READY RECOVERY_REQUIRED }
+
+# Pre-created in a separately committed, audited operator transaction.
+type AdminSafetyControl @table(key: ["id"]) {
+  id: String!
+  version: Int!
+  readyAdminCount: Int!
+  status: AdminSafetyStatus!
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+type AdminSafetyAudit @table(key: ["operationId"]) {
+  operationId: String!
+  actorId: String!
+  reason: String!
+  action: String!
+  intentHash: String!
+  controlVersion: Int!
+  readyAdminCount: Int!
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+type UserSecurityState @table(key: ["user"]) {
+  user: User!
+  securityVersion: Int!
+  membershipStatus: MembershipStatus!
+  desiredEnabled: Boolean!
+  desiredAdmin: Boolean!
+  verificationEmail: String
+  accessReady: Boolean!
+  adminReady: Boolean!
+  operationId: String!
+  syncStatus: SecuritySyncStatus!
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type SecurityTransition @table(key: ["operationId"]) {
+  operationId: String!
+  userId: String!
+  securityVersion: Int!
+  membershipStatus: MembershipStatus!
+  desiredEnabled: Boolean!
+  desiredAdmin: Boolean!
+  # null preserves the Auth disabled flag; operator transitions explicitly set it.
+  authDisabled: Boolean
+  verificationEmail: String
+  intentHash: String!
+  actorKind: SecurityActorKind! @default(value: OPERATOR)
+  actorSecurityVersion: Int
+  noOp: Boolean! @default(value: false)
+  startedControlVersion: Int
+  completedControlVersion: Int
+  startedAdminDelta: Int! @default(value: 0)
+  completedAdminDelta: Int! @default(value: 0)
+  actorId: String!
+  reason: String!
+  syncStatus: SecuritySyncStatus!
+  attempts: Int! @default(value: 0)
+  lastError: String
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
 }
