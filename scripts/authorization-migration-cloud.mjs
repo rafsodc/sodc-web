@@ -25,6 +25,15 @@ const assert=(condition,code)=>{if(!condition)throw new MigrationCloudError(code
 const date=value=>new Date(value).toISOString();
 const resourceName=value=>typeof value==='string'?value.split('/').at(-1):null;
 const deep=value=>JSON.parse(JSON.stringify(value));
+// Scheduler defaults an omitted OIDC audience to the exact target URI, including
+// its query: https://docs.cloud.google.com/scheduler/docs/http-target-auth
+const effectiveOidcAudience=(audience,uri)=>audience===undefined?uri:audience;
+// Accept only the provider's empty HTTPS root spelling; paths, queries and
+// explicit OIDC audiences retain their exact captured strings.
+const schedulerTargetUris=uri=>{
+  const target=new URL(uri);
+  return target.protocol==='https:'&&(uri===target.origin||uri===target.origin+'/')?[target.origin,target.origin+'/']:[uri];
+};
 const canonicalFiles=files=>files.map(({path:filename,content})=>({path:filename.replace(/^\.\//,''),content})).sort((a,b)=>a.path.localeCompare(b.path));
 export const sourceHash=files=>stableHash(canonicalFiles(files));
 export function frozenInvokerPolicy(policy){
@@ -162,7 +171,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     const authority=evaluateAuthority({...raw,requireBackfill:false});
     const safeAuthority={passed:authority.passed,counts:authority.counts,violations:authority.violations,control:authority.control,backfillComplete:authority.backfillComplete,controlReady:authority.controlReady,private:{eligibleLegacyAdminUIDs:authority.private?.eligibleLegacyAdminUIDs??[],legacyAdminUIDs:authority.private?.legacyAdminUIDs??[],legacyAdminFingerprint:authority.private?.legacyAdminFingerprint??null,rosterFingerprint:authority.private?.rosterFingerprint??null}};
     const installation=classifyApi(api.source.files);
-    const safeJobs=jobs.filter(job=>SCHEDULED.some(name=>resourceName(job.name)===`firebase-schedule-${name}-${MIGRATION_REGION}`)).map(job=>({name:job.name,state:job.state,schedule:job.schedule,timeZone:job.timeZone??null,retryConfig:job.retryConfig??{},attemptDeadline:job.attemptDeadline??null,targetFingerprint:stableHash(deep({httpTarget:job.httpTarget?{uri:job.httpTarget.uri,httpMethod:job.httpTarget.httpMethod,serviceAccount:job.httpTarget.oidcToken?.serviceAccountEmail,audience:job.httpTarget.oidcToken?.audience??null}:null,pubsubTarget:job.pubsubTarget?.topicName??null})),configurationHash:stableHash(deep({schedule:job.schedule,timeZone:job.timeZone,httpTarget:job.httpTarget,pubsubTarget:job.pubsubTarget,retryConfig:job.retryConfig,attemptDeadline:job.attemptDeadline}))})).sort((a,b)=>a.name.localeCompare(b.name));
+    const safeJobs=jobs.filter(job=>SCHEDULED.some(name=>resourceName(job.name)===`firebase-schedule-${name}-${MIGRATION_REGION}`)).map(job=>({name:job.name,state:job.state,schedule:job.schedule,timeZone:job.timeZone??null,retryConfig:job.retryConfig??{},attemptDeadline:job.attemptDeadline??null,targetFingerprint:stableHash(deep({httpTarget:job.httpTarget?{uri:job.httpTarget.uri,httpMethod:job.httpTarget.httpMethod,serviceAccount:job.httpTarget.oidcToken?.serviceAccountEmail,audience:effectiveOidcAudience(job.httpTarget.oidcToken?.audience,job.httpTarget.uri)}:null,pubsubTarget:job.pubsubTarget?.topicName??null})),configurationHash:stableHash(deep({schedule:job.schedule,timeZone:job.timeZone,httpTarget:job.httpTarget,pubsubTarget:job.pubsubTarget,retryConfig:job.retryConfig,attemptDeadline:job.attemptDeadline}))})).sort((a,b)=>a.name.localeCompare(b.name));
     lastObservation={schemaVersion:'sodc-authorization-provider-observation/v1',projectId:project,projectNumber:String(target.projectNumber),gitSha:plan.gitSha,observedAt:clock(),installation,enabledApis,databaseProtection,schema:{name:schema.name,updateTime:schema.updateTime,files:canonicalFiles(schema.source.files)},api:{name:api.name,updateTime:api.updateTime,files:canonicalFiles(api.source.files)},authorization:authorization?{name:authorization.name,updateTime:authorization.updateTime,files:canonicalFiles(authorization.source?.files??[])}:null,functions:selectedFunctions,policies,jobs:safeJobs,authority:safeAuthority};
     return deep(lastObservation);
   }
@@ -386,7 +395,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
   }
   const schedulerIntents=specs=>specs.map(spec=>({name:spec.name,specHash:stableHash(spec)}));
   async function resolveSchedulerIntents(observed,intents){const result=[];for(const intent of intents??[]){const name=SCHEDULED.find(name=>resourceName(intent.name)===jobBase(name));assert(name,'UNKNOWN_SCHEDULER_INTENT');const [spec]=await capturedSchedulers(observed,[name]);assert(spec.name===intent.name&&stableHash(spec)===intent.specHash,'SCHEDULER_INTENT_CHANGED');result.push(spec);}return result;}
-  const schedulerMatches=(job,spec)=>Boolean(job&&job.schedule===spec.schedule&&(job.timeZone??'UTC')===spec.timeZone&&(spec.attemptDeadline===undefined||job.attemptDeadline===spec.attemptDeadline)&&Object.entries(spec.retryConfig??{}).every(([key,value])=>job.retryConfig?.[key]===value)&&job.targetFingerprint===stableHash({httpTarget:{uri:spec.httpTarget.uri,httpMethod:spec.httpTarget.httpMethod,serviceAccount:spec.httpTarget.oidcIdentity.serviceAccountEmail,audience:spec.httpTarget.oidcIdentity.audience??null},pubsubTarget:null}));
+  const schedulerMatches=(job,spec)=>Boolean(job&&job.schedule===spec.schedule&&(job.timeZone??'UTC')===spec.timeZone&&(spec.attemptDeadline===undefined||job.attemptDeadline===spec.attemptDeadline)&&Object.entries(spec.retryConfig??{}).every(([key,value])=>job.retryConfig?.[key]===value)&&schedulerTargetUris(spec.httpTarget.uri).some(uri=>job.targetFingerprint===stableHash({httpTarget:{uri,httpMethod:spec.httpTarget.httpMethod,serviceAccount:spec.httpTarget.oidcIdentity.serviceAccountEmail,audience:effectiveOidcAudience(spec.httpTarget.oidcIdentity.audience,uri)},pubsubTarget:null})));
   async function applyScheduler(spec,observed){
     const body=deep(spec);body.httpTarget.oidcToken=body.httpTarget.oidcIdentity;delete body.httpTarget.oidcIdentity;
     const exists=observed.jobs.some(job=>job.name===spec.name);const mask=Object.keys(body).filter(key=>key!=='name').join(',');const endpoint=exists?`/v1/${spec.name}?updateMask=${mask}`:`/v1/projects/${project}/locations/${MIGRATION_REGION}/jobs`;

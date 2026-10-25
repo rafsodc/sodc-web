@@ -1,5 +1,5 @@
 import {afterEach, expect, it, vi} from 'vitest';
-import {mkdtemp, mkdir, readFile, writeFile, rm} from 'node:fs/promises';
+import {mkdtemp, mkdir, readFile, writeFile, rm, unlink} from 'node:fs/promises';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {parseMigrationArguments, runMigrationCli} from './authorization-migration.mjs';
@@ -7,6 +7,7 @@ import {createMigrationPlan, executeMigrationPhase, loadMigrationRun, migrationH
 
 const originalSha='a'.repeat(40), toolSha='b'.repeat(40);
 const successorSha='e'.repeat(40);
+const completionSha='f'.repeat(40);
 const now=new Date('2026-10-25T12:00:00.000Z');
 const roots=[];
 afterEach(async()=>{for(const directory of roots.splice(0))await rm(directory,{recursive:true,force:true});});
@@ -67,6 +68,34 @@ async function frozenSuccessorFixture(){
  for(const phase of['freeze','schema'])await executeMigrationPhase(f.options,{phase,confirmProject:f.plan.projectId,adapter:f.adapter,sourceCheck:async()=>{},now:()=>now});
  await expect(executeMigrationPhase(f.options,{phase:'control-create',confirmProject:f.plan.projectId,adapter:f.adapter,sourceCheck:async()=>{},now:()=>now})).rejects.toMatchObject({code:'PHASE_NOT_VERIFIED'});
  f.gitState.head=successorSha;f.gitState.patch='reviewed cumulative quota fix plus original migration-tool fix';
+ return f;
+}
+const completionAdoption=f=>['adopt-tool-source',...flags(f),'--confirm-project','sodc-web','--tool-sha',completionSha,'--previous-amendment',f.previous.amendmentHash,'--completed-open-verification','--review-reference','reviewed completed-open verifier fix','--reason','verify completed opening without replaying deployment'];
+const completionFile=f=>path.join(f.directory,'tool-source-amendment-'+f.previous.amendmentHash+'.json');
+const expectNoCompletion=f=>expect(readFile(completionFile(f))).rejects.toMatchObject({code:'ENOENT'});
+async function completedOpenFixture(){
+ const f=await frozenSuccessorFixture();f.previous=await runMigrationCli(successorAdoption(f),f.dependencies);
+ f.gitState.byTarget.set(successorSha,{raw:f.gitState.raw,patch:f.gitState.patch});
+ const acceptance={schemaVersion:'sodc-authorization-migration-gate/v1',gate:'acceptance',projectId:f.plan.projectId,gitSha:originalSha,runId:f.plan.runId,reviewedBy:'operator',observedAt:now.toISOString(),evidence:'reviewed unchanged-runtime acceptance',details:{sourceProjectId:'sodc-web',backendTestReference:'backend',browserReviewReference:'browser',notificationsReference:'accepted notification exception',schedulerVolumeReference:'volume',appCheckReference:'app check limitations'}};
+ await recordMigrationGate(f.options,acceptance,now);
+ // Retain an earlier gate version too; completion must bind all files, not a fixed count.
+ await recordMigrationGate(f.options,{...acceptance,evidence:'final reviewed acceptance with retained earlier gate'},now);
+ const schedulerJobs=['recoverNotificationDeliveries','reconcilePendingSecurityTransitions'].map(name=>({functionName:name,job:{name:'projects/sodc-web/locations/europe-west2/jobs/firebase-schedule-'+name+'-europe-west2',schedule:'every 5 minutes',timeZone:'UTC',attemptDeadline:'300s',retryConfig:{retryCount:0},httpTarget:{uri:'https://'+name+'.run.app',httpMethod:'POST',oidcToken:{serviceAccountEmail:'reviewed-scheduler@example.invalid',audience:'https://'+name+'.run.app'}}}}));
+ const schedulerIntents=schedulerJobs.map(({job})=>({name:job.name,specHash:migrationHash({name:job.name,schedule:job.schedule,timeZone:job.timeZone,attemptDeadline:job.attemptDeadline,retryConfig:job.retryConfig,httpTarget:{uri:job.httpTarget.uri,httpMethod:'POST',oidcIdentity:{serviceAccountEmail:job.httpTarget.oidcToken.serviceAccountEmail,audience:job.httpTarget.oidcToken.audience}}})}));
+ f.providerWrites=vi.fn();
+ f.adapter.perform.mockImplementation(async phase=>{
+  const file=path.join(f.directory,'provider-phase-'+phase+'.json');
+  try{return JSON.parse(await readFile(file,'utf8'));}catch(error){if(error.code!=='ENOENT')throw error;}
+  const result={projectId:f.plan.projectId,gitSha:originalSha,runId:f.plan.runId,planHash:f.planHash,phase,startedAt:now.toISOString(),completedAt:now.toISOString(),...(phase==='open'?{openingStarted:true,apiOpening:true}:{}),...(phase==='functions'?{schedulerIntents,functionProofs:schedulerJobs.map(({functionName,job})=>({name:functionName,uri:job.httpTarget.uri,serviceAccountEmail:job.httpTarget.oidcToken.serviceAccountEmail}))}:{})};
+  f.providerWrites(phase);await writeFile(file,JSON.stringify(result),{mode:0o600});return result;
+ });
+ f.adapter.verify.mockImplementation(async phase=>({ok:true,evidence:{projectId:f.plan.projectId,gitSha:originalSha,runId:f.plan.runId,planHash:f.planHash,observedAt:now.toISOString(),assertions:Object.fromEntries(PHASE_ASSERTIONS[phase].map(flag=>[flag,!(phase==='open'&&flag==='invokersRestored')]))}}));
+ for(const phase of['control-create','backfill','functions','activate','strict-api'])await executeMigrationPhase(f.options,{phase,confirmProject:f.plan.projectId,adapter:f.adapter,sourceCheck:async()=>{},now:()=>now});
+ await expect(executeMigrationPhase(f.options,{phase:'open',confirmProject:f.plan.projectId,adapter:f.adapter,sourceCheck:async()=>{},now:()=>now})).rejects.toMatchObject({code:'PHASE_NOT_VERIFIED'});
+ for(const {job}of schedulerJobs){
+  await writeFile(path.join(f.directory,'scheduler-'+job.name.split('/').at(-1)+'.json'),JSON.stringify({projectId:f.plan.projectId,gitSha:originalSha,runId:f.plan.runId,planHash:f.planHash,job}),{mode:0o600});
+ }
+ f.gitState.head=completionSha;f.gitState.patch='reviewed cumulative tool change plus narrow completed-open verification correction';
  return f;
 }
 
@@ -212,4 +241,81 @@ it.each(['project','run'])('does not replace or remove an existing %s migration 
  const bytes=JSON.stringify({pid:123,nonce:'other-owner',purpose:'native control verification'});await writeFile(file,bytes,{mode:0o600});
  await expect(runMigrationCli(successorAdoption(f),f.dependencies)).rejects.toMatchObject({code:'TOOL_SOURCE_LOCKED'});
  expect(await readFile(file,'utf8')).toBe(bytes);await expectNoSuccessor(f);expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+});
+
+it('parses completed-open verification as an explicit adoption-only boolean',()=>{
+ const args=[...adoption({plan:{projectId:'sodc-web',runId:'reviewed-dev'}}),'--previous-amendment','1'.repeat(64),'--completed-open-verification'];
+ expect(parseMigrationArguments(args).flags['completed-open-verification']).toBe(true);
+ expect(()=>parseMigrationArguments([...args,'true'])).toThrow();
+ expect(()=>parseMigrationArguments([...args,'--completed-open-verification'])).toThrow();
+ expect(()=>parseMigrationArguments(['apply','--project','sodc-web','--run-id','reviewed-dev','--phase','open','--confirm-project','sodc-web','--completed-open-verification'])).toThrow();
+});
+it('locally adopts the completed-open verifier while preserving both predecessors and every completed opening/gate/scheduler byte',async()=>{
+ const f=await completedOpenFixture(),beforeRun=await loadMigrationRun(f.options),base=JSON.parse(await readFile(path.join(f.directory,'tool-source-amendment.json'),'utf8'));
+ const gateFiles=Object.values(beforeRun.journal.gates).map(row=>row.file),preserved=['plan.json','journal.json','provider-freeze.json','provider-old-writer-inventory.json','tool-source-amendment.json','tool-source-amendment-'+f.base.amendmentHash+'.json','provider-phase-open.json',...gateFiles,...base.amendment.history.map(row=>row.archive)];
+ const before=await Promise.all(preserved.map(name=>readFile(path.join(f.directory,name)))),writes=f.providerWrites.mock.calls.length;
+ const result=await runMigrationCli(completionAdoption(f),f.dependencies);
+ expect(result).toMatchObject({originalPlanSha:originalSha,toolSha:completionSha,cloudChanges:false});expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();expect(f.providerWrites).toHaveBeenCalledTimes(writes);
+ for(let i=0;i<preserved.length;i++)expect(await readFile(path.join(f.directory,preserved[i]))).toEqual(before[i]);
+ const record=JSON.parse(await readFile(completionFile(f),'utf8'));
+ expect(record.amendment).toMatchObject({schemaVersion:'sodc-authorization-tool-source-amendment/v3',completionKind:'completed-open-verifier',previousAmendmentHash:f.previous.amendmentHash,interruptedPhase:'open'});
+ expect(record.amendment.completionBindings.files.filter(row=>row.name.startsWith('gates/'))).toHaveLength(6);
+ expect(record.amendment.completionBindings.files.filter(row=>row.name.startsWith('scheduler-'))).toHaveLength(2);
+ expect((await loadMigrationRun(f.options)).journal.checkpoints.open).toEqual(beforeRun.journal.checkpoints.open);
+ await expect(runMigrationCli(completionAdoption(f),f.dependencies)).resolves.toMatchObject({amendmentHash:result.amendmentHash});
+});
+it('requires the explicit completion flag and completed provider result instead of broadening ordinary adoption',async()=>{
+ const f=await completedOpenFixture(),args=completionAdoption(f);args.splice(args.indexOf('--completed-open-verification'),1);
+ await expect(runMigrationCli(args,f.dependencies)).rejects.toMatchObject({code:'TOOL_SOURCE_OPEN_ATTEMPTED'});await expectNoCompletion(f);expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+});
+it('refuses a completed-open flag on the first adoption without publishing a base amendment',async()=>{
+ const f=await fixture();await expect(runMigrationCli([...adoption(f),'--completed-open-verification'],f.dependencies)).rejects.toMatchObject({code:'TOOL_SOURCE_COMPLETION_PREDECESSOR_REQUIRED'});
+ await expect(readFile(path.join(f.directory,'tool-source-amendment.json'))).rejects.toMatchObject({code:'ENOENT'});expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+});
+it('resumes completed opening without another provider write and permits legitimate open/receipt journal progress',async()=>{
+ const f=await completedOpenFixture(),adopted=await runMigrationCli(completionAdoption(f),f.dependencies),writes=f.providerWrites.mock.calls.length;
+ f.adapter.verify.mockImplementation(async phase=>({ok:true,evidence:{projectId:f.plan.projectId,gitSha:originalSha,runId:f.plan.runId,planHash:f.planHash,observedAt:now.toISOString(),assertions:Object.fromEntries(PHASE_ASSERTIONS[phase].map(flag=>[flag,true]))}}));
+ const loadAdapter=vi.fn(async options=>{expect(options.plan.gitSha).toBe(originalSha);expect(await options.sourceCheck()).toEqual({originalPlanSha:originalSha,toolSha:completionSha,amendmentHash:adopted.amendmentHash});return f.adapter;});
+ await expect(runMigrationCli(['apply',...flags(f),'--phase','open','--confirm-project','sodc-web'],{...f.dependencies,loadAdapter})).resolves.toMatchObject({phase:'open',status:'complete'});
+ expect(f.providerWrites).toHaveBeenCalledTimes(writes);
+ await expect(runMigrationCli(['audit',...flags(f)],{...f.dependencies,loadAdapter})).resolves.toMatchObject({gitSha:originalSha});
+ await expect(runMigrationCli(['apply',...flags(f),'--phase','receipt','--confirm-project','sodc-web'],{...f.dependencies,loadAdapter})).resolves.toMatchObject({phase:'receipt',status:'complete'});
+ await expect(runMigrationCli(['audit',...flags(f)],{...f.dependencies,loadAdapter})).resolves.toMatchObject({gitSha:originalSha});
+ const receipt=JSON.parse(await readFile(path.join(f.options.repositoryRoot,'.firebase/authorization-migration/sodc-web.json'),'utf8'));
+ expect(receipt).toMatchObject({gitSha:originalSha,migrationRunId:f.plan.runId,migrationPlanHash:f.planHash});
+});
+it.each(['root-receipt','receipt-checkpoint','receipt-provider','unfinished-open','different-result','different-error','prior-result','baseline','gate-file','scheduler-identity','missing-scheduler','raw-oidc-credential','header-credential','foreign-open','dirty-head','old-head','runtime-diff','added-tool-file'])('refuses invalid completed-open continuation: %s',async kind=>{
+ const f=await completedOpenFixture(),run=await loadMigrationRun(f.options),providerFile=path.join(f.directory,'provider-phase-open.json'),provider=JSON.parse(await readFile(providerFile,'utf8'));
+ if(kind==='root-receipt')await writeFile(path.join(f.options.repositoryRoot,'.firebase/authorization-migration/sodc-web.json'),'{}',{mode:0o600});
+ if(kind==='receipt-checkpoint')run.journal.checkpoints.receipt={status:'incomplete'};
+ if(kind==='receipt-provider')await writeFile(path.join(f.directory,'provider-phase-receipt.json'),'{}',{mode:0o600});
+ if(kind==='unfinished-open'){provider.completedAt=null;run.journal.checkpoints.open.result=provider;await writeFile(providerFile,JSON.stringify(provider));}
+ if(kind==='different-result')run.journal.checkpoints.open.result={...provider,unreviewed:true};
+ if(kind==='different-error')run.journal.checkpoints.open.lastError='PROVIDER_OPERATION_FAILED';
+ if(kind==='prior-result')run.journal.checkpoints['strict-api'].result={changed:true};
+ if(kind==='baseline')run.journal.baseline={...run.journal.baseline,changed:true};
+ if(kind==='gate-file'){const entry=run.journal.gates.acceptance,file=path.join(f.directory,entry.file),value=JSON.parse(await readFile(file,'utf8'));value.details.browserReviewReference='unreviewed';await writeFile(file,JSON.stringify(value));}
+ if(kind==='scheduler-identity'){const file=path.join(f.directory,'scheduler-firebase-schedule-reconcilePendingSecurityTransitions-europe-west2.json'),value=JSON.parse(await readFile(file,'utf8'));value.planHash='0'.repeat(64);await writeFile(file,JSON.stringify(value));}
+ if(kind==='missing-scheduler')await unlink(path.join(f.directory,'scheduler-firebase-schedule-reconcilePendingSecurityTransitions-europe-west2.json'));
+ if(['raw-oidc-credential','header-credential'].includes(kind)){const file=path.join(f.directory,'scheduler-firebase-schedule-recoverNotificationDeliveries-europe-west2.json'),value=JSON.parse(await readFile(file,'utf8'));if(kind==='raw-oidc-credential')value.job.httpTarget.oidcToken.accessToken='must-never-be-archived';else value.job.httpTarget.headers={Authorization:'Bearer '+'A'.repeat(40)};await writeFile(file,JSON.stringify(value));}
+ if(kind==='foreign-open'){provider.projectId='sodc-web-production';run.journal.checkpoints.open.result=provider;await writeFile(providerFile,JSON.stringify(provider));}
+ if(kind==='dirty-head')f.gitState.status=' M scripts/authorization-migration-cloud.mjs';
+ if(kind==='old-head')f.gitState.head=successorSha;
+ if(kind==='runtime-diff')f.gitState.raw=rawDiff('functions/src/index.ts');
+ if(kind==='added-tool-file')f.gitState.raw=`:000000 100644 ${'0'.repeat(40)} ${'d'.repeat(40)} A\0scripts/authorization-migration-extra.mjs\0`;
+ await writeFile(path.join(f.directory,'journal.json'),JSON.stringify(run.journal));
+ await expect(runMigrationCli(completionAdoption(f),f.dependencies)).rejects.toThrow();await expectNoCompletion(f);expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+});
+it.each(['gate-entries','scheduler-bytes','provider-bytes','prior-checkpoint'])('blocks provider loading after completed-open binding drift: %s',async kind=>{
+ const f=await completedOpenFixture();await runMigrationCli(completionAdoption(f),f.dependencies);const run=await loadMigrationRun(f.options);
+ if(kind==='gate-entries')run.journal.gates.acceptance.hash='0'.repeat(64);
+ if(kind==='prior-checkpoint')run.journal.checkpoints['strict-api'].attempt++;
+ if(kind==='scheduler-bytes'){const file=path.join(f.directory,'scheduler-firebase-schedule-recoverNotificationDeliveries-europe-west2.json'),row=JSON.parse(await readFile(file,'utf8'));row.observedAt=now.toISOString();await writeFile(file,JSON.stringify(row));}
+ if(kind==='provider-bytes'){const file=path.join(f.directory,'provider-phase-open.json'),row=JSON.parse(await readFile(file,'utf8'));row.completedAt='2026-10-25T11:59:59.999Z';await writeFile(file,JSON.stringify(row));}
+ await writeFile(path.join(f.directory,'journal.json'),JSON.stringify(run.journal));
+ await expect(runMigrationCli(['audit',...flags(f)],f.dependencies)).rejects.toThrow();expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
+});
+it.each(['sodc-web-beta','sodc-web-production'])('never accepts the completed-open flag for %s',async project=>{
+ const f=await completedOpenFixture(),args=completionAdoption(f);args[args.indexOf('--project')+1]=project;args[args.indexOf('--confirm-project')+1]=project;
+ await expect(runMigrationCli(args,f.dependencies)).rejects.toMatchObject({code:'TOOL_SOURCE_STRICT_DEV_ONLY'});await expectNoCompletion(f);expect(f.dependencies.loadAdapter).not.toHaveBeenCalled();
 });

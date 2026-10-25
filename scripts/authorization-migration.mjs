@@ -25,7 +25,7 @@ const allowed = Object.freeze({
   apply: ["project", "run-id", "phase", "confirm-project"],
   unlock: ["project", "run-id", "reason"],
   "abort-freeze": ["project", "run-id", "reason", "confirm-project"],
-  "adopt-tool-source": ["project", "run-id", "reason", "confirm-project", "tool-sha", "review-reference", "previous-amendment"],
+  "adopt-tool-source": ["project", "run-id", "reason", "confirm-project", "tool-sha", "review-reference", "previous-amendment", "completed-open-verification"],
 });
 const required = Object.freeze({
   plan: ["project"],
@@ -51,7 +51,7 @@ export function parseMigrationArguments(argv) {
     if (!argument.startsWith("--") || !allowed[command].includes(argument.slice(2))) fail("FLAG_INVALID", "Unknown or unsupported migration flag.");
     const key = argument.slice(2);
     if (Object.hasOwn(flags, key)) fail("FLAG_DUPLICATE", "Migration flags must not be repeated.");
-    if (key === "import-admins") flags[key] = true;
+    if (["import-admins", "completed-open-verification"].includes(key)) flags[key] = true;
     else {
       const value = args[++index];
       if (!value?.trim() || value.startsWith("--")) fail("FLAG_VALUE_REQUIRED", "Every selected flag requires its value.");
@@ -184,7 +184,8 @@ export async function runMigrationCli(argv, {
   const run = options.runId ? await loadMigrationRun(options) : null;
   if (command === "adopt-tool-source") {
     const source = await adoptMigrationToolSource(options, {confirmProject: flags["confirm-project"], toolSha: flags["tool-sha"],
-      previousAmendmentHash: flags["previous-amendment"], reviewReference: flags["review-reference"], reason: flags.reason, git, now: now()});
+      previousAmendmentHash: flags["previous-amendment"], completedOpenVerification: flags["completed-open-verification"] === true,
+      reviewReference: flags["review-reference"], reason: flags.reason, git, now: now()});
     return {projectId, runId: run.plan.runId, ...source, cloudChanges: false,
       limitation: "Only migration-tool source was adopted. The original release plan and every live verification remain required."};
   }

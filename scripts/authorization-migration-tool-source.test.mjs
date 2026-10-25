@@ -2,7 +2,7 @@ import {afterEach, expect, it, vi} from 'vitest';
 import {mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, unlink, realpath} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {createMigrationPlan, prepareMigrationRun, loadMigrationRun, migrationHash, PHASE_ASSERTIONS} from './authorization-migration-state.mjs';
+import {createMigrationPlan, prepareMigrationRun, loadMigrationRun, migrationHash, PHASE_ASSERTIONS, recordMigrationGate} from './authorization-migration-state.mjs';
 import {adoptMigrationToolSource, verifyMigrationToolSource, inspectMigrationToolSource, parseToolSourceDiff, MAX_TOOL_SOURCE_AMENDMENTS} from './authorization-migration-tool-source.mjs';
 
 const original = 'a'.repeat(40), tool = 'b'.repeat(40), now = new Date('2026-10-25T09:30:00Z');
@@ -204,4 +204,113 @@ it('continues to bind archived completed evidence after a successor and halts on
   const f = await successorFixture(); await f.append();
   await f.put(f.journal.checkpoints.schema.evidenceFile, {});
   await expect(verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).rejects.toMatchObject({code: 'TOOL_SOURCE_COMPLETED_EVIDENCE_CHANGED'});
+});
+
+async function completionFixture({changeCapture = () => {}} = {}) {
+  const f = await successorFixture(), tip = await f.append();
+  const identity = {projectId: f.plan.projectId, gitSha: original, runId: f.plan.runId, planHash: f.planHash};
+  const captures = ['recoverNotificationDeliveries', 'reconcilePendingSecurityTransitions'].map(name => ({...identity, job: {
+    name: `projects/sodc-web/locations/europe-west2/jobs/firebase-schedule-${name}-europe-west2`, schedule: 'every 5 minutes', timeZone: 'UTC', attemptDeadline: '300s',
+    httpTarget: {uri: `https://${name.toLowerCase()}.a.run.app`, httpMethod: 'POST', oidcToken: {serviceAccountEmail: 'scheduler@sodc-web.iam.gserviceaccount.com'}},
+  }}));
+  changeCapture(captures[0]);
+  const specs = captures.map(({job}) => ({name: job.name, schedule: job.schedule, timeZone: job.timeZone, attemptDeadline: job.attemptDeadline,
+    ...(job.retryConfig ? {retryConfig: job.retryConfig} : {}), httpTarget: {uri: job.httpTarget.uri, httpMethod: 'POST', oidcIdentity: {serviceAccountEmail: job.httpTarget.oidcToken.serviceAccountEmail, ...(job.httpTarget.oidcToken.audience ? {audience: job.httpTarget.oidcToken.audience} : {})}}}));
+  await f.complete('control-create', f.journal.checkpoints['control-create'].result);
+  await f.complete('backfill', {reviewed: true});
+  await f.complete('functions', {functionProofs: captures.map(({job}, index) => ({name: ['recoverNotificationDeliveries', 'reconcilePendingSecurityTransitions'][index], uri: job.httpTarget.uri, serviceAccountEmail: job.httpTarget.oidcToken.serviceAccountEmail})), schedulerIntents: specs.map(spec => ({name: spec.name, specHash: migrationHash(spec)}))});
+  await f.complete('activate', {reviewed: true}); await f.complete('strict-api', {reviewed: true});
+  await f.put('journal.json', f.journal);
+  for (const [gate, details] of [
+    ['backup', {waiverReference: 'explicit Dev waiver'}],
+    ['freeze-scope', {entrypoints: ['grantAdmin'], jobNames: [], externalWritersReference: 'reviewed writer scope', probeUserId: 'approved-nonadmin', probeReference: 'reviewed probe'}],
+    ['old-writers', {method: 'cloud-run-retirement', freezeStateHash: migrationHash(f.freeze), inventoryHash: migrationHash(f.inventory), successorRevisions: [], externalOperationsReference: 'reviewed operations'}],
+    ['sql-review', {diffSha256: 'e'.repeat(64)}],
+    ['acceptance', {sourceProjectId: 'sodc-web', backendTestReference: 'backend', browserReviewReference: 'browser', notificationsReference: 'notifications', schedulerVolumeReference: 'volume', appCheckReference: 'App Check'}],
+    ['sql-review', {diffSha256: 'f'.repeat(64)}],
+  ]) await recordMigrationGate(f.options, {schemaVersion: 'sodc-authorization-migration-gate/v1', projectId: identity.projectId, gitSha: identity.gitSha, runId: identity.runId, gate, details, reviewedBy: 'operator', observedAt: now.toISOString(), evidence: 'reviewed same-runtime evidence'}, now);
+  Object.assign(f.journal, (await loadMigrationRun(f.options)).journal);
+  const open = {...identity, phase: 'open', startedAt: now.toISOString(), completedAt: now.toISOString(), openingStarted: true, apiOpening: true};
+  f.journal.checkpoints.open = {status: 'incomplete', operationId: f.plan.phaseOperationIds.open, attempt: 1, startedAt: now.toISOString(), lastError: 'PHASE_NOT_VERIFIED', result: open};
+  await f.put('provider-phase-open.json', open);
+  for (const capture of captures) await f.put('scheduler-' + capture.job.name.split('/').at(-1) + '.json', capture);
+  await f.put('journal.json', f.journal);
+  const finish = extras => f.append('d'.repeat(40), tip.amendmentHash, {completedOpenVerification: true, ...extras});
+  const noChild = () => expect(readFile(path.join(f.directory, 'tool-source-amendment-' + tip.amendmentHash + '.json')).then(() => true)).rejects.toMatchObject({code: 'ENOENT'});
+  return {...f, tip, open, captures, finish, noChild};
+}
+
+it('appends a distinct completed-open v3 amendment without rewriting the release, provider result, gates or prior chain', async () => {
+  const f = await completionFixture(), names = ['plan.json', 'journal.json', 'provider-phase-open.json', 'tool-source-amendment.json', 'tool-source-amendment-' + f.base.amendmentHash + '.json'];
+  const before = await Promise.all(names.map(name => readFile(path.join(f.directory, name))));
+  const result = await f.finish(), file = 'tool-source-amendment-' + f.tip.amendmentHash + '.json', record = JSON.parse(await readFile(path.join(f.directory, file)));
+  expect(record.amendment).toMatchObject({schemaVersion: 'sodc-authorization-tool-source-amendment/v3', completionKind: 'completed-open-verifier', interruptedPhase: 'open', previousAmendmentHash: f.tip.amendmentHash});
+  expect(record.amendment.completionBindings.files).toHaveLength(9); // Provider opening, six gate versions and two scheduler captures.
+  expect(Object.keys(record.amendment.completionBindings.priorCheckpointHashes)).toHaveLength(8);
+  expect(await Promise.all(names.map(name => readFile(path.join(f.directory, name))))).toEqual(before);
+  expect(await f.finish()).toEqual(result);
+  await f.complete('open', f.open); f.journal.checkpoints.receipt = {status: 'incomplete', operationId: f.plan.phaseOperationIds.receipt, attempt: 1}; await f.put('journal.json', f.journal);
+  await f.put('provider-phase-receipt.json', {...f.open, phase: 'receipt', completedAt: null});
+  expect(await verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).toEqual(result);
+});
+it('keeps the normal pre-open guard and requires the explicit completion flag', async () => {
+  const f = await completionFixture(); await expect(f.finish({completedOpenVerification: false})).rejects.toMatchObject({code: 'TOOL_SOURCE_OPEN_ATTEMPTED'}); await f.noChild();
+});
+it('accepts a captured literal OIDC audience without weakening the credential screen', async () => {
+  const f = await completionFixture({changeCapture: capture => {capture.job.httpTarget.oidcToken.audience = capture.job.httpTarget.uri;}});
+  expect((await f.finish()).amendmentHash).toMatch(/^[a-f0-9]{64}$/);
+});
+for (const kind of ['token', 'headers', 'secret', 'null-audience', 'empty-audience']) it('rejects unapproved scheduler data instead of suppressing credential checks: ' + kind, async () => {
+  const f = await completionFixture({changeCapture: capture => {
+    if (kind === 'token') capture.job.httpTarget.oidcToken.accessToken = 'not-a-real-token';
+    if (kind === 'headers') capture.job.httpTarget.headers = {Authorization: 'not-a-real-credential'};
+    if (kind === 'secret') capture.job.retryConfig = {password: 'not-a-real-secret'};
+    if (kind === 'null-audience') capture.job.httpTarget.oidcToken.audience = null;
+    if (kind === 'empty-audience') capture.job.httpTarget.oidcToken.audience = '';
+  }});
+  await expect(f.finish()).rejects.toThrow(); await f.noChild();
+});
+for (const kind of ['provider-unfinished', 'provider-result', 'open-status', 'wrong-error', 'prior-proof', 'prior-result', 'missing-prior', 'baseline', 'missing-gate', 'gate-entry', 'gate-bytes', 'scheduler', 'scheduler-intent', 'receipt-checkpoint', 'receipt-provider', 'receipt-file', 'future-provider', 'future-provider-partial', 'receipt-provider-partial', 'abort', 'owner']) it('refuses completed-open adoption scope drift: ' + kind, async () => {
+  const f = await completionFixture();
+  if (kind === 'provider-unfinished') await f.put('provider-phase-open.json', {...f.open, completedAt: null});
+  if (kind === 'provider-result') f.journal.checkpoints.open.result = {...f.open, completedAt: '2026-10-25T09:29:59Z'};
+  if (kind === 'open-status') f.journal.checkpoints.open.status = 'complete';
+  if (kind === 'wrong-error') f.journal.checkpoints.open.lastError = 'PROVIDER_COMMAND_FAILED';
+  if (kind === 'prior-proof') await f.put(f.journal.checkpoints.activate.evidenceFile, {});
+  if (kind === 'prior-result') f.journal.checkpoints.activate.result = {changed: true};
+  if (kind === 'missing-prior') delete f.journal.checkpoints.activate;
+  if (kind === 'baseline') f.journal.baseline = {changed: true};
+  if (kind === 'missing-gate') delete f.journal.gates.acceptance;
+  if (kind === 'gate-entry') f.journal.gates.acceptance.hash = '0'.repeat(64);
+  if (kind === 'gate-bytes') await f.put(f.journal.gates.acceptance.file, {});
+  if (kind === 'scheduler') await f.put('scheduler-' + f.captures[0].job.name.split('/').at(-1) + '.json', {...f.captures[0], projectId: 'foreign'});
+  if (kind === 'scheduler-intent') {const capture = structuredClone(f.captures[0]); capture.job.schedule = 'every 10 minutes'; await f.put('scheduler-' + capture.job.name.split('/').at(-1) + '.json', capture);}
+  if (kind === 'receipt-checkpoint') f.journal.checkpoints.receipt = {status: 'incomplete'};
+  if (kind === 'receipt-provider') await f.put('provider-phase-receipt.json', {});
+  if (kind === 'receipt-file') await writeFile(path.join(f.options.repositoryRoot, '.firebase/authorization-migration/sodc-web.json'), '{}', {mode: 0o600});
+  if (kind === 'future-provider') await f.put('provider-phase-unknown.json', {});
+  if (kind === 'future-provider-partial') await f.put('provider-phase-future.json.tmp', {});
+  if (kind === 'receipt-provider-partial') await f.put('provider-phase-receipt.json.next', {});
+  if (kind === 'abort') await f.put('abort-freeze-intent.json', {});
+  if (kind === 'owner') await writeFile(path.join(path.dirname(f.directory), 'active-run.json'), '{}', {mode: 0o600});
+  await f.put('journal.json', f.journal); await expect(f.finish()).rejects.toThrow(); await f.noChild();
+});
+for (const kind of ['open-record', 'gate-file', 'gate-entry', 'scheduler-file', 'prior-checkpoint']) it('ordinary verification rejects pinned completion drift: ' + kind, async () => {
+  const f = await completionFixture(); await f.finish();
+  if (kind === 'open-record') await f.put('provider-phase-open.json', {...f.open, completedAt: '2026-10-25T09:31:00Z'});
+  if (kind === 'gate-file') await f.put(f.journal.gates.acceptance.file, {});
+  if (kind === 'gate-entry') f.journal.gates.acceptance.hash = '0'.repeat(64);
+  if (kind === 'scheduler-file') await f.put('scheduler-' + f.captures[0].job.name.split('/').at(-1) + '.json', {});
+  if (kind === 'prior-checkpoint') f.journal.checkpoints.activate.result = {changed: true};
+  await f.put('journal.json', f.journal); await expect(verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).rejects.toMatchObject({code: 'TOOL_SOURCE_COMPLETION_BINDING_CHANGED'});
+});
+it('restricts the new completion delta to the seven existing reviewed files and forbids another successor', async () => {
+  const f = await completionFixture(), git = async (args, options) => args.includes('--raw') && args.at(-3) === f.tip.toolSha ? raw.replace('authorization-migration-cloud.mjs', 'authorization-migration-retirement.mjs') : f.git(args, options);
+  await expect(f.finish({git})).rejects.toMatchObject({code: 'TOOL_SOURCE_COMPLETION_DELTA_INVALID'}); await f.noChild();
+  const result = await f.finish(); await expect(f.append('e'.repeat(40), result.amendmentHash, {completedOpenVerification: true})).rejects.toMatchObject({code: 'TOOL_SOURCE_COMPLETION_ALREADY_ADOPTED'});
+});
+for (const name of ['provider-phase-future.json', 'provider-phase-future.json.tmp', 'provider-phase-receipt.json.next']) it('rejects unknown or partial provider work after completion adoption: ' + name, async () => {
+  const f = await completionFixture(); await f.finish();
+  await f.put(name, {...f.open, phase: 'future'});
+  await expect(verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).rejects.toMatchObject({code: 'TOOL_SOURCE_LATER_PHASE_PRESENT'});
 });

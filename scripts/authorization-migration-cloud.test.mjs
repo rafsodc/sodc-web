@@ -19,7 +19,7 @@ const platformHtml=(status,name='grantAdmin')=>`<html><head><title>${status} ${s
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}});
 const uuid=value=>{const hash=stableHash(value);return `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`;};
 
-async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,callableRefusal,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,allExistingFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,schedulerList,delay=async()=>{},requestHook,sourceCheck}={}){
+async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,callableRefusal,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,allExistingFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,explicitSchedulerAudience=false,functionUriSuffix='',schedulerList,delay=async()=>{},requestHook,sourceCheck}={}){
   const project=projectId;
   const directory=await mkdtemp(path.join(os.tmpdir(),'authorization-cloud-offline-'));t.onTestFinished(()=>rm(directory,{recursive:true,force:true}));
   const runDirectory=path.join(directory,'run');await mkdir(runDirectory);
@@ -111,7 +111,8 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
           if(!functionNames.includes(name))functionNames.push(name);if(name==='getMyAuthorizationStatus')policies.set(name,structuredClone(policy));
           deployRevision(name,'candidate');
           if(['recoverNotificationDeliveries','reconcilePendingSecurityTransitions'].includes(name)){
-            const job={name:`projects/${project}/locations/europe-west2/jobs/firebase-schedule-${name}-europe-west2`,schedule:name==='recoverNotificationDeliveries'?'every 1 minutes':'every 5 minutes',timeZone:'UTC',attemptDeadline:'1800s',retryConfig:{retryCount:3},httpTarget:{uri:`https://${name}.a.run.app`,httpMethod:'POST',oidcToken:{serviceAccountEmail:`123456789-compute@developer.gserviceaccount.com`}}};
+            const job={name:`projects/${project}/locations/europe-west2/jobs/firebase-schedule-${name}-europe-west2`,schedule:name==='recoverNotificationDeliveries'?'every 1 minutes':'every 5 minutes',timeZone:'UTC',attemptDeadline:'1800s',retryConfig:{retryCount:3},httpTarget:{uri:`https://${name.toLowerCase()}.a.run.app${functionUriSuffix}`,httpMethod:'POST',oidcToken:{serviceAccountEmail:`123456789-compute@developer.gserviceaccount.com`}}};
+            if(explicitSchedulerAudience)job.httpTarget.oidcToken.audience=job.httpTarget.uri;
             const code="const{createRequire}=require('node:module');const r=createRequire(process.argv[1]);r('../gcp/cloudscheduler.js').createOrReplaceJob(JSON.parse(process.argv[2])).catch(()=>process.exitCode=1);";
             execFileSync(process.execPath,['--require',args[1],'-e',code,firebaseExecutable,JSON.stringify(job)],{stdio:'pipe'});
           }
@@ -144,7 +145,7 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
     if(target.pathname.endsWith('/schemas/main'))return json({name:base+'/schemas/main',datasources:[{postgresql:{cloudSql:{instance:`projects/${project}/locations/europe-west2/instances/sodc-web-instance`}}}],source:{files:schema}});
     if(target.pathname.endsWith('/connectors/api'))return json({name:base+'/connectors/api',source:{files:api}});
     if(target.pathname.endsWith('/connectors/authorization-service'))return json({name:base+'/connectors/authorization-service',source:{files:authorization}});
-    if(target.pathname.endsWith('/functions'))return json({functions:functionNames.map(name=>({name:`projects/${project}/locations/europe-west2/functions/${name}`,environment:'GEN_2',state:functionStates.get(name)??'ACTIVE',updateTime:functionUpdateTimes.get(name),buildConfig:{runtime:'nodejs24',entryPoint:name,source:{storageSource:{bucket:'source-bucket',object:functionSources.get(name)??'reviewed.zip',generation:'1'}}},serviceConfig:{service:serviceResource(name),revision:functionRevisions.get(name),uri:`https://${name}.a.run.app`,serviceAccountEmail:'123456789-compute@developer.gserviceaccount.com',timeoutSeconds:name==='recoverNotificationDeliveries'?scheduledTimeout:60,environmentVariables:{NEVER_PERSIST:'secret-value'}}}))});
+    if(target.pathname.endsWith('/functions'))return json({functions:functionNames.map(name=>({name:`projects/${project}/locations/europe-west2/functions/${name}`,environment:'GEN_2',state:functionStates.get(name)??'ACTIVE',updateTime:functionUpdateTimes.get(name),buildConfig:{runtime:'nodejs24',entryPoint:name,source:{storageSource:{bucket:'source-bucket',object:functionSources.get(name)??'reviewed.zip',generation:'1'}}},serviceConfig:{service:serviceResource(name),revision:functionRevisions.get(name),uri:`https://${name.toLowerCase()}.a.run.app${functionUriSuffix}`,serviceAccountEmail:'123456789-compute@developer.gserviceaccount.com',timeoutSeconds:name==='recoverNotificationDeliveries'?scheduledTimeout:60,environmentVariables:{NEVER_PERSIST:'secret-value'}}}))});
     if(target.hostname==='cloudscheduler.googleapis.com'&&target.pathname.endsWith('/jobs')){
       const pageSize=Number(target.searchParams.get('pageSize')??500);
       if(!Number.isInteger(pageSize)||pageSize<1||pageSize>500)return json({error:{status:'INVALID_ARGUMENT'}},400);
@@ -272,6 +273,74 @@ test('interrupted opening resumes stable deferred proof, restores original polic
 test('sealed artifacts recover when journal persistence was interrupted',async t=>{const fixture=await setup(t);const first=await fixture.adapter.perform('inspect',{planHash:stableHash(fixture.plan)});await rm(path.join(fixture.runDirectory,'provider-artifacts.json'));const second=await fixture.adapter.perform('inspect',{planHash:stableHash(fixture.plan)});assert.equal(first.sqlDiff.diffSha256,second.sqlDiff.diffSha256);assert.equal(mutationCount(fixture),0);});
 test('same-credential positive query failure prevents an ambiguous onboarding refusal proof',async t=>{withProbe(t);const fixture=await setup(t,{positiveQueryDenied:true});const context=fixture.context(await fixture.adapter.observe());const result=await fixture.adapter.perform('freeze',context);await fixture.maintainAndRetire(context);fixture.advance(76);const verified=await fixture.adapter.verify('freeze',{...context,result});assert.equal(verified.ok,false);assert.ok(verified.blockers.includes('signedRefusalVerified'));assert.equal(fixture.requests.filter(item=>item.path.endsWith(':executeMutation')).length,0);});
 test('OIDC job configuration crosses the durable credential guard without recording token-shaped keys',async t=>{const {fixture,context}=await staged(t);const observed=await fixture.adapter.observe();assert.doesNotThrow(()=>assertNoCredentials(observed));assert.doesNotThrow(()=>assertNoCredentials(context.checkpoints.functions.result));assert.equal(context.checkpoints.functions.result.schedulerIntents.length,1);assert.equal(JSON.stringify(context.checkpoints.functions.result).includes('oidcToken'),false);assert.equal(fixture.jobs.find(job=>job.name.includes('reconcilePendingSecurityTransitions')),undefined);});
+test('Scheduler OIDC observation defaults omitted audience to the exact URI while retaining raw configuration',async t=>{
+  const fixture=await setup(t),job=fixture.jobs[0];
+  const uri='https://scheduler.example.invalid/worker?b=2&a=1';
+  job.httpTarget={uri,httpMethod:'POST',oidcToken:{serviceAccountEmail:'scheduler@example.invalid'}};
+  const omitted=(await fixture.adapter.observe()).jobs[0];
+  job.httpTarget.oidcToken.audience=uri;
+  const explicit=(await fixture.adapter.observe()).jobs[0];
+  assert.equal(explicit.targetFingerprint,omitted.targetFingerprint);
+  assert.notEqual(explicit.configurationHash,omitted.configurationHash);
+  for(const audience of ['https://other.example.invalid/worker?b=2&a=1',uri+'/',uri.split('?')[0],'https://scheduler.example.invalid/worker?a=1&b=2','',null]){
+    job.httpTarget.oidcToken.audience=audience;
+    assert.notEqual((await fixture.adapter.observe()).jobs[0].targetFingerprint,omitted.targetFingerprint);
+  }
+  assert.equal(fixture.requests.every(request=>request.method==='GET'),true);
+});
+for(const explicitSchedulerAudience of [false,true])test(`final Scheduler OIDC proof accepts ${explicitSchedulerAudience?'explicit intent with omitted provider audience':'omitted intent with explicit provider URI audience'}`,async t=>{
+  const {fixture,context}=await staged(t,{explicitSchedulerAudience});
+  context.checkpoints.open={result:await fixture.adapter.perform('open',context)};
+  for(const job of fixture.jobs){if(explicitSchedulerAudience)delete job.httpTarget.oidcToken.audience;else job.httpTarget.oidcToken.audience=job.httpTarget.uri;}
+  const before=mutationCount(fixture),requests=fixture.requests.length;
+  assert.equal((await fixture.adapter.verify('receipt',context)).ok,true);
+  assert.equal(mutationCount(fixture),before);
+  assert.equal(fixture.requests.slice(requests).every(request=>request.method==='GET'),true);
+});
+for(const functionUriSuffix of ['', '/'])test(`final Scheduler OIDC proof accepts exact HTTPS root ${functionUriSuffix?'slash intent with bare provider URI':'bare intent with provider root slash'}`,async t=>{
+  const {fixture,context}=await staged(t,{functionUriSuffix});
+  context.checkpoints.open={result:await fixture.adapter.perform('open',context)};
+  for(const job of fixture.jobs){job.httpTarget.uri=functionUriSuffix?job.httpTarget.uri.slice(0,-1):job.httpTarget.uri+'/';job.httpTarget.oidcToken.audience=job.httpTarget.uri;}
+  const before=mutationCount(fixture),requests=fixture.requests.length;
+  assert.equal((await fixture.adapter.verify('receipt',context)).ok,true);
+  assert.equal(mutationCount(fixture),before);
+  assert.equal(fixture.requests.slice(requests).every(request=>request.method==='GET'),true);
+});
+test('final Scheduler OIDC proof preserves an explicit audience when the provider normalizes an empty HTTPS root',async t=>{
+  const {fixture,context}=await staged(t,{explicitSchedulerAudience:true});
+  context.checkpoints.open={result:await fixture.adapter.perform('open',context)};
+  const job=fixture.jobs.find(job=>job.name.includes('reconcilePendingSecurityTransitions')),audience=job.httpTarget.oidcToken.audience;
+  job.httpTarget.uri+='/';job.httpTarget.oidcToken.audience=job.httpTarget.uri;
+  assert.ok((await fixture.adapter.verify('receipt',context)).blockers.includes('schedulersVerified'));
+  job.httpTarget.oidcToken.audience=audience;
+  assert.equal((await fixture.adapter.verify('receipt',context)).ok,true);
+});
+test('final Scheduler OIDC proof never applies empty-root equivalence to a nonempty path',async t=>{
+  const {fixture,context}=await staged(t,{functionUriSuffix:'/worker'});
+  context.checkpoints.open={result:await fixture.adapter.perform('open',context)};
+  const job=fixture.jobs.find(job=>job.name.includes('reconcilePendingSecurityTransitions'));
+  job.httpTarget.uri+='/';job.httpTarget.oidcToken.audience=job.httpTarget.uri;
+  assert.ok((await fixture.adapter.verify('receipt',context)).blockers.includes('schedulersVerified'));
+});
+test('final Scheduler OIDC proof rejects explicit audience and target drift without rewriting jobs',async t=>{
+  const {fixture,context}=await staged(t);
+  context.checkpoints.open={result:await fixture.adapter.perform('open',context)};
+  const job=fixture.jobs.find(job=>job.name.includes('reconcilePendingSecurityTransitions')),original=structuredClone(job.httpTarget),before=mutationCount(fixture),requests=fixture.requests.length;
+  const cases=[
+    target=>{target.oidcToken.audience='https://other.example.invalid';},
+    target=>{target.oidcToken.audience=target.uri+'/';},
+    target=>{target.oidcToken.audience=target.uri+'?unexpected=1';},
+    target=>{target.oidcToken.audience='';},
+    target=>{target.oidcToken.audience=null;},
+    target=>{target.httpMethod='GET';},
+    target=>{target.oidcToken.serviceAccountEmail='other@example.invalid';},
+    target=>{target.uri='https://other.example.invalid';},
+    target=>{target.uri+='?unexpected=1';},
+  ];
+  for(const change of cases){job.httpTarget=structuredClone(original);change(job.httpTarget);assert.ok((await fixture.adapter.verify('receipt',context)).blockers.includes('schedulersVerified'));}
+  assert.equal(mutationCount(fixture),before);
+  assert.equal(fixture.requests.slice(requests).every(request=>request.method==='GET'),true);
+});
 test('final scheduler proof rejects deadline and explicitly configured retry drift',async t=>{const {fixture,context}=await staged(t);const result=await fixture.adapter.perform('open',context);context.checkpoints.open={result};assert.equal((await fixture.adapter.verify('receipt',context)).ok,true);const job=fixture.jobs.find(job=>job.name.includes('reconcilePendingSecurityTransitions'));job.attemptDeadline='30s';assert.ok((await fixture.adapter.verify('receipt',context)).blockers.includes('schedulersVerified'));job.attemptDeadline='1800s';job.retryConfig.retryCount=99;assert.ok((await fixture.adapter.verify('receipt',context)).blockers.includes('schedulersVerified'));});
 test('all newly created reviewed schedulers restore ENABLED and paused notification recovery fails receipt',async t=>{const {fixture,context}=await staged(t,{notificationJobExists:false,createJobsPaused:true});assert.equal(fixture.jobs.length,0);const result=await fixture.adapter.perform('open',context);context.checkpoints.open={result};assert.ok(fixture.jobs.every(job=>job.state==='ENABLED'));assert.equal((await fixture.adapter.verify('receipt',context)).ok,true);fixture.jobs.find(job=>job.name.includes('recoverNotificationDeliveries')).state='PAUSED';assert.ok((await fixture.adapter.verify('receipt',context)).blockers.includes('schedulersVerified'));});
 
