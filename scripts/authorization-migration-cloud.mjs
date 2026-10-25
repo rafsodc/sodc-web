@@ -459,7 +459,7 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
       const stagedRecord=phase==='functions'?context.result:context.checkpoints?.functions?.result;const openRecord=phase==='open'?context.result:context.checkpoints?.open?.result;const proofs=[...stagedRecord?.functionProofs??[],...openRecord?.deferredProofs??[]];
       const fullFunctions=source.contracts.functions.every(name=>observed.functions.some(fn=>fn.name===name&&provenFunction(fn,proofs)));
       const strictOpen=matches(observed.api.files,source.api,'api');const strictFrozen=matches(observed.api.files,denyOnboarding(source.api),'api');
-      const restored=state.originalPolicies.every(original=>{const current=observed.policies.find(item=>item.functionName===original.functionName);if(!current)return false;const originalPublic=original.policy.bindings.filter(binding=>binding.role==='roles/run.invoker').flatMap(binding=>(binding.members??[]).filter(member=>PUBLIC.has(member)).map(member=>stableHash({member,condition:binding.condition??null})));const currentPublic=current.policy.bindings.filter(binding=>binding.role==='roles/run.invoker').flatMap(binding=>(binding.members??[]).filter(member=>PUBLIC.has(member)).map(member=>stableHash({member,condition:binding.condition??null})));return stableHash(originalPublic.sort())===stableHash(currentPublic.sort());});
+      const restored=state.originalPolicies.every(original=>{const current=observed.policies.find(item=>item.functionName===original.functionName);if(!current)return false;const originalPublic=(original.policy.bindings??[]).filter(binding=>binding.role==='roles/run.invoker').flatMap(binding=>(binding.members??[]).filter(member=>PUBLIC.has(member)).map(member=>stableHash({member,condition:binding.condition??null})));const currentPublic=(current.policy.bindings??[]).filter(binding=>binding.role==='roles/run.invoker').flatMap(binding=>(binding.members??[]).filter(member=>PUBLIC.has(member)).map(member=>stableHash({member,condition:binding.condition??null})));return stableHash(originalPublic.sort())===stableHash(currentPublic.sort());});
       const securityOriginally=expectedJob(context.baseline,'reconcilePendingSecurityTransitions');
       const reviewedSchedulers=await resolveSchedulerIntents(observed,[...stagedRecord?.schedulerIntents??[],...openRecord?.deferredSchedulerIntents??[]]);
       const schedulers=state.originalJobs.every(original=>observed.jobs.some(job=>job.name===original.name&&job.state===original.state))&&expectedJob(observed,'reconcilePendingSecurityTransitions')?.state===(securityOriginally?.state??'ENABLED')&&reviewedSchedulers.every(spec=>{const job=observed.jobs.find(job=>job.name===spec.name);return schedulerMatches(job,spec)&&job.state===(context.baseline.jobs.find(original=>original.name===spec.name)?.state??'ENABLED');});
@@ -489,6 +489,77 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
     }
     const blockers=Object.entries(assertions).filter(([,value])=>!value).map(([key])=>key);return {ok:blockers.length===0,observed,evidence:{...identity(context),observedAt:clock(),assertions,...oldWriterProof?{oldWriterProofHash:oldWriterProof.proofHash,oldWriterGateHash:oldWriterProof.gateHash}:{}},blockers};
   }
+  function abortPolicy(policy){
+    assert(policy&&Array.isArray(policy.bindings??[]),'ABORT_IAM_POLICY_INVALID');
+    const value=deep(policy);delete value.etag;delete value.version;
+    value.bindings=(policy.bindings??[]).map(binding=>{
+      assert(typeof binding.role==='string'&&Array.isArray(binding.members??[])&&(binding.members??[]).every(member=>typeof member==='string'),'ABORT_IAM_POLICY_INVALID');
+      return {...binding,members:[...binding.members??[]].sort()};
+    }).filter(binding=>binding.members.length).sort((a,b)=>stableHash(a).localeCompare(stableHash(b)));
+    return value;
+  }
+  function abortAuthority(authority){const value=deep(authority);if(value.control)delete value.control.version;return value;}
+  async function abortFreeze(context={}){
+    const {baseline,abortIntent:intent,recoverySource:recovery}=context;
+    assert(project==='sodc-web'&&plan.installation==='strict'&&baseline?.installation==='strict','ABORT_STRICT_DEV_ONLY');
+    assert(baseline.projectId===project&&baseline.gitSha===plan.gitSha&&planHash(context)===stableHash(plan),'ABORT_BASELINE_IDENTITY_MISMATCH');
+    assert(typeof context.reason==='string'&&context.reason.trim()&&intent?.schemaVersion==='sodc-authorization-abort-freeze-intent/v1'&&intent.projectId===project&&intent.gitSha===plan.gitSha&&intent.runId===plan.runId&&intent.planHash===stableHash(plan)&&intent.baselineHash===stableHash(baseline)&&intent.freezeCheckpointHash===stableHash(context.checkpoints?.freeze)&&intent.reason===context.reason,'ABORT_DURABLE_INTENT_REQUIRED');
+    assert(recovery?.schemaVersion==='sodc-authorization-abort-source/v1'&&recovery.originalPlanSha===plan.gitSha&&/^[a-f0-9]{40}$/.test(recovery.recoveryToolSha??'')&&recovery.applicationSourceUnchanged===true&&/^[a-f0-9]{64}$/.test(recovery.diffHash??'')&&Array.isArray(recovery.changedPaths)&&recovery.changedPaths.every(file=>typeof file==='string')&&intent.initialRecoverySource?.originalPlanSha===plan.gitSha,'ABORT_REVIEWED_RECOVERY_SOURCE_REQUIRED');
+    assert(context.checkpoints?.inspect?.status==='complete'&&Object.keys(context.checkpoints??{}).every(phase=>['inspect','freeze'].includes(phase))&&context.checkpoints?.freeze?.status==='incomplete','ABORT_EARLY_FAILED_FREEZE_ONLY');
+    assert(stableHash(await load('abort-freeze-intent.json'))===stableHash(intent),'ABORT_PERSISTED_INTENT_MISMATCH');
+    assert(!(await readdir(runDirectory)).some(name=>name.startsWith('provider-phase-')||name.startsWith('scheduler-')),'ABORT_LATER_PROVIDER_WORK_FOUND');
+    const state=await freezeState(context);
+    assert(state.apiFrozen===true&&state.completedAt&&state.originalPolicies.length===11&&state.originalJobs.length===2,'ABORT_COMPLETED_BOUNDARY_REQUIRED');
+    const prepared=await artifacts(baseline);
+    const restoreApi=await filesIn(path.join(prepared.strictOpen.directory,'dataconnect/api'));
+    const frozenApi=await filesIn(path.join(state.artifact.directory,'dataconnect/api'));
+    assert(matches(restoreApi,baseline.api.files,'api')&&matches(frozenApi,denyOnboarding(baseline.api.files),'api'),'ABORT_ARTIFACT_NOT_ORIGINAL_API');
+    const source=await candidate();
+    assert(baseline.functions.length===source.contracts.functions.length&&stableHash(baseline.functions.map(fn=>fn.name).sort())===stableHash(source.contracts.functions),'ABORT_ORIGINAL_FUNCTION_SCOPE_REQUIRED');
+    assert(baseline.authority?.passed&&baseline.authority.controlReady&&baseline.authority.control?.status==='READY'&&baseline.authority.control.readyAdminCount>0,'ABORT_ORIGINAL_AUTHORITY_NOT_READY');
+    function compatible(observed){
+      assert(stableHash(observed.functions)===stableHash(baseline.functions),'ABORT_FUNCTIONS_CHANGED');
+      assert(matches(observed.schema.files,baseline.schema.files,'schema'),'ABORT_SCHEMA_CHANGED');
+      assert(matches(observed.authorization?.files,baseline.authorization?.files,'authorization-service'),'ABORT_AUTHORIZATION_CHANGED');
+      assert(observed.installation==='strict'&&(matches(observed.api.files,baseline.api.files,'api')||matches(observed.api.files,frozenApi,'api')),'ABORT_API_DRIFT');
+      assert(stableHash(abortAuthority(observed.authority))===stableHash(abortAuthority(baseline.authority))&&Number.isSafeInteger(observed.authority.control?.version)&&observed.authority.control.version>=baseline.authority.control.version,'ABORT_AUTHORITY_CHANGED');
+      assert(observed.policies.length===state.originalPolicies.length&&state.originalPolicies.every(original=>{
+        const current=observed.policies.find(item=>item.functionName===original.functionName);
+        return current&&current.service===original.service&&[original.policy,frozenInvokerPolicy(original.policy)].some(allowed=>stableHash(abortPolicy(current.policy))===stableHash(abortPolicy(allowed)));
+      }),'ABORT_IAM_DRIFT');
+      assert(observed.jobs.length===state.originalJobs.length&&state.originalJobs.every(original=>{
+        const current=observed.jobs.find(job=>job.name===original.name);
+        return current&&['ENABLED','PAUSED'].includes(original.state)&&[original.state,'PAUSED'].includes(current.state)&&stableHash({...current,state:original.state})===stableHash(original);
+      }),'ABORT_JOB_DRIFT');
+      return observed;
+    }
+    // Baseline retains aggregate authority/roster fingerprints; full fixture-cleanup proof remains external.
+    let observed=compatible(await observe());
+    if(!matches(observed.api.files,baseline.api.files,'api')){
+      await deploy(`dataconnect:${MIGRATION_SERVICE}:api`,prepared.strictOpen,observed);
+      observed=compatible(await observe());assert(matches(observed.api.files,baseline.api.files,'api'),'ABORT_API_NOT_RESTORED');
+    }
+    for(const original of state.originalPolicies){
+      observed=compatible(await observe());
+      const current=await gcloud(['run','services','get-iam-policy',original.service,'--region',MIGRATION_REGION]);
+      assert([original.policy,frozenInvokerPolicy(original.policy)].some(allowed=>stableHash(abortPolicy(current))===stableHash(abortPolicy(allowed))),'ABORT_IAM_DRIFT');
+      if(stableHash(abortPolicy(current))!==stableHash(abortPolicy(original.policy))){
+        const restored=restoreInvokerPolicy(current,original.policy);
+        if((original.policy.bindings??[]).some(binding=>binding.condition)||original.policy.version===3)restored.version=3;
+        assert(stableHash(abortPolicy(restored))===stableHash(abortPolicy(original.policy)),'ABORT_IAM_RESTORE_MISMATCH');
+        await setPolicy(original.service,restored);
+      }
+    }
+    for(const original of state.originalJobs){
+      observed=compatible(await observe());const current=observed.jobs.find(job=>job.name===original.name);
+      if(current.state!==original.state)await gcloud(['scheduler','jobs',original.state==='PAUSED'?'pause':'resume',resourceName(original.name),'--location',MIGRATION_REGION]);
+    }
+    observed=compatible(await observe());
+    assert(matches(observed.api.files,baseline.api.files,'api')&&state.originalPolicies.every(original=>{
+      const current=observed.policies.find(item=>item.functionName===original.functionName);return current&&stableHash(abortPolicy(current.policy))===stableHash(abortPolicy(original.policy));
+    })&&state.originalJobs.every(original=>observed.jobs.some(job=>stableHash(job)===stableHash(original))),'ABORT_BASELINE_NOT_RESTORED');
+    return {ok:true,evidence:{...identity(context),observedAt:clock(),recoveryToolSha:recovery.recoveryToolSha,abortIntentHash:stableHash(intent),authorityVerificationScope:'Native aggregates, classifications and administrator-roster fingerprints; full real-account probe cleanup is verified separately.',assertions:{originalFunctionsUnchanged:true,originalSchemaUnchanged:true,originalAuthorizationUnchanged:true,originalApiRestored:true,originalInvokersRestored:true,originalJobsRestored:true,originalAuthorityRestored:true}}};
+  }
   const guarded=method=>async(...args)=>{try{return await method(...args);}catch(error){if(error instanceof MigrationCloudError)throw error;throw new MigrationCloudError('PROVIDER_OPERATION_FAILED');}};
-  return {observe:guarded(observe),perform:guarded(perform),verify:guarded(verify)};
+  return {observe:guarded(observe),perform:guarded(perform),verify:guarded(verify),abortFreeze:guarded(abortFreeze)};
 }

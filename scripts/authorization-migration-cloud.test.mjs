@@ -18,7 +18,7 @@ const files=async directory=>Promise.all((await readdir(directory)).filter(name=
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}});
 const uuid=value=>{const hash=stableHash(value);return `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`;};
 
-async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,schedulerList,delay=async()=>{},requestHook}={}){
+async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=false,claimsOverride={},callableRoleDenial=false,appCheckInvalid=false,scheduledTimeout=60,pendingTransitions=0,projectId=project,protectedDatabase=true,auditReady=false,fullFunctions=false,allExistingFunctions=false,positiveQueryDenied=false,notificationJobExists=true,createJobsPaused=false,schedulerList,delay=async()=>{},requestHook}={}){
   const project=projectId;
   const directory=await mkdtemp(path.join(os.tmpdir(),'authorization-cloud-offline-'));t.onTestFinished(()=>rm(directory,{recursive:true,force:true}));
   const runDirectory=path.join(directory,'run');await mkdir(runDirectory);
@@ -31,10 +31,11 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
   const base=`projects/${project}/locations/europe-west2/services/sodc-web-service`;
   const schema=await files(path.join(repositoryRoot,'dataconnect/schema'));let api=await files(path.join(repositoryRoot,'dataconnect/api'));
   const authorization=await files(path.join(repositoryRoot,'dataconnect/authorization-service'));
-  const functionNames=fullFunctions?(await discoverFunctionContracts(path.join(repositoryRoot,'functions/src'))).functions.filter(name=>!['getMyAuthorizationStatus','reconcilePendingSecurityTransitions'].includes(name)):[...SECURITY_WRITERS,'recoverNotificationDeliveries'];const functionStates=new Map();const functionSources=new Map();let deferredHook;let failNextRestore=false;const extraIdentities=[];const extraProfiles=[];
-  const policies=new Map(SECURITY_WRITERS.map(name=>[name,structuredClone(policy)]));
+  const functionNames=fullFunctions||allExistingFunctions?(await discoverFunctionContracts(path.join(repositoryRoot,'functions/src'))).functions.filter(name=>allExistingFunctions||!['getMyAuthorizationStatus','reconcilePendingSecurityTransitions'].includes(name)):[...SECURITY_WRITERS,'recoverNotificationDeliveries'];const functionStates=new Map();const functionSources=new Map();let deferredHook;let failNextRestore=false;let failRestoreAfterCommit=false;let restoreHook;const extraIdentities=[];const extraProfiles=[];
+  const policies=new Map([...SECURITY_WRITERS,...allExistingFunctions?['getMyAuthorizationStatus']:[]].map(name=>[name,structuredClone(policy)]));
   const jobs=notificationJobExists?[{name:`projects/${project}/locations/europe-west2/jobs/firebase-schedule-recoverNotificationDeliveries-europe-west2`,state:'ENABLED',schedule:'every 1 minutes'}]:[];
-  let milliseconds=new Date(at).getTime();const commands=[];const requests=[];let authorityVersion=1,pendingCount=pendingTransitions,runtimeSyncStatus='READY',pendingOperationId,bootstrapHook;
+  if(allExistingFunctions)jobs.push({name:`projects/${project}/locations/europe-west2/jobs/firebase-schedule-reconcilePendingSecurityTransitions-europe-west2`,state:'ENABLED',schedule:'every 5 minutes'});
+  let controlVersion=1;let milliseconds=new Date(at).getTime();const commands=[];const requests=[];let authorityVersion=1,pendingCount=pendingTransitions,runtimeSyncStatus='READY',pendingOperationId,bootstrapHook;
   const runServices=new Map(),runRevisions=new Map(),functionRevisions=new Map(),functionUpdateTimes=new Map(),missingRunResources=new Set();let runServiceReadHook;
   const serviceResource=name=>`projects/${project}/locations/europe-west2/services/${name.toLowerCase()}`;
   const functionForService=service=>functionNames.find(name=>name.toLowerCase()===service.split('/').at(-1));
@@ -75,7 +76,7 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
   const adminProfile={id:adminIdentity.uid,membershipStatus:'REGULAR'};
   const state=()=>({userId:member.id,securityVersion:authorityVersion,membershipStatus:'REGULAR',desiredEnabled:true,desiredAdmin:false,verificationEmail:null,accessReady:runtimeSyncStatus==='READY',adminReady:false,operationId:runtimeSyncStatus==='READY'?'existing':pendingOperationId,syncStatus:runtimeSyncStatus,user:{membershipStatus:'REGULAR',email:member.email}});
   const adminFactory=async()=>({auth:{listUsers:async()=>({users:[...(auditReady?[identity,adminIdentity]:[identity]),...extraIdentities]}),verifyIdToken:async()=>({uid:member.id,aud:project,iss:`https://securetoken.google.com/${project}`,email_verified:true,iat:Math.floor(milliseconds/1000)-10,exp:Math.floor(milliseconds/1000)+3600,...claimsOverride}),getUser:async()=>identity},appCheck:{verifyToken:async()=>{if(appCheckInvalid)throw Error('secret provider error');return {appId:'reviewed-app'};}},dc:{executeGraphqlRead:async(query)=>{
-    if(query.includes('MigrationControl'))return {data:{adminSafetyControl:{id:'site-wide',version:1,readyAdminCount:auditReady?1:0,status:auditReady?'READY':'BOOTSTRAP'}}};
+    if(query.includes('MigrationControl'))return {data:{adminSafetyControl:{id:'site-wide',version:controlVersion,readyAdminCount:auditReady?1:0,status:auditReady?'READY':'BOOTSTRAP'}}};
     if(query.includes('userSecurityStates('))return {data:{userSecurityStates:auditReady?[state(),{...state(),userId:adminIdentity.uid,desiredAdmin:true,accessReady:true,adminReady:true,syncStatus:'READY',user:{membershipStatus:'REGULAR'}}]:[state()]}};
     if(query.includes('securityTransitions('))return {data:{securityTransitions:Array.from({length:pendingCount},(_,index)=>({operationId:runtimeSyncStatus==='PENDING'?pendingOperationId:'pending-'+index,userId:member.id}))}};
     if(query.includes('users('))return {data:{users:[...(auditReady?[member,adminProfile]:[member]),...extraProfiles]}};
@@ -92,8 +93,8 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
       if(args[0]==='services')return {stdout:JSON.stringify(enabled.map(name=>({config:{name}})))};
       if(args[0]==='auth')return {stdout:'PRIVATE-ADC-ACCESS-TOKEN'};
       if(args[0]==='run'){
-        const name=functionForService(args[3]);if(args[2]==='get-iam-policy')return {stdout:JSON.stringify(policies.get(name))};
-        if(args[2]==='set-iam-policy'){const next=JSON.parse(await readFile(args[4],'utf8'));assert.equal(next.etag,policies.get(name).etag);if(failNextRestore&&hasPublicInvoker(next)){failNextRestore=false;throw Error('simulated crash before restoring policy');}policies.set(name,{...next,etag:'updated'});return {stdout:'{}'};}
+        const name=functionForService(args[3]);if(args[2]==='get-iam-policy'){const observed=structuredClone(policies.get(name));if(!observed.bindings?.length)delete observed.bindings;return {stdout:JSON.stringify(observed)};}
+        if(args[2]==='set-iam-policy'){const next=JSON.parse(await readFile(args[4],'utf8'));assert.equal(next.etag,policies.get(name).etag);if(failNextRestore&&hasPublicInvoker(next)){failNextRestore=false;throw Error('simulated crash before restoring policy');}policies.set(name,{...next,etag:'updated'});if(hasPublicInvoker(next)){restoreHook?.(name);if(failRestoreAfterCommit){failRestoreAfterCommit=false;throw Error('simulated lost restore response after commit');}}return {stdout:'{}'};}
       }
       if(args[0]==='scheduler'){
         const job=jobs.find(item=>item.name.endsWith('/'+args[3]));assert.ok(job);
@@ -152,8 +153,8 @@ async function setup(t,{runtime='v24.4.1',firebaseVersion='15.22.3',missingApi=f
   };
   const plan={schemaVersion:1,projectId:project,environment:'dev',gitSha:sha,runId:'offline-test',installation:'strict',operator:'reviewer',reason:'reviewed test',importAdmins:false,artifactDirectory:path.join(directory,'artifacts'),createdAt:at,phaseOperationIds:{'control-create':'stable-control',backfill:'stable-backfill',activate:'stable-activate'}};
   const adapter=createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,command,fetch,adminFactory,now:()=>new Date(milliseconds),delay});
-  const gates={backup:{details:{waiverReference:'user-dev-waiver'}},'freeze-scope':{details:{entrypoints:[...SECURITY_WRITERS],jobNames:jobs.map(job=>job.name),externalWritersReference:'approved-inventory',probeUserId:member.id,probeReference:'approved-existing-profile'}}};
-  return {adapter,plan,gates,commands,requests,runDirectory,policies,jobs,member,runServices,runRevisions,missingRunResources,approveSuccessors,maintainAndRetire,deployRevision,onRunServiceRead:hook=>runServiceReadHook=hook,onBootstrap:hook=>bootstrapHook=hook,setAuthorityPending:(pending,operationId='stable-backfill:'+member.id)=>{pendingCount=pending?1:0;runtimeSyncStatus=pending?'PENDING':'READY';pendingOperationId=operationId;},context:baseline=>({baseline,gates,planHash:stableHash(plan)}),advance:seconds=>milliseconds+=seconds*1000,changeAuthority:()=>authorityVersion++,setApi:next=>api=next,getApi:()=>api,setFunctionState:(name,state)=>functionStates.set(name,state),setFunctionSource:(name,source)=>functionSources.set(name,source),onDeferredDeploy:hook=>deferredHook=hook,failRestore:()=>failNextRestore=true,addLatentAdmin:()=>{extraIdentities.push({uid:'unapproved-latent',disabled:true,emailVerified:false,customClaims:{admin:true}});extraProfiles.push({id:'unapproved-latent',membershipStatus:'PENDING'});}};
+  const gates={backup:{details:{waiverReference:'user-dev-waiver'}},'freeze-scope':{details:{entrypoints:[...policies.keys()],jobNames:jobs.map(job=>job.name),externalWritersReference:'approved-inventory',probeUserId:member.id,probeReference:'approved-existing-profile'}}};
+  return {adapter,plan,gates,commands,requests,runDirectory,policies,jobs,schema,authorization,member,setControlVersion:version=>controlVersion=version,runServices,runRevisions,missingRunResources,approveSuccessors,maintainAndRetire,deployRevision,onRunServiceRead:hook=>runServiceReadHook=hook,onBootstrap:hook=>bootstrapHook=hook,setAuthorityPending:(pending,operationId='stable-backfill:'+member.id)=>{pendingCount=pending?1:0;runtimeSyncStatus=pending?'PENDING':'READY';pendingOperationId=operationId;},context:baseline=>({baseline,gates,planHash:stableHash(plan)}),advance:seconds=>milliseconds+=seconds*1000,changeAuthority:()=>authorityVersion++,setApi:next=>api=next,getApi:()=>api,setFunctionState:(name,state)=>functionStates.set(name,state),setFunctionSource:(name,source)=>functionSources.set(name,source),onDeferredDeploy:hook=>deferredHook=hook,failRestore:()=>failNextRestore=true,failRestoreAfterCommit:()=>failRestoreAfterCommit=true,onRestore:hook=>restoreHook=hook,addLatentAdmin:()=>{extraIdentities.push({uid:'unapproved-latent',disabled:true,emailVerified:false,customClaims:{admin:true}});extraProfiles.push({id:'unapproved-latent',membershipStatus:'PENDING'});}};
 }
 function withProbe(t){for(const [key,value]of Object.entries({AUTHORIZATION_MIGRATION_PROBE_TOKEN:'PRIVATE-PROBE-JWT',AUTHORIZATION_MIGRATION_PROBE_API_KEY:'PRIVATE-API-KEY',AUTHORIZATION_MIGRATION_PROBE_APP_CHECK_TOKEN:'PRIVATE-APP-CHECK'})){const before=process.env[key];process.env[key]=value;t.onTestFinished(()=>{if(before===undefined)delete process.env[key];else process.env[key]=before;});}}
 
@@ -188,6 +189,24 @@ test('freeze persists originals before mutation, preserves drain clock on retry 
   assert.equal(inventory.services.length,11);assert.ok(inventory.services.some(service=>service.name.endsWith('/recovernotificationdeliveries')));
   const evidence=await readFile(path.join(fixture.runDirectory,'provider-old-writers-observed.json'),'utf8');assert.ok(!evidence.includes('secret-value'));assert.ok(!evidence.includes('NEVER_PERSIST'));
   for(const invocation of fixture.commands){assert.ok(!JSON.stringify(invocation.args).includes('PRIVATE-'));assert.equal(invocation.options.env.AUTHORIZATION_MIGRATION_PROBE_TOKEN,undefined);}
+});
+for(const originalEmpty of [false,true])test('freeze verification treats omitted '+(originalEmpty?'original and current':'current')+' IAM bindings as empty without bypassing drain or retirement',async t=>{
+  withProbe(t);const fixture=await setup(t);
+  for(const name of SECURITY_WRITERS)fixture.policies.set(name,{version:3,etag:'public-only',bindings:[{role:'roles/run.invoker',members:['allUsers','allAuthenticatedUsers']}]});
+  if(originalEmpty)fixture.policies.set(SECURITY_WRITERS[0],{version:3,etag:'originally-empty'});
+  const baseline=await fixture.adapter.observe(),context=fixture.context(baseline);
+  if(originalEmpty)assert.equal(Object.hasOwn(baseline.policies.find(item=>item.functionName===SECURITY_WRITERS[0]).policy,'bindings'),false);
+  const freeze=await fixture.adapter.perform('freeze',context);
+  const observed=await fixture.adapter.observe();assert.ok(observed.policies.every(item=>!Object.hasOwn(item.policy,'bindings')));
+  const mutations=fixture.commands.filter(item=>item.args.includes('set-iam-policy')||item.args.includes('deploy')||item.args.includes('pause')).length;
+  const pre=await fixture.adapter.verify('freeze',{...context,result:freeze});
+  assert.equal(pre.ok,false);assert.equal(pre.evidence.assertions.serverFreezeVerified,true);
+  for(const blocker of ['drainComplete','oldWritersRetired','signedRefusalVerified'])assert.ok(pre.blockers.includes(blocker));
+  assert.equal(fixture.requests.some(item=>item.method==='POST'),false);
+  assert.equal(fixture.commands.filter(item=>item.args.includes('set-iam-policy')||item.args.includes('deploy')||item.args.includes('pause')).length,mutations);
+  fixture.advance(76);const elapsed=await fixture.adapter.verify('freeze',{...context,result:freeze});
+  assert.equal(elapsed.ok,false);assert.ok(elapsed.blockers.includes('oldWritersRetired'));assert.ok(elapsed.blockers.includes('drainComplete'));
+  await fixture.maintainAndRetire(context);assert.equal((await fixture.adapter.verify('freeze',{...context,result:freeze})).ok,true);
 });
 test('ordinary callable permission denial fails the signed freeze gate',async t=>{withProbe(t);const fixture=await setup(t,{callableRoleDenial:true});const context=fixture.context(await fixture.adapter.observe());const result=await fixture.adapter.perform('freeze',context);await fixture.maintainAndRetire(context);fixture.advance(76);const verification=await fixture.adapter.verify('freeze',{...context,result});assert.equal(verification.ok,false);assert.ok(verification.blockers.includes('signedRefusalVerified'));assert.equal(verification.evidence.assertions.oldWritersRetired,true);});
 test('wrong project token and invalid attestation block before any freeze mutation',async t=>{withProbe(t);for(const options of [{claimsOverride:{aud:'wrong-project'}},{appCheckInvalid:true}]){const fixture=await setup(t,options);const context=fixture.context(await fixture.adapter.observe());await assert.rejects(fixture.adapter.perform('freeze',context),/SIGNED_PROBE_/);assert.ok([...fixture.policies.values()].every(hasPublicInvoker));assert.equal(fixture.commands.some(item=>item.args.includes('set-iam-policy')||item.args.includes('deploy')),false);}});
@@ -458,4 +477,71 @@ test('a failed Run response does not poison later launch slots or cause an autom
   await firstSlot;await vi.runAllTimersAsync();assert.match((await failed).message,/PROVIDER_OPERATION_FAILED/);assert.equal(failures,1);
   const laterSlot=waitForSlot();const retried=fixture.adapter.verify('freeze',{...context,result:freeze});
   await laterSlot;await vi.runAllTimersAsync();assert.equal((await retried).ok,true);assert.equal(failures,1);
+});
+
+async function abortable(t,options={}){
+  withProbe(t);const fixture=await setup(t,{auditReady:true,allExistingFunctions:true,...options});
+  const baseline=await fixture.adapter.observe(),context=fixture.context(baseline);
+  if(fixture.plan.projectId!=='sodc-web')context.gates.backup={details:{backupReference:'reviewed-backup',restoreTestReference:'reviewed-restore'}};
+  const freeze=await fixture.adapter.perform('freeze',context);
+  context.checkpoints={inspect:{status:'complete'},freeze:{status:'incomplete',result:freeze}};
+  context.reason='Restore unchanged strict Dev after a failed freeze verification';
+  context.recoverySource={schemaVersion:'sodc-authorization-abort-source/v1',originalPlanSha:fixture.plan.gitSha,recoveryToolSha:'b'.repeat(40),changedPaths:['scripts/authorization-migration-cloud.mjs'],applicationSourceUnchanged:true,diffHash:'c'.repeat(64)};
+  context.abortIntent={schemaVersion:'sodc-authorization-abort-freeze-intent/v1',projectId:fixture.plan.projectId,gitSha:fixture.plan.gitSha,runId:fixture.plan.runId,planHash:stableHash(fixture.plan),baselineHash:stableHash(baseline),freezeCheckpointHash:stableHash(context.checkpoints.freeze),reason:context.reason,initialRecoverySource:context.recoverySource,createdAt:at};
+  await writeFile(path.join(fixture.runDirectory,'abort-freeze-intent.json'),JSON.stringify(context.abortIntent),{mode:0o600});
+  return {fixture,context};
+}
+const abortMutations=fixture=>fixture.commands.filter(item=>item.args.includes('deploy')||item.args.includes('set-iam-policy')||item.args.includes('resume')||item.args.includes('pause')||item.args.includes('dataconnect:sql:migrate')).length;
+
+test('abort restores only the unchanged strict Dev API, original invokers and two jobs without claiming migration receipt',async t=>{
+  const {fixture,context}=await abortable(t);assert.equal(context.baseline.functions.length,82);assert.equal(context.baseline.policies.length,11);assert.equal(context.baseline.jobs.length,2);
+  const offset=fixture.commands.length;fixture.setControlVersion(2);
+  const result=await fixture.adapter.abortFreeze(context);assert.equal(result.ok,true);assert.equal(result.evidence.gitSha,fixture.plan.gitSha);assert.equal(result.evidence.recoveryToolSha,context.recoverySource.recoveryToolSha);assert.equal(result.evidence.abortIntentHash,stableHash(context.abortIntent));assert.ok(Object.values(result.evidence.assertions).every(value=>value===true));
+  const observed=await fixture.adapter.observe();assert.deepEqual(observed.functions,context.baseline.functions);assert.deepEqual(observed.api.files,context.baseline.api.files);assert.ok([...fixture.policies.values()].every(hasPublicInvoker));assert.ok(fixture.jobs.every(job=>job.state==='ENABLED'));
+  assert.equal(fixture.commands.slice(offset).filter(item=>item.args.includes('deploy')).length,1);
+  assert.ok(fixture.commands.slice(offset).every(item=>!item.args.includes('dataconnect:sql:migrate')&&!item.args.some(arg=>arg.startsWith('functions:')||arg.endsWith('security-state-admin.ts'))));
+  const before=abortMutations(fixture);const repeated=await fixture.adapter.abortFreeze(context);assert.equal(repeated.ok,true);assert.equal(abortMutations(fixture),before);
+});
+test('abort resumes an interrupted restoration without redeploying the already restored API',async t=>{
+  const {fixture,context}=await abortable(t);fixture.failRestore();await assert.rejects(()=>fixture.adapter.abortFreeze(context),/PROVIDER_COMMAND_FAILED/);
+  assert.deepEqual(fixture.getApi(),context.baseline.api.files);const deployments=fixture.commands.filter(item=>item.args.includes('deploy')).length;
+  const result=await fixture.adapter.abortFreeze(context);assert.equal(result.ok,true);assert.equal(fixture.commands.filter(item=>item.args.includes('deploy')).length,deployments);assert.ok(fixture.jobs.every(job=>job.state==='ENABLED'));
+});
+for(const [name,mutate,code]of[
+  ['changed function',({fixture})=>fixture.setFunctionSource('grantAdmin','unreviewed.zip'),'ABORT_FUNCTIONS_CHANGED'],
+  ['maintenance revision',({fixture})=>fixture.deployRevision('grantAdmin','maintenance'),'ABORT_FUNCTIONS_CHANGED'],
+  ['changed schema',({fixture})=>{fixture.schema[0].content+='\n# changed';},'ABORT_SCHEMA_CHANGED'],
+  ['changed authorization connector',({fixture})=>{fixture.authorization[0].content+='\n# changed';},'ABORT_AUTHORIZATION_CHANGED'],
+  ['unexpected API',({fixture})=>fixture.setApi(fixture.getApi().map((file,index)=>index?file:{...file,content:file.content+'\n# changed'})),'ABORT_API_DRIFT'],
+  ['changed authority',({fixture})=>fixture.changeAuthority(),'ABORT_AUTHORITY_CHANGED'],
+  ['decreasing control version',({fixture})=>fixture.setControlVersion(0),'ABORT_AUTHORITY_CHANGED'],
+  ['changed private IAM',({fixture})=>fixture.policies.get('grantAdmin').bindings.push({role:'roles/run.viewer',members:['user:unreviewed@example.invalid']}),'ABORT_IAM_DRIFT'],
+  ['changed job configuration',({fixture})=>{fixture.jobs[0].schedule='different';},'ABORT_JOB_DRIFT'],
+  ['later native checkpoint',({context})=>{context.checkpoints.schema={status:'incomplete'};},'ABORT_EARLY_FAILED_FREEZE_ONLY'],
+  ['unapproved source lineage',({context})=>{context.recoverySource={...context.recoverySource,applicationSourceUnchanged:false};},'ABORT_REVIEWED_RECOVERY_SOURCE_REQUIRED'],
+  ['substituted durable intent',({context})=>{context.abortIntent.baselineHash='0'.repeat(64);},'ABORT_DURABLE_INTENT_REQUIRED'],
+])test('abort refuses '+name+' before any restoration mutation',async t=>{
+  const state=await abortable(t);mutate(state);const before=abortMutations(state.fixture);await assert.rejects(()=>state.fixture.adapter.abortFreeze(state.context),new RegExp(code));assert.equal(abortMutations(state.fixture),before);
+});
+test('abort refuses retained later provider work even when checkpoint input omits it',async t=>{
+  const {fixture,context}=await abortable(t);await writeFile(path.join(fixture.runDirectory,'provider-phase-backfill.json'),'{}');const before=abortMutations(fixture);await assert.rejects(()=>fixture.adapter.abortFreeze(context),/ABORT_LATER_PROVIDER_WORK_FOUND/);assert.equal(abortMutations(fixture),before);
+});
+test('abort is forbidden outside Dev',async t=>{const {fixture,context}=await abortable(t,{projectId:'sodc-web-beta'});const before=abortMutations(fixture);await assert.rejects(()=>fixture.adapter.abortFreeze(context),/ABORT_STRICT_DEV_ONLY/);assert.equal(abortMutations(fixture),before);});
+test('abort lost IAM response resumes actual remaining restores without replaying committed service policy',async t=>{
+  const {fixture,context}=await abortable(t);fixture.failRestoreAfterCommit();await assert.rejects(()=>fixture.adapter.abortFreeze(context),/PROVIDER_COMMAND_FAILED/);
+  const restored=[...fixture.policies].filter(([,value])=>hasPublicInvoker(value)).map(([name])=>name);assert.equal(restored.length,1);
+  const before=fixture.commands.filter(item=>item.args.includes('set-iam-policy')&&item.args[3]===restored[0].toLowerCase()).length;
+  assert.equal((await fixture.adapter.abortFreeze(context)).ok,true);
+  assert.equal(fixture.commands.filter(item=>item.args.includes('set-iam-policy')&&item.args[3]===restored[0].toLowerCase()).length,before);
+});
+test('abort detects function drift between restoration writes and stops the remaining policies and jobs',async t=>{
+  const {fixture,context}=await abortable(t);fixture.onRestore(()=>fixture.setFunctionSource('grantAdmin','concurrent-source-change.zip'));
+  await assert.rejects(()=>fixture.adapter.abortFreeze(context),/ABORT_FUNCTIONS_CHANGED/);assert.equal([...fixture.policies.values()].filter(hasPublicInvoker).length,1);assert.ok(fixture.jobs.every(job=>job.state==='PAUSED'));
+});
+test('abort compares the persisted durable intent before any restoration mutation',async t=>{
+  const {fixture,context}=await abortable(t);await writeFile(path.join(fixture.runDirectory,'abort-freeze-intent.json'),JSON.stringify({...context.abortIntent,reason:'substituted'}));const before=abortMutations(fixture);await assert.rejects(()=>fixture.adapter.abortFreeze(context),/ABORT_PERSISTED_INTENT_MISMATCH/);assert.equal(abortMutations(fixture),before);
+});
+test('abort accepts a pure-reviewed same-source recovery tool with an empty diff',async t=>{
+  const {fixture,context}=await abortable(t);context.recoverySource={...context.recoverySource,recoveryToolSha:fixture.plan.gitSha,changedPaths:[],diffHash:stableHash('')};context.abortIntent.initialRecoverySource=context.recoverySource;
+  await writeFile(path.join(fixture.runDirectory,'abort-freeze-intent.json'),JSON.stringify(context.abortIntent));assert.equal((await fixture.adapter.abortFreeze(context)).ok,true);
 });

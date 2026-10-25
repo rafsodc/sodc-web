@@ -223,6 +223,29 @@ Production already has backups. Verify the existing backup/PITR/deletion-protect
 
 On failure, retain the run and inspect both its local status and fresh live audit. Keep the freeze in place until the failed phase is understood. A command can fail after committing part of its work; do not infer that the target is unchanged from its exit status.
 
+### Abort an early strict Dev freeze
+
+`abort-freeze` is an explicit recovery command for **strict Dev only**, after verified inspection and an incomplete freeze. It is refused for Beta, Production, a completed freeze, any later phase attempt or any maintenance/Functions change. It restores the original inspected release boundary; it does not finish the migration or retire old writers.
+
+First remove any temporary rehearsal identity through its separately reviewed, exact cleanup procedure. Retain the cleanup proof, terminal security ledgers and advanced control version. The native original authority record contains aggregate classifications and administrator/legacy-roster fingerprints; it does not contain a fingerprint of every nonadministrator Auth/profile row. Review the temporary probe's separate full real-authority fingerprint proof as well. Restoration requires the original healthy classifications, counts, READY control and administrator count/roster; only a monotonic control version may differ.
+
+From a clean, reviewed recovery-tool commit, run exactly one command with the original run ID and a recorded reason:
+
+```sh
+npm run authorization:migrate -- abort-freeze \
+  --project sodc-web --run-id <original-interrupted-dev-run> \
+  --confirm-project sodc-web \
+  --reason "Reviewed original-boundary restoration reference"
+```
+
+The recovery-tool commit must descend from the planned commit. Differences may contain only authorization-migration scripts/tests and this operation guide. Application/runtime/configuration/schema files must remain byte-identical to the planned release. This exception applies only to `abort-freeze`: normal phases still require their original exact Git SHA.
+
+Before restoring anything, the provider checks every installed Function's original metadata/revision, the original schema and authorization connector, original authority, original scheduler configurations and the exact original-or-bound-frozen API/IAM boundary. An environment-epoch maintenance update, even with unchanged application code, prevents this early abort. The provider deploys only the sealed original API connector if needed, restores only original public invoker bindings using fresh policy ETags, and returns the two jobs to their original states. It repeats the full boundary checks between operations and after restoration. No schema, Functions, Auth, authorization version, unrelated IAM or notification configuration is changed by this command.
+
+The original plan, failed freeze checkpoint, evidence and migration receipt stay intact. A durable abort intent blocks all normal phases and new gates. If restoration stops after a partial result, retain the restrictions and retry **only this abort command with the same reason** after reviewing live state. It reconciles exact original/frozen states; it does not guess that an uncertain provider response left things unchanged.
+
+Only verified original-boundary restoration marks the old run `ABORTED` and releases project ownership for a new immutable run. An aborted journal uses a terminal schema that the original tool cannot resume. It remains visible through `status`, keeps the freeze historically incomplete, and never creates a migration receipt. A crash after terminal persistence but before ownership release can be reconciled with the same abort command; an already active successor run cannot be displaced. After reviewing the abort proof, prepare a new run from the corrected reviewed commit rather than changing the old plan or treating the failed rehearsal as acceptance.
+
 Resume the same run and phase after correcting the cause. The source revision, artifact hashes, gate evidence and live prerequisites must still match. Stable operation references let the operator distinguish a committed transition from work that needs retrying. If backfill commits a PENDING transition before an Auth failure, the same backfill phase may resume only work with this run’s exact per-user operation reference. Unrelated pending work remains blocked for explicit review; the next phase cannot proceed until backfill’s full audit passes. Recheck IAM and jobs after a deployment: new Functions or schedules can have different invocation behavior from an updated resource.
 
 Inspection can recover fully sealed local artifacts if the process stopped before recording their locations. Incomplete artifact output is preserved for review. If inspection stopped during local generation, confirm that no cloud-mutation phase began, move that incomplete output aside for evidence, and resume inspection using the original planned path. Do not edit a manifest or extend its expiry to bypass verification.
