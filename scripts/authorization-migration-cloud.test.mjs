@@ -1,6 +1,6 @@
 import {test,vi} from 'vitest';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,readFile,readdir,rm,writeFile} from 'node:fs/promises';
+import {mkdtemp,mkdir,readFile,readdir,rm,writeFile,lstat} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -470,6 +470,22 @@ test('a later Scheduler page error rejects the complete audit instead of accepti
   assert.equal(fixture.requests.filter(request=>request.hostname==='cloudscheduler.googleapis.com').length,2);assert.equal(mutationCount(fixture),0);
 });
 
+test('a metadata quota failure records only private target-bound status and a query-free path, then stops without replay',async t=>{
+  const cursor='PRIVATE-OPAQUE-CURSOR+secret=?&';
+  const fixture=await setup(t,{schedulerList:target=>target.searchParams.has('pageToken')?
+    new Response('PRIVATE_PROVIDER_FAILURE_BODY',{status:429,headers:{'x-private-provider-header':'PRIVATE_PROVIDER_HEADER'}}):
+    json({jobs:[],nextPageToken:cursor})});
+  await assert.rejects(fixture.adapter.observe(),error=>error.code==='CLOUD_METADATA_READ_FAILED');
+  const reads=fixture.requests.filter(request=>request.hostname==='cloudscheduler.googleapis.com');
+  assert.equal(reads.length,2);assert.ok(reads[1].query.includes(encodeURIComponent(cursor)));assert.equal(mutationCount(fixture),0);
+  const files=(await readdir(fixture.runDirectory)).filter(name=>/^provider-metadata-read-failure-[0-9a-f-]{36}\.json$/.test(name));
+  assert.equal(files.length,1);
+  const filename=path.join(fixture.runDirectory,files[0]),bytes=await readFile(filename,'utf8');
+  assert.deepEqual(JSON.parse(bytes),{projectId:project,gitSha:sha,runId:fixture.plan.runId,planHash:stableHash(fixture.plan),observedAt:at,method:'GET',host:'cloudscheduler.googleapis.com',resource:`/v1/projects/${project}/locations/europe-west2/jobs`,httpStatus:429});
+  assert.equal((await lstat(filename)).mode&0o077,0);
+  assert.ok(!/PRIVATE|Authorization|pageToken|pageSize|headers|body|token/i.test(bytes));
+});
+
 test('repeated Scheduler cursors fail closed instead of looping or accepting partial scope',async t=>{
   const fixture=await setup(t,{schedulerList:()=>json({jobs:[],nextPageToken:'repeated/cursor+='})});
   await assert.rejects(fixture.adapter.observe(),/REPEATED_CLOUD_PAGE/);
@@ -481,12 +497,13 @@ test('an unreachable Scheduler page fails the audit before any cutover mutation'
   await assert.rejects(fixture.adapter.observe(),/UNREACHABLE_CLOUD_RESOURCE/);assert.equal(mutationCount(fixture),0);
 });
 
-async function pacedRetirement(t,requestHook){
+async function pacedRetirement(t,requestHook,prepare){
   withProbe(t);let pacing=false,slotQueued;
   const fixture=await setup(t,{requestHook,delay:milliseconds=>{
     if(!pacing)return Promise.resolve();slotQueued?.();slotQueued=undefined;
     return new Promise(resolve=>setTimeout(resolve,milliseconds));
   }});
+  await prepare?.(fixture);
   const context=fixture.context(await fixture.adapter.observe());const freeze=await fixture.adapter.perform('freeze',context);
   context.checkpoints={freeze:{result:freeze}};await fixture.maintainAndRetire(context);fixture.advance(76);
   vi.useFakeTimers({toFake:['setTimeout','clearTimeout','Date']});vi.setSystemTime(0);t.onTestFinished(()=>vi.useRealTimers());pacing=true;
@@ -502,14 +519,14 @@ test('concurrent Run reads have spaced starts while slow responses overlap and o
   const pending=fixture.adapter.verify('freeze',{...context,result:freeze});pending.catch(()=>{});
   try{
     await Promise.race([waiting,pending.then(()=>{throw Error('Expected a pending Run read');})]);
-    await vi.advanceTimersByTimeAsync(24);assert.equal(fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com').length,0);
+    await vi.advanceTimersByTimeAsync(74);assert.equal(fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com').length,0);
     await vi.advanceTimersByTimeAsync(1);assert.equal(fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com').length,1);
-    await vi.advanceTimersByTimeAsync(75);assert.ok(fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com').length>1);
+    await vi.advanceTimersByTimeAsync(225);assert.ok(fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com').length>1);
     let otherHostsFinished=false;const before=Date.now();const observation=fixture.adapter.observe().then(value=>{otherHostsFinished=true;return value;});
     await new Promise(resolve=>setImmediate(resolve));assert.equal(otherHostsFinished,true);assert.equal(Date.now(),before);await observation;
     release();await vi.runAllTimersAsync();assert.equal((await pending).ok,true);
     const starts=fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com').map(request=>request.startedAt);
-    assert.ok(starts.length>20);for(let index=1;index<starts.length;index++)assert.ok(starts[index]-starts[index-1]>=25);
+    assert.ok(starts.length>20);for(let index=1;index<starts.length;index++)assert.ok(starts[index]-starts[index-1]>=75);
   }finally{release();await vi.runAllTimersAsync();await pending.catch(()=>{});}
 });
 
@@ -523,6 +540,34 @@ test('a failed Run response does not poison later launch slots or cause an autom
   const laterSlot=waitForSlot();const retried=fixture.adapter.verify('freeze',{...context,result:freeze});
   await laterSlot;await vi.runAllTimersAsync();assert.equal((await retried).ok,true);assert.equal(failures,1);
 });
+
+test('two fresh 942-revision retirement proofs remain below the rolling Run read quota without caching exact reads',async t=>{
+  const {fixture,context,freeze,waitForSlot}=await pacedRetirement(t,undefined,fixture=>{
+    for(let index=0;index<931;index++)fixture.deployRevision('grantAdmin','original');
+  });
+  const saved=JSON.parse(await readFile(path.join(fixture.runDirectory,'provider-freeze.json'),'utf8'));
+  const originalPaths=saved.oldWriterInventory.services.flatMap(service=>service.revisions.map(revision=>'/v2/'+revision.name));
+  assert.equal(originalPaths.length,942);assert.equal(new Set(originalPaths).size,942);
+  const offset=fixture.requests.length;
+  for(let attempt=0;attempt<2;attempt++){
+    const begin=fixture.requests.length,slot=waitForSlot();
+    const pending=fixture.adapter.verify('freeze',{...context,result:freeze});pending.catch(()=>{});
+    await Promise.race([slot,pending.then(()=>{throw Error('Expected a pending Run read');})]);
+    await vi.runAllTimersAsync();assert.equal((await pending).ok,true);
+    const exactReads=new Map();
+    for(const request of fixture.requests.slice(begin))if(request.hostname==='run.googleapis.com'&&request.method==='GET')exactReads.set(request.path,(exactReads.get(request.path)??0)+1);
+    for(const original of originalPaths)assert.equal(exactReads.get(original),1,'Every original revision needs a fresh exact GET in each proof');
+  }
+  const reads=fixture.requests.slice(offset).filter(request=>request.hostname==='run.googleapis.com'&&request.method==='GET');
+  assert.ok(reads.length>1800);
+  const starts=reads.map(request=>request.startedAt);let left=0,maximum=0;
+  for(let right=0;right<starts.length;right++){
+    while(starts[right]-starts[left]>60_000)left++;
+    maximum=Math.max(maximum,right-left+1);
+  }
+  assert.ok(maximum<1200,`Maximum reads in a rolling 60 seconds: ${maximum}`);
+  for(const original of originalPaths)assert.equal(reads.filter(request=>request.path===original).length,2);
+},30_000);
 
 async function abortable(t,options={}){
   withProbe(t);const fixture=await setup(t,{auditReady:true,allExistingFunctions:true,...options});

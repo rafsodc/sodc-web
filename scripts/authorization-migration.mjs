@@ -25,7 +25,7 @@ const allowed = Object.freeze({
   apply: ["project", "run-id", "phase", "confirm-project"],
   unlock: ["project", "run-id", "reason"],
   "abort-freeze": ["project", "run-id", "reason", "confirm-project"],
-  "adopt-tool-source": ["project", "run-id", "reason", "confirm-project", "tool-sha", "review-reference"],
+  "adopt-tool-source": ["project", "run-id", "reason", "confirm-project", "tool-sha", "review-reference", "previous-amendment"],
 });
 const required = Object.freeze({
   plan: ["project"],
@@ -72,6 +72,7 @@ export function parseMigrationArguments(argv) {
   if (command === "adopt-tool-source") {
     if (flags.project !== "sodc-web" || flags["confirm-project"] !== "sodc-web") fail("TOOL_SOURCE_STRICT_DEV_ONLY", "Tool-source adoption is restricted to the literal Dev project sodc-web.");
     if (!/^[a-f0-9]{40}$/.test(flags["tool-sha"])) fail("TOOL_SOURCE_SHA_REQUIRED", "Repeat the full reviewed tool commit.");
+    if (flags["previous-amendment"] !== undefined && !/^[a-f0-9]{64}$/.test(flags["previous-amendment"])) fail("TOOL_SOURCE_PREVIOUS_REQUIRED", "Repeat the exact previous amendment hash.");
   }
   return {command, flags};
 }
@@ -183,7 +184,7 @@ export async function runMigrationCli(argv, {
   const run = options.runId ? await loadMigrationRun(options) : null;
   if (command === "adopt-tool-source") {
     const source = await adoptMigrationToolSource(options, {confirmProject: flags["confirm-project"], toolSha: flags["tool-sha"],
-      reviewReference: flags["review-reference"], reason: flags.reason, git, now: now()});
+      previousAmendmentHash: flags["previous-amendment"], reviewReference: flags["review-reference"], reason: flags.reason, git, now: now()});
     return {projectId, runId: run.plan.runId, ...source, cloudChanges: false,
       limitation: "Only migration-tool source was adopted. The original release plan and every live verification remain required."};
   }

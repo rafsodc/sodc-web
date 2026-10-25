@@ -1,6 +1,7 @@
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {createRequire} from 'node:module';
+import {randomUUID} from 'node:crypto';
 import {mkdir,readFile,readdir,realpath,writeFile,rename} from 'node:fs/promises';
 import path from 'node:path';
 import {stableHash,classifyApi,denyOnboarding,prepareMigrationSources,verifyMigrationArtifact} from './authorization-migration-sources.mjs';
@@ -110,10 +111,15 @@ export function createCloudMigrationAdapter({repositoryRoot,runDirectory,plan,no
   async function accessToken(){if(!token)token=(await run('gcloud',['auth','print-access-token','--project',project])).trim();assert(token,'CLOUD_CREDENTIAL_REQUIRED');return token;}
   async function metadata(host,resource,allowMissing=false){
     const credential=await accessToken();
-    // Pace starts, not responses: retain overlap and let subsequent reads survive a failed request.
-    if(host==='run.googleapis.com'){const slot=runReadSlot.then(()=>delay(25));runReadSlot=slot.catch(()=>{});await slot;}
+    // Pace starts with headroom below the observed 1,200/minute regional quota,
+    // including consecutive full proofs. Responses may overlap; failures are not replayed.
+    if(host==='run.googleapis.com'){const slot=runReadSlot.then(()=>delay(75));runReadSlot=slot.catch(()=>{});await slot;}
     const response=await fetcher(`https://${host}${resource}`,{method:'GET',headers:{Authorization:'Bearer '+credential,'X-Goog-User-Project':project},signal:AbortSignal.timeout(45_000),redirect:'error'});
-    if(response.status===404&&allowMissing)return null;assert(response.ok,'CLOUD_METADATA_READ_FAILED');return response.json();
+    if(response.status===404&&allowMissing)return null;
+    if(!response.ok)await save('provider-metadata-read-failure-'+randomUUID()+'.json',{
+      ...identity(),observedAt:clock(),method:'GET',host,resource:resource.split('?')[0],httpStatus:response.status,
+    });
+    assert(response.ok,'CLOUD_METADATA_READ_FAILED');return response.json();
   }
   async function listMetadata(host,resource,key,pageSize=1000){
     const result=[];let cursor;const seen=new Set();do{const response=await metadata(host,resource+(resource.includes('?')?'&':'?')+'pageSize='+pageSize+(cursor?'&pageToken='+encodeURIComponent(cursor):''));assert(!response.unreachable?.length,'UNREACHABLE_CLOUD_RESOURCE');result.push(...response[key]??[]);cursor=response.nextPageToken;if(cursor){assert(!seen.has(cursor),'REPEATED_CLOUD_PAGE');seen.add(cursor);}}while(cursor);return result;

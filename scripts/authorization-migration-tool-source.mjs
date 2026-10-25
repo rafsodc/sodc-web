@@ -4,11 +4,13 @@ import {createHash, randomUUID} from 'node:crypto';
 import {open, readFile, lstat, unlink, readdir, link} from 'node:fs/promises';
 import {hostname} from 'node:os';
 import path from 'node:path';
-import {MigrationError, migrationHash, assertNoCredentials, loadMigrationRun} from './authorization-migration-state.mjs';
+import {MigrationError, migrationHash, assertNoCredentials, loadMigrationRun, phasesFor, PHASE_ASSERTIONS} from './authorization-migration-state.mjs';
 
 const SHA = /^[a-f0-9]{40}$/;
 const HASH = /^[a-f0-9]{64}$/;
 const FILE = 'tool-source-amendment.json';
+export const MAX_TOOL_SOURCE_AMENDMENTS = 8;
+const RECORDS = ['plan.json', 'journal.json', 'provider-freeze.json', 'provider-old-writer-inventory.json', 'provider-freeze-proof.json', 'provider-old-writers-proof.json', 'provider-old-writers-observed.json'];
 const assert = (ok, code) => {if (!ok) throw new MigrationError(code, 'Tool-source adoption requires the reviewed, unchanged application and original strict Dev run.');};
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const text = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 2000;
@@ -49,9 +51,8 @@ async function cleanHead(repositoryRoot, git, expected) {
   assert(!status.trim(), 'CHECKOUT_DIRTY');
   return head;
 }
-export async function inspectMigrationToolSource(repositoryRoot, originalPlanSha, toolSha, git = gitDefault) {
+async function inspectCommittedDiff(repositoryRoot, originalPlanSha, toolSha, git) {
   assert(SHA.test(originalPlanSha ?? '') && SHA.test(toolSha ?? '') && originalPlanSha !== toolSha, 'TOOL_SOURCE_INVALID');
-  await cleanHead(repositoryRoot, git, toolSha);
   try {await git(['merge-base', '--is-ancestor', originalPlanSha, toolSha], {cwd: repositoryRoot});}
   catch {throw new MigrationError('TOOL_SOURCE_NOT_DESCENDANT', 'The reviewed tool revision must descend from the immutable plan revision.');}
   const flags = ['--no-renames', '--no-ext-diff', '--no-textconv', '--ignore-submodules=none'];
@@ -59,9 +60,13 @@ export async function inspectMigrationToolSource(repositoryRoot, originalPlanSha
   const changes = parseToolSourceDiff(raw);
   const patch = await git(['diff', '--binary', '--full-index', '--no-color', '--diff-algorithm=myers', '--no-indent-heuristic', '--unified=3', '--src-prefix=a/', '--dst-prefix=b/', ...flags, originalPlanSha, toolSha, '--'], {cwd: repositoryRoot});
   assert(typeof patch === 'string' && patch.length > 0 && Buffer.byteLength(patch) <= 8 * 1024 * 1024, 'TOOL_SOURCE_DIFF_INVALID');
-  // Repeat after reading the complete diff; a concurrent checkout change cannot be adopted.
-  await cleanHead(repositoryRoot, git, toolSha);
   return {schemaVersion: 'sodc-authorization-tool-source-proof/v1', originalPlanSha, toolSha, applicationSourceUnchanged: true, changes, rawDiffSha256: digest(raw), patchSha256: digest(patch)};
+}
+export async function inspectMigrationToolSource(repositoryRoot, originalPlanSha, toolSha, git = gitDefault) {
+  await cleanHead(repositoryRoot, git, toolSha);
+  const proof = await inspectCommittedDiff(repositoryRoot, originalPlanSha, toolSha, git);
+  await cleanHead(repositoryRoot, git, toolSha);
+  return proof;
 }
 async function regularBytes(file) {
   const info = await lstat(file);
@@ -96,14 +101,10 @@ async function lock(file, run, work) {
   }
 }
 function strictDev(run) {assert(run.plan.projectId === 'sodc-web' && run.plan.environment === 'dev' && run.plan.installation === 'strict', 'TOOL_SOURCE_STRICT_DEV_ONLY');}
-async function adoptionScope(run) {
+async function frozenBoundary(run) {
   strictDev(run);
-  const c = run.journal.checkpoints;
-  assert(!run.journal.terminal && !run.journal.abortFreeze && c.inspect?.status === 'complete' && c.freeze?.status === 'incomplete' &&
-    c.freeze.operationId === run.plan.phaseOperationIds.freeze && Number.isSafeInteger(c.freeze.attempt) && c.freeze.attempt > 0 &&
-    Object.keys(c).every(name => ['inspect', 'freeze'].includes(name)), 'TOOL_SOURCE_EARLY_FREEZE_ONLY');
+  assert(!run.journal.terminal && !run.journal.abortFreeze, 'TOOL_SOURCE_EARLY_FREEZE_ONLY');
   assert(!await optional(path.join(run.directory, 'abort-freeze-intent.json')), 'TOOL_SOURCE_ABORTING');
-  assert((await readdir(run.directory)).every(name => !/^provider-phase-(?!inspect\.json$|freeze\.json$).+\.json$/.test(name)), 'TOOL_SOURCE_LATER_PHASE_PRESENT');
   const owner = JSON.parse(await regularBytes(path.join(path.dirname(run.directory), 'active-run.json')));
   assert(owner.planHash === run.planHash && owner.runId === run.plan.runId && owner.status === 'active', 'TOOL_SOURCE_OWNER_MISMATCH');
   const freeze = JSON.parse(await regularBytes(path.join(run.directory, 'provider-freeze.json')));
@@ -115,17 +116,66 @@ async function adoptionScope(run) {
     run.journal.checkpoints.freeze.result?.stateHash === migrationHash(freeze), 'TOOL_SOURCE_FREEZE_BINDING_INVALID');
   return {freezeStateHash: migrationHash(freeze), inventoryHash: migrationHash(inventory)};
 }
-function amendment(record, run) {
+async function adoptionScope(run) {
+  strictDev(run);
+  const c = run.journal.checkpoints;
+  assert(!run.journal.terminal && !run.journal.abortFreeze && c.inspect?.status === 'complete' && c.freeze?.status === 'incomplete' &&
+    c.freeze.operationId === run.plan.phaseOperationIds.freeze && Number.isSafeInteger(c.freeze.attempt) && c.freeze.attempt > 0 &&
+    Object.keys(c).every(name => ['inspect', 'freeze'].includes(name)), 'TOOL_SOURCE_EARLY_FREEZE_ONLY');
+  assert((await readdir(run.directory)).every(name => !/^provider-phase-(?!inspect\.json$|freeze\.json$).+\.json$/.test(name)), 'TOOL_SOURCE_LATER_PHASE_PRESENT');
+  return frozenBoundary(run);
+}
+const evidencePattern = /^evidence\/(inspect|freeze|schema|compatibility|control-create|backfill|functions|activate|strict-api)-([a-f0-9]{64})\.json$/;
+const providerPattern = /^provider-phase-(inspect|freeze|schema|compatibility|control-create|backfill|functions|activate|strict-api)\.json$/;
+async function completedEvidence(run) {
+  const files = [];
+  for (const [phase, checkpoint] of Object.entries(run.journal.checkpoints)) {
+    if (checkpoint.status !== 'complete') continue;
+    assert(evidencePattern.test(checkpoint.evidenceFile ?? '') && checkpoint.evidenceFile === 'evidence/' + phase + '-' + checkpoint.evidenceHash + '.json', 'TOOL_SOURCE_COMPLETED_EVIDENCE_INVALID');
+    const record = JSON.parse(await regularBytes(path.join(run.directory, checkpoint.evidenceFile)));
+    const proof = record.evidence;
+    assert(migrationHash(record) === checkpoint.evidenceHash && record.phase === phase && record.planHash === run.planHash &&
+      checkpoint.operationId === run.plan.phaseOperationIds[phase] && record.operationId === checkpoint.operationId &&
+      same(record.result, checkpoint.result) &&
+      proof?.projectId === run.plan.projectId && proof.gitSha === run.plan.gitSha && proof.runId === run.plan.runId && proof.planHash === run.planHash &&
+      PHASE_ASSERTIONS[phase]?.every(flag => proof.assertions?.[flag] === true), 'TOOL_SOURCE_COMPLETED_EVIDENCE_INVALID');
+    files.push(checkpoint.evidenceFile);
+  }
+  return files;
+}
+async function successorScope(run) {
+  strictDev(run);
+  const sequence = phasesFor(run.plan), c = run.journal.checkpoints;
+  const incomplete = Object.keys(c).filter(name => c[name].status === 'incomplete'), phase = incomplete[0], index = sequence.indexOf(phase), open = sequence.indexOf('open');
+  assert(!c.open && !c.receipt && !(await readdir(run.directory)).some(name => /^provider-phase-(?:open|receipt)\.json$/.test(name)), 'TOOL_SOURCE_OPEN_ATTEMPTED');
+  assert(c.inspect?.status === 'complete' && c.freeze?.status === 'complete' && incomplete.length === 1 && index > sequence.indexOf('freeze') && index < open &&
+    Object.keys(c).every(name => sequence.indexOf(name) >= 0 && sequence.indexOf(name) <= index) && sequence.slice(0, index).every(name => c[name]?.status === 'complete') &&
+    c[phase].operationId === run.plan.phaseOperationIds[phase] && Number.isSafeInteger(c[phase].attempt) && c[phase].attempt > 0, 'TOOL_SOURCE_PREOPEN_INCOMPLETE_ONLY');
+  for (const name of (await readdir(run.directory)).filter(name => /^provider-phase-.*\.json$/.test(name))) {
+    const match = providerPattern.exec(name), providerPhase = match?.[1];
+    assert(match && sequence.indexOf(providerPhase) >= 0 && sequence.indexOf(providerPhase) <= index, 'TOOL_SOURCE_LATER_PHASE_PRESENT');
+    const record = JSON.parse(await regularBytes(path.join(run.directory, name)));
+    assert(record.projectId === run.plan.projectId && record.gitSha === run.plan.gitSha && record.runId === run.plan.runId && record.planHash === run.planHash && record.phase === providerPhase, 'TOOL_SOURCE_PROVIDER_RECORD_INVALID');
+  }
+  await completedEvidence(run);
+  return {...await frozenBoundary(run), interruptedPhase: phase};
+}
+function amendment(record, run, previous) {
   assert(keys(record, ['amendment', 'amendmentHash']) && HASH.test(record.amendmentHash ?? '') && migrationHash(record.amendment) === record.amendmentHash, 'TOOL_SOURCE_AMENDMENT_INVALID');
   const value = record.amendment;
-  assert(keys(value, ['schemaVersion', 'projectId', 'gitSha', 'runId', 'planHash', 'toolSha', 'reviewReference', 'reason', 'adoptedAt', 'sourceProof', 'freezeStateHash', 'inventoryHash', 'history']) &&
-    value.schemaVersion === 'sodc-authorization-tool-source-amendment/v1' && value.projectId === run.plan.projectId && value.gitSha === run.plan.gitSha && value.runId === run.plan.runId && value.planHash === run.planHash &&
+  const fields = ['schemaVersion', 'projectId', 'gitSha', 'runId', 'planHash', 'toolSha', 'reviewReference', 'reason', 'adoptedAt', 'sourceProof', 'freezeStateHash', 'inventoryHash', 'history'];
+  if (previous) fields.push('previousAmendmentHash', 'interruptedPhase');
+  assert(keys(value, fields) && value.schemaVersion === 'sodc-authorization-tool-source-amendment/v' + (previous ? '2' : '1') && value.projectId === run.plan.projectId && value.gitSha === run.plan.gitSha && value.runId === run.plan.runId && value.planHash === run.planHash &&
     SHA.test(value.toolSha ?? '') && value.toolSha !== value.gitSha && text(value.reviewReference) && text(value.reason) && Number.isFinite(Date.parse(value.adoptedAt)) && HASH.test(value.freezeStateHash ?? '') && HASH.test(value.inventoryHash ?? ''), 'TOOL_SOURCE_AMENDMENT_INVALID');
+  if (previous) assert(value.previousAmendmentHash === previous.amendmentHash && ['schema', 'compatibility', 'control-create', 'backfill', 'functions', 'activate', 'strict-api'].includes(value.interruptedPhase) &&
+    value.freezeStateHash === previous.amendment.freezeStateHash && value.inventoryHash === previous.amendment.inventoryHash && value.toolSha !== previous.amendment.toolSha, 'TOOL_SOURCE_CHAIN_INVALID');
   strictDev(run); assertNoCredentials(record); return value;
 }
-async function history(run) {
+async function history(run, includePhases = false) {
   const records = [];
-  for (const name of ['plan.json', 'journal.json', 'provider-freeze.json', 'provider-old-writer-inventory.json', 'provider-freeze-proof.json', 'provider-old-writers-proof.json', 'provider-old-writers-observed.json']) {
+  const names = [...RECORDS];
+  if (includePhases) names.push(...(await readdir(run.directory)).filter(name => providerPattern.test(name)), ...await completedEvidence(run));
+  for (const name of names) {
     const bytes = await optional(path.join(run.directory, name)); if (!bytes) continue;
     assertNoCredentials(JSON.parse(bytes)); const hash = digest(bytes), archive = 'evidence/tool-source-before-' + hash + '.json';
     const existing = await optional(path.join(run.directory, archive));
@@ -135,33 +185,74 @@ async function history(run) {
   return records;
 }
 async function verifyHistory(run, rows) {
-  const names = ['plan.json', 'journal.json', 'provider-freeze.json', 'provider-old-writer-inventory.json', 'provider-freeze-proof.json', 'provider-old-writers-proof.json', 'provider-old-writers-observed.json'];
-  assert(Array.isArray(rows) && rows.length >= 4 && rows.length <= 7 && new Set(rows.map(row => row.name)).size === rows.length &&
+  assert(Array.isArray(rows) && rows.length >= 4 && rows.length <= 64 && new Set(rows.map(row => row.name)).size === rows.length &&
     ['plan.json', 'journal.json', 'provider-freeze.json', 'provider-old-writer-inventory.json'].every(name => rows.some(row => row.name === name)), 'TOOL_SOURCE_HISTORY_INVALID');
   for (const row of rows) {
-    assert(keys(row, ['name', 'sha256', 'archive']) && names.includes(row.name) && HASH.test(row.sha256 ?? '') && row.archive === 'evidence/tool-source-before-' + row.sha256 + '.json', 'TOOL_SOURCE_HISTORY_INVALID');
+    assert(keys(row, ['name', 'sha256', 'archive']) && (RECORDS.includes(row.name) || providerPattern.test(row.name) || evidencePattern.test(row.name)) && HASH.test(row.sha256 ?? '') && row.archive === 'evidence/tool-source-before-' + row.sha256 + '.json', 'TOOL_SOURCE_HISTORY_INVALID');
     assert(digest(await regularBytes(path.join(run.directory, row.archive))) === row.sha256, 'TOOL_SOURCE_HISTORY_CHANGED');
+    if (evidencePattern.test(row.name)) assert(digest(await regularBytes(path.join(run.directory, row.name))) === row.sha256, 'TOOL_SOURCE_COMPLETED_EVIDENCE_CHANGED');
+  }
+}
+async function chain(run) {
+  const files = await readdir(run.directory), children = files.filter(name => /^tool-source-amendment-.*\.json$/.test(name));
+  const result = []; let name = FILE, previous;
+  while (true) {
+    const bytes = await optional(path.join(run.directory, name)); if (!bytes) break;
+    assert(result.length < MAX_TOOL_SOURCE_AMENDMENTS, 'TOOL_SOURCE_CHAIN_LIMIT');
+    const record = JSON.parse(bytes); amendment(record, run, previous);
+    assert(!result.some(row => row.record.amendmentHash === record.amendmentHash), 'TOOL_SOURCE_CHAIN_INVALID');
+    result.push({name, record}); previous = record; name = 'tool-source-amendment-' + record.amendmentHash + '.json';
+  }
+  assert(children.every(file => result.some(row => row.name === file)), 'TOOL_SOURCE_CHAIN_ORPHAN');
+  return result;
+}
+async function verifyChain(run, records, repositoryRoot, git) {
+  let previous;
+  for (const {record} of records) {
+    const value = amendment(record, run, previous);
+    const source = await inspectCommittedDiff(repositoryRoot, run.plan.gitSha, value.toolSha, git);
+    assert(same(source, value.sourceProof), 'TOOL_SOURCE_DIFF_CHANGED');
+    if (previous) {
+      try {await git(['merge-base', '--is-ancestor', previous.amendment.toolSha, value.toolSha], {cwd: repositoryRoot});}
+      catch {throw new MigrationError('TOOL_SOURCE_NOT_DESCENDANT', 'Successor tooling must descend from the previously reviewed tool commit.');}
+    }
+    await verifyHistory(run, value.history);
+    const freeze = JSON.parse(await regularBytes(path.join(run.directory, 'provider-freeze.json'))), inventory = JSON.parse(await regularBytes(path.join(run.directory, 'provider-old-writer-inventory.json')));
+    assert(migrationHash(freeze) === value.freezeStateHash && inventory.inventoryHash === value.inventoryHash && migrationHash(inventory.inventory) === value.inventoryHash && same(freeze.oldWriterInventory, inventory.inventory), 'TOOL_SOURCE_FREEZE_BINDING_INVALID');
+    for (const file of ['plan.json', 'provider-freeze.json', 'provider-old-writer-inventory.json']) assert(digest(await regularBytes(path.join(run.directory, file))) === value.history.find(row => row.name === file).sha256, 'TOOL_SOURCE_FREEZE_BINDING_INVALID');
+    previous = record;
   }
 }
 
 /** Local-only amendment. It never rewrites the plan, journal, gates or provider checkpoints. */
-export async function adoptMigrationToolSource(options, {confirmProject, toolSha, reviewReference, reason, git = gitDefault, now = new Date()} = {}) {
+export async function adoptMigrationToolSource(options, {confirmProject, toolSha, reviewReference, reason, previousAmendmentHash, git = gitDefault, now = new Date()} = {}) {
   assert(confirmProject === 'sodc-web' && options.projectId === 'sodc-web', 'TOOL_SOURCE_STRICT_DEV_ONLY');
   assert(text(reviewReference) && text(reason), 'TOOL_SOURCE_REVIEW_REQUIRED');
   const initial = await loadMigrationRun(options); strictDev(initial);
   return lock(path.join(path.dirname(initial.directory), '.migration.lock'), initial, () => lock(path.join(initial.directory, '.phase.lock'), initial, async () => {
-    const run = await loadMigrationRun(options), filename = path.join(run.directory, FILE);
-    const old = await optional(filename);
-    if (old) {
-      const saved = amendment(JSON.parse(old), run);
-      assert(saved.toolSha === toolSha && saved.reviewReference === reviewReference && saved.reason === reason, 'TOOL_SOURCE_ALREADY_ADOPTED');
-      return verifyMigrationToolSource(run, {repositoryRoot: options.repositoryRoot, git});
+    const run = await loadMigrationRun(options), records = await chain(run), tip = records.at(-1)?.record;
+    let filename = path.join(run.directory, FILE), boundary;
+    const retry = tip?.amendment.toolSha === toolSha && tip.amendment.reviewReference === reviewReference && tip.amendment.reason === reason &&
+      (records.length === 1 ? previousAmendmentHash === undefined : previousAmendmentHash === tip.amendment.previousAmendmentHash);
+    if (retry) return verifyMigrationToolSource(run, {repositoryRoot: options.repositoryRoot, git});
+    if (tip) {
+      assert(previousAmendmentHash !== undefined, 'TOOL_SOURCE_PREVIOUS_REQUIRED');
+      assert(previousAmendmentHash === tip.amendmentHash, 'TOOL_SOURCE_PREVIOUS_MISMATCH');
+      assert(toolSha !== tip.amendment.toolSha, 'TOOL_SOURCE_SAME_REVISION');
+      assert(records.length < MAX_TOOL_SOURCE_AMENDMENTS, 'TOOL_SOURCE_CHAIN_LIMIT');
+      await verifyChain(run, records, options.repositoryRoot, git);
+      try {await git(['merge-base', '--is-ancestor', tip.amendment.toolSha, toolSha], {cwd: options.repositoryRoot});}
+      catch {throw new MigrationError('TOOL_SOURCE_NOT_DESCENDANT', 'The successor tool must descend from the current reviewed tool revision.');}
+      boundary = await successorScope(run);
+      filename = path.join(run.directory, 'tool-source-amendment-' + tip.amendmentHash + '.json');
+    } else {
+      assert(previousAmendmentHash === undefined, 'TOOL_SOURCE_PREVIOUS_MISMATCH');
+      boundary = await adoptionScope(run);
     }
-    const boundary = await adoptionScope(run);
     const sourceProof = await inspectMigrationToolSource(options.repositoryRoot, run.plan.gitSha, toolSha, git);
     const stamp = new Date(typeof now === 'function' ? now() : now); assert(Number.isFinite(+stamp), 'TOOL_SOURCE_TIME_INVALID');
-    const value = {schemaVersion: 'sodc-authorization-tool-source-amendment/v1', projectId: run.plan.projectId, gitSha: run.plan.gitSha, runId: run.plan.runId, planHash: run.planHash,
-      toolSha, reviewReference, reason, adoptedAt: stamp.toISOString(), sourceProof, ...boundary, history: await history(run)};
+    const value = {schemaVersion: 'sodc-authorization-tool-source-amendment/v' + (tip ? '2' : '1'), projectId: run.plan.projectId, gitSha: run.plan.gitSha, runId: run.plan.runId, planHash: run.planHash,
+      toolSha, reviewReference, reason, adoptedAt: stamp.toISOString(), sourceProof, ...boundary, history: await history(run, Boolean(tip)), ...(tip ? {previousAmendmentHash} : {})};
     const record = {amendment: value, amendmentHash: migrationHash(value)}; assertNoCredentials(record);
     // Publish only after all historical bytes are durable, then re-inspect before returning.
     await immutable(filename, Buffer.from(JSON.stringify(record, null, 2) + '\n'));
@@ -171,17 +262,11 @@ export async function adoptMigrationToolSource(options, {confirmProject, toolSha
 
 /** Every ordinary phase rechecks the exact adopted tool commit and full original-to-tool diff. */
 export async function verifyMigrationToolSource(run, {repositoryRoot, git = gitDefault} = {}) {
-  const bytes = await optional(path.join(run.directory, FILE));
-  if (!bytes) {await cleanHead(repositoryRoot, git, run.plan.gitSha); return {originalPlanSha: run.plan.gitSha, toolSha: run.plan.gitSha, amendmentHash: null};}
-  const record = JSON.parse(bytes), value = amendment(record, run);
-  const source = await inspectMigrationToolSource(repositoryRoot, run.plan.gitSha, value.toolSha, git);
-  assert(same(source, value.sourceProof), 'TOOL_SOURCE_DIFF_CHANGED');
-  await verifyHistory(run, value.history);
-  const freeze = JSON.parse(await regularBytes(path.join(run.directory, 'provider-freeze.json'))), inventory = JSON.parse(await regularBytes(path.join(run.directory, 'provider-old-writer-inventory.json')));
-  assert(migrationHash(freeze) === value.freezeStateHash && inventory.inventoryHash === value.inventoryHash && migrationHash(inventory.inventory) === value.inventoryHash && same(freeze.oldWriterInventory, inventory.inventory), 'TOOL_SOURCE_FREEZE_BINDING_INVALID');
-  for (const name of ['plan.json', 'provider-freeze.json', 'provider-old-writer-inventory.json']) {
-    const original = value.history.find(row => row.name === name);
-    assert(digest(await regularBytes(path.join(run.directory, name))) === original.sha256, 'TOOL_SOURCE_FREEZE_BINDING_INVALID');
-  }
+  const records = await chain(run);
+  if (!records.length) {await cleanHead(repositoryRoot, git, run.plan.gitSha); return {originalPlanSha: run.plan.gitSha, toolSha: run.plan.gitSha, amendmentHash: null};}
+  const record = records.at(-1).record, value = record.amendment;
+  await cleanHead(repositoryRoot, git, value.toolSha);
+  await verifyChain(run, records, repositoryRoot, git);
+  await cleanHead(repositoryRoot, git, value.toolSha);
   return {originalPlanSha: run.plan.gitSha, toolSha: value.toolSha, amendmentHash: record.amendmentHash};
 }

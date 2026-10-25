@@ -2,8 +2,8 @@ import {afterEach, expect, it, vi} from 'vitest';
 import {mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, unlink, realpath} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {createMigrationPlan, prepareMigrationRun, loadMigrationRun, migrationHash} from './authorization-migration-state.mjs';
-import {adoptMigrationToolSource, verifyMigrationToolSource, inspectMigrationToolSource, parseToolSourceDiff} from './authorization-migration-tool-source.mjs';
+import {createMigrationPlan, prepareMigrationRun, loadMigrationRun, migrationHash, PHASE_ASSERTIONS} from './authorization-migration-state.mjs';
+import {adoptMigrationToolSource, verifyMigrationToolSource, inspectMigrationToolSource, parseToolSourceDiff, MAX_TOOL_SOURCE_AMENDMENTS} from './authorization-migration-tool-source.mjs';
 
 const original = 'a'.repeat(40), tool = 'b'.repeat(40), now = new Date('2026-10-25T09:30:00Z');
 const raw = ':100644 100644 ' + '1'.repeat(40) + ' ' + '2'.repeat(40) + ' M\0scripts/authorization-migration-cloud.mjs\0';
@@ -12,11 +12,11 @@ const roots = [];
 afterEach(async () => {for (const root of roots.splice(0)) await rm(root, {recursive: true, force: true});});
 function sourceGit({head = tool, status = '', ancestry = true, rawDiff = raw, patchDiff = patch} = {}) {
   return vi.fn(async args => {
-    if (args[0] === 'rev-parse') return head;
+    if (args[0] === 'rev-parse') return typeof head === 'function' ? head() : head;
     if (args[0] === 'status') return status;
     if (args[0] === 'merge-base') {if (!ancestry) throw Error('not ancestor'); return '';}
-    if (args.includes('--raw')) return rawDiff;
-    if (args.includes('--binary')) return patchDiff;
+    if (args.includes('--raw')) return typeof rawDiff === 'function' ? rawDiff(args.at(-2)) : rawDiff;
+    if (args.includes('--binary')) return typeof patchDiff === 'function' ? patchDiff(args.at(-2)) : patchDiff;
     throw Error('unexpected git command');
   });
 }
@@ -49,7 +49,7 @@ it('adopts exactly one tool-only revision, preserving plan, failed checkpoint an
   for (const row of saved.amendment.history) expect(await readFile(path.join(f.directory, row.archive))).toEqual(originals[['plan.json', 'journal.json', 'provider-freeze.json', 'provider-old-writer-inventory.json', 'provider-freeze-proof.json'].indexOf(row.name)]);
   expect(await Promise.all(['plan.json', 'journal.json', 'provider-freeze.json', 'provider-old-writer-inventory.json', 'provider-freeze-proof.json'].map(name => readFile(path.join(f.directory, name))))).toEqual(originals);
   expect(await f.adopt()).toEqual(result); expect(await readFile(file)).toEqual(Buffer.from(JSON.stringify(saved, null, 2) + '\n'));
-  await expect(f.adopt({toolSha: 'c'.repeat(40)})).rejects.toMatchObject({code: 'TOOL_SOURCE_ALREADY_ADOPTED'});
+  await expect(f.adopt({toolSha: 'c'.repeat(40)})).rejects.toMatchObject({code: 'TOOL_SOURCE_PREVIOUS_REQUIRED'});
 });
 it('ordinary verification remains valid after legitimate checkpoint advancement and rejects changed history', async () => {
   const f = await fixture(); await f.adopt();
@@ -122,3 +122,86 @@ for (const [name, value] of [
   ['duplicate path', raw + raw],
   ['empty changes', ''],
 ]) it('rejects raw diff ' + name, () => expect(() => parseToolSourceDiff(value)).toThrow());
+
+async function successorFixture() {
+  const f = await fixture(), state = {head: tool, patches: new Map([[tool, patch]])};
+  const git = sourceGit({head: () => state.head, patchDiff: target => state.patches.get(target) ?? patch + target});
+  const base = await f.adopt({git}), baseBytes = await readFile(path.join(f.directory, 'tool-source-amendment.json'));
+  const complete = async (phase, result) => {
+    const record = {schemaVersion: 'sodc-authorization-migration-phase/v1', phase, planHash: f.planHash, operationId: f.plan.phaseOperationIds[phase], result,
+      evidence: {projectId: f.plan.projectId, gitSha: original, runId: f.plan.runId, planHash: f.planHash, assertions: Object.fromEntries(PHASE_ASSERTIONS[phase].map(flag => [flag, true]))}};
+    const evidenceHash = migrationHash(record), evidenceFile = 'evidence/' + phase + '-' + evidenceHash + '.json';
+    await f.put(evidenceFile, record);
+    f.journal.checkpoints[phase] = {status: 'complete', operationId: record.operationId, attempt: 1, result, evidenceHash, evidenceFile};
+  };
+  await complete('inspect', {baseline: f.journal.baseline}); await complete('freeze', {stateHash: migrationHash(f.freeze)}); await complete('schema', {reviewed: true});
+  const provider = {projectId: f.plan.projectId, gitSha: original, runId: f.plan.runId, planHash: f.planHash, phase: 'control-create', startedAt: now.toISOString(), completedAt: now.toISOString()};
+  f.journal.checkpoints['control-create'] = {status: 'incomplete', operationId: f.plan.phaseOperationIds['control-create'], attempt: 3, result: provider, lastError: {code: 'CLOUD_METADATA_READ_FAILED'}};
+  await f.put('provider-phase-control-create.json', provider); await f.put('journal.json', f.journal);
+  const append = async (toolSha = 'c'.repeat(40), previousAmendmentHash = base.amendmentHash, extras = {}) => {
+    state.head = toolSha;
+    return f.adopt({git, toolSha, previousAmendmentHash, ...extras});
+  };
+  return {...f, git, state, base, baseBytes, append, complete};
+}
+
+it('appends a reviewed pre-open successor while retaining the original plan, base amendment and failed attempts', async () => {
+  const f = await successorFixture(), names = ['plan.json', 'journal.json', 'provider-freeze.json', 'provider-old-writer-inventory.json', 'provider-phase-control-create.json'];
+  const before = await Promise.all(names.map(name => readFile(path.join(f.directory, name))));
+  const result = await f.append(), filename = 'tool-source-amendment-' + f.base.amendmentHash + '.json', bytes = await readFile(path.join(f.directory, filename)), record = JSON.parse(bytes);
+  expect(record.amendment).toMatchObject({schemaVersion: 'sodc-authorization-tool-source-amendment/v2', previousAmendmentHash: f.base.amendmentHash, interruptedPhase: 'control-create', gitSha: original, toolSha: 'c'.repeat(40)});
+  expect(record.amendment.history.filter(row => row.name.startsWith('evidence/'))).toHaveLength(3);
+  expect(record.amendment.history.find(row => row.name === 'provider-phase-control-create.json')).toBeDefined();
+  for (const row of record.amendment.history) expect(await readFile(path.join(f.directory, row.archive))).toEqual(await readFile(path.join(f.directory, row.name)));
+  expect(await readFile(path.join(f.directory, 'tool-source-amendment.json'))).toEqual(f.baseBytes);
+  expect(await Promise.all(names.map(name => readFile(path.join(f.directory, name))))).toEqual(before);
+  expect(await f.append()).toEqual(result); expect(await readFile(path.join(f.directory, filename))).toEqual(bytes);
+  await f.complete('control-create', {finished: true}); await f.put('journal.json', f.journal);
+  expect(await verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).toEqual(result);
+});
+it('requires the explicit current tip and recomputes old committed proofs without checking out the old tool', async () => {
+  const f = await successorFixture();
+  await expect(f.append('c'.repeat(40), undefined, {previousAmendmentHash: undefined})).rejects.toMatchObject({code: 'TOOL_SOURCE_PREVIOUS_REQUIRED'});
+  await expect(f.append('c'.repeat(40), '0'.repeat(64))).rejects.toMatchObject({code: 'TOOL_SOURCE_PREVIOUS_MISMATCH'});
+  f.state.patches.set(tool, patch + 'old proof drift');
+  await expect(f.append()).rejects.toMatchObject({code: 'TOOL_SOURCE_DIFF_CHANGED'});
+  f.state.patches.set(tool, patch); const result = await f.append();
+  expect(result.toolSha).toBe('c'.repeat(40));
+  expect(f.git.mock.calls.some(([args]) => args.includes('--binary') && args.at(-2) === tool)).toBe(true);
+  await expect(verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: sourceGit()})).rejects.toMatchObject({code: 'REVISION_CHANGED'});
+});
+for (const kind of ['checkpoint-result', 'evidence-bytes', 'future-provider', 'foreign-provider', 'open', 'receipt', 'terminal', 'owner', 'missing-prior']) it('rejects successor scope drift: ' + kind, async () => {
+  const f = await successorFixture();
+  if (kind === 'checkpoint-result') f.journal.checkpoints.schema.result = {changed: true};
+  if (kind === 'evidence-bytes') await f.put(f.journal.checkpoints.schema.evidenceFile, {});
+  if (kind === 'future-provider') await f.put('provider-phase-functions.json', {});
+  if (kind === 'foreign-provider') await f.put('provider-phase-control-create.json', {...f.journal.checkpoints['control-create'].result, projectId: 'foreign'});
+  if (kind === 'open' || kind === 'receipt') f.journal.checkpoints[kind] = {status: 'incomplete'};
+  if (kind === 'terminal') f.journal.terminal = {status: 'ABORTED'};
+  if (kind === 'owner') await writeFile(path.join(path.dirname(f.directory), 'active-run.json'), JSON.stringify({runId: 'foreign', planHash: f.planHash, status: 'active'}));
+  if (kind === 'missing-prior') delete f.journal.checkpoints.schema;
+  await f.put('journal.json', f.journal);
+  const code = ['checkpoint-result', 'evidence-bytes'].includes(kind) ? 'TOOL_SOURCE_COMPLETED_EVIDENCE_INVALID' : kind === 'future-provider' ? 'TOOL_SOURCE_LATER_PHASE_PRESENT' : kind === 'foreign-provider' ? 'TOOL_SOURCE_PROVIDER_RECORD_INVALID' : ['open', 'receipt'].includes(kind) ? 'TOOL_SOURCE_OPEN_ATTEMPTED' : kind === 'terminal' ? 'TOOL_SOURCE_EARLY_FREEZE_ONLY' : kind === 'owner' ? 'TOOL_SOURCE_OWNER_MISMATCH' : 'TOOL_SOURCE_PREOPEN_INCOMPLETE_ONLY';
+  await expect(f.append()).rejects.toMatchObject({code});
+  await expect(readFile(path.join(f.directory, 'tool-source-amendment-' + f.base.amendmentHash + '.json'))).rejects.toMatchObject({code: 'ENOENT'});
+});
+it('bounds the chain at eight immutable single-child amendments', async () => {
+  const f = await successorFixture(); let tip = f.base;
+  for (let index = 1; index < MAX_TOOL_SOURCE_AMENDMENTS; index++) tip = await f.append(['c', 'd', 'e', 'f', '0', '1', '2'][index - 1].repeat(40), tip.amendmentHash);
+  expect(await verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).toEqual(tip);
+  await expect(f.append('f'.repeat(40), tip.amendmentHash)).rejects.toMatchObject({code: 'TOOL_SOURCE_CHAIN_LIMIT'});
+});
+it('rejects orphaned children and changed links without silently falling back to an earlier source', async () => {
+  const f = await successorFixture(); await f.append();
+  await f.put('tool-source-amendment-' + '0'.repeat(64) + '.json', {});
+  await expect(verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).rejects.toMatchObject({code: 'TOOL_SOURCE_CHAIN_ORPHAN'});
+  await unlink(path.join(f.directory, 'tool-source-amendment-' + '0'.repeat(64) + '.json'));
+  const filename = 'tool-source-amendment-' + f.base.amendmentHash + '.json', record = JSON.parse(await readFile(path.join(f.directory, filename)));
+  record.amendment.previousAmendmentHash = '0'.repeat(64); record.amendmentHash = migrationHash(record.amendment); await f.put(filename, record);
+  await expect(verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).rejects.toMatchObject({code: 'TOOL_SOURCE_CHAIN_INVALID'});
+});
+it('continues to bind archived completed evidence after a successor and halts on any current byte change', async () => {
+  const f = await successorFixture(); await f.append();
+  await f.put(f.journal.checkpoints.schema.evidenceFile, {});
+  await expect(verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).rejects.toMatchObject({code: 'TOOL_SOURCE_COMPLETED_EVIDENCE_CHANGED'});
+});
