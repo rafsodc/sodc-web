@@ -2,7 +2,7 @@ import {afterEach, expect, it, vi} from 'vitest';
 import {mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, unlink, realpath} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {createMigrationPlan, prepareMigrationRun, loadMigrationRun, migrationHash, PHASE_ASSERTIONS, recordMigrationGate} from './authorization-migration-state.mjs';
+import {createMigrationPlan, prepareMigrationRun, loadMigrationRun, migrationHash, PHASE_ASSERTIONS, recordMigrationGate, phasesFor} from './authorization-migration-state.mjs';
 import {adoptMigrationToolSource, verifyMigrationToolSource, inspectMigrationToolSource, parseToolSourceDiff, MAX_TOOL_SOURCE_AMENDMENTS} from './authorization-migration-tool-source.mjs';
 
 const original = 'a'.repeat(40), tool = 'b'.repeat(40), now = new Date('2026-10-25T09:30:00Z');
@@ -313,4 +313,87 @@ for (const name of ['provider-phase-future.json', 'provider-phase-future.json.tm
   const f = await completionFixture(); await f.finish();
   await f.put(name, {...f.open, phase: 'future'});
   await expect(verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).rejects.toMatchObject({code: 'TOOL_SOURCE_LATER_PHASE_PRESENT'});
+});
+
+
+async function productionRecoveryFixture() {
+  const f = await fixture({projectId: 'sodc-web-production', installation: 'legacy'});
+  const complete = async (phase, result) => {
+    const record = {schemaVersion: 'sodc-authorization-migration-phase/v1', phase, planHash: f.planHash, operationId: f.plan.phaseOperationIds[phase], result,
+      evidence: {projectId: f.plan.projectId, gitSha: original, runId: f.plan.runId, planHash: f.planHash, assertions: Object.fromEntries(PHASE_ASSERTIONS[phase].map(flag => [flag, true]))}};
+    const evidenceHash = migrationHash(record), evidenceFile = 'evidence/' + phase + '-' + evidenceHash + '.json'; await f.put(evidenceFile, record);
+    f.journal.checkpoints[phase] = {status: 'complete', operationId: record.operationId, attempt: 1, result, evidenceHash, evidenceFile};
+  };
+  for (const phase of phasesFor(f.plan).slice(0, phasesFor(f.plan).indexOf('open'))) {
+    const result = phase === 'inspect' ? {baseline: f.journal.baseline} : phase === 'freeze' ? {stateHash: migrationHash(f.freeze)} :
+      {projectId: f.plan.projectId, gitSha: original, runId: f.plan.runId, planHash: f.planHash, phase, startedAt: now.toISOString(), completedAt: now.toISOString()};
+    await complete(phase, result); if (!['inspect', 'freeze'].includes(phase)) await f.put('provider-phase-' + phase + '.json', result);
+  }
+  f.open = {projectId: f.plan.projectId, gitSha: original, runId: f.plan.runId, planHash: f.planHash, phase: 'open', startedAt: now.toISOString(), completedAt: null, openingStarted: true};
+  f.journal.checkpoints.open = {status: 'incomplete', operationId: f.plan.phaseOperationIds.open, attempt: 1, startedAt: now.toISOString(), lastError: 'SCHEDULER_TARGET_NOT_VERIFIED'};
+  await f.put('journal.json', f.journal); await f.put('provider-phase-open.json', f.open);
+  for (const [gate, details] of [
+    ['backup', {backupReference: 'approved production backup', restoreTestReference: 'actual isolated restore'}],
+    ['freeze-scope', {entrypoints: ['grantAdmin'], jobNames: ['recovery'], externalWritersReference: 'reviewed external writes', probeUserId: 'approved-existing', probeReference: 'approved existing session'}],
+    ['old-writers', {method: 'cloud-run-retirement', freezeStateHash: migrationHash(f.freeze), inventoryHash: migrationHash(f.inventory), successorRevisions: [], externalOperationsReference: 'actual retirement review'}],
+    ['sql-review', {diffSha256: 'f'.repeat(64)}],
+    ['acceptance', {sourceProjectId: 'sodc-web', backendTestReference: 'backend', browserReviewReference: 'browser', notificationsReference: 'approved exception', schedulerVolumeReference: 'accepted volume', appCheckReference: 'app check'}],
+  ]) await recordMigrationGate(f.options, {schemaVersion: 'sodc-authorization-migration-gate/v1', projectId: f.plan.projectId, gitSha: original, runId: f.plan.runId, reviewedBy: 'operator', observedAt: now.toISOString(), evidence: 'same application approval', gate, details}, now);
+  f.journal = (await loadMigrationRun(f.options)).journal;
+  f.schedulerNames = [];
+  for (const fn of ['recoverNotificationDeliveries', 'reconcilePendingSecurityTransitions']) {
+    const name = 'scheduler-firebase-schedule-' + fn + '-europe-west2.json'; f.schedulerNames.push(name);
+    await f.put(name, {projectId: f.plan.projectId, gitSha: original, runId: f.plan.runId, planHash: f.planHash, job: {name: `projects/${f.plan.projectId}/locations/europe-west2/jobs/firebase-schedule-${fn}-europe-west2`, schedule: 'every 5 minutes', httpTarget: {uri: `https://europe-west2-${f.plan.projectId}.cloudfunctions.net/${fn}`, httpMethod: 'POST', oidcToken: {serviceAccountEmail: 'reviewed@sodc-web-production.iam.gserviceaccount.com'}}}});
+  }
+  f.recover = extras => f.adopt({productionPreApiOpenRecovery: true, ...extras});
+  return f;
+}
+it('Production v4 records the exact pre-API-open failure without changing any original operational file', async () => {
+  const f = await productionRecoveryFixture(), names = ['plan.json', 'journal.json', 'provider-phase-open.json', 'provider-freeze.json', 'provider-old-writer-inventory.json', ...f.schedulerNames], before = await Promise.all(names.map(name => readFile(path.join(f.directory, name))));
+  const result = await f.recover(), record = JSON.parse(await readFile(path.join(f.directory, 'tool-source-amendment.json')));
+  expect(record.amendment).toMatchObject({schemaVersion: 'sodc-authorization-tool-source-amendment/v4', recoveryKind: 'production-pre-api-open-scheduler-target', interruptedPhase: 'open', gitSha: original, toolSha: tool});
+  expect(record.amendment.productionRecoveryBindings.priorCheckpointHashes.compatibility).toMatch(/^[a-f0-9]{64}$/);
+  expect(record.amendment.history.some(row => row.name === 'provider-phase-open.json')).toBe(true);
+  for (let i = 0; i < names.length; i++) expect(await readFile(path.join(f.directory, names[i]))).toEqual(before[i]);
+  expect(await f.recover()).toEqual(result);
+});
+for (const kind of ['API started', 'proofs already saved', 'completed open', 'wrong error', 'result present', 'missing compatibility', 'prior proof changed', 'foreign scheduler', 'foreign scheduler URI', 'future provider', 'receipt file', 'wrong owner']) it('Production recovery refuses before amendment publication: ' + kind, async () => {
+  const f = await productionRecoveryFixture();
+  if (kind === 'API started') await f.put('provider-phase-open.json', {...f.open, apiOpening: true});
+  if (kind === 'proofs already saved') await f.put('provider-phase-open.json', {...f.open, deferredProofs: []});
+  if (kind === 'completed open') await f.put('provider-phase-open.json', {...f.open, completedAt: now.toISOString()});
+  if (kind === 'wrong error') f.journal.checkpoints.open.lastError = 'PHASE_NOT_VERIFIED';
+  if (kind === 'result present') f.journal.checkpoints.open.result = f.open;
+  if (kind === 'missing compatibility') delete f.journal.checkpoints.compatibility;
+  if (kind === 'prior proof changed') await f.put(f.journal.checkpoints.backfill.evidenceFile, {});
+  if (kind.startsWith('foreign scheduler')) {const capture = JSON.parse(await readFile(path.join(f.directory, f.schedulerNames[1]))); if (kind === 'foreign scheduler') capture.projectId = 'sodc-web'; else capture.job.httpTarget.uri = 'https://foreign.example.invalid/'; await f.put(f.schedulerNames[1], capture);}
+  if (kind === 'future provider') await f.put('provider-phase-open.json.tmp', {});
+  if (kind === 'receipt file') await writeFile(path.join(f.options.repositoryRoot, '.firebase/authorization-migration/sodc-web-production.json'), '{}', {mode: 0o600});
+  if (kind === 'wrong owner') await writeFile(path.join(path.dirname(f.directory), 'active-run.json'), '{}', {mode: 0o600});
+  await f.put('journal.json', f.journal); await expect(f.recover()).rejects.toThrow();
+  await expect(readFile(path.join(f.directory, 'tool-source-amendment.json'))).rejects.toMatchObject({code: 'ENOENT'});
+});
+it('Production recovery permanently rechecks archived failure and unchanged prior provider records', async () => {
+  const f = await productionRecoveryFixture(); await f.recover(); const record = JSON.parse(await readFile(path.join(f.directory, 'tool-source-amendment.json'))), row = record.amendment.history.find(row => row.name === 'provider-phase-open.json');
+  await f.put(row.archive, {...f.open, openingStarted: false});
+  await expect(verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).rejects.toMatchObject({code: 'TOOL_SOURCE_HISTORY_CHANGED'});
+});
+it('Production recovery cannot adopt another tool successor or mix the Dev completion flag', async () => {
+  const f = await productionRecoveryFixture(); await expect(f.recover({completedOpenVerification: true})).rejects.toThrow();
+  await f.recover(); await expect(f.recover({toolSha: 'e'.repeat(40), previousAmendmentHash: 'f'.repeat(64)})).rejects.toThrow();
+});
+it('Production recovery ordinary guards allow saved deferred proofs before scheduler capture succeeds', async () => {
+  const f = await productionRecoveryFixture(); await f.recover();
+  await f.put('provider-phase-open.json', {...f.open, deferredProofs: ['getMyAuthorizationStatus', 'reconcilePendingSecurityTransitions'].map(name => ({name}))});
+  await expect(verifyMigrationToolSource(await loadMigrationRun(f.options), {repositoryRoot: f.options.repositoryRoot, git: f.git})).resolves.toMatchObject({originalPlanSha: original, toolSha: tool});
+});
+it('Production v4 restricts changes to the seven existing reviewed files', async () => {
+  const f = await productionRecoveryFixture(); await expect(f.recover({git: sourceGit({rawDiff: raw.replace('authorization-migration-cloud.mjs', 'authorization-migration-state.mjs')})})).rejects.toMatchObject({code: 'TOOL_SOURCE_PRODUCTION_DELTA_INVALID'});
+});
+
+for (const name of ['provider-phase-open.json', 'journal.json', 'gate']) it('refuses Production history byte replacement between validation and archive: ' + name, async () => {
+  const f = await productionRecoveryFixture(); let changed = false;
+  const git = async (args, options) => {if (!changed && args.includes('--binary')) {changed = true; const file = path.join(f.directory, name === 'gate' ? f.journal.gates.acceptance.file : name); await writeFile(file, Buffer.concat([await readFile(file), Buffer.from('\n')]), {mode: 0o600});} return f.git(args, options);};
+  await expect(f.recover({git})).rejects.toMatchObject({code: 'TOOL_SOURCE_PRODUCTION_BINDING_CHANGED'});
+  await expect(readFile(path.join(f.directory, 'tool-source-amendment.json'))).rejects.toMatchObject({code: 'ENOENT'});
 });

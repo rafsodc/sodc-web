@@ -25,7 +25,7 @@ const allowed = Object.freeze({
   apply: ["project", "run-id", "phase", "confirm-project"],
   unlock: ["project", "run-id", "reason"],
   "abort-freeze": ["project", "run-id", "reason", "confirm-project"],
-  "adopt-tool-source": ["project", "run-id", "reason", "confirm-project", "tool-sha", "review-reference", "previous-amendment", "completed-open-verification"],
+  "adopt-tool-source": ["project", "run-id", "reason", "confirm-project", "tool-sha", "review-reference", "previous-amendment", "completed-open-verification", "production-pre-api-open-recovery"],
 });
 const required = Object.freeze({
   plan: ["project"],
@@ -51,7 +51,7 @@ export function parseMigrationArguments(argv) {
     if (!argument.startsWith("--") || !allowed[command].includes(argument.slice(2))) fail("FLAG_INVALID", "Unknown or unsupported migration flag.");
     const key = argument.slice(2);
     if (Object.hasOwn(flags, key)) fail("FLAG_DUPLICATE", "Migration flags must not be repeated.");
-    if (["import-admins", "completed-open-verification"].includes(key)) flags[key] = true;
+    if (["import-admins", "completed-open-verification", "production-pre-api-open-recovery"].includes(key)) flags[key] = true;
     else {
       const value = args[++index];
       if (!value?.trim() || value.startsWith("--")) fail("FLAG_VALUE_REQUIRED", "Every selected flag requires its value.");
@@ -70,7 +70,9 @@ export function parseMigrationArguments(argv) {
   }
   if (command === "abort-freeze" && (flags.project !== "sodc-web" || flags["confirm-project"] !== "sodc-web")) fail("ABORT_STRICT_DEV_ONLY", "Abort-freeze is restricted to the literal Dev project sodc-web.");
   if (command === "adopt-tool-source") {
-    if (flags.project !== "sodc-web" || flags["confirm-project"] !== "sodc-web") fail("TOOL_SOURCE_STRICT_DEV_ONLY", "Tool-source adoption is restricted to the literal Dev project sodc-web.");
+    if (flags["production-pre-api-open-recovery"]) {
+      if (flags.project !== "sodc-web-production" || flags["confirm-project"] !== "sodc-web-production" || flags["completed-open-verification"] || flags["previous-amendment"] !== undefined) fail("TOOL_SOURCE_PRODUCTION_RECOVERY_FLAG_INVALID", "Production recovery requires its explicit first-amendment flag and exact target confirmation.");
+    } else if (flags.project !== "sodc-web" || flags["confirm-project"] !== "sodc-web") fail("TOOL_SOURCE_STRICT_DEV_ONLY", "Tool-source adoption is Dev-only unless the narrowly scoped Production pre-API-open recovery is explicitly requested.");
     if (!/^[a-f0-9]{40}$/.test(flags["tool-sha"])) fail("TOOL_SOURCE_SHA_REQUIRED", "Repeat the full reviewed tool commit.");
     if (flags["previous-amendment"] !== undefined && !/^[a-f0-9]{64}$/.test(flags["previous-amendment"])) fail("TOOL_SOURCE_PREVIOUS_REQUIRED", "Repeat the exact previous amendment hash.");
   }
@@ -184,7 +186,7 @@ export async function runMigrationCli(argv, {
   const run = options.runId ? await loadMigrationRun(options) : null;
   if (command === "adopt-tool-source") {
     const source = await adoptMigrationToolSource(options, {confirmProject: flags["confirm-project"], toolSha: flags["tool-sha"],
-      previousAmendmentHash: flags["previous-amendment"], completedOpenVerification: flags["completed-open-verification"] === true,
+      previousAmendmentHash: flags["previous-amendment"], completedOpenVerification: flags["completed-open-verification"] === true, productionPreApiOpenRecovery: flags["production-pre-api-open-recovery"] === true,
       reviewReference: flags["review-reference"], reason: flags.reason, git, now: now()});
     return {projectId, runId: run.plan.runId, ...source, cloudChanges: false,
       limitation: "Only migration-tool source was adopted. The original release plan and every live verification remain required."};
