@@ -146,16 +146,37 @@ mutation UpdateUser(
   )
 }
 
-# Register for a section (adds user to section-specific user group)
-# User must be in one of the section's allowedUserGroups
-# Requires enabled claim (admins must also be enabled)
+# Server-only section registration. The callable supplies its verified caller UID
+# and checked security version; authorization and subscribability are checked in the write transaction.
 mutation RegisterForSection(
+  $userId: String!
   $userGroupId: UUID!
-) @auth(level: NO_ACCESS) {
+  $securityVersion: Int!
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact {
+    currentAuthorization: userSecurityState(key: {userId: $userId})
+      @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
+      securityVersion @check(expr: "this == vars.securityVersion", message: "SESSION_VERSION_STALE")
+      accessReady
+      syncStatus
+      membershipStatus
+      user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
+    }
+    userGroup(id: $userGroupId) @check(expr: "this != null", message: "USER_GROUP_NOT_FOUND") {
+      subscribable @check(expr: "this == true", message: "USER_GROUP_NOT_SUBSCRIBABLE")
+    }
+    existingMembership: userUserGroup(key: {userId: $userId, userGroupId: $userGroupId}) {
+      createdBy
+    }
+  }
   userUserGroup_upsert(
     data: {
-      userId_expr: "auth.uid"
+      userId: $userId
       userGroupId: $userGroupId
+      # Override service-account auth.uid defaults; preserve existing audit history.
+      createdBy_expr: "response.query.existingMembership == null ? vars.userId : response.query.existingMembership.createdBy"
+      updatedBy_expr: "vars.userId"
+      updatedAt_expr: "request.time"
     }
   )
 }
@@ -187,14 +208,36 @@ mutation UnregisterFromSection(
 
 # Subscribe to a subscribable user group (self-subscription)
 # Server-only: client must call the subscribeToUserGroup Firebase callable which
-# verifies UserGroup.subscribable == true before writing.
+# supplies its verified caller UID/security version; checks run in the write transaction.
 mutation SubscribeToUserGroup(
+  $userId: String!
   $userGroupId: UUID!
-) @auth(level: NO_ACCESS) {
+  $securityVersion: Int!
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact {
+    currentAuthorization: userSecurityState(key: {userId: $userId})
+      @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
+      securityVersion @check(expr: "this == vars.securityVersion", message: "SESSION_VERSION_STALE")
+      accessReady
+      syncStatus
+      membershipStatus
+      user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
+    }
+    userGroup(id: $userGroupId) @check(expr: "this != null", message: "USER_GROUP_NOT_FOUND") {
+      subscribable @check(expr: "this == true", message: "USER_GROUP_NOT_SUBSCRIBABLE")
+    }
+    existingMembership: userUserGroup(key: {userId: $userId, userGroupId: $userGroupId}) {
+      createdBy
+    }
+  }
   userUserGroup_upsert(
     data: {
-      userId_expr: "auth.uid"
+      userId: $userId
       userGroupId: $userGroupId
+      # Override service-account auth.uid defaults; preserve existing audit history.
+      createdBy_expr: "response.query.existingMembership == null ? vars.userId : response.query.existingMembership.createdBy"
+      updatedBy_expr: "vars.userId"
+      updatedAt_expr: "request.time"
     }
   )
 }
