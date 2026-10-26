@@ -28923,7 +28923,9 @@ The `RegisterForSection` mutation requires an argument of type `RegisterForSecti
 
 ```typescript
 export interface RegisterForSectionVariables {
+  userId: string;
   userGroupId: UUIDString;
+  securityVersion: number;
 }
 ```
 ### Return Type
@@ -28943,14 +28945,16 @@ import { connectorConfig, registerForSection, RegisterForSectionVariables } from
 
 // The `RegisterForSection` mutation requires an argument of type `RegisterForSectionVariables`:
 const registerForSectionVars: RegisterForSectionVariables = {
+  userId: ..., 
   userGroupId: ..., 
+  securityVersion: ..., 
 };
 
 // Call the `registerForSection()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await registerForSection(registerForSectionVars);
 // Variables can be defined inline as well.
-const { data } = await registerForSection({ userGroupId: ..., });
+const { data } = await registerForSection({ userId: ..., userGroupId: ..., securityVersion: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -28973,13 +28977,15 @@ import { connectorConfig, registerForSectionRef, RegisterForSectionVariables } f
 
 // The `RegisterForSection` mutation requires an argument of type `RegisterForSectionVariables`:
 const registerForSectionVars: RegisterForSectionVariables = {
+  userId: ..., 
   userGroupId: ..., 
+  securityVersion: ..., 
 };
 
 // Call the `registerForSectionRef()` function to get a reference to the mutation.
 const ref = registerForSectionRef(registerForSectionVars);
 // Variables can be defined inline as well.
-const ref = registerForSectionRef({ userGroupId: ..., });
+const ref = registerForSectionRef({ userId: ..., userGroupId: ..., securityVersion: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -29141,7 +29147,9 @@ The `SubscribeToUserGroup` mutation requires an argument of type `SubscribeToUse
 
 ```typescript
 export interface SubscribeToUserGroupVariables {
+  userId: string;
   userGroupId: UUIDString;
+  securityVersion: number;
 }
 ```
 ### Return Type
@@ -29161,14 +29169,16 @@ import { connectorConfig, subscribeToUserGroup, SubscribeToUserGroupVariables } 
 
 // The `SubscribeToUserGroup` mutation requires an argument of type `SubscribeToUserGroupVariables`:
 const subscribeToUserGroupVars: SubscribeToUserGroupVariables = {
+  userId: ..., 
   userGroupId: ..., 
+  securityVersion: ..., 
 };
 
 // Call the `subscribeToUserGroup()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await subscribeToUserGroup(subscribeToUserGroupVars);
 // Variables can be defined inline as well.
-const { data } = await subscribeToUserGroup({ userGroupId: ..., });
+const { data } = await subscribeToUserGroup({ userId: ..., userGroupId: ..., securityVersion: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -29191,13 +29201,15 @@ import { connectorConfig, subscribeToUserGroupRef, SubscribeToUserGroupVariables
 
 // The `SubscribeToUserGroup` mutation requires an argument of type `SubscribeToUserGroupVariables`:
 const subscribeToUserGroupVars: SubscribeToUserGroupVariables = {
+  userId: ..., 
   userGroupId: ..., 
+  securityVersion: ..., 
 };
 
 // Call the `subscribeToUserGroupRef()` function to get a reference to the mutation.
 const ref = subscribeToUserGroupRef(subscribeToUserGroupVars);
 // Variables can be defined inline as well.
-const ref = subscribeToUserGroupRef({ userGroupId: ..., });
+const ref = subscribeToUserGroupRef({ userId: ..., userGroupId: ..., securityVersion: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
