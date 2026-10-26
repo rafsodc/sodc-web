@@ -66,7 +66,10 @@ for (const { name, callable, mutation, other } of [
     ["SESSION_VERSION_STALE", "unauthenticated"], ["ACCESS_REVOKED", "permission-denied"],
   ]) it("preserves the transactional " + marker + " refusal without replaying a join", async () => {
     mutation.mockRejectedValueOnce(new Error("Data Connect transaction rejected: " + marker));
-    await expect(callable.run(request() as never)).rejects.toMatchObject({ code });
+    await expect(callable.run(request() as never)).rejects.toMatchObject({
+      code,
+      ...(marker === "USER_GROUP_NOT_SUBSCRIBABLE" ? { message: `This group does not allow ${name === "subscription" ? "self-subscription" : "self-registration"}` } : {}),
+    });
     expect(mutation).toHaveBeenCalledTimes(1);
   });
   it("preserves deliberate callable errors and sanitizes unexpected connector failures", async () => {

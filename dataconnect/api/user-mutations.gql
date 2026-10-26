@@ -176,6 +176,7 @@ mutation RegisterForSection(
       # Override service-account auth.uid defaults; preserve existing audit history.
       createdBy_expr: "response.query.existingMembership == null ? vars.userId : response.query.existingMembership.createdBy"
       updatedBy_expr: "vars.userId"
+      updatedAt_expr: "request.time"
     }
   )
 }
@@ -236,6 +237,7 @@ mutation SubscribeToUserGroup(
       # Override service-account auth.uid defaults; preserve existing audit history.
       createdBy_expr: "response.query.existingMembership == null ? vars.userId : response.query.existingMembership.createdBy"
       updatedBy_expr: "vars.userId"
+      updatedAt_expr: "request.time"
     }
   )
 }

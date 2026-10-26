@@ -81,15 +81,34 @@ for (const operation of ["SubscribeToUserGroup", "RegisterForSection"] as const)
   for (const creator of ["local-admin", null]) it("preserves an existing " + (creator === null ? "null" : "different") + " creator when joining repeatedly", async () => {
     const caller = await member("existing"), id = await group();
     await dc.executeGraphql(`mutation ExistingSubscriptionMembership($userId: String!, $group: UUID!, $creator: String, $actor: String!, $createdAt: Timestamp!) {
-      userUserGroup_insert(data: {userId: $userId, userGroupId: $group, createdBy_expr: "vars.creator", updatedBy_expr: "vars.actor", createdAt: $createdAt})
+      userUserGroup_insert(data: {userId: $userId, userGroupId: $group, createdBy_expr: "vars.creator", updatedBy_expr: "vars.actor", createdAt: $createdAt, updatedAt: $createdAt})
     }`, { variables: { userId: caller, group: id, creator, actor: "local-admin", createdAt: "2020-01-02T03:04:05Z" } });
-    const createdAt = async () => (await dc.executeGraphql<{ userUserGroups: { createdAt: string }[] }, { userId: string }>(
-      "query ExistingSubscriptionCreatedAt($userId: String!) { userUserGroups(where: {userId: {eq: $userId}}) {createdAt} }", { variables: { userId: caller } })).data.userUserGroups[0].createdAt;
-    const originalCreatedAt = await createdAt();
+    const auditTimes = async () => (await dc.executeGraphql<{ userUserGroups: { createdAt: string; updatedAt: string }[] }, { userId: string }>(
+      "query ExistingSubscriptionAuditTimes($userId: String!) { userUserGroups(where: {userId: {eq: $userId}}) {createdAt updatedAt} }", { variables: { userId: caller } })).data.userUserGroups[0];
+    const serverTime = async () => {
+      // The fixture's createdAt default is request.time: bounds use the real
+      // server clock, without a sleep or an assumption about client clock skew.
+      const clockId = await group(false);
+      return Date.parse((await dc.executeGraphql<{ userGroup: { createdAt: string } }, { id: string }>(
+        "query SubscriptionServerClock($id: UUID!) { userGroup(id: $id) {createdAt} }", { variables: { id: clockId } })).data.userGroup.createdAt);
+    };
+    const originalAudit = await auditTimes();
+    let previousUpdatedAt = Date.parse(originalAudit.updatedAt);
     expect(await memberships()).toEqual([{ userId: caller, userGroupId: id, createdBy: creator, updatedBy: "local-admin" }]);
-    await join(variables(caller, id)); await join(variables(caller, id));
-    expect(await memberships()).toEqual([{ userId: caller, userGroupId: id, createdBy: creator, updatedBy: caller }]);
-    expect(await createdAt()).toBe(originalCreatedAt);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const before = await serverTime();
+      await join(variables(caller, id));
+      const after = await serverTime();
+      const currentAudit = await auditTimes();
+      const updatedAt = Date.parse(currentAudit.updatedAt);
+      expect(updatedAt).toBeGreaterThanOrEqual(before);
+      expect(updatedAt).toBeLessThanOrEqual(after);
+      // Date.parse has millisecond precision; distinct requests may share a tick.
+      expect(updatedAt).toBeGreaterThanOrEqual(previousUpdatedAt);
+      expect(await memberships()).toEqual([{ userId: caller, userGroupId: id, createdBy: creator, updatedBy: caller }]);
+      expect(currentAudit.createdAt).toBe(originalAudit.createdAt);
+      previousUpdatedAt = updatedAt;
+    }
   });
   it("denies direct clients even when they forge another UID and enabled/admin claims", async () => {
     const caller = await member("caller"), victim = await member("victim"), id = await group();
