@@ -4,7 +4,7 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { useGetSectionsForUser, useListSections } from "@dataconnect/generated/react";
+import { useGetSectionsForUser, useListSections } from "../../../shared/query/authoritativeHooks";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import SearchBar from "../../../shared/components/SearchBar";

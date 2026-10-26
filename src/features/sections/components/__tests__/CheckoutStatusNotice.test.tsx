@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import CheckoutStatusNotice from "../CheckoutStatusNotice";
-import * as dcReact from "@dataconnect/generated/react";
+import * as dcReact from "../../../../shared/query/authoritativeHooks";
 
-vi.mock("@dataconnect/generated/react", () => ({
+vi.mock("../../../../shared/query/authoritativeHooks", () => ({
   useGetMyTicketOrderById: vi.fn(),
 }));
 
@@ -209,3 +209,13 @@ describe("CheckoutStatusNotice", () => {
     vi.useRealTimers();
   });
 });
+
+vi.mock("../../../../shared/query/authoritativeDataConnect", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../../../../shared/query/authoritativeDataConnect")>(),
+  refreshDataConnectQuery: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock("@dataconnect/generated", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@dataconnect/generated")>(),
+  getMyTicketOrderByIdRef: vi.fn((dc, variables) => ({ name: "GetMyTicketOrderById", dataConnect: dc, variables, refType: "query" })),
+}));

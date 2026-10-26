@@ -3,6 +3,9 @@ import { render, screen, waitFor } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import AnnouncementOptOutToggle from "../AnnouncementOptOutToggle";
 
+import { invalidateAnnouncementPreferences } from "../../../../shared/query/invalidation";
+vi.mock("../../../../shared/query/invalidation", () => ({invalidateAnnouncementPreferences: vi.fn().mockResolvedValue(undefined)}));
+
 const mockMutateAsync = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@dataconnect/generated/react", () => ({
@@ -20,6 +23,7 @@ import * as generated from "@dataconnect/generated/react";
 describe("AnnouncementOptOutToggle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(invalidateAnnouncementPreferences).mockResolvedValue(undefined);
     mockMutateAsync.mockResolvedValue(undefined);
   });
 
@@ -105,6 +109,22 @@ describe("AnnouncementOptOutToggle", () => {
     ).toBeInTheDocument();
   });
 
+  it("retains the saved toggle and retries only the failed refresh", async () => {
+    const user = userEvent.setup();
+    vi.mocked(generated.useGetSectionAnnouncementOptOut).mockReturnValue({data: {sectionAnnouncementOptOut: null}, isLoading: false} as never);
+    vi.mocked(invalidateAnnouncementPreferences).mockRejectedValueOnce(new Error("offline"));
+    render(<AnnouncementOptOutToggle sectionId="s1" />);
+    await user.click(screen.getByRole("button", {name: "Turn Off Emails"}));
+    expect(await screen.findByText(/Your email preference was saved, but/)).toBeInTheDocument();
+    expect(screen.getByRole("button", {name: "Turn On Emails"})).toBeDisabled();
+    vi.mocked(generated.useGetSectionAnnouncementOptOut).mockReturnValue({data: {sectionAnnouncementOptOut: {createdAt: "now"}}, isLoading: false} as never);
+    await user.click(screen.getByRole("button", {name: "Retry refresh"}));
+    await waitFor(() => expect(screen.queryByText(/Your email preference was saved, but/)).not.toBeInTheDocument());
+    expect(mockMutateAsync).toHaveBeenCalledOnce();
+    expect(invalidateAnnouncementPreferences).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("button", {name: "Turn On Emails"})).toBeEnabled();
+  });
+
   it("reverts optimistic state on mutation error", async () => {
     const user = userEvent.setup();
     mockMutateAsync.mockRejectedValue(new Error("Network error"));
@@ -126,3 +146,6 @@ describe("AnnouncementOptOutToggle", () => {
     });
   });
 });
+
+// Display/interaction stubs stay shared; transport freshness is tested separately.
+vi.mock("../../../../shared/query/authoritativeHooks", async () => import("@dataconnect/generated/react"));

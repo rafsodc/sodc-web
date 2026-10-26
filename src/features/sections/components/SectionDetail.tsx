@@ -2,10 +2,11 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Box,
   Alert,
+  Button,
   CircularProgress,
   Snackbar,
 } from "@mui/material";
-import { useGetUserAccessGroups, useGetSectionsForUser } from "@dataconnect/generated/react";
+import { useGetUserAccessGroups, useGetSectionsForUser } from "../../../shared/query/authoritativeHooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { dataConnect } from "../../../config/firebase";
 import { executeDataConnectMutation } from "../../../shared/query/dataConnectExecution";
@@ -70,6 +71,15 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     severity: "success",
   });
   const [subscribing, setSubscribing] = useState(false);
+  const [subscriptionRefreshFailure, setSubscriptionRefreshFailure] = useState<string | null>(null);
+  const [refreshingSubscription, setRefreshingSubscription] = useState(false);
+  const subscriptionRequestGuard = useLatestRequestGuard();
+  useEffect(() => {
+    setSubscribing(false);
+    setRefreshingSubscription(false);
+    setSubscriptionRefreshFailure(null);
+    return () => subscriptionRequestGuard.invalidate();
+  }, [sectionId, subscriptionRequestGuard]);
   const [sectionMembers, setSectionMembers] = useState<SectionMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [errorMembers, setErrorMembers] = useState(false);
@@ -91,19 +101,21 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   // its own result arrives.
   const sectionRequestGuard = useLatestRequestGuard();
   const refetchSection = useCallback(async () => {
-    if (!sectionId) return;
+    if (!sectionId) return false;
     const requestToken = sectionRequestGuard.start();
     setLoadingSection(true);
     setErrorSection(false);
     try {
       const result = await getSectionForUser(sectionId);
-      if (!sectionRequestGuard.isCurrent(requestToken)) return;
+      if (!sectionRequestGuard.isCurrent(requestToken)) return false;
       setSectionData({ section: result.section });
+      return true;
     } catch (error) {
-      if (!sectionRequestGuard.isCurrent(requestToken)) return;
+      if (!sectionRequestGuard.isCurrent(requestToken)) return false;
       reportError("sections.detail", error);
       setSectionData(undefined);
       setErrorSection(true);
+      return false;
     } finally {
       if (sectionRequestGuard.isCurrent(requestToken)) {
         setLoadingSection(false);
@@ -122,7 +134,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     setErrorMembers(false);
     try {
       const res = await getSectionMembersMerged(sectionId);
-      if (!membersRequestGuard.isCurrent(requestToken)) return;
+      if (!membersRequestGuard.isCurrent(requestToken)) return false;
       const members: SectionMember[] = (res.members || []).map((m) => ({
         userId: m.id,
         firstName: m.firstName,
@@ -134,11 +146,13 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         membershipStatus: m.membershipStatus as SectionMember["membershipStatus"],
       }));
       setSectionMembers(members);
+      return true;
     } catch (err: unknown) {
-      if (!membersRequestGuard.isCurrent(requestToken)) return;
+      if (!membersRequestGuard.isCurrent(requestToken)) return false;
       reportError("sections.members", err);
       setErrorMembers(true);
       setSectionMembers([]);
+      return false;
     } finally {
       if (membersRequestGuard.isCurrent(requestToken)) {
         setLoadingMembers(false);
@@ -327,9 +341,38 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   }, [searchTerm]);
 
   // Calculate pagination
-  const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
-  const startIndex = (page - 1) * ITEMS_PER_PAGE;
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / ITEMS_PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  useEffect(() => {
+    setPage((previous) => Math.min(previous, totalPages));
+  }, [totalPages]);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedMembers = filteredMembers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const refreshSubscriptionViews = async (successMessage: string, requestToken = subscriptionRequestGuard.start()) => {
+    if (!subscriptionRequestGuard.isCurrent(requestToken)) return;
+    setRefreshingSubscription(true);
+    try {
+      const [sectionLoaded, membersLoaded] = await Promise.all([
+        refetchSection(), refetchMembers(), invalidateUserSectionAccess(queryClient),
+      ]);
+      if (!subscriptionRequestGuard.isCurrent(requestToken)) return;
+      if (!sectionLoaded || !membersLoaded) throw new Error("Subscription view refresh incomplete");
+      setSubscriptionRefreshFailure(null);
+      setSnackbar({ open: true, message: successMessage, severity: "success" });
+    } catch (caught) {
+      if (!subscriptionRequestGuard.isCurrent(requestToken)) return;
+      reportError("sections.subscription-refresh", caught);
+      setSubscriptionRefreshFailure(successMessage);
+    } finally {
+      if (subscriptionRequestGuard.isCurrent(requestToken)) setRefreshingSubscription(false);
+    }
+  };
+  const subscriptionRefreshNotice = subscriptionRefreshFailure && (
+    <Alert severity="warning" action={<Button disabled={refreshingSubscription} onClick={() => void refreshSubscriptionViews(subscriptionRefreshFailure)}>Retry refresh</Button>}>
+      Your subscription change was saved, but the latest section data could not be loaded. Retry the refresh; do not repeat the subscription change.
+    </Alert>
+  );
 
   const handleSubscribe = async () => {
     if (!currentUser || memberGroups.length === 0) {
@@ -347,21 +390,18 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       return;
     }
 
+    const requestToken = subscriptionRequestGuard.start();
     setSubscribing(true);
     try {
       await subscribeToUserGroup(subscribableGroup.id);
 
-      setSnackbar({
-        open: true,
-        message: "Successfully subscribed to this section.",
-        severity: "success",
-      });
-      await Promise.all([
-        refetchSection(),
-        refetchMembers(),
-        invalidateUserSectionAccess(queryClient),
-      ]);
+      if (!subscriptionRequestGuard.isCurrent(requestToken)) {
+        await invalidateUserSectionAccess(queryClient);
+        return;
+      }
+      await refreshSubscriptionViews("Successfully subscribed to this section.", requestToken);
     } catch (error) {
+      if (!subscriptionRequestGuard.isCurrent(requestToken)) return;
       console.error("Error subscribing:", error);
       setSnackbar({
         open: true,
@@ -369,7 +409,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         severity: "error",
       });
     } finally {
-      setSubscribing(false);
+      if (subscriptionRequestGuard.isCurrent(requestToken)) setSubscribing(false);
     }
   };
 
@@ -386,6 +426,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       return;
     }
 
+    const requestToken = subscriptionRequestGuard.start();
     setSubscribing(true);
     try {
       const { unsubscribeFromUserGroupRef } = await import("@dataconnect/generated");
@@ -393,17 +434,13 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         userGroupId: userMemberGroup.id as UUIDString,
       }));
 
-      setSnackbar({
-        open: true,
-        message: "Successfully unsubscribed from this section.",
-        severity: "success",
-      });
-      await Promise.all([
-        refetchSection(),
-        refetchMembers(),
-        invalidateUserSectionAccess(queryClient),
-      ]);
+      if (!subscriptionRequestGuard.isCurrent(requestToken)) {
+        await invalidateUserSectionAccess(queryClient);
+        return;
+      }
+      await refreshSubscriptionViews("Successfully unsubscribed from this section.", requestToken);
     } catch (error) {
+      if (!subscriptionRequestGuard.isCurrent(requestToken)) return;
       console.error("Error unsubscribing:", error);
       setSnackbar({
         open: true,
@@ -411,7 +448,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         severity: "error",
       });
     } finally {
-      setSubscribing(false);
+      if (subscriptionRequestGuard.isCurrent(requestToken)) setSubscribing(false);
     }
   };
 
@@ -472,7 +509,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     return <NavigationBreadcrumbs items={[...items, { label: loadedSection.name }]} />;
   }, [loadedSection, selectedEventId, eventTitle, handleBackToEvents]);
 
-  if (loadingSection || loadingMembers || loadingUserGroups) {
+  if (loadingSection || loadingUserGroups) {
     return (
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="Section Details" onBack={onBack} />
@@ -483,11 +520,12 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     );
   }
 
-  if (errorSection || errorMembers || !sectionData?.section) {
+  if (errorSection || !sectionData?.section) {
     return (
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="Section Details" onBack={onBack} />
         <Box sx={{ mt: 2 }}>
+          {subscriptionRefreshNotice}
           <FailureState
             title="Section unavailable"
             message="We could not load this section. Please try again."
@@ -531,6 +569,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         }
       />
 
+      {subscriptionRefreshNotice}
       {!selectedEventId && (
         <SectionDescriptionHeader
           section={section}
@@ -540,6 +579,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           userIsMember={userIsMember}
           hasSubscribableMemberGroup={hasSubscribableMemberGroup}
           subscribing={subscribing}
+          subscriptionRefreshFailed={Boolean(subscriptionRefreshFailure)}
           onSubscribe={handleSubscribe}
           onUnsubscribe={handleUnsubscribe}
         />
@@ -551,11 +591,12 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           filteredMembers={filteredMembers}
           paginatedMembers={paginatedMembers}
           searchTerm={searchTerm}
-          page={page}
+          page={currentPage}
           totalPages={totalPages}
-          loading={loadingSection}
+          loading={loadingMembers}
+          isError={errorMembers}
           onSearchTermChange={setSearchTerm}
-          onRefresh={() => refetchSection()}
+          onRefresh={() => void refetchMembers()}
           onPageChange={setPage}
         />
       ) : selectedEventId ? (

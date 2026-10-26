@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '../../../../test-utils';
 import SectionsList from '../SectionsList';
-import * as reactGenerated from '@dataconnect/generated/react';
+import * as reactGenerated from '../../../../shared/query/authoritativeHooks';
 import {
   dataConnectQueryResult,
   type DataConnectQueryResultOverrides,
 } from '../../../../test-utils/dataConnectMocks';
 
 // Mock the DataConnect hooks
-vi.mock('@dataconnect/generated/react', () => ({
+vi.mock('../../../../shared/query/authoritativeHooks', () => ({
   useGetSectionsForUser: vi.fn(),
   useListSections: vi.fn(() => ({
     data: undefined,

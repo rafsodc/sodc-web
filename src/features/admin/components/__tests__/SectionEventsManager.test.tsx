@@ -2,7 +2,7 @@ import { guestCall } from "../../../guests/api";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "../../../../test-utils";
 import SectionEventsManager from "../SectionEventsManager";
-import * as reactGenerated from "@dataconnect/generated/react";
+import * as reactGenerated from "../../../../shared/query/authoritativeHooks";
 import * as generated from "@dataconnect/generated";
 import * as firebaseDataConnect from "firebase/data-connect";
 import userEvent from "@testing-library/user-event";
@@ -12,7 +12,7 @@ import {
 } from "../../../../test-utils/dataConnectMocks";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 
-vi.mock("@dataconnect/generated/react", () => ({
+vi.mock("../../../../shared/query/authoritativeHooks", () => ({
   useGetEventsForSection: vi.fn(),
   useGetEventById: vi.fn(),
   useListBookingPaymentAdjustmentsForAdmin: vi.fn(),
@@ -89,6 +89,11 @@ vi.mock("@dataconnect/generated", async () => {
     updateTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     deleteTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     listUserGroupsRef: vi.fn(() => ({ type: "query" })),
+    ...Object.fromEntries([
+      ["getEventsForSectionRef", "GetEventsForSection"], ["getEventByIdRef", "GetEventById"],
+      ["listEventBookingsForAdminRef", "ListEventBookingsForAdmin"], ["listTicketOrdersForAdminRef", "ListTicketOrdersForAdmin"],
+      ["listBookingPaymentAdjustmentsForAdminRef", "ListBookingPaymentAdjustmentsForAdmin"],
+    ].map(([key, name]) => [key, vi.fn((dataConnect: unknown, variables: unknown) => ({ name, dataConnect, variables }))])),
   };
 });
 
@@ -99,6 +104,7 @@ describe("SectionEventsManager", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(firebaseDataConnect.executeQuery).mockReset().mockResolvedValue({ data: null } as never);
     vi.mocked(guestCall).mockResolvedValue({ event: {}, guests: [], ticketTypes: [] });
     vi.mocked(firebaseFunctions.reviewBookingRevision).mockResolvedValue({
       success: true,
@@ -256,7 +262,10 @@ describe("SectionEventsManager", () => {
       expect.anything(),
       { id: "ev-1" },
     ));
-    expect(firebaseDataConnect.executeQuery).not.toHaveBeenCalled();
+    expect(firebaseDataConnect.executeQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "GetEventsForSection" }), { fetchPolicy: "SERVER_ONLY" },
+    );
+    expect(vi.mocked(firebaseDataConnect.executeQuery).mock.calls.every(([ref]) => ref.name === "GetEventsForSection")).toBe(true);
     confirm.mockRestore();
   });
 
@@ -724,6 +733,18 @@ describe("SectionEventsManager", () => {
       isLoading: false,
       isError: false,
       refetch: refetchEventDetail,
+    });
+
+    vi.mocked(firebaseDataConnect.executeQuery).mockImplementation(async (ref) => {
+      if (ref.name === "GetEventsForSection") {
+        await refetchEvents();
+        return { data: { section: { id: sectionId, events: [updatedEvent] } } } as never;
+      }
+      if (ref.name === "GetEventById") {
+        await refetchEventDetail();
+        return { data: { event: { ...updatedEvent, ticketTypes: [] } } } as never;
+      }
+      return { data: null } as never;
     });
 
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);

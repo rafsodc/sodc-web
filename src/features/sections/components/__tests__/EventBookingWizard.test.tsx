@@ -3,12 +3,12 @@ import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { act, render, screen, waitFor } from "../../../../test-utils";
 import { BookingStatus, TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
-import * as reactGenerated from "@dataconnect/generated/react";
+import * as reactGenerated from "../../../../shared/query/authoritativeHooks";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 import * as bookingInvalidation from "../../../../shared/query/invalidation";
 import EventBookingWizard from "../EventBookingWizard";
 
-vi.mock("@dataconnect/generated/react", () => ({
+vi.mock("../../../../shared/query/authoritativeHooks", () => ({
   useGetCurrentUser: vi.fn(),
   useGetMyBookingsForEvent: vi.fn(),
   useGetMyTicketOrders: vi.fn(),

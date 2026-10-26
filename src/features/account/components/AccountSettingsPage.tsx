@@ -1,3 +1,4 @@
+import { useGetMyAnnouncementPreferences } from "../../../shared/query/authoritativeHooks";
 import { runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
 import { signOutPrivateSession } from "../../../shared/appShell/sessionLifecycle";
 import { useMemo, useState } from "react";
@@ -23,7 +24,6 @@ import {
 } from "@mui/material";
 import { DarkMode, LightMode, SettingsBrightness } from "@mui/icons-material";
 import {
-  useGetMyAnnouncementPreferences,
   useOptOutSectionAnnouncement,
   useOptInSectionAnnouncement,
   useUpdateAnnouncementOptOutAll,
@@ -77,7 +77,7 @@ function usesEmailPassword(user: User): boolean {
 
 function AnnouncementPreferencesList() {
   const queryClient = useQueryClient();
-  const { data, isLoading, isError, error, refetch } = useGetMyAnnouncementPreferences({ staleTime: Infinity });
+  const { data, isLoading, isError, error, refetch } = useGetMyAnnouncementPreferences(dataConnect, { staleTime: 30_000 });
   const optOut = useOptOutSectionAnnouncement();
   const optIn = useOptInSectionAnnouncement();
   const updateGlobalOptOut = useUpdateAnnouncementOptOutAll();
@@ -86,6 +86,8 @@ function AnnouncementPreferencesList() {
   const [globalOverride, setGlobalOverride] = useState<boolean | null>(null);
   const [localOverrides, setLocalOverrides] = useState<Map<string, boolean>>(new Map());
   const [snackbar, setSnackbar] = useState<string | null>(null);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [preferenceError, setPreferenceError] = useState<string | null>(null);
 
   const sections = useMemo(() => {
     return getAnnouncementSections(data);
@@ -98,12 +100,26 @@ function AnnouncementPreferencesList() {
   const announcementOptOutAll =
     globalOverride ?? data?.user?.announcementOptOutAll ?? false;
 
+  const retryPreferences = async () => {
+    setGlobalBusy(true);
+    try {
+      await invalidateAnnouncementPreferences(queryClient);
+      setRefreshFailed(false);
+      setGlobalOverride(null);
+      setLocalOverrides(new Map());
+    } catch { setRefreshFailed(true); }
+    finally { setGlobalBusy(false); }
+  };
+
   const handleGlobalToggle = async () => {
     const newOptOut = !announcementOptOutAll;
     setGlobalOverride(newOptOut);
     setGlobalBusy(true);
+    setPreferenceError(null);
+    let saved = false;
     try {
       await runSessionOperation(() => updateGlobalOptOut.mutateAsync({ announcementOptOutAll: newOptOut }));
+      saved = true;
       queryClient.setQueryData(
         ["GetMyAnnouncementPreferences", null],
         (old: typeof data) =>
@@ -112,6 +128,7 @@ function AnnouncementPreferencesList() {
             : old,
       );
       await invalidateAnnouncementPreferences(queryClient);
+      setGlobalOverride(null);
       setSnackbar(
         newOptOut
           ? "Opted out of all announcement emails"
@@ -119,7 +136,8 @@ function AnnouncementPreferencesList() {
       );
     } catch (error) {
       reportError("account.announcement-preferences.global", error);
-      setGlobalOverride(null);
+      if (saved) setRefreshFailed(true);
+      else { setGlobalOverride(null); setPreferenceError("We couldn’t save your email preferences. Check your connection and try again."); }
     } finally {
       setGlobalBusy(false);
     }
@@ -129,12 +147,15 @@ function AnnouncementPreferencesList() {
     const newOptedOut = !currentlyOptedOut;
     setLocalOverrides(prev => new Map(prev).set(sectionId, newOptedOut));
     setBusy(sectionId);
+    setPreferenceError(null);
+    let saved = false;
     try {
       if (currentlyOptedOut) {
         await runSessionOperation(() => optIn.mutateAsync({ sectionId }));
       } else {
         await runSessionOperation(() => optOut.mutateAsync({ sectionId }));
       }
+      saved = true;
       queryClient.setQueryData(
         ["GetMyAnnouncementPreferences", null],
         (old: typeof data) => {
@@ -150,7 +171,11 @@ function AnnouncementPreferencesList() {
       setSnackbar(newOptedOut ? "Opted out of announcements" : "Opted in to announcements");
     } catch (error) {
       reportError("account.announcement-preferences.section", error);
-      setLocalOverrides(prev => { const m = new Map(prev); m.delete(sectionId); return m; });
+      if (saved) setRefreshFailed(true);
+      else {
+        setLocalOverrides(prev => { const m = new Map(prev); m.delete(sectionId); return m; });
+        setPreferenceError("We couldn’t save your email preferences. Check your connection and try again.");
+      }
     } finally {
       setBusy(null);
     }
@@ -165,12 +190,14 @@ function AnnouncementPreferencesList() {
         Choose whether you receive optional announcements. Account-security, booking, and payment
         messages are always sent when required.
       </Typography>
+      {refreshFailed ? <Alert severity="warning" action={<Button onClick={() => void retryPreferences()} disabled={globalBusy}>Retry refresh</Button>}>Your email preferences were saved, but the latest preferences could not be loaded.</Alert> : null}
+      {preferenceError ? <Alert severity="error">{preferenceError}</Alert> : null}
       <FormControlLabel
         control={
           <Switch
             checked={!announcementOptOutAll}
             onChange={() => void handleGlobalToggle()}
-            disabled={isLoading || globalBusy}
+            disabled={isLoading || globalBusy || busy !== null || refreshFailed || isError}
           />
         }
         label="Receive announcement emails"
@@ -192,7 +219,7 @@ function AnnouncementPreferencesList() {
         <FailureState
           title={toMemberDataError(error, "preferences").title}
           message={toMemberDataError(error, "preferences").message}
-          onRetry={() => void refetch()}
+          onRetry={() => void refetch({throwOnError: true}).catch(() => undefined)}
         />
       ) : sections.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
@@ -211,7 +238,7 @@ function AnnouncementPreferencesList() {
                     checked={!isOptedOut}
                     onChange={() => void handleToggle(section.id, isOptedOut)}
                     size="small"
-                    disabled={isBusy || announcementOptOutAll}
+                    disabled={isBusy || globalBusy || refreshFailed || announcementOptOutAll}
                   />
                 }
                 label={<Typography variant="body2">{section.name}</Typography>}
@@ -257,6 +284,7 @@ export default function AccountSettingsPage({
 
   const [shareContactInfoSubmitting, setShareContactInfoSubmitting] = useState(false);
   const [shareContactInfoError, setShareContactInfoError] = useState<string | null>(null);
+  const [privacyRefreshFailed, setPrivacyRefreshFailed] = useState(false);
   const [shareContactInfoOverride, setShareContactInfoOverride] = useState<boolean | null>(null);
 
   const { preference: colorModePreference, setPreference: setColorModePreference } = useColorMode();
@@ -347,12 +375,22 @@ export default function AccountSettingsPage({
 
   const shareContactInfo = shareContactInfoOverride ?? userData?.shareContactInfo ?? true;
 
+  const retryPrivacyRefresh = async () => {
+    setShareContactInfoSubmitting(true);
+    try {
+      await onUserDataUpdate?.();
+      setPrivacyRefreshFailed(false); setShareContactInfoError(null); setShareContactInfoOverride(null);
+    } catch { setPrivacyRefreshFailed(true); }
+    finally { setShareContactInfoSubmitting(false); }
+  };
+
   const handleShareContactInfoToggle = async () => {
     if (!userData) return;
     const newValue = !shareContactInfo;
     setShareContactInfoError(null);
     setShareContactInfoOverride(newValue);
     setShareContactInfoSubmitting(true);
+    let saved = false;
     try {
       const vars: UpsertUserVariables = {
         firstName: userData.firstName,
@@ -373,14 +411,20 @@ export default function AccountSettingsPage({
         setShareContactInfoError("Your profile could not be found. Your privacy setting has not been saved. Contact an administrator before trying again.");
         return;
       }
+      saved = true;
       if (onUserDataUpdate) {
         await onUserDataUpdate();
         setShareContactInfoOverride(null);
       }
     } catch (error) {
       reportError("account.privacy-setting", error);
-      setShareContactInfoOverride(null);
-      setShareContactInfoError(toProfileUserFacingError(error, "privacy").message);
+      if (saved) {
+        setPrivacyRefreshFailed(true);
+        setShareContactInfoError("Your privacy setting was saved, but your profile could not be refreshed.");
+      } else {
+        setShareContactInfoOverride(null);
+        setShareContactInfoError(toProfileUserFacingError(error, "privacy").message);
+      }
     } finally {
       setShareContactInfoSubmitting(false);
     }
@@ -472,7 +516,7 @@ export default function AccountSettingsPage({
             Privacy
           </Typography>
           {shareContactInfoError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity={privacyRefreshFailed ? "warning" : "error"} sx={{ mb: 2 }} action={privacyRefreshFailed ? <Button onClick={() => void retryPrivacyRefresh()} disabled={shareContactInfoSubmitting}>Retry refresh</Button> : undefined}>
               {shareContactInfoError}
             </Alert>
           )}
@@ -481,7 +525,7 @@ export default function AccountSettingsPage({
               <Switch
                 checked={shareContactInfo}
                 onChange={() => void handleShareContactInfoToggle()}
-                disabled={!userData || shareContactInfoSubmitting}
+                disabled={!userData || shareContactInfoSubmitting || privacyRefreshFailed}
               />
             }
             label="Share my contact details with other section members"

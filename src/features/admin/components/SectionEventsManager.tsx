@@ -7,7 +7,9 @@ import { guestCall, type GuestList } from "../../guests/api";
 import { organiserGuestTicketRows } from "../../guests/reporting";
 import OrganiserGuestsManager from "../../guests/OrganiserGuestsManager";
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { Box } from "@mui/material";
+import { Alert, Box, Button } from "@mui/material";
+import { invalidateMyBookings } from "../../../shared/query/invalidation";
+import { refreshDataConnectQuery, SERVER_ONLY_QUERY_OPTIONS } from "../../../shared/query/authoritativeDataConnect";
 import { auth, dataConnect } from "../../../config/firebase";
 import {
   executeDataConnectMutation,
@@ -19,10 +21,15 @@ import {
   useGetEventById,
   useListBookingPaymentAdjustmentsForAdmin,
   useListEventBookingsForAdmin,
-  useListUserNamesByIds,
   useListTicketOrdersForAdmin,
-} from "@dataconnect/generated/react";
+  useListUserNamesByIds,
+} from "../../../shared/query/authoritativeHooks";
 import {
+  getEventsForSectionRef,
+  getEventByIdRef,
+  listEventBookingsForAdminRef,
+  listTicketOrdersForAdminRef,
+  listBookingPaymentAdjustmentsForAdminRef,
   createEventRef,
   updateEventRef,
   deleteEventRef,
@@ -68,6 +75,8 @@ interface SectionEventsManagerProps {
 
 export default function SectionEventsManager({ sectionId, sectionName, initialEventId, onBack }: SectionEventsManagerProps) {
   const queryClient = useQueryClient();
+  const [refreshFailure, setRefreshFailure] = useState<{ message: string; savedMessage: string; retry: () => Promise<unknown> } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [ticketEdit, setTicketEdit] = useState<{ row: EventAttendeeTicketRow; action: "edit" | "delete" | "restore" } | null>(null);
   const [addingUserTicket, setAddingUserTicket] = useState(false);
   const {
@@ -75,7 +84,6 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     isLoading: loadingEvents,
     isError: errorEvents,
     error: eventsQueryError,
-    refetch: refetchEvents,
   } = useGetEventsForSection(
     dataConnect,
     { sectionId: sectionId as UUIDString }
@@ -104,7 +112,6 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     isLoading: loadingEventDetail,
     isError: eventDetailFailed,
     error: eventDetailError,
-    refetch: refetchEventDetail,
   } = useGetEventById(
     dataConnect,
     { id: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
@@ -134,7 +141,6 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     isLoading: loadingEventBookings,
     isError: eventBookingsFailed,
     error: eventBookingsError,
-    refetch: refetchEventBookings,
   } = useListEventBookingsForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
@@ -145,7 +151,6 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     isLoading: loadingTicketOrders,
     isError: ticketOrdersFailed,
     error: ticketOrdersError,
-    refetch: refetchTicketOrders,
   } = useListTicketOrdersForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
@@ -168,11 +173,43 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     isLoading: loadingPaymentAdjustments,
     isError: paymentAdjustmentsFailed,
     error: paymentAdjustmentsError,
-    refetch: refetchPaymentAdjustments,
   } = useListBookingPaymentAdjustmentsForAdmin(
     dataConnect,
     { eventId: (ticketTypesEventId ?? "00000000-0000-0000-0000-000000000000") as UUIDString },
     { enabled: !!ticketTypesEventId }
+  );
+
+  const refetchEvents = () => refreshDataConnectQuery(queryClient, getEventsForSectionRef(dataConnect, { sectionId }));
+  const refetchEventDetail = () => ticketTypesEventId
+    ? refreshDataConnectQuery(queryClient, getEventByIdRef(dataConnect, { id: ticketTypesEventId })) : Promise.resolve();
+  const refetchEventBookings = () => ticketTypesEventId
+    ? refreshDataConnectQuery(queryClient, listEventBookingsForAdminRef(dataConnect, { eventId: ticketTypesEventId })) : Promise.resolve();
+  const refetchTicketOrders = () => ticketTypesEventId
+    ? refreshDataConnectQuery(queryClient, listTicketOrdersForAdminRef(dataConnect, { eventId: ticketTypesEventId })) : Promise.resolve();
+  const refetchPaymentAdjustments = () => ticketTypesEventId
+    ? refreshDataConnectQuery(queryClient, listBookingPaymentAdjustmentsForAdminRef(dataConnect, { eventId: ticketTypesEventId })) : Promise.resolve();
+  const refreshEventAdministration = () => Promise.all([
+    refetchEvents(), refetchEventDetail(), refetchEventBookings(), refetchTicketOrders(), refetchPaymentAdjustments(),
+    queryClient.invalidateQueries({ queryKey: ["eventAttendees", ticketTypesEventId] }, { throwOnError: true }),
+    invalidateMyBookings(queryClient),
+  ]);
+  const refreshSavedChange = async (message: string, read: () => Promise<unknown>) => {
+    setRefreshing(true);
+    try {
+      await read();
+      setRefreshFailure(null);
+      showSuccess(message);
+    } catch (caught) {
+      reportError("admin.events.refresh-after-save", caught, { sectionId, eventId: ticketTypesEventId });
+      setRefreshFailure({ message: `${message}. The latest event data could not be loaded. Retry the refresh; the change is already saved.`, savedMessage: message, retry: read });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  const refreshWarning = refreshFailure && (
+    <Alert severity="warning" action={<Button disabled={refreshing} onClick={() => void refreshSavedChange(refreshFailure.savedMessage, refreshFailure.retry)}>Retry refresh</Button>}>
+      {refreshFailure.message}
+    </Alert>
   );
 
   useEffect(() => {
@@ -214,7 +251,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setLoadingUserGroups(true);
     try {
       const ref = listUserGroupsRef(dataConnect);
-      const result = await executeDataConnectQuery(ref);
+      const result = await executeDataConnectQuery(ref, SERVER_ONLY_QUERY_OPTIONS);
       setAllUserGroups((result.data?.userGroups ?? []).map((ug) => ({ id: ug.id, name: ug.name })));
     } catch (caught) {
       reportError("admin.events.user-groups", caught, { sectionId });
@@ -306,13 +343,11 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           })
         );
       }
-      const refreshes: Array<Promise<unknown>> = [refetchEvents()];
-      if (editingEvent && ticketTypesEventId === editingEvent.id) {
-        refreshes.push(refetchEventDetail());
-      }
-      await Promise.all(refreshes);
       setEventDialogOpen(false);
-      showSuccess(`Event ${editingEvent ? "updated" : "created"}`);
+      await refreshSavedChange(`Event ${editingEvent ? "updated" : "created"}`, () => Promise.all([
+        refetchEvents(),
+        editingEvent && ticketTypesEventId === editingEvent.id ? refetchEventDetail() : Promise.resolve(),
+      ]));
     } catch (err: unknown) {
       reportError("admin.events.save", err, { sectionId, editing: Boolean(editingEvent) });
       setError(toAdminUserFacingError(err, "events").message);
@@ -327,9 +362,13 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setError(null);
     try {
       await executeDataConnectMutation(deleteEventRef(dataConnect, { id: event.id }));
-      refetchEvents();
       if (ticketTypesEventId === event.id) setTicketTypesEventId(null);
-      showSuccess(`Event "${event.title}" deleted`);
+      await refreshSavedChange(`Event "${event.title}" deleted`, async () => {
+        const deletedEventKey = ["GetEventById", { id: event.id }];
+        await queryClient.cancelQueries({ queryKey: deletedEventKey, exact: true });
+        await queryClient.invalidateQueries({ queryKey: deletedEventKey, exact: true, refetchType: "none" });
+        await refetchEvents();
+      });
     } catch (err: unknown) {
       reportError("admin.events.delete", err, { sectionId, eventId: event.id });
       setError(
@@ -411,10 +450,10 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           })
         );
       }
-      refetchEventDetail();
-      refetchEvents();
       setTicketTypeDialogOpen(false);
-      showSuccess(`Ticket type ${editingTicketType ? "updated" : "created"}`);
+      await refreshSavedChange(`Ticket type ${editingTicketType ? "updated" : "created"}`, () => Promise.all([
+        refetchEventDetail(), refetchEvents(),
+      ]));
     } catch (err: unknown) {
       reportError("admin.tickets.save", err, { eventId: ticketTypesEventId, editing: Boolean(editingTicketType) });
       setError(toAdminUserFacingError(err, "tickets").message);
@@ -429,9 +468,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setError(null);
     try {
       await executeDataConnectMutation(deleteTicketTypeRef(dataConnect, { id }));
-      refetchEventDetail();
-      refetchEvents();
-      showSuccess("Ticket type deleted");
+      await refreshSavedChange("Ticket type deleted", () => Promise.all([refetchEventDetail(), refetchEvents()]));
     } catch (err: unknown) {
       reportError("admin.tickets.delete", err, { ticketTypeId: id });
       setError(
@@ -502,13 +539,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         moderatorNote: moderatorNoteDraft[booking.id]?.trim() || null,
       });
       setModeratorNoteDraft((prev) => ({ ...prev, [booking.id]: "" }));
-      await Promise.all([
-        refetchEventBookings(),
-        refetchEventDetail(),
-        refetchTicketOrders(),
-        refetchPaymentAdjustments(),
-      ]);
-      showSuccess(`Booking revision ${decision === BookingApprovalStatus.APPROVED ? "approved" : "returned for changes"}`);
+      await refreshSavedChange(`Booking revision ${decision === BookingApprovalStatus.APPROVED ? "approved" : "returned for changes"}`, refreshEventAdministration);
     } catch (err: unknown) {
       reportError("admin.booking-approval.review", err, { bookingId: booking.id, decision });
       setError(toAdminUserFacingError(err, "booking-approval").message);
@@ -548,6 +579,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     const ticketTypes = eventDetailData?.event?.ticketTypes ?? [];
     return (
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
+        {refreshWarning}
         <TicketAdminSurface
           onAnnounce={(filters) => { setEventAnnouncement({ eventId: ticketTypesEventId, eventTitle: eventForAdmin?.title, filters }); setSendingAnnouncement(true); }}
           event={eventForAdmin}
@@ -589,10 +621,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         {addingUserTicket && <AddUserTicketDialog sectionId={sectionId} eventId={ticketTypesEventId}
           removedTickets={removedTickets} onRestore={restoreTicket}
           onClose={() => setAddingUserTicket(false)} onSaved={async () => {
-            await Promise.all([refetchEventBookings(), refetchPaymentAdjustments(),
-              queryClient.invalidateQueries({ queryKey: ["eventAttendees", ticketTypesEventId] })]);
             setAddingUserTicket(false);
-            showSuccess("Ticket added. The user can pay through their booking once approved.");
+            await refreshSavedChange("Ticket added. The user can pay through their booking once approved.", refreshEventAdministration);
           }} />}
         {ticketEdit && <TicketAttendanceDialog
           key={ticketEdit.row.key}
@@ -603,10 +633,8 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           ticketTypes={ticketTypes}
           onClose={() => setTicketEdit(null)}
           onSaved={async () => {
-            await Promise.all([refetchEventBookings(), refetchEventDetail(),
-              queryClient.invalidateQueries({ queryKey: ["eventAttendees", ticketTypesEventId] })]);
             setTicketEdit(null);
-            showSuccess(ticketEdit.action === "delete" ? "Ticket deleted. Transactions unchanged." : ticketEdit.action === "restore" ? "Ticket restored. Transactions unchanged." : "Ticket saved. Transactions unchanged.");
+            await refreshSavedChange(ticketEdit.action === "delete" ? "Ticket deleted. Transactions unchanged." : ticketEdit.action === "restore" ? "Ticket restored. Transactions unchanged." : "Ticket saved. Transactions unchanged.", refreshEventAdministration);
           }}
         />}
         <OrganiserGuestsManager sectionId={sectionId} key={ticketTypesEventId} eventId={ticketTypesEventId} />
@@ -673,6 +701,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
 
   return (
     <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
+      {refreshWarning}
       <EventListSurface
         sectionName={sectionName}
         onBack={onBack}

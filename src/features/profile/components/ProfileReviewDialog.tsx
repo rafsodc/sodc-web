@@ -1,3 +1,4 @@
+import { useGetMyAnnouncementPreferences } from "../../../shared/query/authoritativeHooks";
 import { runSessionOperation } from "../../../shared/appShell/sessionLifecycle";
 import { useEffect, useState } from "react";
 import {
@@ -24,7 +25,6 @@ import {
 } from "@mui/material";
 import { confirmProfileReview, MembershipStatus } from "../../../shared/query/sessionDataConnect";
 import {
-  useGetMyAnnouncementPreferences,
   useOptInSectionAnnouncement,
   useOptOutSectionAnnouncement,
 } from "@dataconnect/generated/react";
@@ -83,7 +83,9 @@ export default function ProfileReviewDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rankError, setRankError] = useState(false);
-  const preferences = useGetMyAnnouncementPreferences({ staleTime: 0 });
+  const [reviewSaved, setReviewSaved] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const preferences = useGetMyAnnouncementPreferences(dataConnect, { staleTime: 0 });
   const optOutSection = useOptOutSectionAnnouncement();
   const optInSection = useOptInSectionAnnouncement();
   const announcementSections = getAnnouncementSections(preferences.data);
@@ -115,6 +117,13 @@ export default function ProfileReviewDialog({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
+    if (reviewSaved) {
+      setSubmitting(true);
+      try { await invalidateAnnouncementPreferences(queryClient); await onReviewed(); setRefreshFailed(false); }
+      catch (caught) { reportError("profile.review.refresh", caught); setRefreshFailed(true); }
+      finally { setSubmitting(false); }
+      return;
+    }
 
     const normalizedMobileNumber = normalizeMobileNumber(mobileNumber);
     if (!normalizedMobileNumber) {
@@ -129,6 +138,7 @@ export default function ProfileReviewDialog({
 
     setRankError(false);
     setSubmitting(true);
+    let saved = false;
     try {
       if (!preferences.data?.user || !preferencesInitialised) {
         throw new Error("Communication preferences are still loading. Please try again.");
@@ -178,6 +188,8 @@ export default function ProfileReviewDialog({
         isIndustry,
       });
 
+      saved = true;
+      setReviewSaved(true);
       const displayName = `${lastName.trim()}, ${firstName.trim()}`;
       try {
         const displayNameResult = await updateDisplayName(displayName);
@@ -195,7 +207,8 @@ export default function ProfileReviewDialog({
       await onReviewed();
     } catch (caught) {
       reportError("profile.review", caught);
-      setError(toProfileUserFacingError(caught, "review").message);
+      if (saved) setRefreshFailed(true);
+      else setError(toProfileUserFacingError(caught, "review").message);
     } finally {
       setSubmitting(false);
     }
@@ -236,6 +249,7 @@ export default function ProfileReviewDialog({
             </Alert>
           )}
 
+          {refreshFailed ? <Alert severity="warning" sx={{mb: 3}}>Your profile review was saved, but the latest profile could not be loaded. Retry the refresh below; your changes will not be submitted again.</Alert> : null}
           <Stack spacing={2.5}>
             <TextField
               label="First name"
@@ -243,7 +257,7 @@ export default function ProfileReviewDialog({
               onChange={(event) => setFirstName(event.target.value)}
               required
               fullWidth
-              disabled={submitting}
+              disabled={submitting || reviewSaved}
               inputProps={{ maxLength: MAX_NAME_LENGTH }}
             />
             <TextField
@@ -252,7 +266,7 @@ export default function ProfileReviewDialog({
               onChange={(event) => setLastName(event.target.value)}
               required
               fullWidth
-              disabled={submitting}
+              disabled={submitting || reviewSaved}
               inputProps={{ maxLength: MAX_NAME_LENGTH }}
             />
             <TextField
@@ -269,7 +283,7 @@ export default function ProfileReviewDialog({
                 value={membershipStatus}
                 label="Membership status"
                 onChange={(event) => setMembershipStatus(event.target.value as MembershipStatus)}
-                disabled={submitting || statusLocked}
+                disabled={submitting || reviewSaved || statusLocked}
                 data-testid="review-membership-status-select"
               >
                 {statusLocked ? (
@@ -302,7 +316,7 @@ export default function ProfileReviewDialog({
               onChange={(event) => setServiceNumber(event.target.value)}
               required
               fullWidth
-              disabled={submitting}
+              disabled={submitting || reviewSaved}
               inputProps={{ maxLength: MAX_SERVICE_NUMBER_LENGTH }}
             />
             <TextField
@@ -312,7 +326,7 @@ export default function ProfileReviewDialog({
               onChange={(event) => setMobileNumber(event.target.value)}
               required
               fullWidth
-              disabled={submitting}
+              disabled={submitting || reviewSaved}
               inputProps={{ maxLength: MAX_MOBILE_NUMBER_LENGTH }}
               helperText="UK numbers may start with 07; international numbers must include their country code."
             />
@@ -321,7 +335,7 @@ export default function ProfileReviewDialog({
               value={postNominals}
               onChange={(event) => setPostNominals(event.target.value)}
               fullWidth
-              disabled={submitting}
+              disabled={submitting || reviewSaved}
               inputProps={{ maxLength: MAX_POST_NOMINALS_LENGTH }}
             />
             <RankSelect
@@ -330,7 +344,7 @@ export default function ProfileReviewDialog({
                 setRank(value);
                 if (value) setRankError(false);
               }}
-              disabled={submitting}
+              disabled={submitting || reviewSaved}
               required
               error={rankError}
               helperText="Choose Not specified if no rank or title applies."
@@ -340,7 +354,7 @@ export default function ProfileReviewDialog({
                 <Checkbox
                   checked={shareContactInfo}
                   onChange={(event) => setShareContactInfo(event.target.checked)}
-                  disabled={submitting}
+                  disabled={submitting || reviewSaved}
                 />
               }
               label="Share my email address and mobile number with members in my sections"
@@ -355,7 +369,7 @@ export default function ProfileReviewDialog({
                     <Checkbox
                       checked={isRegular}
                       onChange={(event) => setIsRegular(event.target.checked)}
-                      disabled={submitting}
+                      disabled={submitting || reviewSaved}
                     />
                   }
                   label="Regular"
@@ -365,7 +379,7 @@ export default function ProfileReviewDialog({
                     <Checkbox
                       checked={isReserve}
                       onChange={(event) => setIsReserve(event.target.checked)}
-                      disabled={submitting}
+                      disabled={submitting || reviewSaved}
                     />
                   }
                   label="Reserve"
@@ -375,7 +389,7 @@ export default function ProfileReviewDialog({
                     <Checkbox
                       checked={isCivilServant}
                       onChange={(event) => setIsCivilServant(event.target.checked)}
-                      disabled={submitting}
+                      disabled={submitting || reviewSaved}
                     />
                   }
                   label="Civil Servant"
@@ -385,7 +399,7 @@ export default function ProfileReviewDialog({
                     <Checkbox
                       checked={isIndustry}
                       onChange={(event) => setIsIndustry(event.target.checked)}
-                      disabled={submitting}
+                      disabled={submitting || reviewSaved}
                     />
                   }
                   label="Industry"
@@ -406,7 +420,7 @@ export default function ProfileReviewDialog({
                 <FailureState
                   title="Communication preferences are unavailable"
                   message="We could not load your communication preferences. Please try again."
-                  onRetry={() => void preferences.refetch()}
+                  onRetry={() => void preferences.refetch({throwOnError: true}).catch(() => undefined)}
                 />
               ) : null}
               {preferencesInitialised ? (
@@ -416,7 +430,7 @@ export default function ProfileReviewDialog({
                       <Checkbox
                         checked={!announcementOptOutAll}
                         onChange={(event) => setAnnouncementOptOutAll(!event.target.checked)}
-                        disabled={submitting}
+                        disabled={submitting || reviewSaved}
                       />
                     }
                     label="Receive announcement emails"
@@ -435,7 +449,7 @@ export default function ProfileReviewDialog({
                               return next;
                             });
                           }}
-                          disabled={submitting || announcementOptOutAll}
+                          disabled={submitting || reviewSaved || announcementOptOutAll}
                         />
                       }
                       label={section.name}
@@ -451,10 +465,10 @@ export default function ProfileReviewDialog({
             type="submit"
             variant="contained"
             disabled={
-              submitting || missingRequiredField || !preferencesInitialised || preferences.isError
+              submitting || (reviewSaved ? !refreshFailed : missingRequiredField || !preferencesInitialised || preferences.isError)
             }
           >
-            {submitting ? <CircularProgress size={24} /> : "Confirm profile"}
+            {submitting ? <CircularProgress size={24} /> : reviewSaved ? "Retry refresh" : "Confirm profile"}
           </Button>
         </DialogActions>
       </Box>

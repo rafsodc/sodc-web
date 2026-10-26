@@ -1,49 +1,45 @@
-import { captureSession, assertSessionCurrent } from "../appShell/sessionLifecycle";
-import type { QueryClient } from "@tanstack/react-query";
+import { assertSessionCurrent, captureSession, runSessionRead } from "../appShell/sessionLifecycle";
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type { UUIDString } from "./sessionDataConnect";
 import {
-  getMyBookingPaymentAdjustments,
-  getMyBookings,
-  getMyBookingsForEvent,
-  getMyTicketOrders,
+  getMyBookingPaymentAdjustmentsRef,
+  getMyBookingsRef,
+  getMyBookingsForEventRef,
+  getMyTicketOrdersRef,
 } from "./sessionDataConnect";
-import { QueryFetchPolicy } from "firebase/data-connect";
+import { refreshDataConnectQuery } from "./authoritativeDataConnect";
 import { dataConnect } from "../../config/firebase";
 
 /**
  * Data Connect's generated React mutations do not know which other generated
  * queries represent the same server state. Keep cross-view invalidation in one
  * place so direct SDK mutations and callable functions behave consistently.
+ * Affected readers use dataConnectQueryOptions, so active and inactive cached
+ * views get a real server read. Cancel old work and propagate partial failures.
  */
-export async function invalidateAnnouncementPreferences(queryClient: QueryClient) {
-  assertSessionCurrent(captureSession());
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ["GetMyAnnouncementPreferences"] }),
-    queryClient.invalidateQueries({ queryKey: ["GetSectionAnnouncementOptOut"] }),
-  ]);
+export function invalidateDataConnectQueries(queryClient: QueryClient, queryKeys: readonly QueryKey[]) {
+  const session = captureSession();
+  return runSessionRead(async () => {
+    await Promise.all(queryKeys.map(queryKey => queryClient.cancelQueries({ queryKey })));
+    assertSessionCurrent(session);
+    await Promise.all(queryKeys.map(queryKey => queryClient.invalidateQueries(
+      { queryKey, refetchType: "all" }, { throwOnError: true },
+    )));
+  }, session);
 }
-
-export async function invalidateUserSectionAccess(queryClient: QueryClient) {
-  assertSessionCurrent(captureSession());
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ["GetUserAccessGroups"] }),
-    queryClient.invalidateQueries({ queryKey: ["GetSectionsForUser"] }),
-  ]);
+export function invalidateAnnouncementPreferences(queryClient: QueryClient) {
+  return invalidateDataConnectQueries(queryClient, [["GetMyAnnouncementPreferences"], ["GetSectionAnnouncementOptOut"]]);
 }
-
-export async function invalidateSectionsForUser(queryClient: QueryClient) {
-  assertSessionCurrent(captureSession());
-  await queryClient.invalidateQueries({ queryKey: ["GetSectionsForUser"] });
+// Group membership/purpose links also determine the aggregate preference section list.
+export function invalidateUserSectionAccess(queryClient: QueryClient) {
+  return invalidateDataConnectQueries(queryClient, [["GetUserAccessGroups"], ["GetSectionsForUser"], ["GetMyAnnouncementPreferences"]]);
 }
-
-export async function invalidateMyBookings(queryClient: QueryClient) {
-  assertSessionCurrent(captureSession());
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ["GetMyBookings"] }),
-    queryClient.invalidateQueries({ queryKey: ["GetMyBookingsForEvent"] }),
-    queryClient.invalidateQueries({ queryKey: ["GetMyTicketOrders"] }),
-    queryClient.invalidateQueries({ queryKey: ["GetMyBookingPaymentAdjustments"] }),
-  ]);
+// Section metadata is repeated in navigation, admin lists, details and preference links.
+export function invalidateSectionsForUser(queryClient: QueryClient) {
+  return invalidateDataConnectQueries(queryClient, [["GetSectionsForUser"], ["ListSections"], ["GetMyAnnouncementPreferences"], ["GetSectionById"], ["GetUserAccessGroups"]]);
+}
+export function invalidateMyBookings(queryClient: QueryClient) {
+  return invalidateDataConnectQueries(queryClient, [["GetMyBookings"], ["GetMyBookingsForEvent"], ["GetMyTicketOrders"], ["GetMyBookingPaymentAdjustments"]]);
 }
 
 /**
@@ -56,25 +52,14 @@ export async function refreshMyBookingsFromServer(
   eventId: UUIDString
 ) {
   const session = captureSession();
-  assertSessionCurrent(session);
-  const serverOnly = { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } as const;
-  const eventBookings = await getMyBookingsForEvent(dataConnect, { eventId }, serverOnly);
-  assertSessionCurrent(session);
-  queryClient.setQueryData(["GetMyBookingsForEvent", { eventId }], { ...eventBookings.data });
-
-  const [allBookings, ticketOrders, paymentAdjustments] = await Promise.all([
-    getMyBookings(dataConnect, serverOnly),
-    getMyTicketOrders(dataConnect, serverOnly),
-    getMyBookingPaymentAdjustments(dataConnect, serverOnly),
-  ]);
-
-  assertSessionCurrent(session);
-  queryClient.setQueryData(["GetMyBookings", null], { ...allBookings.data });
-  queryClient.setQueryData(["GetMyTicketOrders", null], { ...ticketOrders.data });
-  queryClient.setQueryData(
-    ["GetMyBookingPaymentAdjustments", null],
-    { ...paymentAdjustments.data }
-  );
-
-  return eventBookings.data;
+  return runSessionRead(async () => {
+    const eventBookings = await refreshDataConnectQuery(queryClient, getMyBookingsForEventRef(dataConnect, { eventId }));
+    assertSessionCurrent(session);
+    await Promise.all([
+      refreshDataConnectQuery(queryClient, getMyBookingsRef(dataConnect)),
+      refreshDataConnectQuery(queryClient, getMyTicketOrdersRef(dataConnect)),
+      refreshDataConnectQuery(queryClient, getMyBookingPaymentAdjustmentsRef(dataConnect)),
+    ]);
+    return eventBookings;
+  }, session);
 }
