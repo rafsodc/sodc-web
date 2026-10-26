@@ -138,7 +138,7 @@ vi.mock("../shared/appShell/useSessionRecovery", () => ({
   },
 }));
 
-vi.mock("@dataconnect/generated/react", () => ({
+vi.mock("../shared/query/authoritativeHooks", () => ({
   useGetSectionsForUser: vi.fn(() => ({
     data: mockSectionsData,
     isLoading: false,

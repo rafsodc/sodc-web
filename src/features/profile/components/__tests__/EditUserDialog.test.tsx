@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "../../../../test-utils";
-import { getUserById, updateUser, MembershipStatus } from "../../../../dataconnect-generated";
+import { getUserById, updateUser, MembershipStatus } from "@dataconnect/generated";
 import { updateUserEmail } from "../../../../shared/utils/firebaseFunctions";
 import EditUserDialog from "../EditUserDialog";
 import type { SearchUser } from "../../../../types";
 
 vi.mock("firebase/data-connect", () => ({ QueryFetchPolicy: { SERVER_ONLY: "server-only" } }));
-vi.mock("../../../../dataconnect-generated", async (original) => ({
-  ...await original<typeof import("../../../../dataconnect-generated")>(),
+vi.mock("@dataconnect/generated", async (original) => ({
+  ...await original<typeof import("@dataconnect/generated")>(),
   getUserById: vi.fn(), updateUser: vi.fn(),
 }));
 vi.mock("../../../../shared/query/queryClient", () => ({ queryClient: { invalidateQueries: vi.fn() } }));

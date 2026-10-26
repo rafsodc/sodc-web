@@ -10,7 +10,7 @@ import { SEARCH_DEBOUNCE_MS } from "../../../../constants";
 vi.mock("firebase/data-connect", () => ({
   executeQuery: vi.fn(),
   executeMutation: vi.fn(),
-  QueryFetchPolicy: { SERVER_ONLY: "server-only" },
+  QueryFetchPolicy: { SERVER_ONLY: "SERVER_ONLY" },
 }));
 vi.mock("../../../../config/firebase", () => ({
   auth: { currentUser: { uid: "admin-1" } },
@@ -22,9 +22,9 @@ vi.mock("@dataconnect/generated", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@dataconnect/generated")>();
   return {
     ...actual,
-    listUserGroupsRef: vi.fn(() => ({ kind: "list-groups" })),
+    listUserGroupsRef: vi.fn((dc) => ({ kind: "list-groups", name: "ListUserGroups", dataConnect: dc })),
     listUsersRef: vi.fn(() => ({ kind: "list-users" })),
-    getUserGroupByIdRef: vi.fn(() => ({ kind: "group-detail" })),
+    getUserGroupByIdRef: vi.fn((dc, variables) => ({ kind: "group-detail", name: "GetUserGroupById", dataConnect: dc, variables })),
     updateUserGroupRef: vi.fn((_dc: unknown, vars: unknown) => ({ kind: "update-group", vars })),
     createUserGroupRef: vi.fn(),
     deleteUserGroupRef: vi.fn(),
@@ -137,7 +137,7 @@ describe("UserGroups", () => {
       }
       if (kind === "group-detail") {
         const forced = (options as { fetchPolicy?: string } | undefined)?.fetchPolicy === QueryFetchPolicy.SERVER_ONLY;
-        return Promise.resolve({ data: { userGroup: groupDetail(forced ? "After" : "Before") } }) as never;
+        return Promise.resolve({ data: { userGroup: groupDetail(updated && forced ? "After" : "Before") } }) as never;
       }
       return Promise.resolve({ data: null }) as never;
     });

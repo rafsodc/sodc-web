@@ -7,7 +7,7 @@ import {
   useGetMyBookingsForEvent,
   useGetMyTicketOrders,
   useGetUserAccessGroups,
-} from "@dataconnect/generated/react";
+} from "../../../shared/query/authoritativeHooks";
 import { dataConnect } from "../../../config/firebase";
 import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/bookingEligibility";
 import {

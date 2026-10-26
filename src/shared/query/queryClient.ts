@@ -1,3 +1,4 @@
+import { DataConnectReadSupersededError } from "./authoritativeDataConnect";
 import { classifyAuthorizationFailure } from "../auth/authorizationFailure";
 import { QueryClient, type DefaultError, type DefaultedQueryObserverOptions, type QueryKey, type QueryObserverOptions } from "@tanstack/react-query";
 import { isAuthenticationFailure } from "../auth/isAuthenticationFailure";
@@ -26,7 +27,7 @@ export function createAppQueryClient() {
   return new SessionQueryClient({
     defaultOptions: {
       queries: {
-        retry: (failureCount, error) => !(error instanceof SessionChangedError) &&
+        retry: (failureCount, error) => !(error instanceof SessionChangedError) && !(error instanceof DataConnectReadSupersededError) &&
           !classifyAuthorizationFailure(error) && !isAuthenticationFailure(error) && failureCount < 1,
         refetchOnWindowFocus: true,
         staleTime: 30_000,

@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateMyBookings } from "../../../shared/query/invalidation";
 import {
   Accordion,
   AccordionDetails,
@@ -13,8 +15,8 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "@dataconnect/generated/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useGetMyBookingPaymentAdjustments, useGetMyTicketOrders } from "../../../shared/query/authoritativeHooks";
 import { BookingPaymentAdjustmentStatus, TicketOrderStatus } from "@dataconnect/generated";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
@@ -48,6 +50,7 @@ function artifactKey(orderId: string): string {
 }
 
 export default function MyPayments({ onBack }: MyPaymentsProps) {
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useGetMyTicketOrders(dataConnect);
   const { data: adjustmentsData } = useGetMyBookingPaymentAdjustments(dataConnect, { enabled: !isLoading });
   const [stripeArtifactsByOrderId, setStripeArtifactsByOrderId] = useState<
@@ -55,6 +58,21 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
   >({});
   const attemptedStripeArtifactOrderIds = useRef<Set<string>>(new Set());
   const attemptedReconcileSessions = useRef<Set<string>>(new Set());
+  const [reconciliationRefreshFailed, setReconciliationRefreshFailed] = useState(false);
+  const [refreshingReconciliation, setRefreshingReconciliation] = useState(false);
+  const refreshReconciledPayments = useCallback(async () => {
+    setRefreshingReconciliation(true);
+    try {
+      await refetch({ throwOnError: true });
+      await invalidateMyBookings(queryClient);
+      setReconciliationRefreshFailed(false);
+    } catch (refreshError) {
+      reportError("payments.reconciliation-refresh", refreshError);
+      setReconciliationRefreshFailed(true);
+    } finally {
+      setRefreshingReconciliation(false);
+    }
+  }, [refetch, queryClient]);
   const orders = useMemo(() => data?.user?.ticketOrders ?? [], [data?.user?.ticketOrders]);
   const paymentGroups = useMemo(() => groupTicketOrdersForDisplay(orders), [orders]);
   const bookingAdjustments = (adjustmentsData?.user?.bookings ?? []).flatMap((booking) =>
@@ -124,13 +142,20 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
       return;
     }
     attemptedReconcileSessions.current.add(sessionKey);
-    void reconcileMyCheckoutSessionOrders({ orderId: reconcileAnchor.id })
-      .then(() => refetch())
-      .catch((reconciliationError) => {
+    const reconcile = async () => {
+      try {
+        await reconcileMyCheckoutSessionOrders({ orderId: reconcileAnchor.id });
+      } catch (reconciliationError) {
         reportError("payments.reconciliation", reconciliationError);
         attemptedReconcileSessions.current.delete(sessionKey);
-      });
-  }, [isLoading, orders, refetch]);
+        return;
+      }
+      // A successful callable remains attempted even if its follow-up reads fail.
+      // Later order updates and Retry refresh must never replay the saved write.
+      await refreshReconciledPayments();
+    };
+    void reconcile();
+  }, [isLoading, orders, refreshReconciledPayments]);
 
   return (
     <Box className="page-container">
@@ -138,6 +163,12 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Your ticket payments and receipts across events.
       </Typography>
+
+      {reconciliationRefreshFailed ? (
+        <Alert severity="warning" sx={{mb: 2}} action={<Button disabled={refreshingReconciliation} onClick={() => void refreshReconciledPayments()}>Retry refresh</Button>}>
+          Your payment update completed, but the latest payment data could not be loaded. Retry the refresh; your payment will not be updated again.
+        </Alert>
+      ) : null}
 
       {isLoading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -147,7 +178,7 @@ export default function MyPayments({ onBack }: MyPaymentsProps) {
         <FailureState
           title={toBookingUserFacingError(error, "payment-history").title}
           message={toBookingUserFacingError(error, "payment-history").message}
-          onRetry={() => void refetch()}
+          onRetry={() => { void (async () => { try { await refetch({throwOnError: true}); } catch { /* The query error remains visible for another read-only retry. */ } })(); }}
         />
       ) : paymentGroups.length === 0 ? (
         <Alert severity="info">

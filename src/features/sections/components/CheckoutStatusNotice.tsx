@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateMyBookings } from "../../../shared/query/invalidation";
+import { refreshDataConnectQuery } from "../../../shared/query/authoritativeDataConnect";
+import { getMyTicketOrderByIdRef } from "@dataconnect/generated";
 import { Alert, AlertTitle, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
 import { dataConnect } from "../../../config/firebase";
-import { useGetMyTicketOrderById } from "@dataconnect/generated/react";
+import { useGetMyTicketOrderById } from "../../../shared/query/authoritativeHooks";
 import { toCanonicalUuid } from "../../../shared/utils/uuid";
 import { formatPaymentAmount } from "../../../shared/utils/currencyDisplay";
 import { reconcileMyCheckoutSessionOrders } from "../../../shared/utils/firebaseFunctions";
@@ -24,7 +28,8 @@ function formatMoney(amountMinor: number | null | undefined, currency: string | 
 }
 
 export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss }: CheckoutStatusNoticeProps) {
-  const [pollCount, setPollCount] = useState(0);
+  const queryClient = useQueryClient();
+  const [polling, setPolling] = useState<{ orderId: string | null; count: number }>({ orderId: null, count: 0 });
 
   const canonicalOrderId = useMemo(() => {
     if (!orderId) return null;
@@ -35,6 +40,7 @@ export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss
     }
   }, [orderId]);
 
+  const pollCount = polling.orderId === canonicalOrderId ? polling.count : 0;
   const shouldQuery = checkoutState === "success" && Boolean(canonicalOrderId);
   const { data, isLoading, isError, error, refetch } = useGetMyTicketOrderById(
     dataConnect,
@@ -54,19 +60,39 @@ export default function CheckoutStatusNotice({ checkoutState, orderId, onDismiss
     if (!shouldQuery || !canonicalOrderId) {
       return;
     }
-    void reconcileMyCheckoutSessionOrders({ orderId: canonicalOrderId }).catch(
-      (reconciliationError) => reportError("payments.checkout-reconciliation", reconciliationError),
-    );
-  }, [shouldQuery, canonicalOrderId]);
+    let active = true;
+    void reconcileMyCheckoutSessionOrders({ orderId: canonicalOrderId })
+      .then(async () => {
+        if (!active) return;
+        await refreshDataConnectQuery(queryClient, getMyTicketOrderByIdRef(dataConnect, { id: canonicalOrderId }));
+        if (!active) return;
+        await invalidateMyBookings(queryClient);
+      })
+      .catch((reconciliationError) => {
+        if (active) reportError("payments.checkout-reconciliation", reconciliationError);
+      });
+    return () => { active = false; };
+  }, [shouldQuery, canonicalOrderId, queryClient]);
+
+  // A webhook can settle the order after reconciliation returned PENDING.
+  // Polls and explicit read retries must also refresh the member's other views.
+  useEffect(() => {
+    if (!shouldQuery || isError || !status || status === "PENDING") return;
+    let active = true;
+    void invalidateMyBookings(queryClient).catch((refreshError) => {
+      if (active) reportError("payments.checkout-related-refresh", refreshError);
+    });
+    return () => { active = false; };
+  }, [canonicalOrderId, isError, queryClient, shouldQuery, status]);
 
   useEffect(() => {
     if (!shouldPoll) return;
     const timer = window.setTimeout(() => {
-      setPollCount((prev) => prev + 1);
+      setPolling((prev) => ({ orderId: canonicalOrderId, count: (prev.orderId === canonicalOrderId ? prev.count : 0) + 1 }));
       void refetch();
     }, POLL_MS);
     return () => window.clearTimeout(timer);
-  }, [refetch, shouldPoll, pollCount]);
+  }, [canonicalOrderId, refetch, shouldPoll, pollCount]);
 
   if (checkoutState === "cancel") {
     return (

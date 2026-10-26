@@ -2,10 +2,11 @@ import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, render, screen, waitFor } from '../../../../test-utils';
 import { MemoryRouter } from 'react-router-dom';
 import SectionDetail from '../SectionDetail';
-import * as reactGenerated from '@dataconnect/generated/react';
+import * as reactGenerated from '../../../../shared/query/authoritativeHooks';
 import { createMockUser } from '../../../../test-utils/mocks/firebase';
 import {
   getSectionMembersMerged,
+  subscribeToUserGroup,
   getSectionForUser,
   getSectionEventsForUser,
   getEventForUser,
@@ -21,7 +22,7 @@ vi.mock('../../../../shared/query/invalidation', () => ({
 }));
 
 // Mock the DataConnect hooks (SectionDetail uses getSectionMembersMerged callable, not useGetSectionMembers)
-vi.mock('@dataconnect/generated/react', () => ({
+vi.mock('../../../../shared/query/authoritativeHooks', () => ({
   useGetUserAccessGroups: vi.fn(),
   useGetSectionsForUser: vi.fn(() => ({
     data: { user: { membershipStatus: null, userGroups: [] }, allUserGroups: [] },
@@ -46,6 +47,11 @@ vi.mock('@dataconnect/generated/react', () => ({
     mutate: vi.fn(),
     isPending: false,
   })),
+}));
+
+vi.mock('@dataconnect/generated/react', () => ({
+  useOptOutSectionAnnouncement: vi.fn(() => ({ mutateAsync: vi.fn().mockResolvedValue(undefined), mutate: vi.fn(), isPending: false })),
+  useOptInSectionAnnouncement: vi.fn(() => ({ mutateAsync: vi.fn().mockResolvedValue(undefined), mutate: vi.fn(), isPending: false })),
 }));
 
 vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
@@ -197,7 +203,8 @@ describe('SectionDetail', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getSectionMembersMerged).mockResolvedValue({ members: [] });
+    vi.mocked(invalidateUserSectionAccess).mockReset().mockResolvedValue(undefined);
+    vi.mocked(getSectionMembersMerged).mockReset().mockResolvedValue({ members: [] });
     mockGetEventsForSection({
       data: { section: { id: sectionId, events: [] } },
       isLoading: false,
@@ -1460,6 +1467,57 @@ describe('SectionDetail', () => {
     });
   });
 
+  it('keeps a confirmed subscription distinct from failed revalidation and retries only the reads', async () => {
+    mockGetSectionById({ data: { section: { id: sectionId, name: 'Subscribed Section', type: 'MEMBERS', purposeLinks: [
+      { purpose: 'ACCESS', userGroup: { id: 'view-group', name: 'View', subscribable: false } },
+      { purpose: 'MEMBER', userGroup: { id: 'member-group', name: 'Members', subscribable: true } },
+    ] } }, isLoading: false, isError: false });
+    mockGetUserAccessGroups({ data: { user: { id: 'user-1', userGroups: [{ userGroup: { id: 'view-group' } }] } }, isLoading: false, isError: false });
+    vi.mocked(invalidateUserSectionAccess).mockRejectedValueOnce(new Error('Refresh unavailable')).mockRejectedValueOnce(new Error('Refresh still unavailable'));
+    const user = (await import('@testing-library/user-event')).userEvent.setup();
+    renderSectionDetail();
+    await user.click(await screen.findByRole('button', { name: 'Subscribe' }));
+    expect(await screen.findByText(/Your subscription change was saved/)).toBeInTheDocument();
+    expect(screen.queryByText(/Failed to subscribe/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Subscribe' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Retry refresh' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Retry refresh' })).toBeEnabled());
+    expect(screen.getByRole('button', { name: 'Subscribe' })).toBeDisabled();
+    expect(subscribeToUserGroup).toHaveBeenCalledOnce();
+    vi.mocked(invalidateUserSectionAccess).mockImplementationOnce(async () => {
+      mockGetUserAccessGroups({ data: { user: { id: 'user-1', userGroups: [{ userGroup: { id: 'view-group' } }, { userGroup: { id: 'member-group' } }] } }, isLoading: false, isError: false });
+    });
+    await user.click(screen.getByRole('button', { name: 'Retry refresh' }));
+    expect(await screen.findByRole('button', { name: 'Unsubscribe' })).toBeInTheDocument();
+    expect(screen.queryByText(/Your subscription change was saved/)).not.toBeInTheDocument();
+    expect(subscribeToUserGroup).toHaveBeenCalledOnce();
+  });
+
+  it('does not let a late subscription completion in section A restart reads or overwrite section B', async () => {
+    const sectionA = { id: 'section-a', name: 'Section A', type: 'MEMBERS', purposeLinks: [
+      { purpose: 'ACCESS', userGroup: { id: 'view-group', name: 'View', subscribable: false } },
+      { purpose: 'MEMBER', userGroup: { id: 'member-group', name: 'Members', subscribable: true } },
+    ] };
+    const sectionB = { id: 'section-b', name: 'Section B', type: 'MEMBERS', purposeLinks: [] };
+    vi.mocked(getSectionForUser).mockImplementation(async (id) => ({ section: id === 'section-a' ? sectionA : sectionB, hasAccess: true, canModerate: false }) as never);
+    vi.mocked(getSectionMembersMerged).mockImplementation(async (id) => ({ members: [{ id, firstName: id === 'section-a' ? 'Alpha' : 'Beta', lastName: 'Member', email: null, membershipStatus: 'REGULAR', rank: null, sharesContactInfo: false }] }));
+    mockGetUserAccessGroups({ data: { user: { id: 'user-1', userGroups: [{ userGroup: { id: 'view-group' } }] } }, isLoading: false, isError: false });
+    let completeSubscription!: () => void;
+    vi.mocked(subscribeToUserGroup).mockReturnValueOnce(new Promise((resolve) => { completeSubscription = () => resolve({ success: true }); }));
+    const user = (await import('@testing-library/user-event')).userEvent.setup();
+    const rendered = render(<MemoryRouter><SectionDetail sectionId="section-a" onBack={mockOnBack} /></MemoryRouter>);
+    await user.click(await screen.findByRole('button', { name: 'Subscribe' }));
+    rendered.rerender(<MemoryRouter><SectionDetail sectionId="section-b" onBack={mockOnBack} /></MemoryRouter>);
+    expect(await screen.findByText('Beta Member')).toBeInTheDocument();
+    await act(async () => completeSubscription());
+    expect(screen.getByRole('heading', { name: 'Section B', level: 4 })).toBeInTheDocument();
+    expect(screen.getByText('Beta Member')).toBeInTheDocument();
+    expect(screen.queryByText('Alpha Member')).not.toBeInTheDocument();
+    expect(getSectionForUser).toHaveBeenCalledTimes(2);
+    expect(getSectionMembersMerged).toHaveBeenCalledTimes(2);
+    expect(invalidateUserSectionAccess).toHaveBeenCalledOnce();
+  });
+
   it('unsubscribes user and shows success snackbar when Unsubscribe is clicked', async () => {
     const mockSectionData = {
       section: {
@@ -1702,34 +1760,87 @@ describe('SectionDetail', () => {
     expect(consoleError).toHaveBeenCalledWith('[sections.event-detail]', expect.any(Error), {});
   });
 
-  it('shows members refresh button and calls refetch when clicked', async () => {
-    const mockSectionData = {
-      section: {
-        id: sectionId,
-        name: 'Test Section',
-        type: 'MEMBERS',
-        purposeLinks: [],
-      },
-    };
-
-    mockGetSectionById({ data: mockSectionData, isLoading: false, isError: false });
+  function prepareDirectory() {
+    mockGetSectionById({
+      data: { section: { id: sectionId, name: 'Member Directory', type: 'MEMBERS', purposeLinks: [] } },
+      isLoading: false,
+      isError: false,
+    });
     mockGetUserAccessGroups({
       data: { user: { id: 'user-1', userGroups: [] } },
       isLoading: false,
       isError: false,
     });
+  }
 
-    const userEvent = (await import('@testing-library/user-event')).userEvent;
-    const user = userEvent.setup();
-
+  it('refreshes actual directory rows, contact fields and counts while preserving search and clamping the page', async () => {
+    prepareDirectory();
+    const initialMembers = Array.from({ length: 26 }, (_, index) => ({
+      id: `member-${index}`, firstName: 'Member', lastName: String(index).padStart(2, '0'),
+      email: `old-${index}@example.com`, mobileNumber: 'Old number', membershipStatus: 'REGULAR' as const,
+      rank: null, sharesContactInfo: true,
+    }));
+    let completeRefresh!: (value: Awaited<ReturnType<typeof getSectionMembersMerged>>) => void;
+    vi.mocked(getSectionMembersMerged)
+      .mockResolvedValueOnce({ members: initialMembers })
+      .mockReturnValueOnce(new Promise((resolve) => { completeRefresh = resolve; }))
+      .mockResolvedValueOnce({ members: [] });
+    const user = (await import('@testing-library/user-event')).userEvent.setup();
     renderSectionDetail();
+    expect(await screen.findByText('Members (26)')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Search members'), 'Member');
+    await user.click(screen.getByRole('button', { name: 'Go to page 2' }));
+    expect(screen.getByText('Member 25')).toBeInTheDocument();
+    const sectionReads = vi.mocked(getSectionForUser).mock.calls.length;
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
-    });
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+    expect(screen.getByRole('progressbar', { name: 'Loading members' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeDisabled();
+    expect(screen.getByRole('heading', { name: 'Member Directory', level: 4 })).toBeInTheDocument();
+    await act(async () => completeRefresh({ members: [{
+      ...initialMembers[25], firstName: 'Member', lastName: 'Updated',
+      email: 'updated@example.com', mobileNumber: 'New number',
+    }] }));
 
-    await user.click(screen.getByRole('button', { name: /refresh/i }));
-    // If the callback fires without throwing, the test passes
+    expect(await screen.findByText('Members (1)')).toBeInTheDocument();
+    expect(screen.getByText('Member Updated')).toBeInTheDocument();
+    expect(screen.queryByText('Member 25')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Go to page 2' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Search members')).toHaveValue('Member');
+    expect(getSectionForUser).toHaveBeenCalledTimes(sectionReads);
+    await user.click(screen.getByRole('button', { name: /Member Updated/ }));
+    expect(screen.getByText('updated@example.com')).toBeInTheDocument();
+    expect(screen.getByText('New number')).toBeInTheDocument();
+    expect(screen.queryByText('Old number')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await user.click(await screen.findByRole('button', { name: 'Refresh' }));
+    expect(await screen.findByText('Members (0)')).toBeInTheDocument();
+    expect(screen.getByText('No members match your search.')).toBeInTheDocument();
+    expect(screen.queryByText('Member Updated')).not.toBeInTheDocument();
+  });
+
+  it('shows directory-specific refresh failure and retries the member request without reloading section metadata', async () => {
+    prepareDirectory();
+    vi.mocked(getSectionMembersMerged)
+      .mockResolvedValueOnce({ members: [{ id: 'member-1', firstName: 'Before', lastName: 'Refresh',
+        email: null, membershipStatus: 'REGULAR', rank: null, sharesContactInfo: false }] })
+      .mockRejectedValueOnce(new Error('Directory unavailable'))
+      .mockResolvedValueOnce({ members: [{ id: 'member-2', firstName: 'After', lastName: 'Retry',
+        email: null, membershipStatus: 'REGULAR', rank: null, sharesContactInfo: false }] });
+    const user = (await import('@testing-library/user-event')).userEvent.setup();
+    renderSectionDetail();
+    expect(await screen.findByText('Before Refresh')).toBeInTheDocument();
+    const sectionReads = vi.mocked(getSectionForUser).mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+    expect(await screen.findByRole('heading', { name: 'Member directory unavailable' })).toBeInTheDocument();
+    expect(screen.queryByText('No members in this section.')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Search members')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('After Retry')).toBeInTheDocument();
+    expect(screen.getByText('Members (1)')).toBeInTheDocument();
+    expect(screen.queryByText('Before Refresh')).not.toBeInTheDocument();
+    expect(getSectionMembersMerged).toHaveBeenCalledTimes(3);
+    expect(getSectionForUser).toHaveBeenCalledTimes(sectionReads);
   });
 
   it('does not let a stale section-1 response overwrite section-2 data when sectionId changes mid-fetch (#404)', async () => {
@@ -1784,7 +1895,7 @@ describe('SectionDetail', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Section Two', level: 4 })).toBeInTheDocument();
     });
-    expect(screen.getByText('Two Member')).toBeInTheDocument();
+    expect(await screen.findByText('Two Member')).toBeInTheDocument();
 
     // Now let the stale section-1 responses resolve
     resolveSectionOne({ section: sectionOne, hasAccess: true, canModerate: false });
@@ -1798,7 +1909,7 @@ describe('SectionDetail', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Section Two', level: 4 })).toBeInTheDocument();
     });
-    expect(screen.getByText('Two Member')).toBeInTheDocument();
+    expect(await screen.findByText('Two Member')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Section One', level: 4 })).not.toBeInTheDocument();
     expect(screen.queryByText('One Member')).not.toBeInTheDocument();
   });

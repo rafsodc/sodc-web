@@ -14,7 +14,7 @@ import MobileNavigationMenu from "./shared/components/MobileNavigationMenu";
 import { buildNavigationLinks } from "./shared/navigation/buildNavigationLinks";
 import { ROUTES } from "./constants";
 import CheckoutStatusNotice from "./features/sections/components/CheckoutStatusNotice";
-import { useGetSectionsForUser } from "@dataconnect/generated/react";
+import { useGetSectionsForUser } from "./shared/query/authoritativeHooks";
 import {
   isCheckoutReturnSearch,
   navigateBackOr as navigateBackOrHelper,

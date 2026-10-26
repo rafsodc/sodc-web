@@ -28,6 +28,9 @@ vi.mock("firebase/auth", () => ({
   }),
 }));
 
+import { invalidateAnnouncementPreferences } from "../../../../shared/query/invalidation";
+vi.mock("../../../../shared/query/invalidation", () => ({invalidateAnnouncementPreferences: vi.fn().mockResolvedValue(undefined)}));
+
 const mockUpsertUser = vi.fn().mockResolvedValue({ data: { user_update: { id: "user-1" } } });
 
 vi.mock("@dataconnect/generated", async (importOriginal) => {
@@ -122,6 +125,7 @@ function clearCookies() {
 describe("AccountSettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(invalidateAnnouncementPreferences).mockResolvedValue(undefined);
     clearCookies();
   });
 
@@ -226,6 +230,18 @@ describe("AccountSettingsPage", () => {
     expect(onUserDataUpdate.mock.invocationCallOrder[0]).toBeGreaterThan(
       mockUpsertUser.mock.invocationCallOrder[0],
     );
+  });
+
+  it("keeps a saved privacy setting and retries only its failed profile refresh", async () => {
+    const user = userEvent.setup(), onUserDataUpdate = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValue(undefined);
+    renderAccountSettings({user: mockUser, userData, isAdmin: false, onUserDataUpdate});
+    const toggle = screen.getByRole("switch", {name: "Share my contact details with other section members"});
+    await user.click(toggle);
+    expect(await screen.findByText(/Your privacy setting was saved, but/)).toBeInTheDocument();
+    expect(toggle).not.toBeChecked(); expect(toggle).toBeDisabled();
+    await user.click(screen.getByRole("button", {name: "Retry refresh"}));
+    await waitFor(() => expect(screen.queryByText(/Your privacy setting was saved, but/)).not.toBeInTheDocument());
+    expect(mockUpsertUser).toHaveBeenCalledOnce(); expect(onUserDataUpdate).toHaveBeenCalledTimes(2);
   });
 
   it("reverts the toggle and shows an error if the upsert fails", async () => {
@@ -699,6 +715,30 @@ describe("AnnouncementPreferencesList", () => {
     expect(screen.getByText("Opted in to announcements")).toBeInTheDocument();
   });
 
+  it("retains a confirmed global preference and offers a read-only retry after refresh failure", async () => {
+    const user = userEvent.setup();
+    vi.mocked(dataConnectReact.useGetMyAnnouncementPreferences).mockReturnValue({data: {user: {membershipStatus: "REGULAR", announcementOptOutAll: false, userGroups: [], optOuts: []}, allUserGroups: []}, isLoading: false} as never);
+    vi.mocked(invalidateAnnouncementPreferences).mockRejectedValueOnce(new Error("offline"));
+    renderAccountSettings({user: mockUser, userData, isAdmin: false});
+    const toggle = screen.getByRole("switch", {name: "Receive announcement emails"});
+    await user.click(toggle);
+    expect(await screen.findByText(/Your email preferences were saved, but/)).toBeInTheDocument();
+    expect(toggle).not.toBeChecked(); expect(toggle).toBeDisabled();
+    await user.click(screen.getByRole("button", {name: "Retry refresh"}));
+    await waitFor(() => expect(screen.queryByText(/Your email preferences were saved, but/)).not.toBeInTheDocument());
+    expect(mockUpdateGlobalOptOutAsync).toHaveBeenCalledOnce(); expect(invalidateAnnouncementPreferences).toHaveBeenCalledTimes(2);
+  });
+
+  it("reverts a rejected global preference write and shows actionable feedback", async () => {
+    const user = userEvent.setup();
+    vi.mocked(dataConnectReact.useGetMyAnnouncementPreferences).mockReturnValue({data: {user: {membershipStatus: "REGULAR", announcementOptOutAll: false, userGroups: [], optOuts: []}, allUserGroups: []}, isLoading: false} as never);
+    mockUpdateGlobalOptOutAsync.mockRejectedValueOnce(new Error("offline"));
+    renderAccountSettings({user: mockUser, userData, isAdmin: false});
+    const toggle = screen.getByRole("switch", {name: "Receive announcement emails"}); await user.click(toggle);
+    expect(await screen.findByText(/We couldn’t save your email preferences/)).toBeInTheDocument();
+    expect(toggle).toBeChecked(); expect(invalidateAnnouncementPreferences).not.toHaveBeenCalled();
+  });
+
   it("sets the global opt-out and disables section switches", async () => {
     const interaction = userEvent.setup();
     vi.mocked(dataConnectReact.useGetMyAnnouncementPreferences).mockReturnValue({
@@ -714,7 +754,12 @@ describe("AnnouncementPreferencesList", () => {
       isLoading: false,
     } as never);
 
-    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+    vi.mocked(invalidateAnnouncementPreferences).mockImplementationOnce(async () => {
+      vi.mocked(dataConnectReact.useGetMyAnnouncementPreferences).mockReturnValue({
+        data: {user: {membershipStatus: MembershipStatus.REGULAR, announcementOptOutAll: true, userGroups: [{userGroup: sectionWithAccess}], optOuts: []}, allUserGroups: []}, isLoading: false,
+      } as never);
+    });
+    const view = renderAccountSettings({ user: mockUser, userData, isAdmin: false });
 
     expect(
       screen.queryByText(/will not receive announcement emails from any section/i),
@@ -734,6 +779,12 @@ describe("AnnouncementPreferencesList", () => {
     expect(
       screen.getByText(/will not receive announcement emails from any section/i),
     ).toBeInTheDocument();
+    // A later authoritative result must supersede the optimistic write value.
+    vi.mocked(dataConnectReact.useGetMyAnnouncementPreferences).mockReturnValue({
+      data: {user: {membershipStatus: MembershipStatus.REGULAR, announcementOptOutAll: false, userGroups: [{userGroup: sectionWithAccess}], optOuts: []}, allUserGroups: []}, isLoading: false,
+    } as never);
+    view.rerender(<MemoryRouter><AccountSettingsPage user={mockUser} userData={userData} isAdmin={false} /></MemoryRouter>);
+    expect(screen.getByRole("switch", {name: "Receive announcement emails"})).toBeChecked();
   });
 
   it("explains that section choices are overridden when loaded with the global opt-out already on", () => {
@@ -818,3 +869,6 @@ describe("AnnouncementPreferencesList", () => {
     expect(screen.getByText("Beta Section")).toBeInTheDocument();
   });
 });
+
+// Display/interaction stubs stay shared; transport freshness is tested separately.
+vi.mock("../../../../shared/query/authoritativeHooks", async () => import("@dataconnect/generated/react"));

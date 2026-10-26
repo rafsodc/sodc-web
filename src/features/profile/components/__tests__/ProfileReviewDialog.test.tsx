@@ -94,6 +94,7 @@ const userData: UserData = {
 describe("ProfileReviewDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(invalidateAnnouncementPreferences).mockResolvedValue(undefined);
     vi.mocked(generated.confirmProfileReview).mockResolvedValue({ data: {} } as never);
     vi.mocked(firebaseFunctions.updateDisplayName).mockResolvedValue({ success: true });
     vi.mocked(firebaseFunctions.updateMembershipStatus).mockResolvedValue({ success: true });
@@ -390,6 +391,22 @@ describe("ProfileReviewDialog", () => {
     expect(generated.confirmProfileReview).toHaveBeenCalledExactlyOnceWith(expect.anything(), expect.objectContaining({ firstName: "Updated Alex" }));
   });
 
+  it.each(["preferences", "profile"])("retries only reads after a confirmed review and failed %s refresh", async failure => {
+    const interaction = userEvent.setup(), onReviewed = vi.fn().mockResolvedValue(undefined);
+    if (failure === "preferences") vi.mocked(invalidateAnnouncementPreferences).mockRejectedValueOnce(new Error("offline"));
+    else onReviewed.mockRejectedValueOnce(new Error("offline"));
+    render(<ProfileReviewDialog userData={userData} userEmail="verified@example.com" onReviewed={onReviewed} />);
+    await interaction.click(screen.getByRole("button", {name: "Confirm profile"}));
+    expect(await screen.findByText(/Your profile review was saved, but/)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", {name: "First name"})).toBeDisabled();
+    await interaction.click(screen.getByRole("button", {name: "Retry refresh"}));
+    await waitFor(() => expect(screen.queryByText(/Your profile review was saved, but/)).not.toBeInTheDocument());
+    expect(generated.confirmProfileReview).toHaveBeenCalledOnce();
+    expect(firebaseFunctions.updateDisplayName).toHaveBeenCalledOnce();
+    expect(mockOptOut).not.toHaveBeenCalled(); expect(mockOptIn).not.toHaveBeenCalled();
+    expect(onReviewed).toHaveBeenCalledTimes(failure === "profile" ? 2 : 1);
+  });
+
   it("does not confirm the review when the membership status update fails", async () => {
     const interaction = userEvent.setup();
     const onReviewed = vi.fn();
@@ -481,3 +498,6 @@ describe("ProfileReviewDialog", () => {
     expect(generated.confirmProfileReview).not.toHaveBeenCalled();
   });
 });
+
+// Display/interaction stubs stay shared; transport freshness is tested separately.
+vi.mock("../../../../shared/query/authoritativeHooks", async () => import("@dataconnect/generated/react"));
