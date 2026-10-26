@@ -9,6 +9,12 @@
     "src/**/*.test.ts",
     "src/**/*.spec.ts",
     "src/dataconnect-admin-generated/**",
-    "src/security-admin-generated/**"
+    "src/security-admin-generated/**",
+    "src/legacyBcryptPilot.ts",
+    "src/legacyUserMigration.ts",
+    "src/legacyUserMigrationArtifact.ts",
+    "src/legacyUserMigrationLedger.ts",
+    "src/legacyUserPostflight.ts",
+    "src/legacyUserPreflightReview.ts"
   ]
 }

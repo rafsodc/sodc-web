@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, open, readFile, rename, lstat, realpath, unlink, readdir } from "node:fs/promises";
+import { mkdir, open, readFile, rename, lstat, realpath, unlink } from "node:fs/promises";
 import path from "node:path";
 import { hostname } from "node:os";
 import { AUTHORIZATION_MIGRATION_ID } from "./check-authorization-migration.mjs";
@@ -338,76 +338,6 @@ async function assertNotAborting(run) {
   try { await lstat(path.join(run.directory, "abort-freeze-intent.json")); }
   catch (error) { if (error.code === "ENOENT") return; throw error; }
   throw new MigrationError("RUN_ABORTED_OR_ABORTING", "A durable abort intent blocks all normal phases, including after an interrupted journal write.");
-}
-async function syncDirectory(directory) { const handle = await open(directory, "r"); try { await handle.sync(); } finally { await handle.close(); } }
-async function immutableAbortRecord(file, value) {
-  assertNoCredentials(value); const handle = await open(file, "wx", 0o600);
-  try { await handle.writeFile(JSON.stringify(value, null, 2) + "\n"); await handle.sync(); } finally { await handle.close(); }
-  await syncDirectory(path.dirname(file));
-}
-
-/** Explicit restoration of an untouched strict Dev release after only its freeze failed. */
-export async function abortMigrationFreeze(options, {confirmProject, reason, adapter, sourceCheck, now = () => new Date()}) {
-  const {assertAbortScope, validateAbortSource, assertAbortEvidence} = await import("./authorization-migration-abort.mjs");
-  const initial = await loadMigrationRun(options); assertAbortScope(initial);
-  requireThat(confirmProject === "sodc-web" && text(reason), "ABORT_CONFIRMATION_REQUIRED", "Repeat literal sodc-web and explain the interrupted-freeze restoration.");
-  return withProjectLock(initial, ownerFile => withRunLock(initial.directory, async () => {
-    const run = await loadMigrationRun(options); assertAbortScope(run);
-    const recoverySource = validateAbortSource(await sourceCheck(run.plan), run.plan);
-    const inspected = await readVerifiedCheckpoint(run, "inspect");
-    const baseline = inspected.result.baseline;
-    requireThat(object(baseline) && migrationHash(baseline) === migrationHash(run.journal.baseline), "BASELINE_CHANGED", "Abort requires the original hash-bound inspected baseline.");
-    const files = await readdir(run.directory);
-    requireThat(!files.some(name => /^provider-phase-(?!freeze(?:\.|-))/.test(name)), "ABORT_LATER_PROVIDER_PHASE", "A later provider operation prevents early-freeze recovery.");
-    const identity = {schemaVersion: "sodc-authorization-abort-freeze-intent/v1", projectId: run.plan.projectId, gitSha: run.plan.gitSha,
-      runId: run.plan.runId, planHash: run.planHash, baselineHash: migrationHash(baseline), freezeCheckpointHash: migrationHash(run.journal.checkpoints.freeze), reason};
-    const intentFile = path.join(run.directory, "abort-freeze-intent.json");
-    let intent;
-    try { intent = await readRecord(intentFile); }
-    catch (error) { if (error.code !== "ENOENT") throw error; }
-    if (intent) {
-      requireThat(Object.entries(identity).every(([key, value]) => migrationHash(intent[key]) === migrationHash(value)), "ABORT_INTENT_CHANGED", "Retry only the exact original abort intent and reason.");
-      validateAbortSource(intent.initialRecoverySource, run.plan);
-    } else {
-      intent = {...identity, initialRecoverySource: recoverySource, createdAt: now().toISOString()};
-      await immutableAbortRecord(intentFile, intent);
-    }
-    const prior = run.journal.abortFreeze;
-    requireThat(!prior || prior.intentHash === migrationHash(intent), "ABORT_INTENT_CHANGED", "The retained abort journal must bind its original immutable intent.");
-    // Preserve all original checkpoints and outcomes. This is not a completed migration phase.
-    run.journal.abortFreeze = {...prior, status: "incomplete", intentHash: migrationHash(intent), attempt: (prior?.attempt ?? 0) + 1,
-      recoveryToolSha: recoverySource.recoveryToolSha, startedAt: now().toISOString()};
-    if (run.journal.terminal) {
-      // An already verified terminal record is retained during ownership reconciliation.
-      run.journal.abortFreeze.status = "complete";
-    }
-    await atomicRecord(path.join(run.directory, "journal.json"), run.journal); await syncDirectory(run.directory);
-    try {
-      requireThat(typeof adapter.abortFreeze === "function", "ABORT_PROVIDER_UNAVAILABLE", "The reviewed provider must support explicit interrupted-freeze restoration.");
-      const verification = await adapter.abortFreeze({baseline, planHash: run.planHash, checkpoints: run.journal.checkpoints, reason, recoverySource, abortIntent: intent});
-      const evidence = assertAbortEvidence(verification, run, recoverySource, now(), migrationHash(intent)); assertNoCredentials(evidence);
-      const record = {schemaVersion: "sodc-authorization-abort-freeze/v1", planHash: run.planHash, intentHash: migrationHash(intent), reason, recoverySource, evidence};
-      const evidenceFile = "evidence/abort-freeze-" + migrationHash(record) + ".json";
-      try { await immutableAbortRecord(path.join(run.directory, evidenceFile), record); }
-      catch (error) { if (error.code !== "EEXIST") throw error; requireThat(migrationHash(await readRecord(path.join(run.directory, evidenceFile))) === migrationHash(record), "ABORT_EVIDENCE_CHANGED", "Existing recovery proof must remain immutable."); }
-      Object.assign(run.journal.abortFreeze, {status: "complete", completedAt: now().toISOString(), evidenceFile, evidenceHash: migrationHash(record)});
-      run.journal.status = "ABORTED";
-      run.journal.terminal ??= {status: "ABORTED", kind: "abort-freeze", reason, recoveryToolSha: recoverySource.recoveryToolSha, evidenceFile, evidenceHash: migrationHash(record), recordedAt: now().toISOString()};
-      // The original tool deliberately cannot read this terminal schema and resume old phases.
-      run.journal.schemaVersion = "sodc-authorization-migration-aborted-journal/v1";
-      run.journal.events.push({event: "freeze-aborted-original-boundary-restored", reason, recoveryToolSha: recoverySource.recoveryToolSha, evidenceFile, at: now().toISOString()});
-      await atomicRecord(path.join(run.directory, "journal.json"), run.journal); await syncDirectory(run.directory);
-      await atomicRecord(ownerFile, {runId: run.plan.runId, planHash: run.planHash, status: "aborted", evidenceHash: migrationHash(record)}); await syncDirectory(path.dirname(ownerFile));
-      return {status: "ABORTED", evidence, evidenceFile, recoveryToolSha: recoverySource.recoveryToolSha};
-    } catch (error) {
-      if (!run.journal.terminal) {
-        run.journal.abortFreeze.status = "incomplete";
-        run.journal.abortFreeze.lastError = /^[A-Z][A-Z0-9_]{2,80}$/.test(error.code ?? "") ? error.code : "ABORT_INCOMPLETE";
-        await atomicRecord(path.join(run.directory, "journal.json"), run.journal); await syncDirectory(run.directory);
-      }
-      throw error;
-    }
-  }));
 }
 async function writeMigrationReceipt(repositoryRoot, run, evidence) {
   for (const phase of phasesFor(run.plan)) {

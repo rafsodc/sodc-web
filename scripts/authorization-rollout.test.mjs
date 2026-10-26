@@ -1,14 +1,29 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { prepareAuthorizationRollout, compatibilityOperationSource, LEGACY_POTENTIAL_LOST_OPERATIONS } from "./prepare-authorization-rollout.mjs";
+import { spawnSync } from "node:child_process";
+import { prepareAuthorizationRollout, compatibilityOperationSource, LEGACY_POTENTIAL_LOST_OPERATIONS } from "./authorization-rollout.mjs";
 import { verifyAuthorizationMigration, AUTHORIZATION_MIGRATION_ID } from "./check-authorization-migration.mjs";
 const repositoryRoot = process.cwd();
 const roots = [];
 afterEach(async () => {for (const root of roots.splice(0)) await rm(root, {recursive: true, force: true});});
 async function temporary() {const root = await mkdtemp(path.join(tmpdir(), "security-rollout-test-")); roots.push(root); return root;}
 describe("staged current-authorization rollout", () => {
+  it("exposes only an inert library and removes the obsolete standalone artifact command", async () => {
+    const output = path.join(await temporary(), "obsolete-standalone-artifact");
+    const args = ["--project", "sodc-web-production", "--output", output, "--expires", new Date(Date.now() + 3600_000).toISOString()];
+    const library = spawnSync(process.execPath, [path.join(repositoryRoot, "scripts/authorization-rollout.mjs"), ...args], {encoding: "utf8"});
+    expect(library.status).toBe(0);
+    expect(library.stdout).toBe("");
+    expect(library.stderr).toBe("");
+    await expect(access(output)).rejects.toMatchObject({code: "ENOENT"});
+    const removedPath = path.join(repositoryRoot, "scripts/prepare-authorization-rollout.mjs");
+    await expect(access(removedPath)).rejects.toMatchObject({code: "ENOENT"});
+    const removedCommand = spawnSync(process.execPath, [removedPath, ...args], {encoding: "utf8"});
+    expect(removedCommand.status).not.toBe(0);
+    await expect(access(output)).rejects.toMatchObject({code: "ENOENT"});
+  });
   it("prepares only an explicitly targeted, expiring compatibility source outside the checkout", async () => {
     const temp = await temporary(); const output = path.join(temp, "compatibility");
     const original = await readFile(path.join(repositoryRoot, "dataconnect/api/user-mutations.gql"), "utf8");

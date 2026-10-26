@@ -1,30 +1,10 @@
 import { synchronizeUserSecurity, transitionUserSecurity, type SecurityAuthority } from "./currentAuthorizationTransitions";
 import { getUserSecurityState } from "./securityRepository";
-import { isNonRestrictedStatus, type MembershipStatus } from "./validation";
-
-interface AuthClaimsUser {
-  customClaims?: Record<string, unknown>;
-}
-
-export interface EnabledClaimAuthClient {
-  getUser(userId: string): Promise<AuthClaimsUser>;
-  setCustomUserClaims(userId: string, claims: Record<string, unknown>): Promise<void>;
-}
+import type { MembershipStatus } from "./validation";
 
 export interface EnabledClaimReconciliationResult {
   enabled: boolean;
   updated: boolean;
-}
-
-/**
- * Membership status is the source of truth for enabled access. Admin status is
- * deliberately irrelevant: requireAdmin also requires enabled=true, so an
- * admin claim must never bypass a restricted membership status.
- */
-export function enabledClaimForMembershipStatus(
-  membershipStatus: MembershipStatus
-): boolean {
-  return isNonRestrictedStatus(membershipStatus);
 }
 
 /**

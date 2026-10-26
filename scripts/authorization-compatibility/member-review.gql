@@ -1,5 +1,5 @@
 # Migration compatibility only: deliberately outside every default Data Connect connector.
-# Included only by prepare-authorization-rollout in an explicit, expiring artifact.
+# Included only by the authorization-rollout library in an explicit, expiring migration artifact.
 # Never deploy after strict cutover or use as an operator repair path.
 
 mutation ConfirmPotentialLostWithSecurityState(

@@ -1,15 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { enabledClaimForMembershipStatus, reconcileEnabledClaim } from "../../enabledClaimReconciliation";
+import { reconcileEnabledClaim } from "../../enabledClaimReconciliation";
 import { getUserSecurityState } from "../../securityRepository";
 import { synchronizeUserSecurity, transitionUserSecurity } from "../../currentAuthorizationTransitions";
 vi.mock("../../currentAuthorizationTransitions", () => ({synchronizeUserSecurity: vi.fn(), transitionUserSecurity: vi.fn()}));
 const options = {authority: {actorKind: "ADMIN" as const, actorSecurityVersion: 1}, operationId: "reconcile-test-operation"};
 const lookup = vi.mocked(getUserSecurityState);
 
-describe("enabled claim mapping", () => {
-  it.each(["REGULAR", "RETIRED", "RESERVE", "INDUSTRY", "CIVIL_SERVICE"] as const)("enables %s", status => expect(enabledClaimForMembershipStatus(status)).toBe(true));
-  it.each(["PENDING", "RESIGNED", "LOST", "DECEASED"] as const)("restricts %s", status => expect(enabledClaimForMembershipStatus(status)).toBe(false));
-});
 describe("versioned mirror repair", () => {
   beforeEach(() => vi.clearAllMocks());
   it("reconciles from current profile and security intent", async () => {

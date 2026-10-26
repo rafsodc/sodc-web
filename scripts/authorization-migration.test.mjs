@@ -295,3 +295,17 @@ describe("authorization migration CLI boundaries", () => {
     expect(JSON.stringify(safeMigrationCliError(error))).not.toMatch(/sensitive|must-not-print|password|permission-denied/);
   });
 });
+
+it.each([
+  ["abort-freeze", "--project", "sodc-web", "--run-id", "historical-dev", "--confirm-project", "sodc-web", "--reason", "restore old boundary"],
+  ["adopt-tool-source", "--project", "sodc-web", "--run-id", "historical-dev", "--confirm-project", "sodc-web", "--tool-sha", "b".repeat(40), "--review-reference", "old review", "--reason", "old tool recovery"],
+  ["adopt-tool-source", "--project", "sodc-web", "--run-id", "historical-dev", "--confirm-project", "sodc-web", "--tool-sha", "b".repeat(40), "--review-reference", "old review", "--reason", "old verifier recovery", "--completed-open-verification", "--previous-amendment", "c".repeat(64)],
+  ["adopt-tool-source", "--project", "sodc-web-production", "--run-id", "historical-prod", "--confirm-project", "sodc-web-production", "--tool-sha", "b".repeat(40), "--review-reference", "old review", "--reason", "old scheduler recovery", "--production-pre-api-open-recovery"],
+].map(args => ({args})))("retires completed-cutover exceptions before environment, Git, files or provider loading: $args.0", async ({args}) => {
+  const git = vi.fn(() => {throw new Error("Retired commands must not inspect Git");});
+  const loadAdapter = vi.fn(() => {throw new Error("Retired commands must not load a provider");});
+  const env = new Proxy({}, {get() {throw new Error("Retired commands must not read credentials or environment");}});
+  await expect(runMigrationCli(args, {repositoryRoot: "/retired-command-must-not-read-files", nodeVersion: "22.0.0", git, loadAdapter, env})).rejects.toMatchObject({code: "COMMAND_INVALID"});
+  expect(git).not.toHaveBeenCalled();
+  expect(loadAdapter).not.toHaveBeenCalled();
+});

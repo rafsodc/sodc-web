@@ -8,10 +8,9 @@ import {tmpdir} from "node:os";
 import {
   MIGRATION_PHASES, MigrationError, assertMigrationEnvironment, assertNode24, assertNoCredentials,
   assertProject, createMigrationPlan, executeMigrationPhase, loadMigrationRun, migrationHash,
-  migrationRunDirectory, phasesFor, prepareMigrationRun, recordMigrationGate, summarizeRun, unlockMigrationRun, abortMigrationFreeze,
+  migrationRunDirectory, phasesFor, prepareMigrationRun, recordMigrationGate, summarizeRun, unlockMigrationRun,
 } from "./authorization-migration-state.mjs";
-import {abortSourceProof, assertAbortScope} from "./authorization-migration-abort.mjs";
-import {adoptMigrationToolSource, verifyMigrationToolSource} from "./authorization-migration-tool-source.mjs";
+import {verifyMigrationToolSource} from "./authorization-migration-tool-source.mjs";
 
 const repositoryDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const execFileAsync = promisify(execFile);
@@ -24,8 +23,6 @@ const allowed = Object.freeze({
   gate: ["project", "run-id", "name", "evidence"],
   apply: ["project", "run-id", "phase", "confirm-project"],
   unlock: ["project", "run-id", "reason"],
-  "abort-freeze": ["project", "run-id", "reason", "confirm-project"],
-  "adopt-tool-source": ["project", "run-id", "reason", "confirm-project", "tool-sha", "review-reference", "previous-amendment", "completed-open-verification", "production-pre-api-open-recovery"],
 });
 const required = Object.freeze({
   plan: ["project"],
@@ -35,8 +32,6 @@ const required = Object.freeze({
   gate: ["project", "run-id", "name", "evidence"],
   apply: ["project", "run-id", "phase", "confirm-project"],
   unlock: ["project", "run-id", "reason"],
-  "abort-freeze": ["project", "run-id", "reason", "confirm-project"],
-  "adopt-tool-source": ["project", "run-id", "reason", "confirm-project", "tool-sha", "review-reference"],
 });
 const fail = (code, message) => {throw new MigrationError(code, message);};
 
@@ -51,7 +46,7 @@ export function parseMigrationArguments(argv) {
     if (!argument.startsWith("--") || !allowed[command].includes(argument.slice(2))) fail("FLAG_INVALID", "Unknown or unsupported migration flag.");
     const key = argument.slice(2);
     if (Object.hasOwn(flags, key)) fail("FLAG_DUPLICATE", "Migration flags must not be repeated.");
-    if (["import-admins", "completed-open-verification", "production-pre-api-open-recovery"].includes(key)) flags[key] = true;
+    if (key === "import-admins") flags[key] = true;
     else {
       const value = args[++index];
       if (!value?.trim() || value.startsWith("--")) fail("FLAG_VALUE_REQUIRED", "Every selected flag requires its value.");
@@ -68,14 +63,6 @@ export function parseMigrationArguments(argv) {
     if (!MIGRATION_PHASES.includes(flags.phase)) fail("PHASE_INVALID", "Choose one documented migration phase.");
     if (flags["confirm-project"] !== flags.project) fail("CONFIRM_PROJECT_REQUIRED", "Repeat the exact project ID in --confirm-project.");
   }
-  if (command === "abort-freeze" && (flags.project !== "sodc-web" || flags["confirm-project"] !== "sodc-web")) fail("ABORT_STRICT_DEV_ONLY", "Abort-freeze is restricted to the literal Dev project sodc-web.");
-  if (command === "adopt-tool-source") {
-    if (flags["production-pre-api-open-recovery"]) {
-      if (flags.project !== "sodc-web-production" || flags["confirm-project"] !== "sodc-web-production" || flags["completed-open-verification"] || flags["previous-amendment"] !== undefined) fail("TOOL_SOURCE_PRODUCTION_RECOVERY_FLAG_INVALID", "Production recovery requires its explicit first-amendment flag and exact target confirmation.");
-    } else if (flags.project !== "sodc-web" || flags["confirm-project"] !== "sodc-web") fail("TOOL_SOURCE_STRICT_DEV_ONLY", "Tool-source adoption is Dev-only unless the narrowly scoped Production pre-API-open recovery is explicitly requested.");
-    if (!/^[a-f0-9]{40}$/.test(flags["tool-sha"])) fail("TOOL_SOURCE_SHA_REQUIRED", "Repeat the full reviewed tool commit.");
-    if (flags["previous-amendment"] !== undefined && !/^[a-f0-9]{64}$/.test(flags["previous-amendment"])) fail("TOOL_SOURCE_PREVIOUS_REQUIRED", "Repeat the exact previous amendment hash.");
-  }
   return {command, flags};
 }
 
@@ -90,14 +77,6 @@ async function reviewedSource(repositoryRoot, git, expectedSha) {
   const status = await git(["status", "--porcelain", "--untracked-files=all"], {cwd: repositoryRoot});
   if (status.trim()) fail("CHECKOUT_DIRTY", "Commit and review source changes before preparing or executing a migration.");
   return gitSha;
-}
-export async function reviewedAbortSource(repositoryRoot, git, originalSha) {
-  const recoveryToolSha = await reviewedSource(repositoryRoot, git);
-  if (recoveryToolSha !== originalSha) await git(["merge-base", "--is-ancestor", originalSha, recoveryToolSha], {cwd: repositoryRoot});
-  // Disable rename detection: a runtime file moved into an allowed tool path must
-  // still expose its forbidden original path, rather than only the new filename.
-  const changed = await git(["diff", "--no-renames", "--name-only", "-z", originalSha, recoveryToolSha, "--"], {cwd: repositoryRoot});
-  return abortSourceProof(originalSha, recoveryToolSha, changed.split("\0").filter(Boolean));
 }
 async function cloudAdapterDefault(options) {
   const {createCloudMigrationAdapter} = await import("./authorization-migration-cloud.mjs");
@@ -148,7 +127,7 @@ export async function runMigrationCli(argv, {
   git = gitDefault, loadAdapter = cloudAdapterDefault, now = () => new Date(),
 } = {}) {
   const {command, flags} = parseMigrationArguments(argv);
-  if (command === "help") return {usage: "npm run authorization:migrate -- <plan|prepare|status|audit|gate|apply|unlock|abort-freeze|adopt-tool-source> --project <literal-project-id> [command flags]",
+  if (command === "help") return {usage: "npm run authorization:migrate -- <plan|prepare|status|audit|gate|apply|unlock> --project <literal-project-id> [command flags]",
     guide: "docs/operations/authorization-migration-tool.md", cloudChanges: false};
   const projectId = flags.project;
   if (command === "plan") return {schemaVersion: "sodc-authorization-migration-outline/v1", projectId,
@@ -184,25 +163,6 @@ export async function runMigrationCli(argv, {
       limitation: "Recorded operator review; live phase verification remains required."};
   }
   const run = options.runId ? await loadMigrationRun(options) : null;
-  if (command === "adopt-tool-source") {
-    const source = await adoptMigrationToolSource(options, {confirmProject: flags["confirm-project"], toolSha: flags["tool-sha"],
-      previousAmendmentHash: flags["previous-amendment"], completedOpenVerification: flags["completed-open-verification"] === true, productionPreApiOpenRecovery: flags["production-pre-api-open-recovery"] === true,
-      reviewReference: flags["review-reference"], reason: flags.reason, git, now: now()});
-    return {projectId, runId: run.plan.runId, ...source, cloudChanges: false,
-      limitation: "Only migration-tool source was adopted. The original release plan and every live verification remain required."};
-  }
-  if (command === "abort-freeze") {
-    assertAbortScope(run);
-    await reviewedAbortSource(repositoryRoot, git, run.plan.gitSha);
-    const adapter = await loadAdapter({repositoryRoot, runDirectory: run.directory, plan: run.plan, now});
-    try {
-      const outcome = await abortMigrationFreeze(options, {confirmProject: flags["confirm-project"], reason: flags.reason, adapter,
-        sourceCheck: checkedPlan => reviewedAbortSource(repositoryRoot, git, checkedPlan.gitSha), now});
-      return {projectId, runId: run.plan.runId, originalGitSha: run.plan.gitSha, recoveryToolSha: outcome.recoveryToolSha,
-        status: outcome.status, evidenceFile: outcome.evidenceFile, cloudChanges: true,
-        limitation: "Only the original pre-schema Dev boundary was restored. The failed run is terminal; prepare a new immutable run."};
-    } finally {await adapter.close?.();}
-  }
   if (command === "apply" && !phasesFor(run.plan).includes(flags.phase)) fail("PHASE_INVALID", "Compatibility cannot run against an already strict installation.");
   const toolSource = run ? await verifyMigrationToolSource(run, {repositoryRoot, git}) : null;
   const gitSha = run?.plan.gitSha ?? await reviewedSource(repositoryRoot, git);
@@ -227,7 +187,7 @@ export async function runMigrationCli(argv, {
 
 export function safeMigrationCliError(error) {
   const code = typeof error?.code === "string" && /^[A-Z][A-Z0-9_]{2,80}$/.test(error.code) ? error.code : "MIGRATION_COMMAND_FAILED";
-  return {failed: true, code, message: "Migration command stopped. Inspect retained evidence and live state; an explicit abort may have restored part of the original boundary. No additional phase or automatic recovery was started."};
+  return {failed: true, code, message: "Migration command stopped. Inspect retained evidence and live state; the live boundary may be partially changed. No additional phase or automatic recovery was started."};
 }
 async function main() {
   try {console.log(JSON.stringify(await runMigrationCli(process.argv.slice(2)), null, 2));}
