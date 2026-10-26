@@ -79,7 +79,7 @@ describe("membership post-write refresh", () => {
     expect(fixture.write).not.toHaveBeenCalled();
     expect(fixture.invalidate).not.toHaveBeenCalled();
   });
-  it("retains the add dialog and reports a rejected write without a saved warning", async () => {
+  it("retains the add dialog and reports a rejected write without claiming the change was saved", async () => {
     fixture.write.mockRejectedValueOnce(new Error("Synthetic write failure"));
     render(<UserGroupMemberships userId="member" />);
     await addMembership();
@@ -127,7 +127,7 @@ describe("membership post-write refresh", () => {
     await waitFor(() => expect(screen.getByText("B only")).toBeInTheDocument());
     expect(screen.queryByText("A only")).not.toBeInTheDocument();
   });
-  it("does not restart the old user's reads or show its warning after a pending write and selection change", async () => {
+  it("does not restart the old user's reads or show its notice after a pending write and selection change", async () => {
     const write = deferred<{data: object}>(); fixture.write.mockReturnValue(write.promise);
     const view = render(<UserGroupMemberships userId="a" />);
     await addMembership();

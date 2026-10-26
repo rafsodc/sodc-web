@@ -125,6 +125,11 @@ async function openCreateGroup() {
   await user.type(screen.getByRole("textbox", { name: /Group Name/ }), "New Group");
   return user;
 }
+async function waitForDialogToClose() {
+  // The saved rows may render behind MUI's exiting modal before its controls
+  // become accessible. Wait for that real transition before the next action.
+  await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
+}
 async function openCreateTicket() {
   const user = userEvent.setup();
   await user.click(await screen.findByRole("button", { name: "Ticket types" }));
@@ -143,6 +148,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     const user = await openCreateGroup();
     await user.click(screen.getByRole("button", { name: "Create" }));
     expect(await screen.findByText("New Group")).toBeInTheDocument();
+    await waitForDialogToClose();
     await user.click(await screen.findByRole("button", { name: "Expand New Group" }));
     expect((await screen.findAllByRole("button", { name: "Add User" })).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "Edit New Group" }));
@@ -175,7 +181,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     render(view("groups")); const user = await openCreateGroup(); failReadsAfterWrite = "ListUserGroups";
     await user.click(screen.getByRole("button", { name: "Create" }));
     expect(await screen.findByText(/User group created.*already saved/)).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole("textbox", { name: /Group Name/ })).not.toBeInTheDocument());
+    await waitForDialogToClose();
     expect(groups.some((row) => row.name === "New Group")).toBe(true);
     await user.click(screen.getByRole("button", { name: "Retry refresh" }));
     expect(await screen.findByText(/User group created.*already saved/)).toBeInTheDocument();
@@ -193,16 +199,19 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     await executeQuery(getEventsForSectionRef(context.dc, { sectionId: "section-1" }));
     const rendered = render(view("event")); const user = await openCreateTicket();
     await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitForDialogToClose();
     expect(await screen.findByText("New ticket")).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: "Edit New ticket" }));
     fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Updated ticket" } });
     fireEvent.change(screen.getByLabelText(/^price/i), { target: { value: "42" } });
     await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitForDialogToClose();
     expect(await screen.findByText("Updated ticket")).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: "Edit Updated ticket" }));
     expect(screen.getByLabelText(/^title/i)).toHaveValue("Updated ticket");
     expect(screen.getByLabelText(/^price/i)).toHaveValue(42);
     await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitForDialogToClose();
     vi.spyOn(window, "confirm").mockReturnValue(true);
     await user.click(await screen.findByRole("button", { name: "Delete Updated ticket" }));
     await waitFor(() => expect(screen.queryByText("Updated ticket")).not.toBeInTheDocument());
@@ -250,7 +259,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     failingWrite = false; failReadsAfterWrite = "GetEventById";
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText(/Ticket type created.*already saved/)).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add ticket type" })).not.toBeInTheDocument());
+    await waitForDialogToClose();
     await user.click(screen.getByRole("button", { name: "Retry refresh" }));
     expect(await screen.findByText(/Ticket type created.*already saved/)).toBeInTheDocument();
     expect(screen.queryByText(/Event data refreshed/)).not.toBeInTheDocument();
@@ -291,7 +300,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText("Edited Attendee")).toBeInTheDocument();
     expect(screen.getByText("After dietary")).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit ticket" })).not.toBeInTheDocument());
+    await waitForDialogToClose();
     expect(vi.mocked(guestCall).mock.calls.filter(([name]) => name === "manageTicketAttendance")).toHaveLength(1);
     rendered.rerender(<QueryClientProvider client={queryClient}><MemberBookingSnapshot /></QueryClientProvider>);
     expect(await screen.findByText("Member booking: APPROVED")).toBeInTheDocument();
@@ -309,6 +318,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     expect(screen.getByLabelText(/^title/i)).toHaveValue("Unsaved title");
     expect(ticketTypes[0].title).toBe("Dinner");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitForDialogToClose();
     vi.spyOn(window, "confirm").mockReturnValue(true);
     await user.click(await screen.findByRole("button", { name: "Delete Dinner" }));
     await waitFor(() => expect(write).toHaveBeenCalledTimes(2));
@@ -330,10 +340,12 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     await user.click(await screen.findByRole("button", { name: "Delete ticket for Alex Member" }));
     await user.click(within(screen.getByRole("dialog", { name: "Delete ticket?" })).getByRole("button", { name: "Delete ticket" }));
     expect(await screen.findByText("No active attendee tickets in this list.")).toBeInTheDocument();
+    await waitForDialogToClose();
     expect(screen.queryByRole("button", { name: "Edit ticket for Alex Member" })).not.toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: "Removed tickets (1)" }));
     await user.click(await screen.findByRole("button", { name: "Restore ticket for Alex Member" }));
     await user.click(within(screen.getByRole("dialog", { name: "Restore ticket" })).getByRole("button", { name: "Restore ticket" }));
+    await waitForDialogToClose();
     expect(await screen.findByRole("button", { name: "Edit ticket for Alex Member" })).toBeInTheDocument();
     expect(screen.getByText("Showing 1 of 1 attendees")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Removed tickets (1)" })).not.toBeInTheDocument();
@@ -383,7 +395,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     rejectAttendance = false;
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText(/Ticket saved.*already saved/)).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit ticket" })).not.toBeInTheDocument());
+    await waitForDialogToClose();
     failingRead = null;
     await user.click(screen.getByRole("button", { name: "Retry refresh" }));
     expect(await screen.findByText("Confirmed change")).toBeInTheDocument();
@@ -406,6 +418,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     await user.type(screen.getByRole("combobox", { name: "Booking user" }), "Alex");
     await user.click(await screen.findByRole("option", { name: /Alex Member/ }));
     await user.click(await screen.findByRole("button", { name: "Add ticket" }));
+    await waitForDialogToClose();
     expect(await screen.findByRole("button", { name: "Edit ticket for Alex Member" })).toBeInTheDocument();
     expect(screen.getByText("Showing 1 of 1 attendees")).toBeInTheDocument();
     expect(submitEventBooking).toHaveBeenCalledOnce();
