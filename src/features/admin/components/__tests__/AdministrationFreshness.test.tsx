@@ -165,6 +165,64 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     expect(write.mock.calls.map(([name]) => name)).toEqual(["CreateUserGroup", "UpdateUserGroup"]);
   }, 30_000);
 
+  it("keeps the newest list loading state and ignores an obsolete load failure when creating during the initial read", async () => {
+    const originalRead = read.getMockImplementation()!;
+    const pending: Array<(value: {data: unknown; extensions: object}) => void> = [];
+    read.mockImplementation((name: string, variables: Record<string, unknown>) => name === "ListUserGroups"
+      ? new Promise(resolve => { pending.push(resolve); }) : originalRead(name, variables));
+    render(view("groups"));
+    const user = await openCreateGroup();
+    await waitFor(() => expect(pending).toHaveLength(1));
+    await user.click(screen.getByRole("button", {name: "Create"}));
+    await waitFor(() => expect(pending).toHaveLength(2));
+    await waitForDialogToClose();
+    const loadingWhileLatestPending = screen.queryByRole("progressbar") !== null;
+    await act(async () => { pending[1]({data: {userGroups: copy(groups)}, extensions: {}}); });
+    expect(await screen.findByText("New Group")).toBeInTheDocument();
+    await act(async () => { pending[0]({data: {userGroups: [group("members", "Members")]}, extensions: {}}); });
+    expect(screen.queryByText("We could not complete the user group operation. Please refresh and try again.")).not.toBeInTheDocument();
+    expect(screen.getByText("New Group")).toBeInTheDocument();
+    expect(loadingWhileLatestPending).toBe(true);
+    expect(write).toHaveBeenCalledOnce();
+  }, 30_000);
+
+  it.each(["success", "failure"])("keeps the newest group detail spinner and truthful refresh state when an edit supersedes an expansion read, latest=%s", async latest => {
+    const originalRead = read.getMockImplementation()!;
+    const pending: Array<{resolve: (value: {data: unknown; extensions: object}) => void; reject: (error: Error) => void}> = [];
+    read.mockImplementation((name: string, variables: Record<string, unknown>) => name === "GetUserGroupById"
+      ? new Promise((resolve, reject) => { pending.push({resolve, reject}); }) : originalRead(name, variables));
+    render(view("groups"));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", {name: "Expand Members"}));
+    await waitFor(() => expect(pending).toHaveLength(1));
+    await user.click(screen.getByRole("button", {name: "Edit Members"}));
+    fireEvent.change(screen.getByRole("textbox", {name: /Group Name/}), {target: {value: "Updated Members"}});
+    await user.click(screen.getByRole("button", {name: "Update"}));
+    await waitFor(() => expect(pending).toHaveLength(2));
+    await waitForDialogToClose();
+    const loadingWhileLatestPending = (await screen.findByRole("button", {name: "Collapse Updated Members"}) as HTMLButtonElement).disabled;
+    await act(async () => {
+      if (latest === "success") pending[1].resolve({data: {userGroup: {...groups[0], users: [], purposeLinks: []}}, extensions: {}});
+      else pending[1].reject(new Error("Newest detail read unavailable"));
+    });
+    if (latest === "success") expect(await screen.findByText("No users assigned to this group.")).toBeInTheDocument();
+    else {
+      expect(await screen.findByText(/User group updated.*already saved/)).toBeInTheDocument();
+      expect(screen.queryByText("User group updated")).not.toBeInTheDocument();
+    }
+    await act(async () => { pending[0].resolve({data: {userGroup: {...group("members", "Obsolete Members"), users: [], purposeLinks: []}}, extensions: {}}); });
+    expect(screen.queryByText("We could not complete the user group operation. Please refresh and try again.")).not.toBeInTheDocument();
+    expect(loadingWhileLatestPending).toBe(true);
+    if (latest === "failure") {
+      expect(screen.getByText(/User group updated.*already saved/)).toBeInTheDocument();
+      read.mockImplementation(originalRead);
+      await user.click(screen.getByRole("button", {name: "Retry refresh"}));
+      expect(await screen.findByText("No users assigned to this group.")).toBeInTheDocument();
+      expect(screen.queryByText(/already saved/)).not.toBeInTheDocument();
+    }
+    expect(write).toHaveBeenCalledOnce();
+  }, 30_000);
+
   it("retains a failed group draft and never adds a phantom group", async () => {
     render(view("groups")); const user = await openCreateGroup(); failingWrite = true;
     await user.click(screen.getByRole("button", { name: "Create" }));

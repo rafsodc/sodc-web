@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import { QueryFetchPolicy } from "firebase/data-connect";
 import { useQueryClient } from "@tanstack/react-query";
-import { refreshDataConnectQuery } from "../../../shared/query/authoritativeDataConnect";
+import { DataConnectReadSupersededError, refreshDataConnectQuery } from "../../../shared/query/authoritativeDataConnect";
 import { invalidateUserSectionAccess } from "../../../shared/query/invalidation";
 import { dataConnect } from "../../../config/firebase";
 import {
@@ -89,6 +89,10 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [searchingUsers, setSearchingUsers] = useState(false);
   const allUsersRequestGuard = useLatestRequestGuard();
   const userSearchRequestGuard = useLatestRequestGuard();
+  const listRequestGuard = useLatestRequestGuard();
+  const detailRequests = useRef(new Map<string, number>());
+  const detailRequestSequence = useRef(0);
+  useEffect(() => () => { detailRequests.current.clear(); }, []);
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
 
   // All users: for merged group membership (explicit + by membership status)
@@ -96,12 +100,13 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [loadingAllUsers, setLoadingAllUsers] = useState(false);
 
   const fetchUserGroupsList = useCallback(async (throwOnError = false) => {
+    const request = listRequestGuard.start();
     setLoading(true);
     setError(null);
     try {
       const ref = listUserGroupsRef(dataConnect);
       const data = await refreshDataConnectQuery(queryClient, ref);
-      
+      if (!listRequestGuard.isCurrent(request)) throw new DataConnectReadSupersededError();
       const existingGroups: UserGroupWithDetails[] = data?.userGroups?.map((group) => ({
         id: group.id,
         name: group.name,
@@ -116,24 +121,31 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       
       setUserGroups(existingGroups);
     } catch (caught) {
-      reportError("admin.user-groups.load", caught);
+      // Normal superseded loads do not own the current banner or spinner.
+      // Saved-change reads still reject so their refresh cannot report success.
       if (throwOnError) throw caught;
-      setError(toAdminUserFacingError(caught, "user-groups").message);
+      if (listRequestGuard.isCurrent(request)) {
+        reportError("admin.user-groups.load", caught);
+        setError(toAdminUserFacingError(caught, "user-groups").message);
+      }
     } finally {
-      setLoading(false);
+      if (listRequestGuard.isCurrent(request)) setLoading(false);
     }
-  }, [queryClient]);
+  }, [queryClient, listRequestGuard]);
 
   const fetchGroupDetails = useCallback(async (groupId: string, force = false, throwOnError = false) => {
     if (!force && groupDetailsRef.current[groupId]) {
       return;
     }
 
+    const request = ++detailRequestSequence.current;
+    detailRequests.current.set(groupId, request);
+    const current = () => detailRequests.current.get(groupId) === request;
     setLoadingDetails((prev) => ({ ...prev, [groupId]: true }));
     try {
       const ref = getUserGroupByIdRef(dataConnect, { id: groupId });
       const data = await refreshDataConnectQuery(queryClient, ref);
-      
+      if (!current()) throw new DataConnectReadSupersededError();
       if (data?.userGroup) {
         setGroupDetails((prev) => {
           const next = { ...prev, [groupId]: data.userGroup! };
@@ -142,11 +154,13 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         });
       }
     } catch (caught) {
-      reportError("admin.user-groups.details", caught, { groupId });
       if (throwOnError) throw caught;
-      setError(toAdminUserFacingError(caught, "user-groups").message);
+      if (current()) {
+        reportError("admin.user-groups.details", caught, { groupId });
+        setError(toAdminUserFacingError(caught, "user-groups").message);
+      }
     } finally {
-      setLoadingDetails((prev) => ({ ...prev, [groupId]: false }));
+      if (current()) setLoadingDetails((prev) => ({ ...prev, [groupId]: false }));
     }
   }, [queryClient]);
 
