@@ -165,13 +165,16 @@ mutation RegisterForSection(
     userGroup(id: $userGroupId) @check(expr: "this != null", message: "USER_GROUP_NOT_FOUND") {
       subscribable @check(expr: "this == true", message: "USER_GROUP_NOT_SUBSCRIBABLE")
     }
+    existingMembership: userUserGroup(key: {userId: $userId, userGroupId: $userGroupId}) {
+      createdBy
+    }
   }
   userUserGroup_upsert(
     data: {
       userId: $userId
       userGroupId: $userGroupId
-      # Override the auth.uid schema expressions for service-account upserts.
-      createdBy_expr: "vars.userId"
+      # Override service-account auth.uid defaults; preserve existing audit history.
+      createdBy_expr: "response.query.existingMembership == null ? vars.userId : response.query.existingMembership.createdBy"
       updatedBy_expr: "vars.userId"
     }
   )
@@ -222,13 +225,16 @@ mutation SubscribeToUserGroup(
     userGroup(id: $userGroupId) @check(expr: "this != null", message: "USER_GROUP_NOT_FOUND") {
       subscribable @check(expr: "this == true", message: "USER_GROUP_NOT_SUBSCRIBABLE")
     }
+    existingMembership: userUserGroup(key: {userId: $userId, userGroupId: $userGroupId}) {
+      createdBy
+    }
   }
   userUserGroup_upsert(
     data: {
       userId: $userId
       userGroupId: $userGroupId
-      # Override the auth.uid schema expressions for service-account upserts.
-      createdBy_expr: "vars.userId"
+      # Override service-account auth.uid defaults; preserve existing audit history.
+      createdBy_expr: "response.query.existingMembership == null ? vars.userId : response.query.existingMembership.createdBy"
       updatedBy_expr: "vars.userId"
     }
   )

@@ -78,6 +78,19 @@ for (const operation of ["SubscribeToUserGroup", "RegisterForSection"] as const)
     expect(await memberships()).toEqual([{ userId: caller, userGroupId: id, createdBy: caller, updatedBy: caller }]);
     expect((await memberships()).some(row => row.userId === other)).toBe(false);
   });
+  for (const creator of ["local-admin", null]) it("preserves an existing " + (creator === null ? "null" : "different") + " creator when joining repeatedly", async () => {
+    const caller = await member("existing"), id = await group();
+    await dc.executeGraphql(`mutation ExistingSubscriptionMembership($userId: String!, $group: UUID!, $creator: String, $actor: String!, $createdAt: Timestamp!) {
+      userUserGroup_insert(data: {userId: $userId, userGroupId: $group, createdBy_expr: "vars.creator", updatedBy_expr: "vars.actor", createdAt: $createdAt})
+    }`, { variables: { userId: caller, group: id, creator, actor: "local-admin", createdAt: "2020-01-02T03:04:05Z" } });
+    const createdAt = async () => (await dc.executeGraphql<{ userUserGroups: { createdAt: string }[] }, { userId: string }>(
+      "query ExistingSubscriptionCreatedAt($userId: String!) { userUserGroups(where: {userId: {eq: $userId}}) {createdAt} }", { variables: { userId: caller } })).data.userUserGroups[0].createdAt;
+    const originalCreatedAt = await createdAt();
+    expect(await memberships()).toEqual([{ userId: caller, userGroupId: id, createdBy: creator, updatedBy: "local-admin" }]);
+    await join(variables(caller, id)); await join(variables(caller, id));
+    expect(await memberships()).toEqual([{ userId: caller, userGroupId: id, createdBy: creator, updatedBy: caller }]);
+    expect(await createdAt()).toBe(originalCreatedAt);
+  });
   it("denies direct clients even when they forge another UID and enabled/admin claims", async () => {
     const caller = await member("caller"), victim = await member("victim"), id = await group();
     await expect(join(variables(victim, id), { impersonate: { authClaims: { sub: caller, enabled: true, admin: true, securityVersion: 1 } } })).rejects.toThrow();
