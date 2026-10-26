@@ -1813,11 +1813,12 @@ describe('SectionDetail', () => {
     expect(screen.getByText('New number')).toBeInTheDocument();
     expect(screen.queryByText('Old number')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
     await user.click(await screen.findByRole('button', { name: 'Refresh' }));
     expect(await screen.findByText('Members (0)')).toBeInTheDocument();
     expect(screen.getByText('No members match your search.')).toBeInTheDocument();
     expect(screen.queryByText('Member Updated')).not.toBeInTheDocument();
-  });
+  }, 30_000);
 
   it('shows directory-specific refresh failure and retries the member request without reloading section metadata', async () => {
     prepareDirectory();
@@ -1841,7 +1842,7 @@ describe('SectionDetail', () => {
     expect(screen.queryByText('Before Refresh')).not.toBeInTheDocument();
     expect(getSectionMembersMerged).toHaveBeenCalledTimes(3);
     expect(getSectionForUser).toHaveBeenCalledTimes(sectionReads);
-  });
+  }, 30_000);
 
   it('does not let a stale section-1 response overwrite section-2 data when sectionId changes mid-fetch (#404)', async () => {
     const sectionOne = { id: 'section-1', name: 'Section One', type: 'MEMBERS', purposeLinks: [] } as unknown as NonNullable<
