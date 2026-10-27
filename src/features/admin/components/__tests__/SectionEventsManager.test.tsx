@@ -1,6 +1,6 @@
 import { guestCall } from "../../../guests/api";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "../../../../test-utils";
+import { act, fireEvent, render, screen, waitFor, within } from "../../../../test-utils";
 import SectionEventsManager from "../SectionEventsManager";
 import * as reactGenerated from "../../../../shared/query/authoritativeHooks";
 import * as generated from "@dataconnect/generated";
@@ -105,6 +105,7 @@ describe("SectionEventsManager", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(firebaseDataConnect.executeQuery).mockReset().mockResolvedValue({ data: null } as never);
+    vi.mocked(firebaseDataConnect.executeMutation).mockReset().mockResolvedValue({} as never);
     vi.mocked(guestCall).mockResolvedValue({ event: {}, guests: [], ticketTypes: [] });
     vi.mocked(firebaseFunctions.reviewBookingRevision).mockResolvedValue({
       success: true,
@@ -190,18 +191,17 @@ describe("SectionEventsManager", () => {
       isLoading: false,
       isError: false,
     });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} initialEventId="ev-1" onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /^ticket types$/i }));
     expect(await screen.findByText("Organiser/club guest ticket")).toBeInTheDocument();
     expect(screen.getByText("Invited guests")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Delete Club dinner" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(generated.deleteTicketTypeRef).toHaveBeenCalledWith(
       expect.anything(),
       { id: "org-type" },
     ));
-    confirm.mockRestore();
   });
 
   it("explains when a ticket type cannot be deleted because tickets exist", async () => {
@@ -224,17 +224,75 @@ describe("SectionEventsManager", () => {
     vi.mocked(firebaseDataConnect.executeMutation).mockRejectedValueOnce(
       new Error("TICKET_TYPE_IN_USE"),
     );
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} initialEventId="ev-1" onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /^ticket types$/i }));
     await user.click(screen.getByRole("button", { name: "Delete Dinner" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
     expect(
       await screen.findByText(
         "This ticket type cannot be deleted because tickets already exist.",
       ),
     ).toBeInTheDocument();
-    confirm.mockRestore();
+  });
+
+  const deletionEvent = {
+    id: "ev-1", title: "Annual Dinner", startDateTime: "2030-03-01T18:00:00Z", endDateTime: "2030-03-01T22:00:00Z",
+    bookingStartDateTime: "2030-02-01T00:00:00Z", bookingEndDateTime: "2030-02-28T23:59:59Z",
+    location: "Hall", guestOfHonour: null, sponsors: null, details: null, maxGuestsWithoutModeratorApproval: 0,
+  };
+
+  async function openDeletion(kind: "event" | "ticket type") {
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [deletionEvent] } }, isLoading: false, isError: false });
+    mockGetEventById({
+      data: { event: { ...deletionEvent, ticketTypes: [{
+        id: "type-1", title: "Dinner", description: "Dinner", price: 25, sortOrder: 0,
+        audience: generated.TicketAudience.MEMBER, userGroup: { id: "members", name: "Members", membershipStatuses: [] },
+        includesDinner: true, includesSymposium: false,
+      }] } }, isLoading: false, isError: false,
+    });
+    const user = userEvent.setup();
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName}
+      initialEventId={kind === "ticket type" ? deletionEvent.id : undefined} onBack={onBack} />);
+    if (kind === "ticket type") await user.click(screen.getByRole("button", { name: /^ticket types$/i }));
+    await user.click(screen.getByRole("button", { name: kind === "event" ? "Delete Annual Dinner" : "Delete Dinner" }));
+    return { user, dialog: screen.getByRole("dialog", { name: `Delete ${kind}?` }) };
+  }
+
+  it.each(["event", "ticket type"] as const)("names the %s and cancels without a mutation or native prompt", async (kind) => {
+    const nativeConfirm = vi.spyOn(window, "confirm");
+    try {
+      const { user, dialog } = await openDeletion(kind);
+      expect(dialog).toHaveTextContent(kind === "event" ? "Annual Dinner" : "Dinner");
+      expect(dialog).toHaveTextContent("This cannot be undone.");
+      if (kind === "event") expect(dialog).toHaveTextContent("remove its unused ticket types");
+      expect(firebaseDataConnect.executeMutation).not.toHaveBeenCalled();
+      await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(firebaseDataConnect.executeMutation).not.toHaveBeenCalled();
+      expect(nativeConfirm).not.toHaveBeenCalled();
+    } finally {
+      nativeConfirm.mockRestore();
+    }
+  });
+
+  it.each(["event", "ticket type"] as const)("guards the exact %s deletion against rapid confirmation and pending dismissal", async (kind) => {
+    let finishDelete!: (value: unknown) => void;
+    vi.mocked(firebaseDataConnect.executeMutation).mockImplementationOnce(() => new Promise((resolve) => { finishDelete = resolve; }) as never);
+    const { user, dialog } = await openDeletion(kind);
+    const deleteButton = within(dialog).getByRole("button", { name: "Delete" });
+    act(() => { fireEvent.click(deleteButton); fireEvent.click(deleteButton); });
+    expect(within(dialog).getByRole("button", { name: "Deleting…" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog", { name: `Delete ${kind}?` })).toBeInTheDocument();
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    expect(kind === "event" ? generated.deleteEventRef : generated.deleteTicketTypeRef).toHaveBeenCalledWith(
+      expect.anything(), { id: kind === "event" ? "ev-1" : "type-1" },
+    );
+    await act(async () => { finishDelete({}); });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
   });
 
   it("renders events list with section name", async () => {
@@ -254,10 +312,10 @@ describe("SectionEventsManager", () => {
       isLoading: false,
       isError: false,
     });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: "Delete Annual Dinner" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(generated.deleteEventRef).toHaveBeenCalledWith(
       expect.anything(),
       { id: "ev-1" },
@@ -266,7 +324,6 @@ describe("SectionEventsManager", () => {
       expect.objectContaining({ name: "GetEventsForSection" }), { fetchPolicy: "SERVER_ONLY" },
     );
     expect(vi.mocked(firebaseDataConnect.executeQuery).mock.calls.every(([ref]) => ref.name === "GetEventsForSection")).toBe(true);
-    confirm.mockRestore();
   });
 
   it("explains when an event cannot be deleted because tickets exist", async () => {
@@ -279,16 +336,15 @@ describe("SectionEventsManager", () => {
     vi.mocked(firebaseDataConnect.executeMutation).mockRejectedValueOnce(
       new Error("EVENT_HAS_TICKETS"),
     );
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: "Delete Annual Dinner" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
     expect(
       await screen.findByText(
         "This event cannot be deleted because tickets already exist.",
       ),
     ).toBeInTheDocument();
-    confirm.mockRestore();
   });
 
   it("shows events table when section has events", async () => {

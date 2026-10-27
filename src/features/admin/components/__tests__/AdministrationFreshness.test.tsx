@@ -106,6 +106,7 @@ beforeEach(() => {
     if (name === "UpdateUserGroup") groups = groups.map((row) => row.id === variables.id ? { ...row, name: String(variables.name), description: String(variables.description ?? "") } : row);
     if (name === "CreateTicketType") ticketTypes.push({ ...ticket("created-type", String(variables.title)), price: Number(variables.price) });
     if (name === "UpdateTicketType") ticketTypes = ticketTypes.map((row) => row.id === variables.id ? { ...row, title: String(variables.title), price: Number(variables.price) } : row);
+    if (name === "DeleteUserGroup") groups = groups.filter((row) => row.id !== variables.id);
     if (name === "DeleteTicketType") ticketTypes = ticketTypes.filter((row) => row.id !== variables.id);
     if (name === "DeleteEvent") eventExists = false;
     failingRead = failReadsAfterWrite;
@@ -270,8 +271,9 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     expect(screen.getByLabelText(/^price/i)).toHaveValue(42);
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     await waitForDialogToClose();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     await user.click(await screen.findByRole("button", { name: "Delete Updated ticket" }));
+    await user.click(within(screen.getByRole("dialog", { name: "Delete ticket type?" })).getByRole("button", { name: "Delete" }));
+    await waitForDialogToClose();
     await waitFor(() => expect(screen.queryByText("Updated ticket")).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Edit Dinner" })).toBeInTheDocument();
     rendered.rerender(view("events", "event-list"));
@@ -297,6 +299,8 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     const oldDetail = queryClient.fetchQuery({ ...dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })), staleTime: 0 }).catch(() => undefined);
     await waitFor(() => expect(oldDetailStarted).toBe(true));
     await user.click(await screen.findByRole("button", { name: "Delete Annual Dinner" }));
+    await user.click(within(screen.getByRole("dialog", { name: "Delete event?" })).getByRole("button", { name: "Delete" }));
+    await waitForDialogToClose();
     expect(await screen.findByText("No events yet. Add one to get started.")).toBeInTheDocument();
     await act(async () => {
       completeOldDetail({ data: { event: { ...event, ticketTypes } }, extensions: {} });
@@ -306,6 +310,64 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     rendered.rerender(view("event", "revisit-deleted-event"));
     expect(await screen.findByRole("heading", { name: "Event admin: Event" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Event admin: Annual Dinner" })).not.toBeInTheDocument();
+  }, 30_000);
+
+  it.each([
+    { kind: "event", screenName: "events" as const, trigger: "Delete Annual Dinner", dialogTitle: "Delete event?", writeName: "DeleteEvent", readName: "GetEventsForSection", warning: /Event.*deleted.*already saved/ },
+    { kind: "ticket type", screenName: "event" as const, trigger: "Delete Dinner", dialogTitle: "Delete ticket type?", writeName: "DeleteTicketType", readName: "GetEventById", warning: /Ticket type deleted.*already saved/ },
+    { kind: "user group", screenName: "groups" as const, trigger: "Delete Members", dialogTitle: "Delete user group?", writeName: "DeleteUserGroup", readName: "ListUserGroups", warning: /User group.*deleted.*already saved/ },
+  ])("closes a saved $kind deletion before its refresh finishes and retries only failed reads", async ({ kind, screenName, trigger, dialogTitle, writeName, readName, warning }) => {
+    // Prime the installed SDK's lower cache before deletion, so recovery must
+    // replace a real stale snapshot rather than merely rerender mocked hooks.
+    if (screenName === "groups") await executeQuery(listUserGroupsRef(context.dc));
+    else {
+      await executeQuery(getEventsForSectionRef(context.dc, { sectionId: "section-1" }));
+      if (screenName === "event") await executeQuery(getEventByIdRef(context.dc, { id: event.id }));
+    }
+    render(view(screenName));
+    const user = userEvent.setup();
+    if (screenName === "event") await user.click(await screen.findByRole("button", { name: "Ticket types" }));
+    await user.click(await screen.findByRole("button", { name: trigger }));
+    expect(write).not.toHaveBeenCalled();
+
+    const originalRead = read.getMockImplementation()!;
+    let rejectSavedRefresh!: (error: Error) => void;
+    let refreshStarted = false;
+    read.mockImplementation((name: string, variables: Record<string, unknown>) => {
+      if (name === readName && failingRead === readName && !refreshStarted) {
+        refreshStarted = true;
+        return new Promise((_resolve, reject) => { rejectSavedRefresh = reject; });
+      }
+      return originalRead(name, variables);
+    });
+    failReadsAfterWrite = readName;
+    await user.click(within(screen.getByRole("dialog", { name: dialogTitle })).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(refreshStarted).toBe(true));
+    await waitForDialogToClose();
+    expect(write.mock.calls.map(([name]) => name)).toEqual([writeName]);
+
+    await act(async () => { rejectSavedRefresh(new Error("Saved deletion read unavailable")); });
+    expect(await screen.findByText(warning)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry refresh" }));
+    expect(await screen.findByText(warning)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Retry refresh" })).toBeEnabled());
+    expect(write.mock.calls.map(([name]) => name)).toEqual([writeName]);
+
+    failingRead = null;
+    await user.click(screen.getByRole("button", { name: "Retry refresh" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Retry refresh" })).not.toBeInTheDocument());
+    if (kind === "event") {
+      expect(screen.getByText("No events yet. Add one to get started.")).toBeInTheDocument();
+      expect((await executeQuery(getEventsForSectionRef(context.dc, { sectionId: "section-1" }))).data.section?.events).toEqual([]);
+    } else if (kind === "ticket type") {
+      expect(screen.queryByRole("button", { name: "Edit Dinner" })).not.toBeInTheDocument();
+      expect((await executeQuery(getEventByIdRef(context.dc, { id: event.id }))).data.event?.ticketTypes).toEqual([]);
+    } else {
+      expect(screen.getByText("No user groups found.")).toBeInTheDocument();
+      expect((await executeQuery(listUserGroupsRef(context.dc))).data.userGroups).toEqual([]);
+    }
+    expect(write.mock.calls.map(([name]) => name)).toEqual([writeName]);
   }, 30_000);
 
   it("keeps failed ticket drafts and revalidates a failed confirmed-write refresh on a later visit", async () => {
@@ -377,9 +439,13 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     expect(ticketTypes[0].title).toBe("Dinner");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     await waitForDialogToClose();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     await user.click(await screen.findByRole("button", { name: "Delete Dinner" }));
+    const deletionDialog = screen.getByRole("dialog", { name: "Delete ticket type?" });
+    await user.click(within(deletionDialog).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(write).toHaveBeenCalledTimes(2));
+    expect(within(deletionDialog).getByRole("alert")).toBeInTheDocument();
+    await user.click(within(deletionDialog).getByRole("button", { name: "Cancel" }));
+    await waitForDialogToClose();
     expect(screen.getByRole("button", { name: "Edit Dinner" })).toBeInTheDocument();
     expect(ticketTypes).toHaveLength(1);
     expect(screen.queryByText("Unsaved title")).not.toBeInTheDocument();
