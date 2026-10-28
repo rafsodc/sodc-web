@@ -61,15 +61,21 @@ const initialValue = <T,>(initial: T | (() => T)): T => typeof initial === "func
 export function useSessionDraft<T>(key: string, initial: T | (() => T)): [T, Dispatch<SetStateAction<T>>, () => void] {
   const { lifecycle, uid, generation } = captureSession();
   const session = useMemo(() => ({ lifecycle, uid, generation }), [lifecycle, uid, generation]);
+  const resource = useMemo(() => ({ session, key }), [session, key]);
+  const activeResource = useRef<typeof resource | null>(resource);
+  useLayoutEffect(() => {
+    activeResource.current = resource;
+    return () => { if (activeResource.current === resource) activeResource.current = null; };
+  }, [resource]);
   // Like useState, an initializer belongs to the resource's first render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const initializer = useMemo(() => initial, [session, key]);
+  const initializer = useMemo(() => initial, [resource]);
   const [local, setLocal] = useState<LocalDraft<T>>(() => ({ session, key, value: readOr(session, key, () => initialValue(initializer)) }));
   const value = available(session) ? (matches(local, session, key) ? local.value : readOr(session, key, () => initialValue(initializer))) : initialValue(initializer);
   const latestLocal = useRef(local);
   useLayoutEffect(() => { latestLocal.current = local; }, [local]);
   const update: Dispatch<SetStateAction<T>> = useCallback((action: SetStateAction<T>) => {
-    if (!available(session)) return;
+    if (activeResource.current !== resource || !available(session)) return;
     if (!session.lifecycle || !session.uid) {
       // Isolated/anonymous consumers retain ordinary React state, never a cache.
       setLocal(previous => {
@@ -85,14 +91,14 @@ export function useSessionDraft<T>(key: string, initial: T | (() => T)): [T, Dis
     const entry = { session, key, value: next };
     latestLocal.current = entry;
     setLocal(entry);
-  }, [session, key, initializer]);
+  }, [session, key, initializer, resource]);
   const discard = useCallback(() => {
-    if (!available(session)) return;
+    if (activeResource.current !== resource || !available(session)) return;
     remove(session, key);
     const entry = { session, key, value: initialValue(initializer) };
     latestLocal.current = entry;
     setLocal(entry);
-  }, [session, key, initializer]);
+  }, [session, key, initializer, resource]);
   return [value, update, discard];
 }
 

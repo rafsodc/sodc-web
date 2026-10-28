@@ -62,6 +62,29 @@ describe("session-scoped navigation drafts", () => {
     const next = renderHook(() => useSessionDraft("announcement:one", ""));
     expect(next.result.current[0]).toBe("");
   });
+  it("rejects obsolete resource callbacks, including after returning to the same URL", () => {
+    session();
+    const hook = renderHook(({ key }) => useSessionDraft(key, ""), { initialProps: { key: "A" } });
+    act(() => hook.result.current[1]("A draft"));
+    const oldA = hook.result.current;
+    hook.rerender({ key: "B" });
+    act(() => hook.result.current[1]("B draft"));
+    act(() => { oldA[1]("Late A"); oldA[2](); });
+    expect(hook.result.current[0]).toBe("B draft");
+    hook.rerender({ key: "A" });
+    expect(hook.result.current[0]).toBe("A draft");
+    act(() => { oldA[1]("Even later A"); oldA[2](); });
+    expect(hook.result.current[0]).toBe("A draft");
+  });
+  it("rejects callbacks after unmount and preserves the last user-authored draft", () => {
+    session();
+    const first = renderHook(() => useSessionDraft("A", ""));
+    act(() => first.result.current[1]("Authored"));
+    const late = first.result.current;
+    first.unmount();
+    act(() => { late[1]("Obsolete"); late[2](); });
+    expect(renderHook(() => useSessionDraft("A", "")).result.current[0]).toBe("Authored");
+  });
   it("does not restore after a replacement lifecycle, even for the same UID", () => {
     session();
     const hook = renderHook(() => useSessionDraft("event:one", ""));
