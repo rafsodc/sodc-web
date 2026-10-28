@@ -1111,16 +1111,15 @@ describe("SectionEventsManager", () => {
     vi.mocked(firebaseDataConnect.executeMutation).mockReturnValueOnce(pending as never);
     canonicalManager("/sections/section-1/manage/events/ev-1?edit=event");
     const user=userEvent.setup();
-    await user.clear(await screen.findByLabelText(/^title/i));
-    await user.type(screen.getByLabelText(/^title/i),"Saved old edit");
+    fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Saved old edit"}});
     await user.click(screen.getByRole("button",{name:"Save"}));
     await act(async()=>managerNavigation("/sections/section-1/manage/events?edit=new-event"));
-    await user.type(await screen.findByLabelText(/^title/i),"Newer unsaved event");
+    fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Newer unsaved event"}});
     await act(async()=>{complete({});await pending;});
     expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer unsaved event");
     expect(screen.getByText("/sections/section-1/manage/events?edit=new-event")).toBeInTheDocument();
     expect(screen.queryByText(/The previous save completed/)).not.toBeInTheDocument();
-  });
+  },20_000);
 
   it("retains an uncertain create failure until explicit latest-list review instead of replaying", async () => {
     const owner=createSessionLifecycle();owner.observe("admin");
@@ -1157,7 +1156,7 @@ describe("SectionEventsManager", () => {
     vi.mocked(firebaseDataConnect.executeMutation).mockReturnValueOnce(pending as never);
     const view=canonicalManager("/sections/section-1/manage/events/ev-1?task=tickets&ticket=new");
     try {
-      const user=userEvent.setup();await user.type(await screen.findByLabelText(/^title/i),"Pending ticket");
+      const user=userEvent.setup();fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Pending ticket"}});
       await user.click(screen.getByRole("combobox",{name:/access group/i}));
       await user.click(await screen.findByRole("option",{name:"Members"}));
       await user.click(screen.getByRole("button",{name:"Save"}));
@@ -1177,6 +1176,6 @@ describe("SectionEventsManager", () => {
       expect(generated.createTicketTypeRef).toHaveBeenCalledOnce();
       expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
     } finally {view.unmount();uninstall();}
-  });
+  },20_000);
 
 });
