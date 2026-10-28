@@ -24,18 +24,53 @@ interface MutationJournal {
   entries: Map<string, MutationEntry<unknown>>;
   listeners: Set<() => void>;
   unsubscribe: () => void;
+  removeUnload: (() => void) | null;
 }
 const journals = new WeakMap<SessionLifecycle, MutationJournal>();
 const IDLE: MutationSnapshot<never> = Object.freeze({ status: "idle", result: undefined, error: null });
 const available = (session: SessionToken) => isSessionCurrent(session) && !isPrivateSessionSuspended(session);
 const publish = (journal: MutationJournal) => journal.listeners.forEach(listener => listener());
 function clear(journal: MutationJournal): void {
+  journal.removeUnload?.();
+  journal.removeUnload = null;
   journal.entries.clear();
   journal.unsubscribe();
   publish(journal);
 }
 function emptyJournal(session: SessionToken): MutationJournal {
-  return { uid: session.uid, generation: session.generation, entries: new Map(), listeners: new Set(), unsubscribe: () => {} };
+  return { uid: session.uid, generation: session.generation, entries: new Map(), listeners: new Set(), unsubscribe: () => {}, removeUnload: null };
+}
+/** Errors remain protected until reconciliation because a failed response may
+ * hide a committed write. A known successful receipt no longer needs a warning. */
+function hasUnreconciledWrite(journal: MutationJournal): boolean {
+  return [...journal.entries.values()].some(entry => entry.snapshot.status === "pending" || entry.snapshot.status === "error");
+}
+function syncUnload(journal: MutationJournal, session: SessionToken): void {
+  const privateJournal = !!session.lifecycle && !!session.uid;
+  const warn = available(session) && hasUnreconciledWrite(journal) && (privateJournal || journal.listeners.size > 0);
+  if (!warn) { journal.removeUnload?.(); journal.removeUnload = null; return; }
+  if (journal.removeUnload || typeof window === "undefined") return;
+  // The document listener must not keep an abandoned lifecycle or its private
+  // receipts alive after the runtime is replaced without a retirement signal.
+  const journalRef = new WeakRef(journal);
+  const lifecycleRef = session.lifecycle ? new WeakRef(session.lifecycle) : null;
+  const { uid, generation } = session;
+  const listener = (event: BeforeUnloadEvent) => {
+    const owner = journalRef.deref();
+    if (!owner) { window.removeEventListener("beforeunload", listener); return; }
+    const lifecycle = lifecycleRef?.deref() ?? null;
+    const token = { lifecycle, uid, generation };
+    if ((lifecycleRef && !lifecycle) || !available(token)) {
+      if (lifecycle && journals.get(lifecycle) === owner) journals.delete(lifecycle);
+      clear(owner);
+      return;
+    }
+    if (!hasUnreconciledWrite(owner)) return;
+    event.preventDefault();
+    event.returnValue = "";
+  };
+  window.addEventListener("beforeunload", listener);
+  journal.removeUnload = () => window.removeEventListener("beforeunload", listener);
 }
 function findJournal(session: SessionToken, isolated: MutationJournal): MutationJournal | undefined {
   if (!available(session)) return undefined;
@@ -63,7 +98,9 @@ function ensureJournal(session: SessionToken, isolated: MutationJournal): Mutati
 /** A resource's pending or settled write survives SPA navigation in this private
  * document. A failure may mean the server committed: runOnce reuses its rejection
  * until the caller reconciles server state and explicitly acknowledges it.
- * Pending writes cannot be acknowledged. No storage or automatic retries are used.
+ * Pending writes cannot be acknowledged. Pending/uncertain writes retain a document
+ * unload warning even while their editors are unmounted. Successful receipts do not
+ * warn. No storage or automatic retries are used.
  */
 export function useSessionMutation<T>(resourceKey: string) {
   const { lifecycle, uid, generation } = captureSession();
@@ -84,6 +121,7 @@ export function useSessionMutation<T>(resourceKey: string) {
     journal.listeners.add(listener);
     return () => {
       journal.listeners.delete(listener);
+      syncUnload(journal, session);
       if (!available(session)) clearUnavailableJournal(session, isolated);
     };
   }, [session, isolated]);
@@ -106,11 +144,13 @@ export function useSessionMutation<T>(resourceKey: string) {
     void promise.catch(() => {});
     const entry: MutationEntry<T> = { promise, snapshot: { status: "pending", result: undefined, error: null } };
     journal.entries.set(resourceKey, entry as MutationEntry<unknown>);
+    syncUnload(journal, session);
     publish(journal);
     const current = () => available(session) && findJournal(session, isolated) === journal && journal.entries.get(resourceKey) === entry;
     const fail = (error: unknown) => {
       if (!current()) { clearUnavailableJournal(session, isolated); reject(new SessionChangedError()); return; }
       entry.snapshot = { status: "error", result: undefined, error };
+      syncUnload(journal, session);
       publish(journal);
       reject(error);
     };
@@ -118,6 +158,7 @@ export function useSessionMutation<T>(resourceKey: string) {
       void Promise.resolve(operation()).then(result => {
         if (!current()) { clearUnavailableJournal(session, isolated); reject(new SessionChangedError()); return; }
         entry.snapshot = { status: "success", result, error: null };
+        syncUnload(journal, session);
         publish(journal);
         resolve(result);
       }, fail);
@@ -132,6 +173,7 @@ export function useSessionMutation<T>(resourceKey: string) {
     const journal = findJournal(session, isolated);
     if (!journal || journal.entries.get(resourceKey)?.snapshot.status === "pending") return;
     journal.entries.delete(resourceKey);
+    syncUnload(journal, session);
     publish(journal);
   }, [resource, session, resourceKey, isolated]);
 

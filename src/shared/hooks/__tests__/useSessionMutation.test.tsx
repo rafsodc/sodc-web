@@ -4,8 +4,9 @@ import { captureSession, createSessionLifecycle, installSessionRuntime, SessionC
 import { useSessionMutation } from "../useSessionMutation";
 
 const uninstalls: Array<() => void> = [];
+const owners: Array<ReturnType<typeof createSessionLifecycle>> = [];
 function session(uid = "member-a") {
-  const lifecycle = createSessionLifecycle(); lifecycle.observe(uid);
+  const lifecycle = createSessionLifecycle(); lifecycle.observe(uid); owners.push(lifecycle);
   uninstalls.push(installSessionRuntime({ lifecycle, retire: () => lifecycle.retire(), signOut: async () => lifecycle.retire() }));
   return lifecycle;
 }
@@ -15,7 +16,8 @@ function deferred<T>() {
   const promise = new Promise<T>((done, failed) => { resolve = done; reject = failed; });
   return { promise, resolve, reject };
 }
-afterEach(() => { cleanup(); uninstalls.reverse().forEach(uninstall => uninstall()); uninstalls.length = 0; });
+afterEach(() => { cleanup(); owners.forEach(owner => owner.retire()); owners.length = 0;
+  uninstalls.reverse().forEach(uninstall => uninstall()); uninstalls.length = 0; vi.restoreAllMocks(); });
 
 describe("session mutation journal", () => {
   it("shares one unresolved create after leaving and returning, including synchronous repeated clicks", async () => {
@@ -144,5 +146,89 @@ describe("session mutation journal", () => {
     await act(async () => { await first.result.current.runOnce(async () => "isolated"); });
     expect(first.result.current.result).toBe("isolated"); first.unmount();
     expect(renderHook(() => useSessionMutation<string>("A")).result.current.status).toBe("idle");
+  });
+});
+
+function unloadBlocked() {
+  const event = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
+}
+
+describe("document protection for unreconciled session writes", () => {
+  it("keeps the warning after every editor unmounts and removes it when the write succeeds", async () => {
+    session(); const pending = deferred<string>();
+    const hook = renderHook(() => useSessionMutation<string>("create"));
+    let promise!: Promise<string>;
+    act(() => { promise = hook.result.current.runOnce(() => pending.promise); });
+    expect(unloadBlocked()).toBe(true);
+    hook.unmount();
+    expect(unloadBlocked()).toBe(true);
+    await act(async () => { pending.resolve("created"); await promise; });
+    expect(unloadBlocked()).toBe(false);
+    expect(renderHook(() => useSessionMutation<string>("create")).result.current.result).toBe("created");
+  });
+
+  it("keeps an uncertain error protected until explicit reconciliation acknowledgement", async () => {
+    session(); const hook = renderHook(() => useSessionMutation<string>("create"));
+    await act(async () => { await expect(hook.result.current.runOnce(async () => { throw new Error("Unknown commit result"); })).rejects.toThrow(); });
+    hook.unmount();
+    expect(unloadBlocked()).toBe(true);
+    const restored = renderHook(() => useSessionMutation<string>("create"));
+    act(() => restored.result.current.acknowledge());
+    expect(unloadBlocked()).toBe(false);
+    expect(restored.result.current.status).toBe("idle");
+  });
+
+  it("uses one handler for all resources and consumers in the private session", async () => {
+    session(); const add = vi.spyOn(window, "addEventListener"); const remove = vi.spyOn(window, "removeEventListener");
+    const a = deferred<string>(); const b = deferred<string>();
+    const first = renderHook(() => useSessionMutation<string>("A"));
+    const second = renderHook(() => useSessionMutation<string>("B"));
+    let pa!: Promise<string>; let pb!: Promise<string>;
+    act(() => { pa = first.result.current.runOnce(() => a.promise); pb = second.result.current.runOnce(() => b.promise); });
+    expect(add.mock.calls.filter(([type]) => type === "beforeunload")).toHaveLength(1);
+    first.unmount(); second.unmount();
+    await act(async () => { a.resolve("A result"); await pa; });
+    expect(unloadBlocked()).toBe(true);
+    await act(async () => { b.resolve("B result"); await pb; });
+    expect(unloadBlocked()).toBe(false);
+    expect(remove.mock.calls.filter(([type]) => type === "beforeunload")).toHaveLength(1);
+  });
+
+  it("removes the warning at retirement and never revives a retired write receipt", async () => {
+    const owner = session(); const pending = deferred<string>();
+    const hook = renderHook(() => useSessionMutation<string>("create"));
+    let promise!: Promise<string>;
+    act(() => { promise = hook.result.current.runOnce(() => pending.promise); });
+    hook.unmount(); expect(unloadBlocked()).toBe(true);
+    act(() => owner.retire());
+    expect(unloadBlocked()).toBe(false);
+    await act(async () => { pending.resolve("old private result"); await expect(promise).rejects.toBeInstanceOf(SessionChangedError); });
+    expect(unloadBlocked()).toBe(false);
+    session();
+    expect(renderHook(() => useSessionMutation<string>("create")).result.current.status).toBe("idle");
+  });
+
+  it.each(["replace", "suspend"] as const)("never blocks unload after session %s", async change => {
+    session(); const pending = deferred<string>(); const hook = renderHook(() => useSessionMutation<string>("create"));
+    let promise!: Promise<string>;
+    act(() => { promise = hook.result.current.runOnce(() => pending.promise); });
+    hook.unmount();
+    if (change === "replace") session(); else suspendPrivateSession(captureSession());
+    expect(unloadBlocked()).toBe(false);
+    await act(async () => { pending.resolve("obsolete"); await expect(promise).rejects.toBeInstanceOf(SessionChangedError); });
+    expect(unloadBlocked()).toBe(false);
+  });
+
+  it("does not keep an anonymous document listener after its isolated consumer unmounts", async () => {
+    const pending = deferred<string>(); const hook = renderHook(() => useSessionMutation<string>("isolated"));
+    let promise!: Promise<string>;
+    act(() => { promise = hook.result.current.runOnce(() => pending.promise); });
+    expect(unloadBlocked()).toBe(true);
+    hook.unmount();
+    expect(unloadBlocked()).toBe(false);
+    await act(async () => { pending.resolve("done"); await promise; });
+    expect(unloadBlocked()).toBe(false);
   });
 });
