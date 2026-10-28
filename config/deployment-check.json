@@ -84,6 +84,7 @@
     "getOrganiserGuestTicket",
     "getSectionEventsForUser",
     "getSectionForUser",
+    "getSectionMemberNamesByIds",
     "getSectionMembersMerged",
     "getTemplateSyncStatus",
     "grantAdmin",
