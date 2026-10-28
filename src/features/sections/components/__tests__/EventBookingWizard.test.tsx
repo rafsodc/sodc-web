@@ -7,6 +7,7 @@ import * as reactGenerated from "../../../../shared/query/authoritativeHooks";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 import * as bookingInvalidation from "../../../../shared/query/invalidation";
 import EventBookingWizard from "../EventBookingWizard";
+import { useAdminClaim } from "../../../users/hooks/useAdminClaim";
 
 vi.mock("../../../../shared/query/authoritativeHooks", () => ({
   useGetCurrentUser: vi.fn(),
@@ -15,7 +16,8 @@ vi.mock("../../../../shared/query/authoritativeHooks", () => ({
   useGetMyBookingPaymentAdjustments: vi.fn(),
   useGetUserAccessGroups: vi.fn(),
 }));
-vi.mock("../../../../config/firebase", () => ({ dataConnect: {} }));
+vi.mock("../../../../config/firebase", () => ({ dataConnect: {}, auth: { currentUser: { uid: "user-1" } } }));
+vi.mock("../../../users/hooks/useAdminClaim", () => ({ useAdminClaim: vi.fn(() => false) }));
 vi.mock("../../../../shared/query/invalidation", () => ({
   refreshMyBookingsFromServer: vi.fn().mockResolvedValue({ user: { bookings: [] } }),
 }));
@@ -149,6 +151,7 @@ function renderWizard(props: {
 describe("EventBookingWizard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useAdminClaim).mockReturnValue(false);
     vi.mocked(firebaseFunctions.submitEventBooking).mockResolvedValue({
       bookingId: "booking-new",
       status: "SUBMITTED",
@@ -213,6 +216,52 @@ describe("EventBookingWizard", () => {
     expect(screen.getByText(/bookings are closed to members/i)).toBeInTheDocument();
     expect(screen.getByText(/as a moderator for this section/i)).toBeInTheDocument();
     expect(screen.getByText("Your details")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["2099-01-01T00:00:00Z", "2100-01-01T00:00:00Z", /not yet open to members/i],
+    ["2019-01-01T00:00:00Z", "2020-01-01T00:00:00Z", /closed to members/i],
+  ])("explains administrator access and opens the wizard outside %s", (start, end, notice) => {
+    vi.mocked(useAdminClaim).mockReturnValue(true);
+    renderWizard({ eventOverride: { ...event, bookingStartDateTime: start, bookingEndDateTime: end } });
+    expect(screen.getByText(notice)).toBeInTheDocument();
+    expect(screen.getByText(/as an administrator/i)).toBeInTheDocument();
+    expect(screen.queryByText(/as a moderator for this section/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Your details")).toBeInTheDocument();
+  });
+
+  it("submits an eligible administrator booking before opening through the ordinary flow", async () => {
+    vi.mocked(useAdminClaim).mockReturnValue(true);
+    const user = userEvent.setup();
+    renderWizard({ eventOverride: { ...event, bookingStartDateTime: "2099-01-01", bookingEndDateTime: "2100-01-01" } });
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Submit booking" }));
+    await waitFor(() => expect(firebaseFunctions.submitEventBooking).toHaveBeenCalledOnce());
+    expect(firebaseFunctions.submitEventBooking).toHaveBeenCalledWith(expect.objectContaining({
+      eventId: "event-1", lines: [expect.objectContaining({ ticketTypeId: "ticket-member" })],
+    }));
+    expect(vi.mocked(firebaseFunctions.submitEventBooking).mock.calls[0]![0]).not.toHaveProperty("isAdmin");
+  });
+
+  it("keeps administrator ticket eligibility required before opening", () => {
+    vi.mocked(useAdminClaim).mockReturnValue(true);
+    renderWizard({ eventOverride: { ...event, bookingStartDateTime: "2099-01-01", bookingEndDateTime: "2100-01-01",
+      ticketTypes: event.ticketTypes.map((ticket) => ({ ...ticket, userGroup: { id: "excluded", membershipStatuses: [] } })),
+    } });
+    expect(screen.getByText(/no member ticket types you are eligible for/i)).toBeInTheDocument();
+    expect(screen.queryByText("Your details")).not.toBeInTheDocument();
+  });
+
+  it("re-evaluates an administrator preview when the claim is revoked", () => {
+    vi.mocked(useAdminClaim).mockReturnValue(true);
+    const futureEvent = { ...event, bookingStartDateTime: "2099-01-01", bookingEndDateTime: "2100-01-01" };
+    const { rerender } = renderWizard({ eventOverride: futureEvent });
+    expect(screen.getByText(/as an administrator/i)).toBeInTheDocument();
+    vi.mocked(useAdminClaim).mockReturnValue(false);
+    rerender(<MemoryRouter><EventBookingWizard section={section} event={futureEvent as never} wizardOpen /></MemoryRouter>);
+    expect(screen.getByText(/only open during the published booking window/i)).toBeInTheDocument();
+    expect(screen.queryByText("Your details")).not.toBeInTheDocument();
   });
 
   it("keeps the booking interface closed for an ordinary member after the booking window", () => {

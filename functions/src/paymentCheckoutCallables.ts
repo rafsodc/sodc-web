@@ -17,6 +17,7 @@ import Stripe from "stripe";
 import { createHash } from "node:crypto";
 import { requireEnabled, validateUUID } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
+import { currentAuthorization } from "./currentAuthorization";
 import { FUNCTIONS_REGION } from "./constants";
 import {
   getBookingWindowState,
@@ -63,6 +64,7 @@ export function buildStripeCheckoutReturnUrls(
 
 async function ensureTicketCheckoutEligibility(args: {
   uid: string;
+  verifiedAdmin: boolean;
   ticketType: NonNullable<Awaited<ReturnType<typeof getTicketTypeForCheckout>>["data"]["ticketType"]>;
 }): Promise<{ membershipStatus: string; explicitGroupIds: Set<string> }> {
   const { uid, ticketType } = args;
@@ -101,12 +103,12 @@ async function ensureTicketCheckoutEligibility(args: {
     ticketType.event.bookingStartDateTime,
     ticketType.event.bookingEndDateTime
   );
-  const moderatorEarlyCheckout =
+  const privilegedEarlyCheckout =
     bookingWindowState === "BEFORE" &&
-    userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus);
+    (args.verifiedAdmin || userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus));
   if (
     bookingWindowState === "INVALID" ||
-    (bookingWindowState === "BEFORE" && !moderatorEarlyCheckout)
+    (bookingWindowState === "BEFORE" && !privilegedEarlyCheckout)
   ) {
     throw new HttpsError("failed-precondition", "Ticket sales are not open for this event");
   }
@@ -234,7 +236,7 @@ export const createEventBookingCheckoutSession = onCall({ region: FUNCTIONS_REGI
     if (ticketType.audience !== TicketAudience.MEMBER && ticketType.audience !== TicketAudience.GUEST) {
       throw new HttpsError("failed-precondition", "Unsupported ticket audience for checkout");
     }
-    await ensureTicketCheckoutEligibility({ uid, ticketType });
+    await ensureTicketCheckoutEligibility({ uid, ticketType, verifiedAdmin: currentAuthorization(request).isAdmin });
 
     if (line.unitAmountMinor === 0) {
       await createAllocatedTicketOrder({

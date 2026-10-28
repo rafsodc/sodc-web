@@ -96,6 +96,8 @@ export function evaluateBookingGatePreview(args: {
   bookingStartDateTime: string;
   bookingEndDateTime: string;
   nowMs?: number;
+  /** UI hint only; the callable independently verifies current administrator authority. */
+  isAdmin?: boolean;
 }): BookingGateResult {
   const { purposeLinks, membershipStatus, explicitGroupIds, bookingStartDateTime, bookingEndDateTime, nowMs } =
     args;
@@ -124,7 +126,8 @@ export function evaluateBookingGatePreview(args: {
   const bookingWindowState = getBookingWindowState(bookingStartDateTime, bookingEndDateTime, nowMs);
   const moderatorWindowOverride =
     (bookingWindowState === "BEFORE" || bookingWindowState === "AFTER") &&
-    userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus)
+    (args.isAdmin === true ||
+      userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus))
       ? bookingWindowState
       : null;
   if (bookingWindowState !== "OPEN" && !moderatorWindowOverride) {

@@ -394,6 +394,7 @@ export const submitEventBooking = onCall({ region: FUNCTIONS_REGION, secrets: [.
       bookingStartDateTime: event.bookingStartDateTime,
       bookingEndDateTime: event.bookingEndDateTime,
       organiserBooking,
+      verifiedAdmin: currentAuthorization(request).isAdmin,
     });
     if (!gate.ok) {
       throw bookingRulesToHttps(gate);
