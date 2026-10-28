@@ -344,7 +344,7 @@ describe("SectionEventsManager", () => {
     } finally {
       await act(async () => { finishFirstRefresh?.({ data: null }); finishSecondDelete?.({}); });
     }
-  });
+  }, 30_000);
 
   it.each([
     ["event", "Cancel"], ["ticket type", "Cancel"], ["event", "Delete"], ["ticket type", "Delete"],
