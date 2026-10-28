@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { captureSession, isPrivateSessionSuspended, isSessionCurrent, type SessionLifecycle, type SessionToken } from "../appShell/sessionLifecycle";
 
 interface DraftStore {
@@ -59,29 +59,40 @@ const initialValue = <T,>(initial: T | (() => T)): T => typeof initial === "func
  * resource IDs must be part of the key. Discard after saving or intentional Cancel.
  */
 export function useSessionDraft<T>(key: string, initial: T | (() => T)): [T, Dispatch<SetStateAction<T>>, () => void] {
-  const session = captureSession();
-  const [local, setLocal] = useState<LocalDraft<T>>(() => ({ session, key, value: readOr(session, key, () => initialValue(initial)) }));
-  const value = available(session) ? (matches(local, session, key) ? local.value : readOr(session, key, () => initialValue(initial))) : initialValue(initial);
-  const update: Dispatch<SetStateAction<T>> = (action) => {
+  const { lifecycle, uid, generation } = captureSession();
+  const session = useMemo(() => ({ lifecycle, uid, generation }), [lifecycle, uid, generation]);
+  // Like useState, an initializer belongs to the resource's first render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const initializer = useMemo(() => initial, [session, key]);
+  const [local, setLocal] = useState<LocalDraft<T>>(() => ({ session, key, value: readOr(session, key, () => initialValue(initializer)) }));
+  const value = available(session) ? (matches(local, session, key) ? local.value : readOr(session, key, () => initialValue(initializer))) : initialValue(initializer);
+  const latestLocal = useRef(local);
+  useLayoutEffect(() => { latestLocal.current = local; }, [local]);
+  const update: Dispatch<SetStateAction<T>> = useCallback((action: SetStateAction<T>) => {
     if (!available(session)) return;
     if (!session.lifecycle || !session.uid) {
       // Isolated/anonymous consumers retain ordinary React state, never a cache.
       setLocal(previous => {
-        const current = matches(previous, session, key) ? previous.value : initialValue(initial);
+        const current = matches(previous, session, key) ? previous.value : initialValue(initializer);
         return { session, key, value: typeof action === "function" ? (action as (previous: T) => T)(current) : action };
       });
       return;
     }
-    const previous = readOr(session, key, () => matches(local, session, key) ? local.value : initialValue(initial));
+    const currentLocal = latestLocal.current;
+    const previous = readOr(session, key, () => matches(currentLocal, session, key) ? currentLocal.value : initialValue(initializer));
     const next = typeof action === "function" ? (action as (previous: T) => T)(previous) : action;
     write(session, key, next);
-    setLocal({ session, key, value: next });
-  };
-  const discard = () => {
+    const entry = { session, key, value: next };
+    latestLocal.current = entry;
+    setLocal(entry);
+  }, [session, key, initializer]);
+  const discard = useCallback(() => {
     if (!available(session)) return;
     remove(session, key);
-    setLocal({ session, key, value: initialValue(initial) });
-  };
+    const entry = { session, key, value: initialValue(initializer) };
+    latestLocal.current = entry;
+    setLocal(entry);
+  }, [session, key, initializer]);
   return [value, update, discard];
 }
 

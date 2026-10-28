@@ -83,6 +83,18 @@ describe("session-scoped navigation drafts", () => {
     anonymous.unmount();
     expect(renderHook(() => useSessionDraft("event:anon", "")).result.current[0]).toBe("");
   });
+  it("keeps setters and discard stable across renders, as useState consumers expect", () => {
+    session();
+    const hook = renderHook(() => useSessionDraft("stable", () => ({ title: "" })));
+    const setter = hook.result.current[1];
+    const discard = hook.result.current[2];
+    hook.rerender();
+    expect(hook.result.current[1]).toBe(setter);
+    expect(hook.result.current[2]).toBe(discard);
+    act(() => setter({ title: "changed" }));
+    expect(hook.result.current[1]).toBe(setter);
+    expect(hook.result.current[2]).toBe(discard);
+  });
   it("bounds the number of drafts", () => {
     session();
     const hook = renderHook(({ key }) => useSessionDraft(key, ""), { initialProps: { key: "0" } });
