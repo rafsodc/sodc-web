@@ -352,6 +352,9 @@ describe("payment checkout callables", () => {
       futureTicket.event.bookingStartDateTime = "2099-01-01";
       futureTicket.event.bookingEndDateTime = "2100-01-01";
       getTicketType.mockResolvedValue({ data: { ticketType: futureTicket } } as never);
+      getSection.mockResolvedValue({ data: { section: { id: SECTION_ID, purposeLinks: [
+        { purposes: [SectionUserGroupPurpose.ACCESS, SectionUserGroupPurpose.BOOKER], userGroup: { id: GROUP_ID, membershipStatuses: null } },
+      ] } } } as never);
       getBookings.mockResolvedValue({ data: { user: { bookings: [booking(BookingApprovalStatus.NOT_REQUIRED)] } } } as never);
       mocks.requireStripe.mockReturnValue(stripeClient());
     });
@@ -366,6 +369,27 @@ describe("payment checkout callables", () => {
       await expect(eventHandler(adminRequest())).resolves.toMatchObject({ confirmed: true });
       expect(mocks.createAllocatedTicketOrder).toHaveBeenCalledWith(expect.objectContaining({ status: TicketOrderStatus.PAID }));
       expect(mocks.requireStripe).not.toHaveBeenCalled();
+    });
+
+    it("requires current section access for the newly granted administrator early exception", async () => {
+      getSection.mockResolvedValue({ data: { section: { id: SECTION_ID, purposeLinks: [
+        { purposes: [SectionUserGroupPurpose.BOOKER], userGroup: { id: GROUP_ID, membershipStatuses: null } },
+      ] } } } as never);
+      await expect(eventHandler(adminRequest())).rejects.toThrow(/not open/);
+      expect(mocks.createAllocatedTicketOrder).not.toHaveBeenCalled();
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+      expect(markFailed).not.toHaveBeenCalled();
+      expect(updateAllocationRefund).not.toHaveBeenCalled();
+    });
+
+    it("preserves existing after-close checkout eligibility without adding a new section access gate", async () => {
+      const closed = ticketType();
+      closed.event.bookingEndDateTime = "2020-02-01";
+      getTicketType.mockResolvedValue({ data: { ticketType: closed } } as never);
+      getSection.mockResolvedValue({ data: { section: { id: SECTION_ID, purposeLinks: [
+        { purposes: [SectionUserGroupPurpose.BOOKER], userGroup: { id: GROUP_ID, membershipStatuses: null } },
+      ] } } } as never);
+      await expect(eventHandler(adminRequest())).resolves.toMatchObject({ url: "https://checkout.stripe.test/session" });
     });
 
     it("keeps the disabled direct-ticket checkout refused for administrators", async () => {

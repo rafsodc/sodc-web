@@ -24,6 +24,7 @@ import {
   userMatchesUserGroup,
   userHasBookerPurpose,
   userHasModeratorPurpose,
+  userHasSectionAccess,
 } from "./bookingRules";
 import {
   bookingIdsEqual,
@@ -105,7 +106,8 @@ async function ensureTicketCheckoutEligibility(args: {
   );
   const privilegedEarlyCheckout =
     bookingWindowState === "BEFORE" &&
-    (args.verifiedAdmin || userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus));
+    (userHasModeratorPurpose(purposeLinks, explicitGroupIds, membershipStatus) ||
+      (args.verifiedAdmin && userHasSectionAccess(purposeLinks, explicitGroupIds, membershipStatus)));
   if (
     bookingWindowState === "INVALID" ||
     (bookingWindowState === "BEFORE" && !privilegedEarlyCheckout)
