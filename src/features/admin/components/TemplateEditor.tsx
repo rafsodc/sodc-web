@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { useSessionDraft, useDraftUnloadWarning } from "../../../shared/hooks/useSessionDraft";
 import {
   Alert,
   Box,
@@ -31,6 +32,7 @@ import {
 
 interface TemplateEditorProps {
   sectionName: string;
+  draftKey?: string;
 }
 
 interface ToolbarItem {
@@ -99,11 +101,14 @@ function CopyButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
-  const [editorOpen, setEditorOpen] = useState(false);
+export default function TemplateEditor({ sectionName, draftKey }: TemplateEditorProps) {
+  const [draft, setDraft, discardDraft] = useSessionDraft(`template:${draftKey ?? sectionName}`, { subject: "", body: "" });
+  const { subject, body } = draft;
+  const [editorOpen, setEditorOpen] = useState(() => !!(subject || body));
   const [guideOpen, setGuideOpen] = useState(false);
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const setSubject = (value: string) => setDraft(current => ({ ...current, subject: value }));
+  const setBody = (value: string) => setDraft(current => ({ ...current, body: value }));
+  useDraftUnloadWarning(!!(subject || body));
   const bodyInputRef = useRef<HTMLTextAreaElement>(null);
   const [varMenuAnchor, setVarMenuAnchor] = useState<null | HTMLElement>(null);
 
@@ -254,6 +259,11 @@ export default function TemplateEditor({ sectionName }: TemplateEditorProps) {
             Compose your template below, then copy each field into GOV Notify. The standard
             SODC footer is appended to the body automatically.
           </Typography>
+
+          {(subject || body) && <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+            <Typography variant="caption" color="text.secondary">Your draft is kept while you move between pages.</Typography>
+            <Button size="small" onClick={discardDraft}>Discard template draft</Button>
+          </Stack>}
 
           {warnings.length > 0 && (
             <Alert severity="warning" sx={{ mb: 2 }}>
