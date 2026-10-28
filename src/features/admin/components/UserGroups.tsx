@@ -27,6 +27,7 @@ import {
 import { MembershipStatus } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
+import ConfirmationDialog from "../../../shared/components/ConfirmationDialog";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 import { searchUsers } from "../../users/utils/searchUsers";
@@ -80,6 +81,11 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [groupDescription, setGroupDescription] = useState("");
   const [selectedStatuses, setSelectedStatuses] = useState<MembershipStatus[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingGroup, setDeletingGroup] = useState<UserGroupWithDetails | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deletePendingRef = useRef(false);
   
   // Add user dialog state
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
@@ -408,28 +414,50 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (group: UserGroupWithDetails) => {
-    if (!confirm(`Are you sure you want to delete the user group "${group.name}"? This will remove all user and section associations.`)) {
-      return;
-    }
+  const handleDelete = (group: UserGroupWithDetails) => {
+    if (deletePendingRef.current) return;
+    setDeletingGroup(group);
+    setDeleteDialogOpen(true);
+    setDeleteError(null);
+  };
 
+  const handleCancelDelete = () => {
+    if (deletePendingRef.current) return;
+    setDeleteDialogOpen(false);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteDialogOpen || !deletingGroup || deletePendingRef.current) return;
+    const group = deletingGroup;
+    deletePendingRef.current = true;
+    setDeletePending(true);
+    setDeleteError(null);
     try {
       const ref = deleteUserGroupRef(dataConnect, { id: group.id });
       await executeDataConnectMutation(ref);
-      if (expandedGroupId === group.id) {
-        setExpandedGroupId(null);
-      }
-      const nextGroupDetails = { ...groupDetails };
-      delete nextGroupDetails[group.id];
-      groupDetailsRef.current = nextGroupDetails;
-      setGroupDetails(nextGroupDetails);
-      await refreshSavedChange(`User group "${group.name}" deleted`, async () => {
-        await Promise.all([fetchUserGroupsList(true), invalidateUserSectionAccess(queryClient)]);
-      });
     } catch (caught) {
       reportError("admin.user-groups.delete", caught, { groupId: group.id });
-      setError(toAdminUserFacingError(caught, "user-groups").message);
+      setDeleteError(toAdminUserFacingError(caught, "user-groups").message);
+      return;
+    } finally {
+      deletePendingRef.current = false;
+      setDeletePending(false);
     }
+
+    // The deletion is committed. Close confirmation before starting read-only recovery.
+    setDeleteDialogOpen(false);
+    setDeleteError(null);
+    if (expandedGroupId === group.id) {
+      setExpandedGroupId(null);
+    }
+    const nextGroupDetails = { ...groupDetails };
+    delete nextGroupDetails[group.id];
+    groupDetailsRef.current = nextGroupDetails;
+    setGroupDetails(nextGroupDetails);
+    await refreshSavedChange(`User group "${group.name}" deleted`, async () => {
+      await Promise.all([fetchUserGroupsList(true), invalidateUserSectionAccess(queryClient)]);
+    });
   };
 
   const handleSubmit = async () => {
@@ -559,6 +587,17 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         onAddUser={handleAddUser}
         onRemoveUser={handleRemoveUserFromGroup}
       />
+
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        title="Delete user group?"
+        pending={deletePending}
+        error={deleteError}
+        onConfirm={() => void handleConfirmDelete()}
+        onCancel={handleCancelDelete}
+      >
+        Delete the user group "{deletingGroup?.name}"? This will remove all user and section associations. This cannot be undone.
+      </ConfirmationDialog>
 
       <UserGroupDialogSurface
         open={dialogOpen}

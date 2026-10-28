@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { guestCall, type GuestList } from "../../guests/api";
 import { organiserGuestTicketRows } from "../../guests/reporting";
 import OrganiserGuestsManager from "../../guests/OrganiserGuestsManager";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Alert, Box, Button } from "@mui/material";
 import { invalidateMyBookings } from "../../../shared/query/invalidation";
 import { refreshDataConnectQuery, SERVER_ONLY_QUERY_OPTIONS } from "../../../shared/query/authoritativeDataConnect";
@@ -62,9 +62,14 @@ import {
 } from "./SectionEventsManagerSurfaces";
 import SendAnnouncementPage from "./SendAnnouncementPage";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
+import ConfirmationDialog from "../../../shared/components/ConfirmationDialog";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import "../../../shared/components/PageContainer.css";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
+
+type DeleteTarget =
+  | { kind: "event"; item: EventRow }
+  | { kind: "ticketType"; item: Pick<TicketTypeRow, "id" | "title"> };
 
 interface SectionEventsManagerProps {
   sectionId: string;
@@ -104,6 +109,10 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const [error, setError] = useState<string | null>(null);
   const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deletionInFlight = useRef(false);
 
   // Ticket types: which event we're managing ticket types for
   const [ticketTypesEventId, setTicketTypesEventId] = useState<string | null>(initialEventId ?? null);
@@ -357,28 +366,31 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   };
 
   const handleDeleteEvent = async (event: EventRow) => {
-    if (!confirm(`Delete event "${event.title}"? This will also remove its unused ticket types. Events with tickets cannot be deleted.`)) return;
     setDeletingEventId(event.id);
     setError(null);
     try {
       await executeDataConnectMutation(deleteEventRef(dataConnect, { id: event.id }));
-      if (ticketTypesEventId === event.id) setTicketTypesEventId(null);
-      await refreshSavedChange(`Event "${event.title}" deleted`, async () => {
-        const deletedEventKey = ["GetEventById", { id: event.id }];
-        await queryClient.cancelQueries({ queryKey: deletedEventKey, exact: true });
-        await queryClient.invalidateQueries({ queryKey: deletedEventKey, exact: true, refetchType: "none" });
-        await refetchEvents();
-      });
     } catch (err: unknown) {
       reportError("admin.events.delete", err, { sectionId, eventId: event.id });
-      setError(
+      setDeleteError(
         String(err).includes("EVENT_HAS_TICKETS")
           ? "This event cannot be deleted because tickets already exist."
           : toAdminUserFacingError(err, "events").message,
       );
+      return;
     } finally {
+      deletionInFlight.current = false;
       setDeletingEventId(null);
     }
+
+    setDeleteConfirmationOpen(false);
+    if (ticketTypesEventId === event.id) setTicketTypesEventId(null);
+    await refreshSavedChange(`Event "${event.title}" deleted`, async () => {
+      const deletedEventKey = ["GetEventById", { id: event.id }];
+      await queryClient.cancelQueries({ queryKey: deletedEventKey, exact: true });
+      await queryClient.invalidateQueries({ queryKey: deletedEventKey, exact: true, refetchType: "none" });
+      await refetchEvents();
+    });
   };
 
   const openTicketTypeDialog = (ticketType?: TicketTypeRow) => {
@@ -463,23 +475,62 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   };
 
   const handleDeleteTicketType = async (id: string) => {
-    if (!confirm("Delete this ticket type?")) return;
     setDeletingTicketTypeId(id);
     setError(null);
     try {
       await executeDataConnectMutation(deleteTicketTypeRef(dataConnect, { id }));
-      await refreshSavedChange("Ticket type deleted", () => Promise.all([refetchEventDetail(), refetchEvents()]));
     } catch (err: unknown) {
       reportError("admin.tickets.delete", err, { ticketTypeId: id });
-      setError(
+      setDeleteError(
         String(err).includes("TICKET_TYPE_IN_USE")
           ? "This ticket type cannot be deleted because tickets already exist."
           : toAdminUserFacingError(err, "tickets").message,
       );
+      return;
     } finally {
+      deletionInFlight.current = false;
       setDeletingTicketTypeId(null);
     }
+
+    setDeleteConfirmationOpen(false);
+    await refreshSavedChange("Ticket type deleted", () => Promise.all([refetchEventDetail(), refetchEvents()]));
   };
+
+  const requestDeletion = (target: DeleteTarget) => {
+    if (deletionInFlight.current) return;
+    setDeleteError(null);
+    setDeleteTarget(target);
+    setDeleteConfirmationOpen(true);
+  };
+
+  const cancelDeletion = () => {
+    if (deletionInFlight.current) return;
+    setDeleteConfirmationOpen(false);
+    setDeleteError(null);
+  };
+
+  const confirmDeletion = async () => {
+    if (!deleteConfirmationOpen || !deleteTarget || deletionInFlight.current) return;
+    deletionInFlight.current = true;
+    setDeleteError(null);
+    if (deleteTarget.kind === "event") await handleDeleteEvent(deleteTarget.item);
+    else await handleDeleteTicketType(deleteTarget.item.id);
+  };
+
+  const deleteConfirmation = (
+    <ConfirmationDialog
+      open={deleteConfirmationOpen}
+      title={deleteTarget?.kind === "event" ? "Delete event?" : "Delete ticket type?"}
+      pending={deletingEventId !== null || deletingTicketTypeId !== null}
+      error={deleteError}
+      onCancel={cancelDeletion}
+      onConfirm={() => void confirmDeletion()}
+    >
+      {deleteTarget?.kind === "event"
+        ? `Delete the event “${deleteTarget.item.title}”? This will also remove its unused ticket types. Events with tickets cannot be deleted. This cannot be undone.`
+        : `Delete the ticket type “${deleteTarget?.item.title ?? ""}”? Ticket types already used for tickets cannot be deleted. This cannot be undone.`}
+    </ConfirmationDialog>
+  );
 
   const events: EventRow[] = eventsData?.section?.events ?? [];
   const eventBookings = useMemo<EventBookingAdminRow[]>(
@@ -593,7 +644,10 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           ticketTypes={ticketTypes}
           deletingTicketTypeId={deletingTicketTypeId}
           onEditTicketType={openTicketTypeDialog}
-          onDeleteTicketType={(id) => void handleDeleteTicketType(id)}
+          onDeleteTicketType={(id) => {
+            const ticketType = ticketTypes.find((row) => row.id === id);
+            if (ticketType) requestDeletion({ kind: "ticketType", item: ticketType });
+          }}
           approvalStatusFilter={approvalStatusFilter}
           onApprovalStatusFilterChange={setApprovalStatusFilter}
           approvalBookings={approvalBookings}
@@ -694,6 +748,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           onMaxGuestsChange={setMaxGuestsStr}
         />
 
+        {deleteConfirmation}
         <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
       </Box>
     );
@@ -714,7 +769,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         events={events}
         deletingEventId={deletingEventId}
         onManageEventAdmin={setTicketTypesEventId}
-        onDeleteEvent={(event) => void handleDeleteEvent(event)}
+        onDeleteEvent={(event) => requestDeletion({ kind: "event", item: event })}
       />
 
       <EventDialogSurface
@@ -745,6 +800,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
         onMaxGuestsChange={setMaxGuestsStr}
       />
 
+      {deleteConfirmation}
       <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
     </Box>
   );
