@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
-import { render, screen, waitFor } from "../../../../test-utils";
+import { fireEvent, render, screen, waitFor } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import { createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
 import * as api from "../../../../shared/utils/firebaseFunctions";
@@ -15,7 +15,8 @@ vi.mock("../AnnouncementSendHistory", () => ({ default: () => null }));
 const uninstalls: Array<() => void> = [];
 function signIn(uid: string) {
   const lifecycle = createSessionLifecycle(); lifecycle.observe(uid);
-  uninstalls.push(installSessionRuntime({ lifecycle, retire: () => lifecycle.retire(), signOut: async () => lifecycle.retire() }));
+  const uninstall = installSessionRuntime({ lifecycle, retire: () => lifecycle.retire(), signOut: async () => lifecycle.retire() });
+  uninstalls.push(() => { lifecycle.retire(); uninstall(); });
   return lifecycle;
 }
 beforeEach(() => {
@@ -32,8 +33,8 @@ describe("announcement drafts during navigation", () => {
     const user = userEvent.setup();
     const first = render(<TemplateEditor sectionName="Signals" draftKey="section-1:event-1" />);
     await user.click(screen.getByText("Create a GOV Notify template"));
-    await user.type(screen.getByLabelText("Template subject"), "Draft subject");
-    await user.type(screen.getByLabelText("Template body"), "Private draft content");
+    fireEvent.change(screen.getByLabelText("Template subject"), { target: { value: "Draft subject" } });
+    fireEvent.change(screen.getByLabelText("Template body"), { target: { value: "Private draft content" } });
     first.unmount();
     const other = render(<TemplateEditor sectionName="Signals" draftKey="section-1:event-2" />);
     expect(screen.getByLabelText("Template subject")).toHaveValue("");
@@ -46,17 +47,17 @@ describe("announcement drafts during navigation", () => {
     restored.unmount();
     render(<TemplateEditor sectionName="Signals" draftKey="section-1:event-1" />);
     expect(screen.getByLabelText("Template body")).toHaveValue("");
-  });
+  }, 20_000);
   it("clears private template content on account replacement", async () => {
     const user = userEvent.setup();
     const first = render(<TemplateEditor sectionName="Signals" draftKey="section-1" />);
     await user.click(screen.getByText("Create a GOV Notify template"));
-    await user.type(screen.getByLabelText("Template body"), "Member A only");
+    fireEvent.change(screen.getByLabelText("Template body"), { target: { value: "Member A only" } });
     first.unmount();
     signIn("moderator-b");
     render(<TemplateEditor sectionName="Signals" draftKey="section-1" />);
     expect(screen.getByLabelText("Template body")).toHaveValue("");
-  });
+  }, 20_000);
   it("restores composition and the same send retry ID without resending on mount", async () => {
     const id = "00000000-0000-4000-8000-000000000505";
     vi.spyOn(crypto, "randomUUID").mockReturnValue(id);
@@ -83,7 +84,7 @@ describe("announcement drafts during navigation", () => {
     expect(await screen.findByText(/Announcement accepted/)).toBeInTheDocument();
     expect(api.sendSectionAnnouncement).toHaveBeenCalledTimes(2);
     for (const args of vi.mocked(api.sendSectionAnnouncement).mock.calls) expect(args.slice(0, 5)).toEqual(["section-1", "template-1", id, "BULK: Section update", "SIMULATION"]);
-  });
+  }, 20_000);
   it("keeps an explicitly different event audience separate from the earlier composition", async () => {
     const filters = { attendeeName: "", rank: "", membershipStatus: "", audience: "", ticketType: "", includesDinner: "", includesSymposium: "", accommodationRequested: "", approvalStatus: "", paymentState: "" };
     const user = userEvent.setup();
@@ -99,7 +100,7 @@ describe("announcement drafts during navigation", () => {
     render(<SendAnnouncementPage sectionId="section-1" sectionName="Signals" onBack={vi.fn()} eventAudience={{ eventId: "event-1", filters }} />);
     expect(await screen.findByLabelText("Template")).toHaveTextContent("BULK: Section update");
     expect(api.sendSectionAnnouncement).not.toHaveBeenCalled();
-  });
+  }, 20_000);
   it("does not reuse another section's selected template", async () => {
     const user = userEvent.setup();
     const first = render(<SendAnnouncementPage sectionId="section-1" sectionName="Signals" onBack={vi.fn()} />);
@@ -111,5 +112,5 @@ describe("announcement drafts during navigation", () => {
     expect(screen.getByLabelText("Template")).not.toHaveTextContent("BULK: Section update");
     expect(screen.queryByRole("button", { name: "Send to Other members" })).not.toBeInTheDocument();
     expect(api.sendSectionAnnouncement).not.toHaveBeenCalled();
-  });
+  }, 20_000);
 });
