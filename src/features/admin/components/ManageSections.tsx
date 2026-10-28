@@ -328,13 +328,18 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
 
     const section = sections.find((item) => idsEqual(item.id, editSectionId));
     if (!section) {
+      groupRequestGuard.invalidate();
+      setDialogOpen(false);
+      setEditingSection(null);
+      setSectionUserGroups([]);
+      setAddUserGroupDialogOpen(false);
       setError("Section unavailable. It may have been deleted.");
       return;
     }
 
     initialEditSectionIdRef.current = null;
     void handleEdit(section);
-  }, [handleEdit, loading, managedSectionId, sections]);
+  }, [handleEdit, loading, managedSectionId, sections, groupRequestGuard]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -370,6 +375,18 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   };
 
   const handleSubmit = async () => {
+    const parameters = new URLSearchParams(location.search);
+    const ownedEditor =
+      configurationId === "new"
+        ? parameters.get("create") === "section" && editingSection === null
+        : idsEqual(editingSection?.id, configurationId) &&
+          sections.some((section) => idsEqual(section.id, configurationId));
+    if (!ownedEditor) {
+      setError(
+        "The section selection changed. Reopen the intended section before saving.",
+      );
+      return;
+    }
     if (!sectionName.trim()) {
       setError("Section name is required");
       return;
@@ -646,8 +663,17 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       />
 
       <SectionEditorDialogSurface
-        open={dialogOpen}
-        editingSection={editingSection}
+        open={
+          dialogOpen &&
+          (configurationId === "new"
+            ? editingSection === null &&
+              new URLSearchParams(location.search).get("create") === "section"
+            : idsEqual(editingSection?.id, configurationId) &&
+              sections.some((section) => idsEqual(section.id, configurationId)))
+        }
+        editingSection={
+          idsEqual(editingSection?.id, configurationId) ? editingSection : null
+        }
         sectionName={sectionName}
         sectionType={sectionType}
         sectionDescription={sectionDescription}
@@ -656,7 +682,9 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         notice={configurationWriteNotice}
         error={error}
         loadingUserGroups={loadingUserGroups}
-        sectionUserGroups={sectionUserGroups}
+        sectionUserGroups={
+          idsEqual(editingSection?.id, configurationId) ? sectionUserGroups : []
+        }
         removingUserGroupId={removingUserGroupId}
         onClose={handleDialogClose}
         onSubmit={handleSubmit}

@@ -78,11 +78,16 @@ an old resource's permission or private UI to its replacement. Auth initializati
 validated sign-in return URLs, query/hash and history remain covered.
 
 Unsaved event/ticket/editor and booking/announcement drafts are retained in bounded
-in-memory storage for the active private session and resource. Save/Cancel discard
-the relevant draft; retirement/account replacement clears the store and rejects
-late setters. Nothing is stored in local/session storage. A dirty mounted form
-warns before leaving/reloading the document. This establishes addressable existing
-tasks; the full #301 Manage Event visual redesign remains separate.
+in-memory storage for the active private session and resource. A confirmed save
+followed by a successful authoritative reload, or explicit Cancel of an unsent
+draft, discards that draft. Pending/uncertain writes retain their draft and receipt
+across editor departure and require reconciliation before another request; a
+successful announcement retains its acknowledgement to prevent accidental resend.
+Retirement/account replacement clears private stores and rejects late callbacks.
+Nothing is stored in local/session storage. A dirty mounted form warns before
+leaving/reloading the document; pending/uncertain write warnings also survive
+editor unmount. This establishes addressable existing tasks; the full #301 Manage
+Event visual redesign remains separate.
 
 ## Validation and release
 
