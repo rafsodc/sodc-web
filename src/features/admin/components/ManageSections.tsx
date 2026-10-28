@@ -1,8 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useSessionMutation } from "../../../shared/hooks/useSessionMutation";
+import ConfirmationDialog from "../../../shared/components/ConfirmationDialog";
+import { idsEqual } from "../../../shared/utils/uuid";
 import {
-  Box,
-  Alert,
-} from "@mui/material";
+  useSessionDraft,
+  useDraftUnloadWarning,
+} from "../../../shared/hooks/useSessionDraft";
+import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Box, Alert, Button } from "@mui/material";
 import { dataConnect } from "../../../config/firebase";
 import {
   executeDataConnectMutation,
@@ -21,20 +26,28 @@ import {
   type SectionType,
   type ListUserGroupsData,
 } from "@dataconnect/generated";
-import SectionEventsManager from "./SectionEventsManager";
+import {
+  sectionConfigurationPath,
+  sectionManagementPath,
+  eventManagementPath,
+  normalizedResourceId,
+} from "../../../shared/navigation/sectionRoutes";
 import PageHeader from "../../../shared/components/PageHeader";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { auth } from "../../../config/firebase";
-import { useLocation } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import "../../../shared/components/PageContainer.css";
 import {
   AddSectionUserGroupDialogSurface,
   ManageSectionsListSurface,
   SectionEditorDialogSurface,
 } from "./ManageSectionsSurfaces";
-import type { SectionUserGroupRow, SectionWithDetails } from "./manageSectionsTypes";
+import type {
+  SectionUserGroupRow,
+  SectionWithDetails,
+} from "./manageSectionsTypes";
 import { reportError, toAdminUserFacingError } from "../../../shared/errors";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateSectionsForUser } from "../../../shared/query/invalidation";
@@ -55,6 +68,7 @@ interface ManageSectionsLocationState {
 export default function ManageSections({ onBack }: ManageSectionsProps) {
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
   const initialState = location.state as ManageSectionsLocationState | null;
   const isAdmin = useAdminClaim(auth.currentUser);
   const [sections, setSections] = useState<SectionWithDetails[]>([]);
@@ -64,15 +78,68 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
 
   // Create/Edit dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingSection, setEditingSection] = useState<SectionWithDetails | null>(null);
-  const [sectionName, setSectionName] = useState("");
-  const [sectionType, setSectionType] = useState<SectionType>("MEMBERS" as SectionType);
-  const [sectionDescription, setSectionDescription] = useState("");
+  const [editingSection, setEditingSection] =
+    useState<SectionWithDetails | null>(null);
+  const configurationId =
+    new URLSearchParams(location.search).get("section") ??
+    initialState?.editSectionId ??
+    "new";
+  const [configurationDraft, setConfigurationDraft, discardConfigurationDraft] =
+    useSessionDraft(
+      `section-configuration:${normalizedResourceId(configurationId)}`,
+      {
+        initialized: false,
+        dirty: false,
+        name: "",
+        type: "MEMBERS" as SectionType,
+        description: "",
+      },
+    );
+  const configurationWrite = useSessionMutation<unknown>(
+    `section-config-write:${normalizedResourceId(configurationId)}`,
+  );
+  const [resetConfigurationWrite, setResetConfigurationWrite] = useState(false);
+  const {
+    name: sectionName,
+    type: sectionType,
+    description: sectionDescription,
+  } = configurationDraft;
+  const setSectionName = useCallback(
+    (name: string) =>
+      setConfigurationDraft((previous) => ({ ...previous, name, dirty: true })),
+    [setConfigurationDraft],
+  );
+  const setSectionType = useCallback(
+    (type: SectionType) =>
+      setConfigurationDraft((previous) => ({ ...previous, type, dirty: true })),
+    [setConfigurationDraft],
+  );
+  const setSectionDescription = useCallback(
+    (description: string) =>
+      setConfigurationDraft((previous) => ({
+        ...previous,
+        description,
+        dirty: true,
+      })),
+    [setConfigurationDraft],
+  );
+  useDraftUnloadWarning(dialogOpen && configurationDraft.dirty);
+  const editorSaveGuard = useLatestRequestGuard();
+  useEffect(() => {
+    editorSaveGuard.invalidate();
+    setSubmitting(false);
+    setResetConfigurationWrite(false);
+    return () => editorSaveGuard.invalidate();
+  }, [location.search, editorSaveGuard]);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // User groups state
-  const [sectionUserGroups, setSectionUserGroups] = useState<SectionUserGroupRow[]>([]);
-  const [allUserGroups, setAllUserGroups] = useState<ListUserGroupsData["userGroups"]>([]);
+  const [sectionUserGroups, setSectionUserGroups] = useState<
+    SectionUserGroupRow[]
+  >([]);
+  const [allUserGroups, setAllUserGroups] = useState<
+    ListUserGroupsData["userGroups"]
+  >([]);
   const [loadingUserGroups, setLoadingUserGroups] = useState(false);
   const [addUserGroupDialogOpen, setAddUserGroupDialogOpen] = useState(false);
   const [selectedUserGroup, setSelectedUserGroup] = useState<{
@@ -80,13 +147,24 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     name: string;
     description?: string | null;
   } | null>(null);
-  const [selectedPurpose, setSelectedPurpose] = useState<SectionUserGroupPurpose>(SectionUserGroupPurpose.ACCESS);
+  const [selectedPurpose, setSelectedPurpose] =
+    useState<SectionUserGroupPurpose>(SectionUserGroupPurpose.ACCESS);
   const [addingUserGroup, setAddingUserGroup] = useState(false);
-  const [removingUserGroupId, setRemovingUserGroupId] = useState<string | null>(null);
-  const [managedSectionId, setManagedSectionId] = useState<string | null>(initialState?.managedSection?.id ?? null);
-  const [managedSectionName, setManagedSectionName] = useState(initialState?.managedSection?.name ?? "");
+  const [removingUserGroupId, setRemovingUserGroupId] = useState<string | null>(
+    null,
+  );
+  const [managedSectionId, setManagedSectionId] = useState<string | null>(
+    initialState?.managedSection?.id ?? null,
+  );
+  const [managedSectionName, setManagedSectionName] = useState(
+    initialState?.managedSection?.name ?? "",
+  );
   const initialEventIdRef = useRef(initialState?.eventId ?? null);
-  const initialEditSectionIdRef = useRef(initialState?.editSectionId ?? null);
+  const initialEditSectionIdRef = useRef(
+    new URLSearchParams(location.search).get("section") ??
+      initialState?.editSectionId ??
+      null,
+  );
 
   useEffect(() => {
     const state = location.state as ManageSectionsLocationState | null;
@@ -104,7 +182,10 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     setManagedSectionName("");
     initialEventIdRef.current = null;
     initialEditSectionIdRef.current = null;
-  }, [location.state]);
+    initialEditSectionIdRef.current = new URLSearchParams(location.search).get(
+      "section",
+    );
+  }, [location.state, location.search]);
 
   const fetchSections = useCallback(async () => {
     setLoading(true);
@@ -112,24 +193,29 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     try {
       const ref = listSectionsRef(dataConnect);
       const result = await executeDataConnectQuery(ref);
-      
+      if (!Array.isArray(result.data?.sections))
+        throw new Error("The latest section list could not be verified.");
+
       // Get existing sections from database
-      const existingSections: SectionWithDetails[] = result.data?.sections?.map((section) => ({
-        id: section.id,
-        name: section.name,
-        type: section.type,
-        description: section.description,
-        createdAt: section.createdAt,
-        updatedAt: section.updatedAt,
-      })) || [];
-      
+      const existingSections: SectionWithDetails[] =
+        result.data?.sections?.map((section) => ({
+          id: section.id,
+          name: section.name,
+          type: section.type,
+          description: section.description,
+          createdAt: section.createdAt,
+          updatedAt: section.updatedAt,
+        })) || [];
+
       // Sort alphabetically
       existingSections.sort((a, b) => a.name.localeCompare(b.name));
-      
+
       setSections(existingSections);
+      return existingSections;
     } catch (caught) {
       reportError("admin.sections.load", caught);
       setError(toAdminUserFacingError(caught, "sections").message);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -149,63 +235,90 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     }
   }, []);
 
-  const fetchSectionUserGroups = useCallback(async (sectionId: string) => {
-    setLoadingUserGroups(true);
-    try {
-      const ref = getSectionByIdRef(dataConnect, { id: sectionId });
-      const result = await executeDataConnectQuery(ref);
-      const section = result.data?.section;
-      
-      if (section?.purposeLinks?.length) {
-        const rows: SectionUserGroupRow[] = [];
-        section.purposeLinks.forEach((link) => {
-          if (link.userGroup) {
-            const purposes = link.purposes ?? [];
-            purposes.forEach((purpose) => {
-              rows.push({
-                id: link.userGroup.id,
-                name: link.userGroup.name,
-                description: link.userGroup.description,
-                purpose,
-              });
-            });
-          }
-        });
-        setSectionUserGroups(rows);
-      } else {
-        setSectionUserGroups([]);
-      }
-    } catch (caught) {
-      reportError("admin.sections.assigned-groups", caught, { sectionId });
-      setError(toAdminUserFacingError(caught, "sections").message);
+  const groupRequestGuard = useLatestRequestGuard();
+  const fetchSectionUserGroups = useCallback(
+    async (sectionId: string) => {
+      const token = groupRequestGuard.start();
       setSectionUserGroups([]);
-    } finally {
-      setLoadingUserGroups(false);
-    }
-  }, []);
+      setLoadingUserGroups(true);
+      try {
+        const ref = getSectionByIdRef(dataConnect, { id: sectionId });
+        const result = await executeDataConnectQuery(ref);
+        if (!groupRequestGuard.isCurrent(token)) return;
+        const section = result.data?.section;
+
+        if (section?.purposeLinks?.length) {
+          const rows: SectionUserGroupRow[] = [];
+          section.purposeLinks.forEach((link) => {
+            if (link.userGroup) {
+              const purposes = link.purposes ?? [];
+              purposes.forEach((purpose) => {
+                rows.push({
+                  id: link.userGroup.id,
+                  name: link.userGroup.name,
+                  description: link.userGroup.description,
+                  purpose,
+                });
+              });
+            }
+          });
+          setSectionUserGroups(rows);
+        } else {
+          setSectionUserGroups([]);
+        }
+      } catch (caught) {
+        if (!groupRequestGuard.isCurrent(token)) return;
+        reportError("admin.sections.assigned-groups", caught, { sectionId });
+        setError(toAdminUserFacingError(caught, "sections").message);
+        setSectionUserGroups([]);
+      } finally {
+        if (groupRequestGuard.isCurrent(token)) setLoadingUserGroups(false);
+      }
+    },
+    [groupRequestGuard],
+  );
 
   useEffect(() => {
     fetchAllUserGroups();
   }, [fetchAllUserGroups]);
 
   const handleCreate = () => {
+    navigate("/admin/sections?create=section");
     setEditingSection(null);
-    setSectionName("");
-    setSectionType("MEMBERS" as SectionType);
-    setSectionDescription("");
     setSectionUserGroups([]);
     setDialogOpen(true);
   };
 
-  const handleEdit = useCallback(async (section: SectionWithDetails) => {
-    setEditingSection(section);
-    setSectionName(section.name);
-    setSectionType(section.type);
-    setSectionDescription(section.description || "");
-    setDialogOpen(true);
-    // Fetch user groups when editing
-    await fetchSectionUserGroups(section.id);
-  }, [fetchSectionUserGroups]);
+  const handleEdit = useCallback(
+    async (section: SectionWithDetails) => {
+      if (
+        !idsEqual(
+          new URLSearchParams(location.search).get("section"),
+          section.id,
+        )
+      )
+        navigate(sectionConfigurationPath(section.id));
+      setEditingSection(section);
+      if (!configurationDraft.initialized)
+        setConfigurationDraft({
+          initialized: true,
+          dirty: false,
+          name: section.name,
+          type: section.type,
+          description: section.description ?? "",
+        });
+      setDialogOpen(true);
+      // Fetch user groups when editing
+      await fetchSectionUserGroups(section.id);
+    },
+    [
+      fetchSectionUserGroups,
+      location.search,
+      navigate,
+      configurationDraft.initialized,
+      setConfigurationDraft,
+    ],
+  );
 
   useEffect(() => {
     const editSectionId = initialEditSectionIdRef.current;
@@ -213,8 +326,9 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       return;
     }
 
-    const section = sections.find((item) => item.id === editSectionId);
+    const section = sections.find((item) => idsEqual(item.id, editSectionId));
     if (!section) {
+      setError("Section unavailable. It may have been deleted.");
       return;
     }
 
@@ -222,15 +336,32 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     void handleEdit(section);
   }, [handleEdit, loading, managedSectionId, sections]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.has("section") || initialState?.editSectionId) return;
+    groupRequestGuard.invalidate();
+    setEditingSection(null);
+    setSectionUserGroups([]);
+    setAddUserGroupDialogOpen(false);
+    setDialogOpen(params.get("create") === "section");
+  }, [location.search, initialState?.editSectionId, groupRequestGuard]);
+
   const handleDelete = async (section: SectionWithDetails) => {
-    if (!confirm(`Are you sure you want to delete the section "${section.name}"? This will remove all user group associations.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete the section "${section.name}"? This will remove all user group associations.`,
+      )
+    ) {
       return;
     }
 
     try {
       const ref = deleteSectionRef(dataConnect, { id: section.id });
       await executeDataConnectMutation(ref);
-      await Promise.all([fetchSections(), invalidateSectionsForUser(queryClient)]);
+      await Promise.all([
+        fetchSections(),
+        invalidateSectionsForUser(queryClient),
+      ]);
       showSuccess(`Section "${section.name}" deleted`);
     } catch (caught) {
       reportError("admin.sections.delete", caught, { sectionId: section.id });
@@ -244,36 +375,97 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       return;
     }
 
+    const token = editorSaveGuard.start();
     setSubmitting(true);
     setError(null);
     try {
-      if (editingSection) {
-        // Update existing section
-        const ref = updateSectionRef(dataConnect, {
-          id: editingSection.id,
-          name: sectionName.trim(),
-          description: sectionDescription.trim() || null,
-        });
-        await executeDataConnectMutation(ref);
-      } else {
-        // Create new section
-        const ref = createSectionRef(dataConnect, {
-          name: sectionName.trim(),
-          type: sectionType,
-          description: sectionDescription.trim() || null,
-        });
-        await executeDataConnectMutation(ref);
-      }
+      await configurationWrite.runOnce(async () => {
+        if (editingSection) {
+          // Update existing section
+          const ref = updateSectionRef(dataConnect, {
+            id: editingSection.id,
+            name: sectionName.trim(),
+            description: sectionDescription.trim() || null,
+          });
+          await executeDataConnectMutation(ref);
+        } else {
+          // Create new section
+          const ref = createSectionRef(dataConnect, {
+            name: sectionName.trim(),
+            type: sectionType,
+            description: sectionDescription.trim() || null,
+          });
+          await executeDataConnectMutation(ref);
+        }
+      });
+      if (!editorSaveGuard.isCurrent(token)) return;
+      const [latestSections] = await Promise.all([
+        fetchSections(),
+        invalidateSectionsForUser(queryClient),
+      ]);
+      if (!editorSaveGuard.isCurrent(token) || latestSections === null) return;
+      configurationWrite.acknowledge();
+      discardConfigurationDraft();
       setDialogOpen(false);
-      await Promise.all([fetchSections(), invalidateSectionsForUser(queryClient)]);
+      navigate("/admin/sections");
       showSuccess(`Section ${editingSection ? "updated" : "created"}`);
     } catch (caught) {
-      reportError("admin.sections.save", caught, { editing: Boolean(editingSection) });
+      if (!editorSaveGuard.isCurrent(token)) return;
+      reportError("admin.sections.save", caught, {
+        editing: Boolean(editingSection),
+      });
       setError(toAdminUserFacingError(caught, "sections").message);
     } finally {
-      setSubmitting(false);
+      if (editorSaveGuard.isCurrent(token)) setSubmitting(false);
     }
   };
+
+  const reconcileConfigurationWrite = async () => {
+    const token = editorSaveGuard.start();
+    try {
+      const [latestSections] = await Promise.all([
+        fetchSections(),
+        invalidateSectionsForUser(queryClient),
+      ]);
+      if (!editorSaveGuard.isCurrent(token) || latestSections === null) return;
+      if (configurationWrite.status === "success") {
+        configurationWrite.acknowledge();
+        discardConfigurationDraft();
+        setDialogOpen(false);
+        navigate("/admin/sections");
+      } else setResetConfigurationWrite(true);
+    } catch (caught) {
+      if (editorSaveGuard.isCurrent(token))
+        setError(toAdminUserFacingError(caught, "sections").message);
+    }
+  };
+  const configurationWriteNotice =
+    configurationWrite.status === "idle" ? null : (
+      <Alert
+        severity={
+          configurationWrite.status === "error"
+            ? "warning"
+            : configurationWrite.pending
+              ? "info"
+              : "success"
+        }
+        action={
+          !configurationWrite.pending && (
+            <Button onClick={() => void reconcileConfigurationWrite()}>
+              {configurationWrite.status === "success"
+                ? "Load saved change"
+                : "Check latest list"}
+            </Button>
+          )
+        }
+      >
+        {configurationWrite.pending
+          ? "This save is still being confirmed. Another request will not be sent if you leave and return."
+          : configurationWrite.status === "success"
+            ? "The previous save completed. Load the saved change before continuing."
+            : "The previous save could not be confirmed and may already exist. Check the latest sections before starting another request."}
+      </Alert>
+    );
 
   const handleAddUserGroup = async () => {
     if (!selectedUserGroup || !editingSection) {
@@ -291,8 +483,8 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
             sectionUserGroups
               .filter((row) => row.id === selectedUserGroup.id)
               .map((row) => row.purpose)
-              .concat(selectedPurpose)
-          )
+              .concat(selectedPurpose),
+          ),
         ),
       });
       await executeDataConnectMutation(ref);
@@ -305,19 +497,28 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       setAddUserGroupDialogOpen(false);
       showSuccess("User group added to section");
     } catch (caught) {
-      reportError("admin.sections.add-group", caught, { sectionId: editingSection.id });
+      reportError("admin.sections.add-group", caught, {
+        sectionId: editingSection.id,
+      });
       setError(toAdminUserFacingError(caught, "sections").message);
     } finally {
       setAddingUserGroup(false);
     }
   };
 
-  const handleRemoveUserGroup = async (userGroupId: string, purpose: SectionUserGroupPurpose) => {
+  const handleRemoveUserGroup = async (
+    userGroupId: string,
+    purpose: SectionUserGroupPurpose,
+  ) => {
     if (!editingSection) {
       return;
     }
 
-    if (!confirm("Are you sure you want to remove this user group from the section?")) {
+    if (
+      !confirm(
+        "Are you sure you want to remove this user group from the section?",
+      )
+    ) {
       return;
     }
 
@@ -327,8 +528,12 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
     try {
       const refetch = getSectionByIdRef(dataConnect, { id: editingSection.id });
       const currentSection = await executeDataConnectQuery(refetch);
-      const currentLink = currentSection.data?.section?.purposeLinks?.find((link) => link.userGroup?.id === userGroupId);
-      const currentPurposes = (currentLink?.purposes ?? []).filter((item) => item !== purpose);
+      const currentLink = currentSection.data?.section?.purposeLinks?.find(
+        (link) => link.userGroup?.id === userGroupId,
+      );
+      const currentPurposes = (currentLink?.purposes ?? []).filter(
+        (item) => item !== purpose,
+      );
 
       if (currentPurposes.length === 0) {
         const deleteRef = revokeUserGroupFromSectionForPurposeRef(dataConnect, {
@@ -344,13 +549,16 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         });
         await executeDataConnectMutation(updateRef);
       }
-      
+
       // Refresh section user groups
       await fetchSectionUserGroups(editingSection.id);
       await invalidateSectionsForUser(queryClient);
       showSuccess("User group removed from section");
     } catch (caught) {
-      reportError("admin.sections.remove-group", caught, { sectionId: editingSection.id, userGroupId });
+      reportError("admin.sections.remove-group", caught, {
+        sectionId: editingSection.id,
+        userGroupId,
+      });
       setError(toAdminUserFacingError(caught, "sections").message);
     } finally {
       setRemovingUserGroupId(null);
@@ -361,19 +569,22 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   const availableUserGroups = allUserGroups.filter(
     (group) =>
       !sectionUserGroups.some(
-        (existing) => existing.id === group.id && existing.purpose === selectedPurpose
-      )
+        (existing) =>
+          existing.id === group.id && existing.purpose === selectedPurpose,
+      ),
   );
 
   const handleDialogClose = () => {
+    groupRequestGuard.invalidate();
+    if (configurationWrite.status === "idle") discardConfigurationDraft();
+    navigate("/admin/sections");
     setDialogOpen(false);
     setAddUserGroupDialogOpen(false);
     setSectionUserGroups([]);
   };
 
   const handleManageEvents = (section: SectionWithDetails) => {
-    setManagedSectionId(section.id);
-    setManagedSectionName(section.name);
+    navigate(sectionManagementPath(section.id, "events"));
   };
 
   const handleOpenAddUserGroup = () => {
@@ -389,15 +600,13 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
 
   if (managedSectionId && managedSectionName) {
     return (
-      <SectionEventsManager
-        sectionId={managedSectionId}
-        sectionName={managedSectionName}
-        initialEventId={initialEventIdRef.current}
-        onBack={() => {
-          setManagedSectionId(null);
-          setManagedSectionName("");
-          initialEventIdRef.current = null;
-        }}
+      <Navigate
+        replace
+        to={
+          initialEventIdRef.current
+            ? eventManagementPath(managedSectionId, initialEventIdRef.current)
+            : sectionManagementPath(managedSectionId, "events")
+        }
       />
     );
   }
@@ -405,7 +614,10 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   // Check admin status - show access denied if not admin
   if (!isAdmin) {
     return (
-      <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
+      <Box
+        className="page-container"
+        sx={{ backgroundColor: "background.default" }}
+      >
         <PageHeader title="Manage Sections" onBack={onBack} />
         <Alert severity="error" sx={{ mt: 2 }}>
           Access denied. Admin privileges required to manage sections.
@@ -415,8 +627,13 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   }
 
   return (
-    <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
+    <Box
+      className="page-container"
+      sx={{ backgroundColor: "background.default" }}
+    >
       <ManageSectionsListSurface
+        eventsHref={(id) => sectionManagementPath(id, "events")}
+        configurationHref={sectionConfigurationPath}
         onBack={onBack}
         error={error}
         onDismissError={() => setError(null)}
@@ -434,7 +651,10 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         sectionName={sectionName}
         sectionType={sectionType}
         sectionDescription={sectionDescription}
-        submitting={submitting}
+        submitting={submitting || configurationWrite.pending}
+        saveDisabled={configurationWrite.status !== "idle"}
+        notice={configurationWriteNotice}
+        error={error}
         loadingUserGroups={loadingUserGroups}
         sectionUserGroups={sectionUserGroups}
         removingUserGroupId={removingUserGroupId}
@@ -459,6 +679,25 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
         onUserGroupChange={setSelectedUserGroup}
       />
 
+      <ConfirmationDialog
+        open={resetConfigurationWrite}
+        title="Start a new section save request?"
+        confirmLabel="I checked — start a new request"
+        onCancel={() => setResetConfigurationWrite(false)}
+        onConfirm={() => {
+          configurationWrite.acknowledge();
+          setResetConfigurationWrite(false);
+          setError(null);
+        }}
+      >
+        Confirm only if the intended section change is absent from this latest
+        list. Otherwise cancel and open the saved section.
+        <Box component="ul">
+          {sections.map((section) => (
+            <li key={section.id}>{section.name}</li>
+          ))}
+        </Box>
+      </ConfirmationDialog>
       <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
     </Box>
   );

@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
@@ -14,6 +16,9 @@ import type { EventRow } from "../sectionEventsManagerTypes";
 
 interface EventDialogSurfaceProps {
   open: boolean;
+  error?: string | null;
+  notice?: ReactNode;
+  saveDisabled?: boolean;
   editingEvent: EventRow | null;
   title: string;
   location: string;
@@ -40,7 +45,8 @@ interface EventDialogSurfaceProps {
   onMaxGuestsChange: (value: string) => void;
 }
 export function EventDialogSurface({
-  open,
+  open, error,
+  notice, saveDisabled,
   editingEvent,
   title,
   location,
@@ -71,6 +77,8 @@ export function EventDialogSurface({
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>{editingEvent ? "Edit event" : "Add event"}</DialogTitle>
       <DialogContent>
+        {notice}
+        {error && <Alert severity="error" sx={{mb:2}}>{error}</Alert>}
         <TextField label="Title" fullWidth value={title} onChange={(event) => onTitleChange(event.target.value)} margin="dense" required />
         <TextField label="Location" fullWidth value={location} onChange={(event) => onLocationChange(event.target.value)} margin="dense" />
         <TextField
@@ -160,7 +168,7 @@ export function EventDialogSurface({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={onSubmit} disabled={submitting || !title.trim()}>
+        <Button aria-label="Save" variant="contained" onClick={onSubmit} disabled={submitting || saveDisabled || !title.trim()}>
           {submitting ? <CircularProgress size={20} /> : "Save"}
         </Button>
       </DialogActions>

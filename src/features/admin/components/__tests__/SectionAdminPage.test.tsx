@@ -1,183 +1,232 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '../../../../test-utils';
-import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import SectionAdminPage from '../SectionAdminPage';
-import { createMockUser } from '../../../../test-utils/mocks/firebase';
-import { ROUTES } from '../../../../constants';
-import { getSectionForUser } from '../../../../shared/utils/firebaseFunctions';
-
-vi.mock('../../../../shared/utils/firebaseFunctions', () => ({
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { act, render, screen } from "../../../../test-utils";
+import userEvent from "@testing-library/user-event";
+import {
+  MemoryRouter,
+  Routes,
+  Route,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import SectionAdminPage from "../SectionAdminPage";
+import { getSectionForUser } from "../../../../shared/utils/firebaseFunctions";
+vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   getSectionForUser: vi.fn(),
 }));
-
-const mockCurrentUser = createMockUser({ uid: 'user-1' });
-let mockIsAdmin = false;
-
-vi.mock('../../../users/hooks/useAdminClaim', () => ({
-  useAdminClaim: vi.fn(() => mockIsAdmin),
+let mockGlobalAdmin = false;
+vi.mock("../../../users/hooks/useAdminClaim", () => ({
+  useAdminClaim: () => mockGlobalAdmin,
 }));
-
-vi.mock('../../../../config/firebase', () => ({
+vi.mock("../../../../config/firebase", () => ({
+  auth: { currentUser: { uid: "user" } },
   dataConnect: {},
-  auth: {
-    get currentUser() {
-      return mockCurrentUser;
-    },
-  },
 }));
-
-const mockNavigate = vi.fn();
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
-vi.mock('../SendAnnouncementPage', () => ({
-  default: ({ sectionName, onBack }: { sectionName: string; onBack: () => void }) => (
+vi.mock("../SendAnnouncementPage", () => ({
+  default: ({ sectionName }: { sectionName: string }) => (
+    <div>Announcements for {sectionName}</div>
+  ),
+}));
+vi.mock("../ManageSectionFiles", () => ({
+  default: ({ sectionName }: { sectionName: string }) => (
+    <div>Files for {sectionName}</div>
+  ),
+}));
+vi.mock("../SectionEventsManager", () => ({
+  default: ({
+    sectionName,
+    initialEventId,
+  }: {
+    sectionName: string;
+    initialEventId?: string;
+  }) => (
     <div>
-      <div>Mock Send Announcement Page for {sectionName}</div>
-      <button onClick={onBack}>Back to hub</button>
+      Event management for {sectionName}: {initialEventId ?? "all"}
     </div>
   ),
 }));
-
-vi.mock('../ManageSectionFiles', () => ({
-  default: ({ sectionName, onBack }: { sectionName: string; onBack: () => void }) => (
-    <div>
-      <div>Mock Manage Files for {sectionName}</div>
-      <button onClick={onBack}>Back to hub</button>
-    </div>
-  ),
-}));
-
-const sectionId = 'section-1';
-
-function mockCanModerate(canModerate: boolean) {
-  vi.mocked(getSectionForUser).mockResolvedValue({
-    section: { id: sectionId },
-    hasAccess: canModerate,
-    canModerate,
-  } as unknown as Awaited<ReturnType<typeof getSectionForUser>>);
-}
-
-function renderSectionAdminPage(sectionType: string = 'MEMBERS') {
-  return render(
-    <MemoryRouter
-      initialEntries={[
-        { pathname: `/admin/section/${sectionId}`, state: { sectionName: 'Test Section', sectionType } },
-      ]}
-    >
-      <Routes>
-        <Route path="/admin/section/:sectionId" element={<SectionAdminPage />} />
-      </Routes>
-    </MemoryRouter>
+const lookup = vi.mocked(getSectionForUser);
+const section = {
+  id: "one",
+  name: "Authoritative events",
+  type: "EVENTS",
+  purposeLinks: [],
+} as never;
+function Location() {
+  const l = useLocation();
+  const n = useNavigate();
+  return (
+    <>
+      <output>{l.pathname + l.search}</output>
+      <button onClick={() => n(-1)}>History back</button>
+      <button onClick={() => n(1)}>History forward</button>
+      <button onClick={() => n("/sections/two/manage")}>Other section</button>
+    </>
   );
 }
-
-describe('SectionAdminPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockIsAdmin = false;
-    mockCanModerate(false);
+function start(path = "/sections/one/manage", state?: unknown) {
+  return render(
+    <MemoryRouter initialEntries={[{ pathname: path, state }]}>
+      <Location />
+      <Routes>
+        <Route
+          path="/sections/:sectionId/manage/*"
+          element={<SectionAdminPage />}
+        />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+beforeEach(() => {
+  mockGlobalAdmin = false;
+  lookup.mockReset();
+  lookup.mockResolvedValue({ section, hasAccess: true, canModerate: true });
+});
+describe("canonical section management", () => {
+  it("hydrates a cold URL from authoritative metadata and ignores forged navigation state", async () => {
+    start(undefined, { sectionName: "Forged", sectionType: "MEMBERS" });
+    expect(
+      await screen.findByRole("heading", {
+        name: "Administer — Authoritative events",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Manage Events/ })).toHaveAttribute(
+      "href",
+      "/sections/one/manage/events",
+    );
+    expect(screen.queryByText("Edit Section")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tickets and guests")).not.toBeInTheDocument();
   });
-
-  it('shows access denied for a user who is neither admin nor a section moderator', async () => {
-    renderSectionAdminPage();
-
-    await waitFor(() => {
-      expect(screen.getByText(/Access denied/i)).toBeInTheDocument();
-    });
-    expect(screen.queryByText('Send Announcement')).not.toBeInTheDocument();
+  it.each(["files", "announcements", "events"])(
+    "loads %s in a fresh tab",
+    async (view) => {
+      start(`/sections/one/manage/${view}`);
+      expect(
+        await screen.findByText(
+          view === "files"
+            ? "Files for Authoritative events"
+            : view === "announcements"
+              ? "Announcements for Authoritative events"
+              : "Event management for Authoritative events: all",
+        ),
+      ).toBeInTheDocument();
+    },
+  );
+  it("loads a selected event directly without state", async () => {
+    start("/sections/one/manage/events/event-2");
+    expect(
+      await screen.findByText(
+        "Event management for Authoritative events: event-2",
+      ),
+    ).toBeInTheDocument();
   });
-
-  it('navigates home from the access-denied state', async () => {
-    const user = userEvent.setup();
-    renderSectionAdminPage();
-
-    await waitFor(() => {
-      expect(screen.getByText(/Access denied/i)).toBeInTheDocument();
-    });
-    await user.click(screen.getByText('Back to Home'));
-    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.HOME);
+  it("uses ordinary links and keeps task selection through back and forward", async () => {
+    const u = userEvent.setup();
+    start();
+    await screen.findByRole("heading", { name: /Administer/ });
+    await u.click(screen.getByRole("link", { name: /Manage Files/ }));
+    expect(
+      await screen.findByText("Files for Authoritative events"),
+    ).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "History back" }));
+    expect(
+      await screen.findByRole("heading", { name: /Administer/ }),
+    ).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "History forward" }));
+    expect(
+      await screen.findByText("Files for Authoritative events"),
+    ).toBeInTheDocument();
   });
-
-  it('shows the admin hub for a section moderator, without the admin-only Edit Section card', async () => {
-    mockCanModerate(true);
-
-    renderSectionAdminPage();
-
-    await waitFor(() => {
-      expect(screen.getByText('Send Announcement')).toBeInTheDocument();
-    });
-    expect(screen.queryByText('Edit Section')).not.toBeInTheDocument();
+  it("denies management when server authority does not grant moderation", async () => {
+    lookup.mockResolvedValue({ section, hasAccess: true, canModerate: false });
+    start();
+    expect(await screen.findByText(/Access denied/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Manage Events/ }),
+    ).not.toBeInTheDocument();
   });
-
-  it('opens and returns from the Send Announcement view', async () => {
-    const user = userEvent.setup();
-    mockCanModerate(true);
-
-    renderSectionAdminPage();
-
-    await waitFor(() => {
-      expect(screen.getByText('Send Announcement')).toBeInTheDocument();
+  it.each([null, "reject"])(
+    "shows useful unavailable state for missing or denied metadata %s",
+    async (kind) => {
+      if (kind) lookup.mockRejectedValue(new Error("permission-denied"));
+      else
+        lookup.mockResolvedValue({
+          section: null,
+          hasAccess: false,
+          canModerate: false,
+        });
+      start();
+      expect(
+        await screen.findByText(/Section unavailable/),
+      ).toBeInTheDocument();
+    },
+  );
+  it("never grants a new section the late authority or label of an old one", async () => {
+    let complete!: (v: Awaited<ReturnType<typeof getSectionForUser>>) => void;
+    lookup.mockReturnValueOnce(
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+    );
+    lookup.mockResolvedValueOnce({
+      section: { id: "two", name: "Other section", type: "MEMBERS" } as never,
+      hasAccess: true,
+      canModerate: false,
     });
-    await user.click(screen.getByText('Send Announcement'));
-
-    expect(screen.getByText('Mock Send Announcement Page for Test Section')).toBeInTheDocument();
-
-    await user.click(screen.getByText('Back to hub'));
-    expect(screen.getByText('Send Announcement')).toBeInTheDocument();
+    const u = userEvent.setup();
+    start();
+    await u.click(screen.getByRole("button", { name: "Other section" }));
+    expect(await screen.findByText(/Access denied/)).toBeInTheDocument();
+    await act(async () =>
+      complete({ section, hasAccess: true, canModerate: true }),
+    );
+    expect(
+      screen.queryByRole("link", { name: /Manage Events/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Authoritative events/)).not.toBeInTheDocument();
   });
-
-  it('opens and returns from Manage Files for a section moderator', async () => {
-    const user = userEvent.setup();
-    mockCanModerate(true);
-    renderSectionAdminPage();
-
-    await screen.findByText('Manage Files');
-    await user.click(screen.getByText('Manage Files'));
-    expect(screen.getByText('Mock Manage Files for Test Section')).toBeInTheDocument();
-
-    await user.click(screen.getByText('Back to hub'));
-    expect(screen.getByText('Manage Files')).toBeInTheDocument();
+  it("does not offer event management in a MEMBERS section even with forged event state", async () => {
+    lookup.mockResolvedValue({
+      section: { id: "one", name: "Members", type: "MEMBERS" } as never,
+      hasAccess: true,
+      canModerate: true,
+    });
+    start("/sections/one/manage/events/event-2", { sectionType: "EVENTS" });
+    expect(await screen.findByText(/does not exist/)).toBeInTheDocument();
   });
-
-  it('navigates to Manage Sections with the managed section for an EVENTS section', async () => {
-    const user = userEvent.setup();
-    mockIsAdmin = true;
-    mockCanModerate(false);
-
-    renderSectionAdminPage('EVENTS');
-
-    await waitFor(() => {
-      expect(screen.getByText('Manage Events')).toBeInTheDocument();
+  it.each(["admin", "explicit moderator", "status moderator"])(
+    "offers the same section tasks to a server-authorised %s",
+    async (role) => {
+      mockGlobalAdmin = role === "admin";
+      start();
+      expect(
+        await screen.findByRole("link", { name: /Manage Events/ }),
+      ).toHaveAttribute("href", "/sections/one/manage/events");
+      expect(
+        screen.getByRole("link", { name: /Manage Files/ }),
+      ).toHaveAttribute("href", "/sections/one/manage/files");
+      expect(screen.queryByText("Edit Section")).not.toBeInTheDocument();
+    },
+  );
+  it("accepts hyphenated uppercase URLs when metadata serialises UUIDs compactly", async () => {
+    const sid = "AABBCCDD-1111-4222-8333-ABCDEF123456";
+    lookup.mockResolvedValue({
+      section: {
+        id: sid.replaceAll("-", "").toLowerCase(),
+        name: "Mixed format section",
+        type: "EVENTS",
+      } as never,
+      hasAccess: true,
+      canModerate: true,
     });
-    await user.click(screen.getByText('Manage Events'));
-
-    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.MANAGE_SECTIONS, {
-      state: { managedSection: { id: sectionId, name: 'Test Section' } },
-    });
-  });
-
-  it('shows the admin hub including Edit Section for a global admin, and navigates to edit it', async () => {
-    const user = userEvent.setup();
-    mockIsAdmin = true;
-    mockCanModerate(false);
-
-    renderSectionAdminPage();
-
-    await waitFor(() => {
-      expect(screen.getByText('Edit Section')).toBeInTheDocument();
-    });
-    await user.click(screen.getByText('Edit Section'));
-
-    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.MANAGE_SECTIONS, {
-      state: { editSectionId: sectionId },
-    });
+    start(`/sections/${sid}/manage`);
+    expect(
+      await screen.findByRole("heading", {
+        name: "Administer — Mixed format section",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Manage Events/ })).toHaveAttribute(
+      "href",
+      `/sections/${sid.toLowerCase()}/manage/events`,
+    );
   });
 });

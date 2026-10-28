@@ -148,3 +148,9 @@ export async function getEventForUser(eventId: string): Promise<EventForUserResp
   const result = await callable({ eventId });
   return result.data;
 }
+
+/** Name-only resolution uses the directory's current, verified section population. */
+export async function getSectionMemberNamesByIds(sectionId: string, ids: string[]): Promise<{users: Array<{id:string;firstName:string;lastName:string}>}> {
+  const callable = httpsCallable<{sectionId:string;ids:string[]}, {users:Array<{id:string;firstName:string;lastName:string}>}>(functions,"getSectionMemberNamesByIds");
+  return (await callable({sectionId,ids})).data;
+}

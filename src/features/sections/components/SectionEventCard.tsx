@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import {
   AccessTimeOutlined,
   CalendarMonthOutlined,
@@ -22,6 +23,7 @@ export interface SectionEventCardProps {
   event: SectionEventListItem;
   variant?: "upcoming" | "past";
   onSelect: (eventId: string) => void;
+  href?: string;
 }
 
 function EventCardMeta({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
@@ -52,6 +54,7 @@ export default function SectionEventCard({
   event,
   variant = "upcoming",
   onSelect,
+  href,
 }: SectionEventCardProps) {
   const isPast = variant === "past";
 
@@ -65,7 +68,7 @@ export default function SectionEventCard({
       }}
     >
       <CardActionArea
-        onClick={() => onSelect(event.id)}
+        {...(href ? {component: RouterLink, to: href} : {onClick: () => onSelect(event.id)})}
         sx={{
           height: "100%",
           textAlign: "left",

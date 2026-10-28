@@ -17,6 +17,8 @@ export const ROUTES = {
   MY_BOOKINGS: "/bookings",
   SECTIONS: "/sections",
   SECTION_DETAIL: "/sections/:sectionId",
+  SECTION_EVENT: "/sections/:sectionId/events/:eventId",
+  SECTION_MANAGEMENT: "/sections/:sectionId/manage/*",
   SECTION_FILE: "/sections/:sectionId/files/:fileId",
   MANAGE_SECTIONS: "/admin/sections",
   SECTION_ADMIN: "/admin/section/:sectionId",

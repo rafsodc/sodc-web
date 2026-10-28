@@ -69,7 +69,7 @@ describe("buildNavigationLinks", () => {
     expect(links.admin).toEqual([]);
   });
 
-  it("shows Manage Sections (with no children) for a section moderator", () => {
+  it("keeps global administration out of an explicit moderator menu", () => {
     const links = buildNavigationLinks({
       isEnabled: true,
       isAdmin: false,
@@ -94,10 +94,10 @@ describe("buildNavigationLinks", () => {
     expect(links.sections).toEqual([
       { label: "Signals", to: "/sections/section-1", state: homeSectionState },
     ]);
-    expect(links.admin).toEqual([{ label: "Manage Sections", to: ROUTES.MANAGE_SECTIONS }]);
+    expect(links.admin).toEqual([]);
   });
 
-  it("shows Manage Sections for a status-based moderator", () => {
+  it("keeps global administration out of a status-based moderator menu", () => {
     const links = buildNavigationLinks({
       isEnabled: true,
       isAdmin: false,
@@ -116,7 +116,7 @@ describe("buildNavigationLinks", () => {
     expect(links.sections).toEqual([
       { label: "Events", to: "/sections/section-2", state: homeSectionState },
     ]);
-    expect(links.admin).toEqual([{ label: "Manage Sections", to: ROUTES.MANAGE_SECTIONS }]);
+    expect(links.admin).toEqual([]);
   });
 
   it("shows the full global admin link set only for admins", () => {

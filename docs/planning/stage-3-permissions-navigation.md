@@ -42,28 +42,47 @@ authority after awaited guards, never a request-supplied role or JWT claim alone
 
 ## Canonical route map — #647
 
-Use ordinary links for navigation, with resource IDs in the URL and authoritative
-metadata/permissions loaded by ID. URL spelling may be refined during implementation;
-keep a single shared route builder/validator and record the final mapping here.
+The shared builders/closed task validators live in `src/shared/navigation/sectionRoutes.ts`.
+Names, section type and moderation permission are loaded by ID through the current
+server access decision. Navigation state is only accepted to redirect old links;
+it does not grant access or supply resource metadata.
 
-| Task | Proposed canonical destination |
+| Task | Canonical destination |
 | --- | --- |
-| Section/member overview | `/sections/:sectionId` |
-| Member event/booking view | `/sections/:sectionId/events/:eventId` |
+| Section/member overview | `/sections/:sectionId` (`?view=past` for past events) |
+| Member event/booking view | `/sections/:sectionId/events/:eventId` (`?tab=book` or `?tab=attendees`; About is the default) |
 | Section management overview | `/sections/:sectionId/manage` |
 | Section files / announcements | `/sections/:sectionId/manage/files`, `/sections/:sectionId/manage/announcements` |
 | Section events list | `/sections/:sectionId/manage/events` |
-| Event management and selected task | `/sections/:sectionId/manage/events/:eventId`, with a validated task/subview encoded in the URL |
-| Global section configuration | Existing admin-only `/admin/sections`, with relevant configuration selection encoded in the URL |
+| Event management | `/sections/:sectionId/manage/events/:eventId` |
+| Selected existing event task | `?task=details`, `tickets`, `approvals`, `attendees`, `guests`, `activity`, `payments`, or `announcement` (details is the default) |
+| Booking approval filter | `?task=approvals&approval=PENDING`, `ALL`, `APPROVED`, or `REJECTED` |
+| New event / edit event form | Section events list with `?edit=new-event`; event workspace with `?edit=event` |
+| New/edit ticket-type form | Event workspace with `?task=tickets&ticket=new` or `&ticket=:ticketTypeId` |
+| Announcement audience filters | Event announcement task with known `audience.*` filter query parameters |
+| Global section configuration | Admin-only `/admin/sections?section=:sectionId`; new section `/admin/sections?create=section` |
 
-Legacy section-admin links, file links, guest links, event cards, My Bookings,
-welcome-page links and old navigation-state entry points remain compatible or
-redirect to the canonical destination. Fresh tabs, reload, sign-in return and
-back/forward preserve resource/task selection without trusting `location.state`.
-Missing, inaccessible or mismatched resources have useful local states. Clear
-obsolete event/task state when navigating to a different resource; preserve or
-warn before discarding unsaved forms/drafts. The earlier #667 Auth-initialisation
-fix remains covered; broad canonical routing is still needed.
+Legacy `/admin/section/:sectionId` redirects to the management hub. Legacy
+`/admin/sections` navigation state specifying a section/event redirects to the
+section event workspace; member section state specifying an event redirects to
+its member URL. Existing `/sections/:sectionId/files/:fileId` and bearer-capability
+`/guest-ticket#token` links remain unchanged. Welcome cards, My Bookings, section
+menus, event cards, admin links and booking emails use the same resource builders
+and corresponding server-side email destinations. Section configuration stays
+in the global Admin menu; it is not an extra section-moderator action.
+
+Event ownership is checked against the authoritative section list before enabling
+private management queries, and against returned event metadata before rendering.
+A resource change resets the component's selection; late responses cannot assign
+an old resource's permission or private UI to its replacement. Auth initialization,
+validated sign-in return URLs, query/hash and history remain covered.
+
+Unsaved event/ticket/editor and booking/announcement drafts are retained in bounded
+in-memory storage for the active private session and resource. Save/Cancel discard
+the relevant draft; retirement/account replacement clears the store and rejects
+late setters. Nothing is stored in local/session storage. A dirty mounted form
+warns before leaving/reloading the document. This establishes addressable existing
+tasks; the full #301 Manage Event visual redesign remains separate.
 
 ## Validation and release
 
