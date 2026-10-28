@@ -82,6 +82,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [selectedStatuses, setSelectedStatuses] = useState<MembershipStatus[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [deletingGroup, setDeletingGroup] = useState<UserGroupWithDetails | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const deletePendingRef = useRef(false);
@@ -416,17 +417,18 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const handleDelete = (group: UserGroupWithDetails) => {
     if (deletePendingRef.current) return;
     setDeletingGroup(group);
+    setDeleteDialogOpen(true);
     setDeleteError(null);
   };
 
   const handleCancelDelete = () => {
     if (deletePendingRef.current) return;
-    setDeletingGroup(null);
+    setDeleteDialogOpen(false);
     setDeleteError(null);
   };
 
   const handleConfirmDelete = async () => {
-    if (!deletingGroup || deletePendingRef.current) return;
+    if (!deleteDialogOpen || !deletingGroup || deletePendingRef.current) return;
     const group = deletingGroup;
     deletePendingRef.current = true;
     setDeletePending(true);
@@ -444,7 +446,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     }
 
     // The deletion is committed. Close confirmation before starting read-only recovery.
-    setDeletingGroup(null);
+    setDeleteDialogOpen(false);
     setDeleteError(null);
     if (expandedGroupId === group.id) {
       setExpandedGroupId(null);
@@ -587,7 +589,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       />
 
       <ConfirmationDialog
-        open={Boolean(deletingGroup)}
+        open={deleteDialogOpen}
         title="Delete user group?"
         pending={deletePending}
         error={deleteError}

@@ -110,6 +110,7 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
   const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const deletionInFlight = useRef(false);
 
@@ -369,14 +370,6 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setError(null);
     try {
       await executeDataConnectMutation(deleteEventRef(dataConnect, { id: event.id }));
-      setDeleteTarget(null);
-      if (ticketTypesEventId === event.id) setTicketTypesEventId(null);
-      await refreshSavedChange(`Event "${event.title}" deleted`, async () => {
-        const deletedEventKey = ["GetEventById", { id: event.id }];
-        await queryClient.cancelQueries({ queryKey: deletedEventKey, exact: true });
-        await queryClient.invalidateQueries({ queryKey: deletedEventKey, exact: true, refetchType: "none" });
-        await refetchEvents();
-      });
     } catch (err: unknown) {
       reportError("admin.events.delete", err, { sectionId, eventId: event.id });
       setDeleteError(
@@ -384,9 +377,20 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           ? "This event cannot be deleted because tickets already exist."
           : toAdminUserFacingError(err, "events").message,
       );
+      return;
     } finally {
+      deletionInFlight.current = false;
       setDeletingEventId(null);
     }
+
+    setDeleteConfirmationOpen(false);
+    if (ticketTypesEventId === event.id) setTicketTypesEventId(null);
+    await refreshSavedChange(`Event "${event.title}" deleted`, async () => {
+      const deletedEventKey = ["GetEventById", { id: event.id }];
+      await queryClient.cancelQueries({ queryKey: deletedEventKey, exact: true });
+      await queryClient.invalidateQueries({ queryKey: deletedEventKey, exact: true, refetchType: "none" });
+      await refetchEvents();
+    });
   };
 
   const openTicketTypeDialog = (ticketType?: TicketTypeRow) => {
@@ -475,8 +479,6 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
     setError(null);
     try {
       await executeDataConnectMutation(deleteTicketTypeRef(dataConnect, { id }));
-      setDeleteTarget(null);
-      await refreshSavedChange("Ticket type deleted", () => Promise.all([refetchEventDetail(), refetchEvents()]));
     } catch (err: unknown) {
       reportError("admin.tickets.delete", err, { ticketTypeId: id });
       setDeleteError(
@@ -484,38 +486,40 @@ export default function SectionEventsManager({ sectionId, sectionName, initialEv
           ? "This ticket type cannot be deleted because tickets already exist."
           : toAdminUserFacingError(err, "tickets").message,
       );
+      return;
     } finally {
+      deletionInFlight.current = false;
       setDeletingTicketTypeId(null);
     }
+
+    setDeleteConfirmationOpen(false);
+    await refreshSavedChange("Ticket type deleted", () => Promise.all([refetchEventDetail(), refetchEvents()]));
   };
 
   const requestDeletion = (target: DeleteTarget) => {
     if (deletionInFlight.current) return;
     setDeleteError(null);
     setDeleteTarget(target);
+    setDeleteConfirmationOpen(true);
   };
 
   const cancelDeletion = () => {
     if (deletionInFlight.current) return;
-    setDeleteTarget(null);
+    setDeleteConfirmationOpen(false);
     setDeleteError(null);
   };
 
   const confirmDeletion = async () => {
-    if (!deleteTarget || deletionInFlight.current) return;
+    if (!deleteConfirmationOpen || !deleteTarget || deletionInFlight.current) return;
     deletionInFlight.current = true;
     setDeleteError(null);
-    try {
-      if (deleteTarget.kind === "event") await handleDeleteEvent(deleteTarget.item);
-      else await handleDeleteTicketType(deleteTarget.item.id);
-    } finally {
-      deletionInFlight.current = false;
-    }
+    if (deleteTarget.kind === "event") await handleDeleteEvent(deleteTarget.item);
+    else await handleDeleteTicketType(deleteTarget.item.id);
   };
 
   const deleteConfirmation = (
     <ConfirmationDialog
-      open={deleteTarget !== null}
+      open={deleteConfirmationOpen}
       title={deleteTarget?.kind === "event" ? "Delete event?" : "Delete ticket type?"}
       pending={deletingEventId !== null || deletingTicketTypeId !== null}
       error={deleteError}

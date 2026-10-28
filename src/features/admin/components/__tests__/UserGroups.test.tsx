@@ -182,7 +182,12 @@ describe("UserGroups", () => {
     expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
     expect(executeMutation).not.toHaveBeenCalled();
 
-    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    const confirmButton = within(dialog).getByRole("button", { name: "Delete" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Delete the user group "Original Group"?');
+    fireEvent.click(confirmButton);
+    expect(executeMutation).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(executeMutation).not.toHaveBeenCalled();
   });
@@ -205,11 +210,43 @@ describe("UserGroups", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText(/Other Group/)).toBeInTheDocument();
     expect(executeMutation).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+    const confirmButton = within(dialog).getByRole("button", { name: "Delete" });
+    await act(async () => fireEvent.click(confirmButton));
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Delete the user group "Other Group"?');
+    fireEvent.click(confirmButton);
 
-    await waitFor(() => expect(executeMutation).toHaveBeenCalledTimes(1));
+    expect(executeMutation).toHaveBeenCalledTimes(1);
     expect(deleteUserGroupRef).toHaveBeenCalledWith({}, { id: "group-2" });
     expect(executeMutation).toHaveBeenCalledWith({ kind: "delete-group", vars: { id: "group-2" } });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("replaces the retained name and target when another group is selected after Cancel", async () => {
+    const user = userEvent.setup();
+    const executeDefaultQuery = vi.mocked(executeQuery).getMockImplementation()!;
+    vi.mocked(executeQuery).mockImplementation((ref, options) => {
+      if ((ref as unknown as { kind: string }).kind === "list-groups") {
+        return Promise.resolve({ data: { userGroups: [
+          { id: "group-1", name: "Original Group", description: null, membershipStatuses: [] },
+          { id: "group-2", name: "Other Group", description: null, membershipStatuses: [] },
+        ] } }) as never;
+      }
+      return executeDefaultQuery(ref, options);
+    });
+    render(<MemoryRouter><UserGroups onBack={vi.fn()} /></MemoryRouter>);
+    await user.click(await screen.findByRole("button", { name: "Delete Original Group" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: "Delete Other Group" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent('Delete the user group "Other Group"?');
+    expect(dialog).not.toHaveTextContent("Original Group");
+    expect(executeMutation).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+    expect(deleteUserGroupRef).toHaveBeenCalledWith({}, { id: "group-2" });
+    expect(executeMutation).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 

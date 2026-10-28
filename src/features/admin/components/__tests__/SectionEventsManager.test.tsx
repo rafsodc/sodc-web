@@ -243,10 +243,14 @@ describe("SectionEventsManager", () => {
   };
 
   async function openDeletion(kind: "event" | "ticket type") {
-    mockGetEventsForSection({ data: { section: { id: sectionId, events: [deletionEvent] } }, isLoading: false, isError: false });
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [deletionEvent, { ...deletionEvent, id: "ev-2", title: "Second Dinner" }] } }, isLoading: false, isError: false });
     mockGetEventById({
       data: { event: { ...deletionEvent, ticketTypes: [{
         id: "type-1", title: "Dinner", description: "Dinner", price: 25, sortOrder: 0,
+        audience: generated.TicketAudience.MEMBER, userGroup: { id: "members", name: "Members", membershipStatuses: [] },
+        includesDinner: true, includesSymposium: false,
+      }, {
+        id: "type-2", title: "Second Dinner", description: "Another ticket type", price: 30, sortOrder: 1,
         audience: generated.TicketAudience.MEMBER, userGroup: { id: "members", name: "Members", membershipStatuses: [] },
         includesDinner: true, includesSymposium: false,
       }] } }, isLoading: false, isError: false,
@@ -293,6 +297,69 @@ describe("SectionEventsManager", () => {
     await act(async () => { finishDelete({}); });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+  });
+
+  it.each(["event", "ticket type"] as const)("opens another %s deletion during refresh and keeps its mutation guarded when the old refresh ends", async (kind) => {
+    const heldRead = kind === "event" ? "GetEventsForSection" : "GetEventById";
+    let finishFirstRefresh!: (value: unknown) => void;
+    let finishSecondDelete: ((value: unknown) => void) | undefined;
+    let firstRefreshStarted = false;
+    vi.mocked(firebaseDataConnect.executeQuery).mockImplementation((ref) => {
+      if (ref.name === heldRead && !firstRefreshStarted) {
+        firstRefreshStarted = true;
+        return new Promise((resolve) => { finishFirstRefresh = resolve; }) as never;
+      }
+      return Promise.resolve({ data: null }) as never;
+    });
+    vi.mocked(firebaseDataConnect.executeMutation)
+      .mockResolvedValueOnce({} as never)
+      .mockImplementationOnce(() => new Promise((resolve) => { finishSecondDelete = resolve; }) as never);
+    try {
+      const { user, dialog } = await openDeletion(kind);
+      await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+      await waitFor(() => expect(firstRefreshStarted).toBe(true));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+      const secondTrigger = screen.getByRole("button", { name: "Delete Second Dinner" });
+      expect(secondTrigger).toBeEnabled();
+      await user.click(secondTrigger);
+      const secondDialog = screen.getByRole("dialog", { name: `Delete ${kind}?` });
+      expect(secondDialog).toHaveTextContent("Second Dinner");
+      expect(within(secondDialog).getByRole("button", { name: "Delete" })).toBeEnabled();
+      await user.click(within(secondDialog).getByRole("button", { name: "Delete" }));
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledTimes(2);
+      await act(async () => { finishFirstRefresh({ data: null }); });
+      // An older refresh settling must not unlock the newer deletion.
+      expect(within(secondDialog).getByRole("button", { name: "Deleting…" })).toBeDisabled();
+      expect(within(secondDialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
+      await user.keyboard("{Escape}");
+      expect(secondDialog).toBeInTheDocument();
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledTimes(2);
+      const refs = kind === "event" ? generated.deleteEventRef : generated.deleteTicketTypeRef;
+      expect(vi.mocked(refs).mock.calls.map(([, vars]) => vars)).toEqual([
+        { id: kind === "event" ? "ev-1" : "type-1" },
+        { id: kind === "event" ? "ev-2" : "type-2" },
+      ]);
+      await act(async () => { finishSecondDelete?.({}); });
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+    } finally {
+      await act(async () => { finishFirstRefresh?.({ data: null }); finishSecondDelete?.({}); });
+    }
+  });
+
+  it.each([
+    ["event", "Cancel"], ["ticket type", "Cancel"], ["event", "Delete"], ["ticket type", "Delete"],
+  ] as const)("retains the named %s confirmation during the closing transition after %s", async (kind, action) => {
+    const { dialog } = await openDeletion(kind);
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: action })); });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveTextContent(`Delete ${kind}?`);
+    expect(dialog).toHaveTextContent(kind === "event" ? "Annual Dinner" : "Dinner");
+    expect(dialog).not.toHaveTextContent("“”");
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledTimes(action === "Delete" ? 1 : 0);
+    // Retaining the closing item must not leave its old Delete button active.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete", hidden: true }));
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledTimes(action === "Delete" ? 1 : 0);
+    await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
   });
 
   it("renders events list with section name", async () => {
