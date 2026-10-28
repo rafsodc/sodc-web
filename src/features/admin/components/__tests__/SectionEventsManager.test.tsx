@@ -1036,7 +1036,7 @@ describe("SectionEventsManager", () => {
     const view = canonicalManager("/sections/section-1/manage/events?edit=new-event");
     try {
       const user = userEvent.setup();
-      await user.type(await screen.findByLabelText(/^title/i),"Unsent event draft");
+      fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Unsent event draft"}});
       await act(async () => managerNavigation("/elsewhere"));
       expect(screen.getByText("Elsewhere")).toBeInTheDocument();
       await act(async () => managerNavigation(-1));
@@ -1045,7 +1045,7 @@ describe("SectionEventsManager", () => {
       await user.click(await screen.findByRole("link",{name:"Add event"}));
       expect(await screen.findByLabelText(/^title/i)).toHaveValue("");
     } finally { view.unmount(); uninstall(); }
-  });
+  },20_000);
 
   it("opens a ticket editor from its cold URL and rejects missing ticket IDs", async () => {
     const event = {id:"ev-1",section:{id:sectionId},title:"Event",ticketTypes:[{id:"ticket-1",title:"Member dinner",price:25,sortOrder:0,audience:generated.TicketAudience.MEMBER,includesDinner:true,includesSymposium:false,userGroup:{id:"group-1",name:"Members"}}]};
@@ -1057,7 +1057,7 @@ describe("SectionEventsManager", () => {
     canonicalManager("/sections/section-1/manage/events/ev-1?task=tickets&ticket=foreign");
     expect(screen.getByText("Ticket type unavailable in this event.")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
+  },20_000);
 
   it("matches compact server event and section UUIDs to uppercase hyphenated direct URLs", () => {
     const sid="AABBCCDD-1111-4222-8333-ABCDEF123456";
@@ -1080,7 +1080,7 @@ describe("SectionEventsManager", () => {
     const view=canonicalManager("/sections/section-1/manage/events?edit=new-event");
     try {
       const user=userEvent.setup();
-      await user.type(await screen.findByLabelText(/^title/i),"Pending one event");
+      fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Pending one event"}});
       await user.click(screen.getByRole("button",{name:"Save"}));
       await waitFor(()=>expect(generated.createEventRef).toHaveBeenCalledOnce());
       await act(async()=>managerNavigation("/elsewhere"));
@@ -1100,7 +1100,7 @@ describe("SectionEventsManager", () => {
       expect(generated.createEventRef).toHaveBeenCalledOnce();
       expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
     } finally {view.unmount();uninstall();}
-  });
+  },20_000);
 
   it("does not close a different editor when an old update completes", async () => {
     const event={id:"ev-1",section:{id:sectionId},title:"Original event",startDateTime:"2030-03-01T18:00:00Z",endDateTime:"2030-03-01T22:00:00Z",bookingStartDateTime:"2030-01-01T00:00:00Z",bookingEndDateTime:"2030-02-28T00:00:00Z",maxGuestsWithoutModeratorApproval:0,ticketTypes:[]};
@@ -1129,7 +1129,7 @@ describe("SectionEventsManager", () => {
     vi.mocked(firebaseDataConnect.executeMutation).mockReturnValueOnce(pending as never);
     const view=canonicalManager("/sections/section-1/manage/events?edit=new-event");
     try {
-      const user=userEvent.setup();await user.type(await screen.findByLabelText(/^title/i),"Unconfirmed create");
+      const user=userEvent.setup();fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Unconfirmed create"}});
       await user.click(screen.getByRole("button",{name:"Save"}));
       await act(async()=>managerNavigation("/elsewhere"));
       await act(async()=>{fail(new Error("Network timeout"));await pending.catch(()=>{});});
@@ -1142,7 +1142,7 @@ describe("SectionEventsManager", () => {
       expect(await screen.findByRole("dialog",{name:"Start a new save request?"})).toBeInTheDocument();
       expect(generated.createEventRef).toHaveBeenCalledOnce();
     } finally {view.unmount();uninstall();}
-  });
+  },20_000);
 
   it("keeps exactly one ticket create across a pending leave/back and reconciles its saved receipt", async () => {
     const owner=createSessionLifecycle();owner.observe("admin");

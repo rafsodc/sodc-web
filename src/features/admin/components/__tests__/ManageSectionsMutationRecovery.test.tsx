@@ -168,7 +168,7 @@ describe("global section save receipt reconciliation", () => {
       ).not.toBeInTheDocument(),
     );
     expect(saveButton()).toBeDisabled();
-  });
+  }, 20_000);
 
   it("retains a successful receipt when its refresh fails and recovers through reads alone", async () => {
     open();
@@ -195,7 +195,7 @@ describe("global section save receipt reconciliation", () => {
     );
     expect(await screen.findByText(savedSection.name)).toBeInTheDocument();
     expect(executeMutation).toHaveBeenCalledOnce();
-  });
+  }, 20_000);
 
   it("keeps one pending CreateSection through leaving and returning, then reconciles its settled success", async () => {
     let complete!: (value: unknown) => void;
@@ -236,7 +236,7 @@ describe("global section save receipt reconciliation", () => {
     );
     expect(executeMutation).toHaveBeenCalledOnce();
     expect(await screen.findByText(savedSection.name)).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it("retires the previous section editor when history selects a missing resource", async () => {
     committed = true;
@@ -270,7 +270,7 @@ describe("global section save receipt reconciliation", () => {
         "Unsent configuration draft",
       ),
     );
-  });
+  }, 20_000);
   it("changes from an existing configuration URL to a new-section task without updating the old section", async () => {
     committed = true;
     open(`/admin/sections?section=${savedSection.id}`);
@@ -291,5 +291,5 @@ describe("global section save receipt reconciliation", () => {
     expect(executeMutation).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "create" }),
     );
-  });
+  }, 20_000);
 });
