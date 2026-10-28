@@ -89,7 +89,8 @@ interface RawSectionMemberUser {
 async function loadSectionMemberPopulation(
   sectionId: string,
   callerUid: string,
-  callerIsAdmin = false
+  callerIsAdmin = false,
+  requestedIds?: ReadonlySet<string>
 ): Promise<SectionMemberResponse[]> {
   const [sectionResult, membersResult, callerGroupsResult, userStatusResult] = await Promise.all([
     getSectionById({ id: sectionId }),
@@ -169,8 +170,13 @@ async function loadSectionMemberPopulation(
     }
   }
 
+  // Name chunks use the identical roster rules but need verify only their own
+  // requested members. The full directory still verifies its entire population.
+  const verifyPopulation = (members: SectionMemberResponse[]) => verifiedDirectoryMembers(
+    requestedIds ? members.filter((member) => requestedIds.has(member.id)) : members
+  );
   if (statuses.size === 0) {
-    return verifiedDirectoryMembers(Array.from(explicitMap.values()));
+    return verifyPopulation(Array.from(explicitMap.values()));
   }
 
   const listResult = await listUsers();
@@ -182,7 +188,7 @@ async function loadSectionMemberPopulation(
     }
   }
 
-  return verifiedDirectoryMembers(Array.from(explicitMap.values()));
+  return verifyPopulation(Array.from(explicitMap.values()));
 }
 
 /**
@@ -223,7 +229,7 @@ export const getSectionMemberNamesByIds = onCall(
     await requireSectionModerator(sectionId, actor.uid, actor.isAdmin);
     if (ids.length === 0) return { users: [] };
     const requested = new Set(ids as string[]);
-    const population = await loadSectionMemberPopulation(sectionId, actor.uid, actor.isAdmin);
+    const population = await loadSectionMemberPopulation(sectionId, actor.uid, actor.isAdmin, requested);
     return { users: population.filter((member) => requested.has(member.id))
       .map(({ id, firstName, lastName }) => ({ id, firstName, lastName })) };
   }

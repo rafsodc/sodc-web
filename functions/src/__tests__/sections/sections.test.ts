@@ -321,6 +321,14 @@ describe("getSectionMembersMerged", () => {
     mockGetUsers.mockResolvedValue({users:[{uid:"visible",emailVerified:true},{uid:"unverified",emailVerified:false},{uid:"not-requested",emailVerified:true}]});
     const result = await callAs(getSectionMemberNamesByIds, "unlinked-admin", true, {sectionId,ids:["visible","unverified","unrelated-id"]});
     expect(result).toEqual({users:[{id:"visible",firstName:"Ada",lastName:"Lovelace"}]});
+    expect(mockGetUsers).toHaveBeenCalledExactlyOnceWith([{uid:"visible"},{uid:"unverified"}]);
+  });
+
+  it("performs no Auth lookup for requested IDs outside the eligible section roster", async () => {
+    mockGetUserAccessGroupsById.mockResolvedValue({data:{user:{userGroups:[]}}} as never);
+    mockMembers([member({id:"eligible-not-requested",shareContactInfo:false})]);
+    expect(await callAs(getSectionMemberNamesByIds,"admin",true,{sectionId,ids:["unrelated-id"]})).toEqual({users:[]});
+    expect(mockGetUsers).not.toHaveBeenCalled();
   });
 
   it("does not allow an ordinary section reader to enumerate seating labels", async () => {
