@@ -108,7 +108,7 @@ describe("section access service", () => {
   it("allows an enabled global admin at the relationship layer", async () => {
     mockCaller([]);
     await expect(requireSectionModerator(sectionId, "caller", true)).resolves.toMatchObject({
-      canModerate: false,
+      hasAccess: true, canModerate: true,
     });
   });
 });

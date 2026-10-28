@@ -1257,14 +1257,14 @@
     "file": "queries.gql",
     "operation": "GetEventsForSection",
     "kind": "query",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
     "file": "queries.gql",
     "operation": "GetEventById",
     "kind": "query",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
@@ -1334,21 +1334,21 @@
     "file": "queries.gql",
     "operation": "ListEventBookingsForAdmin",
     "kind": "query",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
     "file": "queries.gql",
     "operation": "ListTicketOrdersForAdmin",
     "kind": "query",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
     "file": "queries.gql",
     "operation": "ListBookingPaymentAdjustmentsForAdmin",
     "kind": "query",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
@@ -1370,6 +1370,13 @@
     "operation": "GetMyAnnouncementPreferences",
     "kind": "query",
     "classification": "current-member"
+  },
+  {
+    "connector": "api",
+    "file": "queries.gql",
+    "operation": "ListSectionTicketAccessGroups",
+    "kind": "query",
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
@@ -1537,42 +1544,42 @@
     "file": "user-group-mutations.gql",
     "operation": "CreateEvent",
     "kind": "mutation",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
     "file": "user-group-mutations.gql",
     "operation": "UpdateEvent",
     "kind": "mutation",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
     "file": "user-group-mutations.gql",
     "operation": "DeleteEvent",
     "kind": "mutation",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
     "file": "user-group-mutations.gql",
     "operation": "CreateTicketType",
     "kind": "mutation",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
     "file": "user-group-mutations.gql",
     "operation": "UpdateTicketType",
     "kind": "mutation",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",
     "file": "user-group-mutations.gql",
     "operation": "DeleteTicketType",
     "kind": "mutation",
-    "classification": "current-admin"
+    "classification": "current-section-moderator"
   },
   {
     "connector": "api",

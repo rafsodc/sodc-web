@@ -26,7 +26,8 @@
     "legacy-user-preflight-review": "ts-node --project tsconfig.scripts.json scripts/legacy-user-preflight-review.ts",
     "legacy-bcrypt-pilot": "ts-node --project tsconfig.scripts.json scripts/legacy-bcrypt-pilot.ts",
     "security-state-admin": "ts-node --project tsconfig.scripts.json scripts/security-state-admin.ts",
-    "notification-recovery-admin": "node scripts/notification-recovery-admin.mjs"
+    "notification-recovery-admin": "node scripts/notification-recovery-admin.mjs",
+    "test:section-permissions-integration": "node scripts/run-section-permissions-integration.mjs"
   },
   "engines": {
     "node": "24"

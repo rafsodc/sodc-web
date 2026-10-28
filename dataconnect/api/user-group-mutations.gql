@@ -1,7 +1,8 @@
 # SODC User Group and Section Mutations
 #
 # Mutations related to sections, user groups, and access control.
-# These mutations are accessible from the frontend/client SDK and require admin authentication.
+# Global section/group configuration requires current administrator authority.
+# Event/ticket configuration also permits current moderators of the resource's section.
 #
 # Auth Expression Constants:
 # - Admin access: "auth.token.admin == true && auth.token.enabled == true"
@@ -266,7 +267,7 @@ mutation DeleteSection(
   section_delete(id: $id)
 }
 
-# --- Event mutations (admin only) ---
+# --- Event mutations (current section moderator or global administrator) ---
 
 mutation CreateEvent(
   $sectionId: UUID!
@@ -280,7 +281,7 @@ mutation CreateEvent(
   $bookingStartDateTime: Timestamp!
   $bookingEndDateTime: Timestamp!
   $maxGuestsWithoutModeratorApproval: Int!
-) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") @transaction {
+) @auth(expr: "auth.token.enabled == true") @transaction {
   query @redact {
   currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
     @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
@@ -288,9 +289,20 @@ mutation CreateEvent(
     securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
     accessReady
     membershipStatus
-    adminReady @check(expr: "this == true", message: "ACCESS_REVOKED")
+    adminReady
     user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
   }
+  managementScope: section(id: $sectionId) @redact @check(expr: "this != null && ((response.query.currentAuthorization.adminReady && has(auth.token.admin) && auth.token.admin == true) || this.purposeLinks.exists(l, type(l.purposes) == list && 'MODERATOR' in l.purposes && (l.userGroup.users.size() > 0 || (type(l.userGroup.membershipStatuses) == list && response.query.currentAuthorization.membershipStatus in l.userGroup.membershipStatuses))))", message: "SECTION_MODERATOR_REQUIRED") {
+      id
+      purposeLinks: sectionUserGroupPurposeLinks_on_section(limit: 1000) {
+        purposes
+        userGroup {
+          membershipStatuses
+          users: userUserGroups_on_userGroup(where: {userId: {eq_expr: "auth.uid"}}, limit: 1) {userId}
+        }
+      }
+  }
+
   }
 
   event_insert(
@@ -322,7 +334,7 @@ mutation UpdateEvent(
   $bookingStartDateTime: Timestamp!
   $bookingEndDateTime: Timestamp!
   $maxGuestsWithoutModeratorApproval: Int!
-) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") @transaction {
+) @auth(expr: "auth.token.enabled == true") @transaction {
   query @redact {
   currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
     @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
@@ -330,9 +342,20 @@ mutation UpdateEvent(
     securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
     accessReady
     membershipStatus
-    adminReady @check(expr: "this == true", message: "ACCESS_REVOKED")
+    adminReady
     user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
   }
+  managementScope: event(id: $id) @redact @check(expr: "this != null && ((response.query.currentAuthorization.adminReady && has(auth.token.admin) && auth.token.admin == true) || this.section.purposeLinks.exists(l, type(l.purposes) == list && 'MODERATOR' in l.purposes && (l.userGroup.users.size() > 0 || (type(l.userGroup.membershipStatuses) == list && response.query.currentAuthorization.membershipStatus in l.userGroup.membershipStatuses))))", message: "SECTION_MODERATOR_REQUIRED") {
+      id section { id
+      purposeLinks: sectionUserGroupPurposeLinks_on_section(limit: 1000) {
+        purposes
+        userGroup {
+          membershipStatuses
+          users: userUserGroups_on_userGroup(where: {userId: {eq_expr: "auth.uid"}}, limit: 1) {userId}
+        }
+      } }
+  }
+
   }
 
   event_update(
@@ -356,7 +379,7 @@ mutation UpdateEvent(
 
 mutation DeleteEvent(
   $id: UUID!
-) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") @transaction {
+) @auth(expr: "auth.token.enabled == true") @transaction {
   query @redact {
   currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
     @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
@@ -364,9 +387,20 @@ mutation DeleteEvent(
     securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
     accessReady
     membershipStatus
-    adminReady @check(expr: "this == true", message: "ACCESS_REVOKED")
+    adminReady
     user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
   }
+  managementScope: event(id: $id) @redact @check(expr: "this != null && ((response.query.currentAuthorization.adminReady && has(auth.token.admin) && auth.token.admin == true) || this.section.purposeLinks.exists(l, type(l.purposes) == list && 'MODERATOR' in l.purposes && (l.userGroup.users.size() > 0 || (type(l.userGroup.membershipStatuses) == list && response.query.currentAuthorization.membershipStatus in l.userGroup.membershipStatuses))))", message: "SECTION_MODERATOR_REQUIRED") {
+      id section { id
+      purposeLinks: sectionUserGroupPurposeLinks_on_section(limit: 1000) {
+        purposes
+        userGroup {
+          membershipStatuses
+          users: userUserGroups_on_userGroup(where: {userId: {eq_expr: "auth.uid"}}, limit: 1) {userId}
+        }
+      } }
+  }
+
   }
 
   event_deleteMany(
@@ -379,7 +413,7 @@ mutation DeleteEvent(
   ) @check(expr: "this == 1", message: "EVENT_HAS_TICKETS")
 }
 
-# --- TicketType mutations (admin only) ---
+# --- TicketType mutations (current section moderator or global administrator) ---
 
 mutation CreateTicketType(
   $eventId: UUID!
@@ -391,7 +425,7 @@ mutation CreateTicketType(
   $includesDinner: Boolean!
   $includesSymposium: Boolean!
   $sortOrder: Int
-) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") @transaction {
+) @auth(expr: "auth.token.enabled == true") @transaction {
   query @redact {
   currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
     @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
@@ -399,9 +433,26 @@ mutation CreateTicketType(
     securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
     accessReady
     membershipStatus
-    adminReady @check(expr: "this == true", message: "ACCESS_REVOKED")
+    adminReady
     user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
   }
+  managementScope: event(id: $eventId) @redact @check(expr: "this != null && ((response.query.currentAuthorization.adminReady && has(auth.token.admin) && auth.token.admin == true) || this.section.purposeLinks.exists(l, type(l.purposes) == list && 'MODERATOR' in l.purposes && (l.userGroup.users.size() > 0 || (type(l.userGroup.membershipStatuses) == list && response.query.currentAuthorization.membershipStatus in l.userGroup.membershipStatuses))))", message: "SECTION_MODERATOR_REQUIRED") {
+      id section { id
+      purposeLinks: sectionUserGroupPurposeLinks_on_section(limit: 1000) {
+        purposes
+        userGroup {
+          membershipStatuses
+          users: userUserGroups_on_userGroup(where: {userId: {eq_expr: "auth.uid"}}, limit: 1) {userId}
+        }
+      } }
+  }
+
+  audienceGroup: userGroup(id: $userGroupId) @redact
+    @check(expr: "this != null && (this.links.exists(l, l.sectionId == response.query.managementScope.section.id) || this.tickets.exists(t, t.event.sectionId == response.query.managementScope.section.id))", message: "SECTION_TICKET_GROUP_REQUIRED") {
+    links: sectionUserGroupPurposeLinks_on_userGroup(limit: 1000) { sectionId }
+    tickets: ticketTypes_on_userGroup(limit: 1000) { event { sectionId } }
+  }
+
   }
 
   ticketType_insert(
@@ -429,7 +480,7 @@ mutation UpdateTicketType(
   $includesDinner: Boolean!
   $includesSymposium: Boolean!
   $sortOrder: Int!
-) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") @transaction {
+) @auth(expr: "auth.token.enabled == true") @transaction {
   query @redact {
   currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
     @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
@@ -437,9 +488,26 @@ mutation UpdateTicketType(
     securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
     accessReady
     membershipStatus
-    adminReady @check(expr: "this == true", message: "ACCESS_REVOKED")
+    adminReady
     user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
   }
+  managementScope: ticketType(id: $id) @redact @check(expr: "this != null && ((response.query.currentAuthorization.adminReady && has(auth.token.admin) && auth.token.admin == true) || this.event.section.purposeLinks.exists(l, type(l.purposes) == list && 'MODERATOR' in l.purposes && (l.userGroup.users.size() > 0 || (type(l.userGroup.membershipStatuses) == list && response.query.currentAuthorization.membershipStatus in l.userGroup.membershipStatuses))))", message: "SECTION_MODERATOR_REQUIRED") {
+      id event { id section { id
+      purposeLinks: sectionUserGroupPurposeLinks_on_section(limit: 1000) {
+        purposes
+        userGroup {
+          membershipStatuses
+          users: userUserGroups_on_userGroup(where: {userId: {eq_expr: "auth.uid"}}, limit: 1) {userId}
+        }
+      } } }
+  }
+
+  audienceGroup: userGroup(id: $userGroupId) @redact
+    @check(expr: "this != null && (this.links.exists(l, l.sectionId == response.query.managementScope.event.section.id) || this.tickets.exists(t, t.event.sectionId == response.query.managementScope.event.section.id))", message: "SECTION_TICKET_GROUP_REQUIRED") {
+    links: sectionUserGroupPurposeLinks_on_userGroup(limit: 1000) { sectionId }
+    tickets: ticketTypes_on_userGroup(limit: 1000) { event { sectionId } }
+  }
+
   }
 
   ticketType_update(
@@ -461,7 +529,7 @@ mutation UpdateTicketType(
 
 mutation DeleteTicketType(
   $id: UUID!
-) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") @transaction {
+) @auth(expr: "auth.token.enabled == true") @transaction {
   query @redact {
   currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
     @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
@@ -469,9 +537,20 @@ mutation DeleteTicketType(
     securityVersion @check(expr: "has(auth.token.securityVersion) && this == auth.token.securityVersion", message: "SESSION_VERSION_STALE")
     accessReady
     membershipStatus
-    adminReady @check(expr: "this == true", message: "ACCESS_REVOKED")
+    adminReady
     user { membershipStatus @check(expr: "this in ['REGULAR', 'RETIRED', 'RESERVE', 'INDUSTRY', 'CIVIL_SERVICE']", message: "ACCESS_REVOKED") }
   }
+  managementScope: ticketType(id: $id) @redact @check(expr: "this != null && ((response.query.currentAuthorization.adminReady && has(auth.token.admin) && auth.token.admin == true) || this.event.section.purposeLinks.exists(l, type(l.purposes) == list && 'MODERATOR' in l.purposes && (l.userGroup.users.size() > 0 || (type(l.userGroup.membershipStatuses) == list && response.query.currentAuthorization.membershipStatus in l.userGroup.membershipStatuses))))", message: "SECTION_MODERATOR_REQUIRED") {
+      id event { id section { id
+      purposeLinks: sectionUserGroupPurposeLinks_on_section(limit: 1000) {
+        purposes
+        userGroup {
+          membershipStatuses
+          users: userUserGroups_on_userGroup(where: {userId: {eq_expr: "auth.uid"}}, limit: 1) {userId}
+        }
+      } } }
+  }
+
   }
 
   ticketType_deleteMany(

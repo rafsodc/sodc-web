@@ -1327,6 +1327,12 @@ export function getMyAnnouncementPreferences(dcOrOptions, options) {
   return dcInstance.executeQuery('GetMyAnnouncementPreferences', undefined, inputOpts);
 }
 
+export function listSectionTicketAccessGroups(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListSectionTicketAccessGroups', inputVars, inputOpts);
+}
+
 export function serviceGetUserById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

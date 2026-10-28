@@ -67,7 +67,7 @@ export async function requireSectionAccess(
   if (!callerIsAdmin && !access.hasAccess) {
     throw new HttpsError("not-found", "Resource not found");
   }
-  return access;
+  return callerIsAdmin ? { ...access, hasAccess: true, canModerate: true } : access;
 }
 
 export async function requireSectionModerator(
@@ -79,5 +79,5 @@ export async function requireSectionModerator(
   if (!callerIsAdmin && !access.canModerate) {
     throw new HttpsError("not-found", "Resource not found");
   }
-  return access;
+  return callerIsAdmin ? { ...access, hasAccess: true, canModerate: true } : access;
 }

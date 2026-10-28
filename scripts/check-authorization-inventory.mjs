@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventory = [];
+const sectionModeration = new Set(["CreateEvent", "UpdateEvent", "DeleteEvent", "CreateTicketType", "UpdateTicketType", "DeleteTicketType", "GetEventsForSection", "GetEventById", "ListEventBookingsForAdmin", "ListTicketOrdersForAdmin", "ListBookingPaymentAdjustmentsForAdmin", "ListSectionTicketAccessGroups"]);
 const onboarding = new Set(["CreateUserProfile", "CheckUserProfileExists"]);
 for (const connector of ["api", "booking-service", "authorization-service"]) {
   for (const file of fs.readdirSync(path.join(root, "dataconnect", connector)).filter(name => name.endsWith(".gql")).sort()) {
@@ -15,7 +16,11 @@ for (const connector of ["api", "booking-service", "authorization-service"]) {
       if (header.includes("@auth(level: NO_ACCESS)")) classification = "service-only";
       else if (onboarding.has(match[2]) && header.includes("email_verified == true")) classification = "onboarding-own-profile";
       else if (header.includes("auth.token.enabled == true")) {
-        classification = header.includes("auth.token.admin == true") ? "current-admin" : "current-member";
+        classification = sectionModeration.has(match[2]) ? "current-section-moderator" : header.includes("auth.token.admin == true") ? "current-admin" : "current-member";
+        if (classification === "current-section-moderator") {
+          for (const marker of ["managementScope:", "SECTION_MODERATOR_REQUIRED", "currentAuthorization.adminReady", "auth.token.admin == true", "'MODERATOR' in l.purposes", "userUserGroups_on_userGroup", "membershipStatus in l.userGroup.membershipStatuses"])
+            if (!operation.includes(marker)) throw new Error(`${match[2]} missing scoped moderation check: ${marker}`);
+        }
         for (const marker of ["currentAuthorization: userSecurityState", "userId_expr: \"auth.uid\"", "@redact", "ACCESS_REVOKED", "SESSION_VERSION_STALE", "auth.token.securityVersion", "this.membershipStatus == this.user.membershipStatus", "this.syncStatus == 'READY'"])
           if (!operation.includes(marker)) throw new Error(`${match[2]} missing current authorization check: ${marker}`);
         if (classification === "current-admin" && !operation.includes('adminReady @check(expr: "this == true", message: "ACCESS_REVOKED")')) throw new Error(`${match[2]} lacks current admin readiness check`);
