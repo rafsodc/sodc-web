@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import MyPayments from "../MyPayments";
-import * as reactGenerated from "@dataconnect/generated/react";
+import * as reactGenerated from "../../../../shared/query/authoritativeHooks";
 import { dataConnectQueryResult } from "../../../../test-utils/dataConnectMocks";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
+import { invalidateMyBookings } from "../../../../shared/query/invalidation";
+vi.mock("../../../../shared/query/invalidation", () => ({invalidateMyBookings: vi.fn().mockResolvedValue(undefined)}));
 
-vi.mock("@dataconnect/generated/react", () => ({
+vi.mock("../../../../shared/query/authoritativeHooks", () => ({
   useGetMyTicketOrders: vi.fn(),
   useGetMyBookingPaymentAdjustments: vi.fn(),
 }));
@@ -30,6 +32,8 @@ describe("MyPayments", () => {
   });
 
   beforeEach(() => {
+    vi.mocked(invalidateMyBookings).mockReset().mockResolvedValue(undefined);
+    vi.mocked(firebaseFunctions.reconcileMyCheckoutSessionOrders).mockReset().mockResolvedValue({appliedCount: 0, reconciledOrderIds: [], orderIds: []});
     vi.mocked(reactGenerated.useGetMyBookingPaymentAdjustments).mockReturnValue(
       dataConnectQueryResult<typeof reactGenerated.useGetMyBookingPaymentAdjustments>({
         data: { user: { id: "u-1", bookings: [] } },
@@ -288,6 +292,39 @@ describe("MyPayments", () => {
       });
     });
     expect(await screen.findByRole("button", { name: "View receipt" })).toBeInTheDocument();
+  });
+
+  it.each(["orders", "related views"])("does not replay successful reconciliation after failed %s reads or later order snapshots", async failure => {
+    const refetch = vi.fn().mockResolvedValue(undefined);
+    if (failure === "orders") refetch.mockRejectedValueOnce(new Error("Synthetic order read failure"));
+    else vi.mocked(invalidateMyBookings).mockRejectedValueOnce(new Error("Synthetic related read failure"));
+    const snapshot = (updatedAt = "2026-04-01T12:00:00Z") => dataConnectQueryResult<typeof reactGenerated.useGetMyTicketOrders>({
+      data: {user: {id: "u-1", ticketOrders: ["PAID", "PENDING"].map((status, index) => ({
+        id: "order-" + index, status: status as "PAID" | "PENDING", quantity: 1, totalAmountMinor: 2500, currency: "gbp",
+        createdAt: "2026-04-01T12:00:00Z", updatedAt, refundedAmountMinor: null, disputeStatus: null, disputeReason: null,
+        stripeCheckoutSessionId: index === 0 ? "cs_test" : null, stripePaymentIntentId: null,
+        event: {id: "f02f77c7-7ae1-4bb3-a8fb-cc8d2168ab4a", title: "Spring Ball", startDateTime: "2026-05-01T18:00:00Z"},
+        ticketType: {id: "ticket-" + index, title: index === 0 ? "Member ticket" : "Guest ticket"},
+      }))}}, isLoading: false, isError: false, refetch,
+    });
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(snapshot());
+    const onBack = vi.fn(), user = userEvent.setup(), view = render(<MyPayments onBack={onBack} />);
+    expect(await screen.findByText(/Your payment update completed, but/)).toBeInTheDocument();
+    expect(firebaseFunctions.reconcileMyCheckoutSessionOrders).toHaveBeenCalledOnce();
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(snapshot("2026-04-01T12:01:00Z"));
+    view.rerender(<MyPayments onBack={onBack} />);
+    refetch.mockRejectedValueOnce(new Error("Synthetic retry read failure"));
+    await user.click(screen.getByRole("button", {name: "Retry refresh"}));
+    expect(await screen.findByText(/Your payment update completed, but/)).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", {name: "Retry refresh"}));
+    await waitFor(() => expect(screen.queryByText(/Your payment update completed, but/)).not.toBeInTheDocument());
+    vi.mocked(reactGenerated.useGetMyTicketOrders).mockReturnValue(snapshot("2026-04-01T12:02:00Z"));
+    view.rerender(<MyPayments onBack={onBack} />);
+    await waitFor(() => expect(refetch).toHaveBeenCalledTimes(3));
+    expect(firebaseFunctions.reconcileMyCheckoutSessionOrders).toHaveBeenCalledOnce();
+    expect(firebaseFunctions.reconcileMyCheckoutSessionOrders).toHaveBeenCalledWith({orderId: "order-0"});
+    expect(refetch).toHaveBeenCalledWith({throwOnError: true});
+    expect(invalidateMyBookings).toHaveBeenCalledTimes(failure === "orders" ? 1 : 2);
   });
 
   it("shows a clear empty state", () => {

@@ -2,17 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 
 const bookingQueryMocks = vi.hoisted(() => ({
-  getMyBookingsForEvent: vi.fn(),
-  getMyBookings: vi.fn(),
-  getMyTicketOrders: vi.fn(),
-  getMyBookingPaymentAdjustments: vi.fn(),
+  getMyBookingsForEventRef: vi.fn((dataConnect, variables) => ({dataConnect, variables, name: "GetMyBookingsForEvent"})),
+  getMyBookingsRef: vi.fn(dataConnect => ({dataConnect, name: "GetMyBookings"})),
+  getMyTicketOrdersRef: vi.fn(dataConnect => ({dataConnect, name: "GetMyTicketOrders"})),
+  getMyBookingPaymentAdjustmentsRef: vi.fn(dataConnect => ({dataConnect, name: "GetMyBookingPaymentAdjustments"})),
 }));
 
 vi.mock("@dataconnect/generated", () => bookingQueryMocks);
 vi.mock("../../../config/firebase", () => ({ dataConnect: { mocked: true } }));
 vi.mock("firebase/data-connect", () => ({
-  QueryFetchPolicy: { SERVER_ONLY: "SERVER_ONLY" },
+  executeQuery: vi.fn(),
 }));
+
+import { executeQuery } from "firebase/data-connect";
 
 import {
   invalidateAnnouncementPreferences,
@@ -25,7 +27,7 @@ import {
 function queryClientWithInvalidateSpy() {
   const invalidateQueries = vi.fn().mockResolvedValue(undefined);
   return {
-    queryClient: { invalidateQueries } as unknown as QueryClient,
+    queryClient: { invalidateQueries, cancelQueries: vi.fn().mockResolvedValue(undefined) } as unknown as QueryClient,
     invalidateQueries,
   };
 }
@@ -40,17 +42,18 @@ describe("cross-view query invalidation", () => {
 
     await invalidateAnnouncementPreferences(queryClient);
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyAnnouncementPreferences"] });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetSectionAnnouncementOptOut"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyAnnouncementPreferences"], refetchType: "all" }, {throwOnError: true});
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetSectionAnnouncementOptOut"], refetchType: "all" }, {throwOnError: true});
   });
 
-  it("invalidates both sources of section membership", async () => {
+  it("invalidates access, navigation and preferences derived from group membership", async () => {
     const { queryClient, invalidateQueries } = queryClientWithInvalidateSpy();
 
     await invalidateUserSectionAccess(queryClient);
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetUserAccessGroups"] });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetSectionsForUser"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetUserAccessGroups"], refetchType: "all" }, {throwOnError: true});
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyAnnouncementPreferences"], refetchType: "all" }, {throwOnError: true});
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetSectionsForUser"], refetchType: "all" }, {throwOnError: true});
   });
 
   it("invalidates persistent section navigation", async () => {
@@ -58,7 +61,10 @@ describe("cross-view query invalidation", () => {
 
     await invalidateSectionsForUser(queryClient);
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetSectionsForUser"] });
+    for (const name of ["ListSections", "GetMyAnnouncementPreferences", "GetSectionById", "GetUserAccessGroups"]) {
+      expect(invalidateQueries).toHaveBeenCalledWith({queryKey: [name], refetchType: "all"}, {throwOnError: true});
+    }
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetSectionsForUser"], refetchType: "all" }, {throwOnError: true});
   });
 
   it("refetches an active generated-query key and exposes the updated navigation data", async () => {
@@ -89,10 +95,10 @@ describe("cross-view query invalidation", () => {
 
     await invalidateMyBookings(queryClient);
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookings"] });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookingsForEvent"] });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyTicketOrders"] });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookingPaymentAdjustments"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookings"], refetchType: "all" }, {throwOnError: true});
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookingsForEvent"], refetchType: "all" }, {throwOnError: true});
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyTicketOrders"], refetchType: "all" }, {throwOnError: true});
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyBookingPaymentAdjustments"], refetchType: "all" }, {throwOnError: true});
   });
 
   it("bypasses the Data Connect cache after a callable booking write", async () => {
@@ -101,26 +107,15 @@ describe("cross-view query invalidation", () => {
     const allBookings = { user: { bookings: [{ id: "booking-1" }] } };
     const ticketOrders = { user: { ticketOrders: [{ id: "order-1" }] } };
     const paymentAdjustments = { user: { bookings: [] } };
-    bookingQueryMocks.getMyBookingsForEvent.mockResolvedValue({ data: eventBookings });
-    bookingQueryMocks.getMyBookings.mockResolvedValue({ data: allBookings });
-    bookingQueryMocks.getMyTicketOrders.mockResolvedValue({ data: ticketOrders });
-    bookingQueryMocks.getMyBookingPaymentAdjustments.mockResolvedValue({ data: paymentAdjustments });
+    const values: Record<string, unknown> = {GetMyBookingsForEvent: eventBookings, GetMyBookings: allBookings, GetMyTicketOrders: ticketOrders, GetMyBookingPaymentAdjustments: paymentAdjustments};
+    vi.mocked(executeQuery).mockImplementation(async ref => ({data: values[ref.name]} as never));
 
     const result = await refreshMyBookingsFromServer(queryClient, "event-1");
 
     expect(result).toEqual(eventBookings);
-    expect(bookingQueryMocks.getMyBookingsForEvent).toHaveBeenCalledWith(
-      { mocked: true },
-      { eventId: "event-1" },
-      { fetchPolicy: "SERVER_ONLY" },
-    );
-    for (const query of [
-      bookingQueryMocks.getMyBookings,
-      bookingQueryMocks.getMyTicketOrders,
-      bookingQueryMocks.getMyBookingPaymentAdjustments,
-    ]) {
-      expect(query).toHaveBeenCalledWith({ mocked: true }, { fetchPolicy: "SERVER_ONLY" });
-    }
+    expect(bookingQueryMocks.getMyBookingsForEventRef).toHaveBeenCalledWith({mocked: true}, {eventId: "event-1"});
+    expect(executeQuery).toHaveBeenCalledTimes(4);
+    for (const [, options] of vi.mocked(executeQuery).mock.calls) expect(options).toEqual({fetchPolicy: "SERVER_ONLY"});
     expect(queryClient.getQueryData(["GetMyBookingsForEvent", { eventId: "event-1" }])).toEqual(eventBookings);
     expect(queryClient.getQueryData(["GetMyBookings", null])).toEqual(allBookings);
     expect(queryClient.getQueryData(["GetMyTicketOrders", null])).toEqual(ticketOrders);

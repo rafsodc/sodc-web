@@ -1,9 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
+import { DataConnectReadSupersededError } from "../authoritativeDataConnect";
 import { createAppQueryClient } from "../queryClient";
 import { createSessionLifecycle, installSessionRuntime } from "../../appShell/sessionLifecycle";
 const queryClient = createAppQueryClient();
 
 describe("queryClient retry policy", () => {
+  it("does not retry a superseded server read and race a newer refresh", async () => {
+    const error = new DataConnectReadSupersededError(), queryFn = vi.fn().mockRejectedValue(error);
+    await expect(queryClient.fetchQuery({queryKey: ["superseded"], queryFn})).rejects.toBe(error);
+    expect(queryFn).toHaveBeenCalledOnce();
+    queryClient.removeQueries({queryKey: ["superseded"]});
+  });
   it("preserves a public bearer query across anonymous to first sign-in", async () => {
     const lifecycle = createSessionLifecycle(); lifecycle.observe(null);
     const uninstall = installSessionRuntime({ lifecycle, retire: () => lifecycle.retire(), signOut: async () => lifecycle.retire() });

@@ -3986,7 +3986,9 @@ export interface RegisterForSectionData {
 }
 
 export interface RegisterForSectionVariables {
+  userId: string;
   userGroupId: UUIDString;
+  securityVersion: number;
 }
 
 export interface ReleaseNotificationRecoveryDeferralForClaimByIdData {
@@ -4483,7 +4485,9 @@ export interface SubscribeToUserGroupData {
 }
 
 export interface SubscribeToUserGroupVariables {
+  userId: string;
   userGroupId: UUIDString;
+  securityVersion: number;
 }
 
 export interface TicketOrder_Key {

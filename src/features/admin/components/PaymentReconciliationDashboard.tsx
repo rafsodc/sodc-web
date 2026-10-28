@@ -24,7 +24,7 @@ import {
   resolvePaymentReconciliationExceptionRef,
   PaymentReconciliationExceptionType,
 } from "@dataconnect/generated";
-import { useListOpenPaymentReconciliationExceptions } from "@dataconnect/generated/react";
+import { useListOpenPaymentReconciliationExceptions } from "../../../shared/query/authoritativeHooks";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
@@ -43,6 +43,9 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
   const [eventSearch, setEventSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reviewedAwaitingRefresh, setReviewedAwaitingRefresh] = useState<Set<string>>(new Set());
+  const [refreshing, setRefreshing] = useState(false);
+  const savedRefreshMessage = "Exception marked reviewed, but the latest list could not be loaded. Use Refresh to retry loading the list.";
   const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
 
   useEffect(() => {
@@ -65,17 +68,38 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
   }, [data?.paymentReconciliationExceptions, typeFilter, eventSearch]);
 
   const handleResolve = async (id: string) => {
+    if (resolvingId || refreshing || reviewedAwaitingRefresh.has(id)) return;
     setResolvingId(id);
     setError(null);
+    let saved = false;
     try {
       await executeDataConnectMutation(resolvePaymentReconciliationExceptionRef(dataConnect, { id, note: "Reviewed in dashboard" }));
-      await refetch();
+      saved = true;
+      setReviewedAwaitingRefresh((previous) => new Set([...previous, id]));
+      await refetch({ throwOnError: true });
+      setReviewedAwaitingRefresh(new Set());
+      setError(null);
       showSuccess("Exception marked reviewed");
     } catch (err) {
       reportError("admin.payment-reconciliation.resolve", err, { exceptionId: id });
-      setError(toAdminUserFacingError(err, "payment-reconciliation").message);
+      setError(saved ? savedRefreshMessage : toAdminUserFacingError(err, "payment-reconciliation").message);
     } finally {
       setResolvingId(null);
+    }
+  };
+
+  const refreshList = async () => {
+    if (resolvingId || refreshing) return;
+    setRefreshing(true);
+    try {
+      await refetch({ throwOnError: true });
+      setReviewedAwaitingRefresh(new Set());
+      setError(null);
+    } catch (caught) {
+      reportError("admin.payment-reconciliation.refresh", caught);
+      setError(reviewedAwaitingRefresh.size > 0 ? savedRefreshMessage : toAdminUserFacingError(caught, "payment-reconciliation").message);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -109,7 +133,7 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
           onChange={(event) => setEventSearch(event.target.value)}
           sx={{ minWidth: 260 }}
         />
-        <Button variant="outlined" onClick={() => refetch()}>
+        <Button variant="outlined" disabled={refreshing || resolvingId !== null} onClick={() => void refreshList()}>
           Refresh
         </Button>
       </Box>
@@ -120,7 +144,7 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
         <FailureState
           title={toAdminUserFacingError(queryError, "payment-reconciliation").title}
           message={toAdminUserFacingError(queryError, "payment-reconciliation").message}
-          onRetry={() => void refetch()}
+          onRetry={() => void refreshList()}
         />
       ) : filteredRows.length === 0 ? (
         <Alert severity="info">No open reconciliation exceptions match current filters.</Alert>
@@ -162,7 +186,7 @@ export default function PaymentReconciliationDashboard({ onBack }: PaymentReconc
                     <Button
                       size="small"
                       variant="outlined"
-                      disabled={resolvingId === row.id}
+                      disabled={resolvingId !== null || refreshing || reviewedAwaitingRefresh.has(row.id)}
                       onClick={() => handleResolve(row.id)}
                     >
                       {resolvingId === row.id ? "Resolving..." : "Mark reviewed"}

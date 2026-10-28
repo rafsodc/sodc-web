@@ -2,8 +2,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Alert,
+  Button,
 } from "@mui/material";
 import { QueryFetchPolicy } from "firebase/data-connect";
+import { useQueryClient } from "@tanstack/react-query";
+import { DataConnectReadSupersededError, refreshDataConnectQuery } from "../../../shared/query/authoritativeDataConnect";
+import { invalidateUserSectionAccess } from "../../../shared/query/invalidation";
 import { dataConnect } from "../../../config/firebase";
 import {
   executeDataConnectMutation,
@@ -23,6 +27,7 @@ import {
 import { MembershipStatus } from "@dataconnect/generated";
 import PageHeader from "../../../shared/components/PageHeader";
 import SnackbarAlert from "../../../shared/components/SnackbarAlert";
+import ConfirmationDialog from "../../../shared/components/ConfirmationDialog";
 import { useSnackbar } from "../../../shared/hooks/useSnackbar";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
 import { searchUsers } from "../../users/utils/searchUsers";
@@ -56,6 +61,9 @@ interface UserGroupsLocationState {
 
 export default function UserGroups({ onBack }: UserGroupsProps) {
   const location = useLocation();
+  const queryClient = useQueryClient();
+  const [refreshFailure, setRefreshFailure] = useState<{ message: string; savedMessage: string; retry: () => Promise<void> } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const isAdmin = useAdminClaim(auth.currentUser);
   const [userGroups, setUserGroups] = useState<UserGroupWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +81,11 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [groupDescription, setGroupDescription] = useState("");
   const [selectedStatuses, setSelectedStatuses] = useState<MembershipStatus[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingGroup, setDeletingGroup] = useState<UserGroupWithDetails | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deletePendingRef = useRef(false);
   
   // Add user dialog state
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
@@ -82,20 +95,25 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
   const [searchingUsers, setSearchingUsers] = useState(false);
   const allUsersRequestGuard = useLatestRequestGuard();
   const userSearchRequestGuard = useLatestRequestGuard();
+  const listRequestGuard = useLatestRequestGuard();
+  const detailRequests = useRef(new Map<string, number>());
+  const detailRequestSequence = useRef(0);
+  useEffect(() => () => { detailRequests.current.clear(); }, []);
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
 
   // All users: for merged group membership (explicit + by membership status)
   const [allUsers, setAllUsers] = useState<UserSummary[]>([]);
   const [loadingAllUsers, setLoadingAllUsers] = useState(false);
 
-  const fetchUserGroupsList = useCallback(async () => {
+  const fetchUserGroupsList = useCallback(async (throwOnError = false) => {
+    const request = listRequestGuard.start();
     setLoading(true);
     setError(null);
     try {
       const ref = listUserGroupsRef(dataConnect);
-      const result = await executeDataConnectQuery(ref);
-      
-      const existingGroups: UserGroupWithDetails[] = result.data?.userGroups?.map((group) => ({
+      const data = await refreshDataConnectQuery(queryClient, ref);
+      if (!listRequestGuard.isCurrent(request)) throw new DataConnectReadSupersededError();
+      const existingGroups: UserGroupWithDetails[] = data?.userGroups?.map((group) => ({
         id: group.id,
         name: group.name,
         description: group.description,
@@ -109,40 +127,62 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       
       setUserGroups(existingGroups);
     } catch (caught) {
-      reportError("admin.user-groups.load", caught);
-      setError(toAdminUserFacingError(caught, "user-groups").message);
+      // Normal superseded loads do not own the current banner or spinner.
+      // Saved-change reads still reject so their refresh cannot report success.
+      if (throwOnError) throw caught;
+      if (listRequestGuard.isCurrent(request)) {
+        reportError("admin.user-groups.load", caught);
+        setError(toAdminUserFacingError(caught, "user-groups").message);
+      }
     } finally {
-      setLoading(false);
+      if (listRequestGuard.isCurrent(request)) setLoading(false);
     }
-  }, []);
+  }, [queryClient, listRequestGuard]);
 
-  const fetchGroupDetails = useCallback(async (groupId: string, force = false) => {
+  const fetchGroupDetails = useCallback(async (groupId: string, force = false, throwOnError = false) => {
     if (!force && groupDetailsRef.current[groupId]) {
       return;
     }
 
+    const request = ++detailRequestSequence.current;
+    detailRequests.current.set(groupId, request);
+    const current = () => detailRequests.current.get(groupId) === request;
     setLoadingDetails((prev) => ({ ...prev, [groupId]: true }));
     try {
       const ref = getUserGroupByIdRef(dataConnect, { id: groupId });
-      const result = await executeDataConnectQuery(
-        ref,
-        force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined,
-      );
-      
-      if (result.data?.userGroup) {
+      const data = await refreshDataConnectQuery(queryClient, ref);
+      if (!current()) throw new DataConnectReadSupersededError();
+      if (data?.userGroup) {
         setGroupDetails((prev) => {
-          const next = { ...prev, [groupId]: result.data.userGroup! };
+          const next = { ...prev, [groupId]: data.userGroup! };
           groupDetailsRef.current = next;
           return next;
         });
       }
     } catch (caught) {
-      reportError("admin.user-groups.details", caught, { groupId });
-      setError(toAdminUserFacingError(caught, "user-groups").message);
+      if (throwOnError) throw caught;
+      if (current()) {
+        reportError("admin.user-groups.details", caught, { groupId });
+        setError(toAdminUserFacingError(caught, "user-groups").message);
+      }
     } finally {
-      setLoadingDetails((prev) => ({ ...prev, [groupId]: false }));
+      if (current()) setLoadingDetails((prev) => ({ ...prev, [groupId]: false }));
     }
-  }, []);
+  }, [queryClient]);
+
+  const refreshSavedChange = async (message: string, read: () => Promise<void>) => {
+    setRefreshing(true);
+    try {
+      await read();
+      setRefreshFailure(null);
+      showSuccess(message);
+    } catch (caught) {
+      reportError("admin.user-groups.refresh-after-save", caught);
+      setRefreshFailure({ message: `${message}. The latest group data could not be loaded. Retry the refresh; the change is already saved.`, savedMessage: message, retry: read });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     fetchUserGroupsList();
@@ -165,7 +205,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     (async () => {
       try {
         const ref = listUsersRef(dataConnect);
-        const result = await executeDataConnectQuery(ref);
+        const result = await executeDataConnectQuery(ref, { fetchPolicy: QueryFetchPolicy.SERVER_ONLY });
         if (allUsersRequestGuard.isCurrent(requestToken) && result.data?.users) {
           setAllUsers(
             result.data.users.map((u) => ({
@@ -245,7 +285,7 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
           result.data.users.map(async (user) => {
             try {
               const userRef = getUserWithAccessGroupsRef(dataConnect, { id: user.uid });
-              const userResult = await executeDataConnectQuery(userRef);
+              const userResult = await executeDataConnectQuery(userRef, { fetchPolicy: QueryFetchPolicy.SERVER_ONLY });
               if (userResult.data?.user) {
                 return {
                   id: userResult.data.user.id,
@@ -321,18 +361,14 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       });
       await executeDataConnectMutation(ref);
 
-      // Refresh group details
-      const nextGroupDetails = { ...groupDetails };
-      delete nextGroupDetails[addingToGroupId];
-      groupDetailsRef.current = nextGroupDetails;
-      setGroupDetails(nextGroupDetails);
-      await fetchGroupDetails(addingToGroupId);
-
+      const groupId = addingToGroupId;
       setAddUserDialogOpen(false);
       setAddingToGroupId(null);
       setUserSearchTerm("");
       setSearchResults([]);
-      showSuccess("User added to group");
+      await refreshSavedChange("User added to group", async () => {
+        await Promise.all([fetchGroupDetails(groupId, true, true), invalidateUserSectionAccess(queryClient)]);
+      });
     } catch (caught) {
       reportError("admin.user-groups.add-user", caught, { groupId: addingToGroupId, userId });
       setError(toAdminUserFacingError(caught, "user-groups").message);
@@ -353,13 +389,9 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
       });
       await executeDataConnectMutation(ref);
 
-      // Refresh group details
-      const nextGroupDetails = { ...groupDetails };
-      delete nextGroupDetails[groupId];
-      groupDetailsRef.current = nextGroupDetails;
-      setGroupDetails(nextGroupDetails);
-      await fetchGroupDetails(groupId);
-      showSuccess("User removed from group");
+      await refreshSavedChange("User removed from group", async () => {
+        await Promise.all([fetchGroupDetails(groupId, true, true), invalidateUserSectionAccess(queryClient)]);
+      });
     } catch (caught) {
       reportError("admin.user-groups.remove-user", caught, { groupId, userId });
       setError(toAdminUserFacingError(caught, "user-groups").message);
@@ -382,27 +414,50 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (group: UserGroupWithDetails) => {
-    if (!confirm(`Are you sure you want to delete the user group "${group.name}"? This will remove all user and section associations.`)) {
-      return;
-    }
+  const handleDelete = (group: UserGroupWithDetails) => {
+    if (deletePendingRef.current) return;
+    setDeletingGroup(group);
+    setDeleteDialogOpen(true);
+    setDeleteError(null);
+  };
 
+  const handleCancelDelete = () => {
+    if (deletePendingRef.current) return;
+    setDeleteDialogOpen(false);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteDialogOpen || !deletingGroup || deletePendingRef.current) return;
+    const group = deletingGroup;
+    deletePendingRef.current = true;
+    setDeletePending(true);
+    setDeleteError(null);
     try {
       const ref = deleteUserGroupRef(dataConnect, { id: group.id });
       await executeDataConnectMutation(ref);
-      await fetchUserGroupsList();
-      if (expandedGroupId === group.id) {
-        setExpandedGroupId(null);
-      }
-      const nextGroupDetails = { ...groupDetails };
-      delete nextGroupDetails[group.id];
-      groupDetailsRef.current = nextGroupDetails;
-      setGroupDetails(nextGroupDetails);
-      showSuccess(`User group "${group.name}" deleted`);
     } catch (caught) {
       reportError("admin.user-groups.delete", caught, { groupId: group.id });
-      setError(toAdminUserFacingError(caught, "user-groups").message);
+      setDeleteError(toAdminUserFacingError(caught, "user-groups").message);
+      return;
+    } finally {
+      deletePendingRef.current = false;
+      setDeletePending(false);
     }
+
+    // The deletion is committed. Close confirmation before starting read-only recovery.
+    setDeleteDialogOpen(false);
+    setDeleteError(null);
+    if (expandedGroupId === group.id) {
+      setExpandedGroupId(null);
+    }
+    const nextGroupDetails = { ...groupDetails };
+    delete nextGroupDetails[group.id];
+    groupDetailsRef.current = nextGroupDetails;
+    setGroupDetails(nextGroupDetails);
+    await refreshSavedChange(`User group "${group.name}" deleted`, async () => {
+      await Promise.all([fetchUserGroupsList(true), invalidateUserSectionAccess(queryClient)]);
+    });
   };
 
   const handleSubmit = async () => {
@@ -433,11 +488,13 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         await executeDataConnectMutation(ref);
       }
       setDialogOpen(false);
-      await fetchUserGroupsList();
-      if (editingGroup) {
-        await fetchGroupDetails(editingGroup.id, true);
-      }
-      showSuccess(`User group ${editingGroup ? "updated" : "created"}`);
+      await refreshSavedChange(`User group ${editingGroup ? "updated" : "created"}`, async () => {
+        await Promise.all([
+          fetchUserGroupsList(true),
+          editingGroup ? fetchGroupDetails(editingGroup.id, true, true) : Promise.resolve(),
+          invalidateUserSectionAccess(queryClient),
+        ]);
+      });
     } catch (caught) {
       reportError("admin.user-groups.save", caught, { editing: Boolean(editingGroup) });
       setError(toAdminUserFacingError(caught, "user-groups").message);
@@ -507,6 +564,11 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
 
   return (
     <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
+      {refreshFailure && (
+        <Alert severity="warning" action={<Button disabled={refreshing} onClick={() => void refreshSavedChange(refreshFailure.savedMessage, refreshFailure.retry)}>Retry refresh</Button>}>
+          {refreshFailure.message}
+        </Alert>
+      )}
       <UserGroupsListSurface
         onBack={onBack}
         error={error}
@@ -525,6 +587,17 @@ export default function UserGroups({ onBack }: UserGroupsProps) {
         onAddUser={handleAddUser}
         onRemoveUser={handleRemoveUserFromGroup}
       />
+
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        title="Delete user group?"
+        pending={deletePending}
+        error={deleteError}
+        onConfirm={() => void handleConfirmDelete()}
+        onCancel={handleCancelDelete}
+      >
+        Delete the user group "{deletingGroup?.name}"? This will remove all user and section associations. This cannot be undone.
+      </ConfirmationDialog>
 
       <UserGroupDialogSurface
         open={dialogOpen}

@@ -239,7 +239,7 @@ function UserGroupRow({
         )}
       </TableCell>
       <TableCell align="right">
-        <IconButton size="small" onClick={() => onExpand(group)} disabled={isLoadingDetails}>
+        <IconButton size="small" aria-label={`${isExpanded ? "Collapse" : "Expand"} ${group.name}`} aria-expanded={isExpanded} onClick={() => onExpand(group)} disabled={isLoadingDetails}>
           <ExpandMoreIcon
             sx={{
               transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
@@ -247,10 +247,10 @@ function UserGroupRow({
             }}
           />
         </IconButton>
-        <IconButton size="small" onClick={() => onEdit(group)} color="primary">
+        <IconButton size="small" aria-label={`Edit ${group.name}`} onClick={() => onEdit(group)} color="primary">
           <EditIcon />
         </IconButton>
-        <IconButton size="small" onClick={() => onDelete(group)} color="error">
+        <IconButton size="small" aria-label={`Delete ${group.name}`} onClick={() => onDelete(group)} color="error">
           <DeleteIcon />
         </IconButton>
       </TableCell>

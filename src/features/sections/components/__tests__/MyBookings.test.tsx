@@ -2,12 +2,12 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "../../../../test-utils";
 import { MemoryRouter } from "react-router-dom";
 import MyBookings from "../MyBookings";
-import * as reactGenerated from "@dataconnect/generated/react";
+import * as reactGenerated from "../../../../shared/query/authoritativeHooks";
 import { BookingStatus } from "@dataconnect/generated";
 import { dataConnectQueryResult } from "../../../../test-utils/dataConnectMocks";
 import userEvent from "@testing-library/user-event";
 
-vi.mock("@dataconnect/generated/react", () => ({
+vi.mock("../../../../shared/query/authoritativeHooks", () => ({
   useGetMyBookings: vi.fn(),
   useGetMyTicketOrders: vi.fn(),
 }));

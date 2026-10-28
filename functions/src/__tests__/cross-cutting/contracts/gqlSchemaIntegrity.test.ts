@@ -115,10 +115,10 @@ describe("GQL schema integrity", () => {
     }
   });
 
-  it("self-ownership mutations use server-side auth.uid expressions, not client-supplied user IDs", () => {
-    // These mutations act on the calling user's own data. If a client-supplied
-    // userId were substituted for auth.uid, a user could manipulate another
-    // user's memberships or profile.
+  it("client self-ownership uses auth.uid while server-only joins use trusted explicit identity", () => {
+    // Client-accessible mutations bind their own identity to auth.uid. The two
+    // NO_ACCESS joins use a callable-authenticated UID because service-account
+    // Data Connect requests carry no implicit Firebase end-user identity.
     const userMutations = readApiFile("user-mutations.gql");
 
     // Section and group self-service mutations must bind userId to auth.uid server-side
@@ -130,7 +130,7 @@ describe("GQL schema integrity", () => {
     // create profiles for arbitrary auth UIDs
     expect(userMutations).toContain("id_expr: \"auth.uid\"");
 
-    // Verify each self-service mutation explicitly uses the server expression
+    // Check each identity boundary explicitly; do not reopen the server-only joins.
     const selfServiceMutations = [
       "RegisterForSection",
       "UnregisterFromSection",
@@ -143,10 +143,19 @@ describe("GQL schema integrity", () => {
       expect(idx, `mutation ${mutName} not found`).toBeGreaterThanOrEqual(0);
       const end = userMutations.indexOf("\n}", idx);
       const block = userMutations.slice(idx, end + 2);
-      expect(
-        block,
-        `${mutName} must use userId_expr: "auth.uid" to prevent acting on behalf of other users`,
-      ).toContain("userId_expr: \"auth.uid\"");
+      if (["RegisterForSection", "SubscribeToUserGroup"].includes(mutName)) {
+        // Admin service-account calls have no implicit auth.uid. Only the guarded
+        // callable may supply this explicit identity; direct clients stay denied.
+        expect(block).toContain("@auth(level: NO_ACCESS) @transaction");
+        expect(block).toContain("$userId: String!");
+        expect(block).toContain("$securityVersion: Int!");
+        expect(block).toContain("userId: $userId");
+        expect(block).not.toContain("userId_expr: \"auth.uid\"");
+        expect(block).toContain("USER_GROUP_NOT_SUBSCRIBABLE");
+        expect(block).toContain("SESSION_VERSION_STALE");
+      } else {
+        expect(block, `${mutName} must bind client identity on the server`).toContain("userId_expr: \"auth.uid\"");
+      }
     }
   });
 

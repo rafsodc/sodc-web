@@ -23501,7 +23501,9 @@ The `RegisterForSection` Mutation requires an argument of type `RegisterForSecti
 
 ```javascript
 export interface RegisterForSectionVariables {
+  userId: string;
   userGroupId: UUIDString;
+  securityVersion: number;
 }
 ```
 ### Return Type
@@ -23551,11 +23553,13 @@ export default function RegisterForSectionComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useRegisterForSection` Mutation requires an argument of type `RegisterForSectionVariables`:
   const registerForSectionVars: RegisterForSectionVariables = {
+    userId: ..., 
     userGroupId: ..., 
+    securityVersion: ..., 
   };
   mutation.mutate(registerForSectionVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userGroupId: ..., });
+  mutation.mutate({ userId: ..., userGroupId: ..., securityVersion: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -23689,7 +23693,9 @@ The `SubscribeToUserGroup` Mutation requires an argument of type `SubscribeToUse
 
 ```javascript
 export interface SubscribeToUserGroupVariables {
+  userId: string;
   userGroupId: UUIDString;
+  securityVersion: number;
 }
 ```
 ### Return Type
@@ -23739,11 +23745,13 @@ export default function SubscribeToUserGroupComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useSubscribeToUserGroup` Mutation requires an argument of type `SubscribeToUserGroupVariables`:
   const subscribeToUserGroupVars: SubscribeToUserGroupVariables = {
+    userId: ..., 
     userGroupId: ..., 
+    securityVersion: ..., 
   };
   mutation.mutate(subscribeToUserGroupVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ userGroupId: ..., });
+  mutation.mutate({ userId: ..., userGroupId: ..., securityVersion: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

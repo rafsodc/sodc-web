@@ -26,6 +26,15 @@ describe("bounded Data Connect execution", () => {
     await expect(executeDataConnectQuery({} as never)).resolves.toBe(response);
   });
 
+  it("defaults actual query invocations to the server and honors an explicit cache policy", async () => {
+    const ref = {} as never, response = {data: {users: []}};
+    dataConnectMocks.executeQuery.mockResolvedValue(response);
+    await executeDataConnectQuery(ref);
+    expect(dataConnectMocks.executeQuery).toHaveBeenLastCalledWith(ref, {fetchPolicy: "SERVER_ONLY"});
+    await executeDataConnectQuery(ref, {fetchPolicy: "PREFER_CACHE"});
+    expect(dataConnectMocks.executeQuery).toHaveBeenLastCalledWith(ref, {fetchPolicy: "PREFER_CACHE"});
+  });
+
   it("rejects a query that never settles", async () => {
     vi.useFakeTimers();
     dataConnectMocks.executeQuery.mockReturnValue(new Promise<never>(() => undefined));

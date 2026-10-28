@@ -48,6 +48,7 @@ interface SectionDescriptionHeaderProps {
   userIsMember: boolean;
   hasSubscribableMemberGroup: boolean;
   subscribing: boolean;
+  subscriptionRefreshFailed?: boolean;
   onSubscribe: () => void;
   onUnsubscribe: () => void;
 }
@@ -60,6 +61,7 @@ export function SectionDescriptionHeader({
   userIsMember,
   hasSubscribableMemberGroup,
   subscribing,
+  subscriptionRefreshFailed = false,
   onSubscribe,
   onUnsubscribe,
 }: SectionDescriptionHeaderProps) {
@@ -76,7 +78,7 @@ export function SectionDescriptionHeader({
               variant="contained"
               color="primary"
               onClick={onSubscribe}
-              disabled={subscribing}
+              disabled={subscribing || subscriptionRefreshFailed}
               sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
             >
               {subscribing ? "Subscribing..." : "Subscribe"}
@@ -87,7 +89,7 @@ export function SectionDescriptionHeader({
               variant="outlined"
               color="error"
               onClick={onUnsubscribe}
-              disabled={subscribing}
+              disabled={subscribing || subscriptionRefreshFailed}
               sx={{ ml: 2 }}
             >
               {subscribing ? "Unsubscribing..." : "Unsubscribe"}
@@ -110,6 +112,7 @@ interface SectionMembersViewProps {
   page: number;
   totalPages: number;
   loading: boolean;
+  isError?: boolean;
   onSearchTermChange: (value: string) => void;
   onRefresh: () => void;
   onPageChange: (page: number) => void;
@@ -123,11 +126,14 @@ export function SectionMembersView({
   page,
   totalPages,
   loading,
+  isError = false,
   onSearchTermChange,
   onRefresh,
   onPageChange,
 }: SectionMembersViewProps) {
-  const [selectedMember, setSelectedMember] = useState<SectionMember | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const selectedMember = filteredMembers.find((member) => member.userId === selectedMemberId && member.sharesContactInfo) ?? null;
+  const selectMember = (member: SectionMember) => setSelectedMemberId(member.userId);
   const [viewMode, setViewMode] = useState<MemberViewMode>("card");
 
   return (
@@ -162,7 +168,17 @@ export function SectionMembersView({
         label="Search members"
         placeholder="Search by name or email..."
       />
-      {filteredMembers.length === 0 ? (
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+          <CircularProgress aria-label="Loading members" />
+        </Box>
+      ) : isError ? (
+        <FailureState
+          title="Member directory unavailable"
+          message="We could not load the member directory. Please try again."
+          onRetry={onRefresh}
+        />
+      ) : filteredMembers.length === 0 ? (
         <Alert severity="info" sx={{ mt: 2 }}>
           {searchTerm ? "No members match your search." : "No members in this section."}
         </Alert>
@@ -185,7 +201,7 @@ export function SectionMembersView({
               }}
             >
               {paginatedMembers.map((member) => (
-                <SectionMemberCard key={member.userId} member={member} onSelect={setSelectedMember} />
+                <SectionMemberCard key={member.userId} member={member} onSelect={selectMember} />
               ))}
             </Box>
           ) : (
@@ -201,7 +217,7 @@ export function SectionMembersView({
                 </TableHead>
                 <TableBody>
                   {paginatedMembers.map((member) => (
-                    <SectionMemberListItem key={member.userId} member={member} onSelect={setSelectedMember} />
+                    <SectionMemberListItem key={member.userId} member={member} onSelect={selectMember} />
                   ))}
                 </TableBody>
               </Table>
@@ -210,7 +226,7 @@ export function SectionMembersView({
           <PaginationDisplay page={page} totalPages={totalPages} onChange={onPageChange} />
         </>
       )}
-      <ContactDetailsDialog member={selectedMember} onClose={() => setSelectedMember(null)} />
+      <ContactDetailsDialog member={selectedMember} onClose={() => setSelectedMemberId(null)} />
     </Box>
   );
 }

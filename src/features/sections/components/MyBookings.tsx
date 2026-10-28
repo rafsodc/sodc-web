@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
-import { useGetMyBookings, useGetMyTicketOrders } from "@dataconnect/generated/react";
+import { useGetMyBookings, useGetMyTicketOrders } from "../../../shared/query/authoritativeHooks";
 import { BookingApprovalStatus } from "@dataconnect/generated";
 import { dataConnect } from "../../../config/firebase";
 import PageHeader from "../../../shared/components/PageHeader";
