@@ -54,6 +54,26 @@ describe("staged current-authorization rollout", () => {
   it("refuses unknown lookup syntax rather than silently emitting unguarded source", () => {
     expect(() => compatibilityOperationSource('query X { currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"})')).toThrow("refusing");
   });
+  it("keeps newly scoped operations administrator-only in legacy artifacts and removes dependent checks together", async () => {
+    for (const file of ["queries.gql", "user-group-mutations.gql", "admin-mutations.gql"]) {
+      const source = await readFile(path.join(repositoryRoot, "dataconnect/api", file), "utf8");
+      const transformed = compatibilityOperationSource(source);
+      expect(transformed).not.toContain("currentAuthorization:");
+      expect(transformed).not.toContain("managementScope:");
+      expect(transformed).not.toContain("audienceGroup:");
+      expect(transformed).not.toContain("managementBooking:");
+      expect(transformed).not.toMatch(/response(?:\.query)?\.currentAuthorization/);
+      for (const operation of source.split(/(?=^(?:query|mutation) )/m).filter(block => block.includes("managementScope:"))) {
+        const name = operation.match(/^(?:query|mutation) (\w+)/)[1];
+        const transformedOperation = transformed.split(new RegExp(`(?:query|mutation) ${name}\\b`))[1].split("\n}")[0];
+        expect(transformedOperation).toContain('@auth(expr: "auth.token.admin == true && auth.token.enabled == true")');
+      }
+    }
+  });
+  it("refuses unknown scope operations and unresolved dependent authority expressions", () => {
+    expect(() => compatibilityOperationSource('query Unknown @auth(expr: "auth.token.enabled == true") { managementScope: section(id: "x") @check(expr: "SECTION_MODERATOR_REQUIRED") {id} }')).toThrow("refusing");
+    expect(() => compatibilityOperationSource('query Unknown @auth(level: USER) @check(expr: "response.currentAuthorization.adminReady") {users{id}}')).toThrow("refusing");
+  });
   it("decommissions both unsafe legacy writers from strict sources while preserving their exact compatibility signatures", async () => {
     const strict = await readFile(path.join(repositoryRoot, "dataconnect/api/member-review.gql"), "utf8");
     for (const name of LEGACY_POTENTIAL_LOST_OPERATIONS) expect(strict).not.toMatch(new RegExp(`mutation\\s+${name}\\s*\\(`));

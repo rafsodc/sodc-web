@@ -141,7 +141,7 @@ it("rechecks status-derived moderation after the group status catalogue changes"
 
 it("retains a legacy ticket group's safe id/name option without exposing its membership",async()=>{
  const legacy=randomUUID(),a=await actor("explicit-moderator");
- await raw(`mutation LegacyGroup($id:UUID!,$ticket:UUID!){userGroup_insert(data:{id:$id,name:"Legacy ticket group",createdBy:"local-fixture",updatedBy:"local-fixture"}) ticketType_update(id:$ticket,data:{userGroupId:$id})}`,{id:legacy,ticket:f.ticket});
+ await raw("mutation LegacyGroup($id:UUID!,$ticket:UUID!){userGroup_insert(data:{id:$id,name:\"Legacy ticket group\",createdBy:\"local-fixture\",updatedBy:\"local-fixture\"}) ticketType_update(id:$ticket,data:{userGroupId:$id})}",{id:legacy,ticket:f.ticket});
  const catalogue=await dc.executeQuery<{userGroups:{id:string;name:string}[]}>("ListSectionTicketAccessGroups",{sectionId:f.section},a.options);
  expect(catalogue.data.userGroups.find(g=>g.name==="Legacy ticket group")).toBeDefined();
  expect(catalogue.data.userGroups.every(g=>Object.keys(g).sort().join(",")==="id,name")).toBe(true);
