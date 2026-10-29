@@ -298,7 +298,7 @@ describe("global section save receipt reconciliation", () => {
       expect.objectContaining({ kind: "create" }),
     );
   }, 20_000);
-  it("acknowledges a found saved section without replay and discards its draft and unload warning", async () => {
+  it("acknowledges a found saved section without replay and discards its draft and reload prompt", async () => {
     vi.mocked(executeMutation).mockImplementationOnce(async () => {
       committed = true;
       throw new Error("Response lost after commit");
