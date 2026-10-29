@@ -18,7 +18,7 @@ const ticket = { id: "ticket-member", audience: "MEMBER", price: 10, userGroup: 
 const guestTicket = { ...ticket, id: "ticket-guest", audience: "GUEST" };
 const data = { currentUserData: { user: { id: "member-a" } }, membershipStatus: "REGULAR", gate: { ok: true },
   loadingProfile: false, loadingBookings: false, bookingsError: false, bookingsQueryError: null,
-  bookingTicketOrders: [], bookingPaymentAdjustments: [], existingDraft: null, existingTerminalBooking: null,
+  bookingRevisions: [], refreshingBookings: false, bookingTicketOrders: [], bookingPaymentAdjustments: [], existingDraft: null, existingTerminalBooking: null,
   guestTicketTypes: [guestTicket], memberTicketTypes: [ticket], paymentSummaryForBooking: null, paymentTicketRows: [],
   paymentEligibleBooking: null, refetchMyBookings: vi.fn(), showExpiredDraftHoldNotice: false, ticketOrdersData: undefined,
 };
@@ -250,4 +250,212 @@ describe("member booking navigation draft", () => {
     expect(completed).not.toHaveBeenCalled();
     expect(refreshMyBookingsFromServer).not.toHaveBeenCalled();
   });
+  it.each([false, true])("reconciles a %s amendment saved while away without retaining its unload warning", async (amending) => {
+    const base = existingBooking();
+    if (amending) vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: base, bookingRevisions: [base] } as never);
+    let complete!: (value: unknown) => void;
+    (submitEventBooking as Mock).mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    const first = renderWizard();
+    if (amending) act(() => first.result.current.beginEditingBooking());
+    act(() => first.result.current.setMemberDietaryNote("Saved while away"));
+    act(() => { void first.result.current.handleConfirm(); });
+    const request = vi.mocked(submitEventBooking).mock.calls[0]![0];
+    first.unmount();
+    await act(async () => complete(saved));
+    const persisted = { ...existingBooking(amending ? 2 : 1, "Saved while away"), status: "SUBMITTED",
+      clientSubmissionKey: request.idempotencyKey.replaceAll("-", "").toUpperCase() };
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: persisted, bookingRevisions: [base, persisted] } as never);
+    const restored = renderWizard();
+    expect(restored.result.current.memberDietaryNote).toBe("Saved while away");
+    expect(restored.result.current.showBookingSummary).toBe(true);
+    expect(restored.result.current.editingExistingBooking).toBe(false);
+    expect(unloadBlocked()).toBe(false);
+    expect(submitEventBooking).toHaveBeenCalledOnce();
+    act(() => restored.result.current.beginEditingBooking());
+    act(() => restored.result.current.setMemberDietaryNote("Next intended change"));
+    await act(() => restored.result.current.handleConfirm());
+    const next = vi.mocked(submitEventBooking).mock.calls[1]![0];
+    expect(next.idempotencyKey).not.toBe(request.idempotencyKey);
+    expect(next).toMatchObject({ baseBookingId: persisted.id, baseRevisionNumber: persisted.revisionNumber });
+  });
+
+  it("finds a saved request in history and hydrates the newest revision without changing the payable booking", async () => {
+    const base = existingBooking();
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: base, bookingRevisions: [base] } as never);
+    (submitEventBooking as Mock).mockRejectedValueOnce(new Error("Response lost"));
+    const first = renderWizard();
+    act(() => first.result.current.beginEditingBooking());
+    act(() => first.result.current.setMemberDietaryNote("Submitted amendment"));
+    await act(() => first.result.current.handleConfirm());
+    const request = vi.mocked(submitEventBooking).mock.calls[0]![0];
+    first.unmount();
+    const savedRevision = { ...existingBooking(2, "Submitted amendment"), status: "SUBMITTED", clientSubmissionKey: request.idempotencyKey, supersededAt: "later" };
+    const current = { ...existingBooking(3, "Current pending amendment"), status: "SUBMITTED", approvalStatus: "PENDING", clientSubmissionKey: "another-request" };
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: current, bookingRevisions: [base, savedRevision, current], paymentEligibleBooking: base } as never);
+    const restored = renderWizard();
+    expect(restored.result.current.memberDietaryNote).toBe("Current pending amendment");
+    expect(restored.result.current.paymentEligibleBooking).toBe(base);
+    expect(restored.result.current.showBookingSummary).toBe(true);
+    expect(unloadBlocked()).toBe(false);
+  });
+
+  it("preserves an uncertain submission when another request advanced the server revision", async () => {
+    const base = existingBooking();
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: base, bookingRevisions: [base] } as never);
+    (submitEventBooking as Mock).mockRejectedValue(new Error("Unconfirmed"));
+    const first = renderWizard();
+    act(() => first.result.current.beginEditingBooking());
+    act(() => first.result.current.setMemberDietaryNote("Unconfirmed local edit"));
+    await act(() => first.result.current.handleConfirm());
+    const request = vi.mocked(submitEventBooking).mock.calls[0]![0];
+    first.unmount();
+    const other = { ...existingBooking(2, "Someone else's update"), status: "SUBMITTED", clientSubmissionKey: "other-request" };
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: other, bookingRevisions: [base, other] } as never);
+    const restored = renderWizard();
+    expect(restored.result.current.memberDietaryNote).toBe("Unconfirmed local edit");
+    expect(restored.result.current.editingExistingBooking).toBe(true);
+    await act(() => restored.result.current.handleConfirm());
+    expect(vi.mocked(submitEventBooking).mock.calls[1]![0]).toEqual(request);
+  });
+
+  it("waits for a successful return read before clearing a saved draft", async () => {
+    (submitEventBooking as Mock).mockRejectedValueOnce(new Error("Response lost"));
+    const first = renderWizard();
+    act(() => first.result.current.setMemberDietaryNote("Original submitted form"));
+    await act(() => first.result.current.handleConfirm());
+    const request = vi.mocked(submitEventBooking).mock.calls[0]![0];
+    first.unmount();
+    const persisted = { ...existingBooking(1, "Original submitted form"), status: "SUBMITTED", clientSubmissionKey: request.idempotencyKey };
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: persisted, bookingRevisions: [persisted], refreshingBookings: true } as never);
+    const restored = renderWizard();
+    expect(unloadBlocked()).toBe(true);
+    expect(restored.result.current.submitting).toBe(true);
+    await act(() => restored.result.current.handleConfirm());
+    expect(submitEventBooking).toHaveBeenCalledOnce();
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: persisted, bookingRevisions: [persisted], bookingsError: true } as never);
+    restored.rerender({ sectionId: "section-a", eventId: "event-a" });
+    expect(unloadBlocked()).toBe(true);
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: persisted, bookingRevisions: [persisted] } as never);
+    restored.rerender({ sectionId: "section-a", eventId: "event-a" });
+    expect(unloadBlocked()).toBe(false);
+  });
+
+  it.each([false, true])("keeps newer edits visible with a Cancel action after an earlier save, amendment=%s", async (amending) => {
+    const base = existingBooking();
+    if (amending) vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: base, bookingRevisions: [base] } as never);
+    let complete!: (value: unknown) => void;
+    (submitEventBooking as Mock).mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    const first = renderWizard();
+    if (amending) act(() => first.result.current.beginEditingBooking());
+    act(() => first.result.current.setMemberDietaryNote("Original submitted edit"));
+    act(() => { void first.result.current.handleConfirm(); });
+    const request = vi.mocked(submitEventBooking).mock.calls[0]![0];
+    act(() => first.result.current.setMemberDietaryNote("New unsaved edit"));
+    first.unmount();
+    await act(async () => complete(saved));
+    const persisted = { ...existingBooking(2, "Original submitted edit"), status: "SUBMITTED", clientSubmissionKey: request.idempotencyKey };
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: persisted, bookingRevisions: [base, persisted] } as never);
+    const restored = renderWizard();
+    expect(restored.result.current.memberDietaryNote).toBe("New unsaved edit");
+    expect(restored.result.current.showWizard).toBe(true);
+    expect(restored.result.current.showBookingSummary).toBe(false);
+    expect(restored.result.current.editingExistingBooking).toBe(true);
+    expect(restored.result.current.submitError).toMatch(/newer edits have not been saved/);
+    expect(unloadBlocked()).toBe(true);
+    await act(() => restored.result.current.handleConfirm());
+    expect(submitEventBooking).toHaveBeenCalledOnce();
+    act(() => restored.result.current.cancelEditing());
+    expect(restored.result.current.memberDietaryNote).toBe("Original submitted edit");
+    expect(unloadBlocked()).toBe(false);
+  });
+
+  it("retires a late submit response once the server proves it saved, preserving the next edit", async () => {
+    let complete!: (value: unknown) => void;
+    (submitEventBooking as Mock).mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    const completed = vi.fn();
+    const hook = renderWizard(undefined, completed);
+    act(() => hook.result.current.setMemberDietaryNote("Saved first"));
+    act(() => { void hook.result.current.handleConfirm(); });
+    const request = vi.mocked(submitEventBooking).mock.calls[0]![0];
+    const persisted = { ...existingBooking(1, "Saved first"), status: "SUBMITTED", clientSubmissionKey: request.idempotencyKey };
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: persisted, bookingRevisions: [persisted] } as never);
+    hook.rerender({ sectionId: "section-a", eventId: "event-a" });
+    expect(hook.result.current.submitting).toBe(false);
+    act(() => hook.result.current.beginEditingBooking());
+    act(() => hook.result.current.setMemberDietaryNote("Next unsaved edit"));
+    await act(async () => complete(saved));
+    expect(hook.result.current.memberDietaryNote).toBe("Next unsaved edit");
+    expect(hook.result.current.editingExistingBooking).toBe(true);
+    expect(completed).not.toHaveBeenCalled();
+  });
+
+  it("handles used-request conflicts through reads without changing the write identity", async () => {
+    (submitEventBooking as Mock).mockRejectedValue({ code: "functions/failed-precondition", details: { code: "IDEMPOTENCY_KEY_REUSE_CONFLICT" }, message: "internal key detail" });
+    (refreshMyBookingsFromServer as Mock).mockRejectedValueOnce(new Error("Read unavailable"));
+    const hook = renderWizard();
+    act(() => hook.result.current.setMemberDietaryNote("Keep until reviewed"));
+    await act(() => hook.result.current.handleConfirm());
+    const first = vi.mocked(submitEventBooking).mock.calls[0]![0];
+    expect(hook.result.current.submitError).toMatch(/latest booking could not be loaded/);
+    expect(hook.result.current.memberDietaryNote).toBe("Keep until reviewed");
+    await act(() => hook.result.current.handleConfirm());
+    expect(vi.mocked(submitEventBooking).mock.calls[1]![0]).toEqual(first);
+    expect(hook.result.current.submitError).toMatch(/Cancel these edits/);
+    expect(refreshMyBookingsFromServer).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([false, true])("reconciles the payload that actually committed after a changed retry, preserving a later revert=%s", async (revertedAfterRetry) => {
+    (submitEventBooking as Mock).mockRejectedValueOnce(new Error("First attempt did not commit"));
+    const first = renderWizard();
+    act(() => first.result.current.setMemberDietaryNote("Attempt A"));
+    await act(() => first.result.current.handleConfirm());
+    const original = vi.mocked(submitEventBooking).mock.calls[0]![0];
+    act(() => first.result.current.setMemberDietaryNote("Saved attempt B"));
+    let complete!: (value: unknown) => void;
+    (submitEventBooking as Mock).mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    act(() => { void first.result.current.handleConfirm(); });
+    expect(vi.mocked(submitEventBooking).mock.calls[1]![0].idempotencyKey).toBe(original.idempotencyKey);
+    if (revertedAfterRetry) act(() => first.result.current.setMemberDietaryNote("Attempt A"));
+    first.unmount();
+    await act(async () => complete(saved));
+    const persisted = { ...existingBooking(1, "Saved attempt B"), status: "SUBMITTED", clientSubmissionKey: original.idempotencyKey };
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, existingTerminalBooking: persisted, bookingRevisions: [persisted] } as never);
+    const returned = renderWizard();
+    expect(returned.result.current.memberDietaryNote).toBe(revertedAfterRetry ? "Attempt A" : "Saved attempt B");
+    expect(returned.result.current.showBookingSummary).toBe(!revertedAfterRetry);
+    expect(unloadBlocked()).toBe(revertedAfterRetry);
+    if (revertedAfterRetry) expect(returned.result.current.submitError).toMatch(/newer edits have not been saved/);
+    expect(submitEventBooking).toHaveBeenCalledTimes(2);
+  });
+
+  it("matches saved request fields after UUID, whitespace, seating order and paid-place hydration", async () => {
+    const memberId = "AABBCCDD-1111-4222-8333-ABCDEF123456";
+    const memberType = { ...ticket, id: memberId };
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, memberTicketTypes: [memberType] } as never);
+    (submitEventBooking as Mock).mockRejectedValueOnce(new Error("Response lost"));
+    const first = renderWizard();
+    act(() => {
+      first.result.current.setMemberDietaryNote("  Vegan  ");
+      first.result.current.setGuestCount(1);
+      first.result.current.setSitNextToUserIds(["member-z", "member-a"]);
+      first.result.current.setAccommodationRequested(true);
+    });
+    act(() => first.result.current.updateGuest(0, { guestDisplayName: " Guest ", dietaryNote: " No nuts " }));
+    await act(() => first.result.current.handleConfirm());
+    const request = vi.mocked(submitEventBooking).mock.calls[0]![0];
+    first.unmount();
+    const persisted = { ...existingBooking(1, "Vegan"), status: "SUBMITTED", clientSubmissionKey: request.idempotencyKey,
+      sitNextToUserIds: ["member-a", "member-z"], accommodationRequested: true,
+      lines: [{ ...existingBooking().lines[0], dietaryNote: "Vegan", ticketType: { id: memberId.replaceAll("-", "").toLowerCase(), audience: "MEMBER" } },
+        { id: "saved-guest-line", sortOrder: 1, guestDisplayName: "Guest", dietaryNote: "No nuts",
+          ticketType: { id: guestTicket.id, audience: "GUEST" }, bookingPlace: { id: "saved-guest-place", paymentAllocations: [{ ticketOrderId: "paid-order" }] } }],
+    };
+    vi.mocked(useBookingWizardData).mockReturnValue({ ...data, memberTicketTypes: [memberType], existingTerminalBooking: persisted,
+      bookingRevisions: [persisted], bookingTicketOrders: [{ id: "paid-order", status: "PAID" }] } as never);
+    const returned = renderWizard();
+    expect(returned.result.current.showBookingSummary).toBe(true);
+    expect(returned.result.current.guests[0]).toMatchObject({ guestDisplayName: "Guest", paid: true });
+    expect(unloadBlocked()).toBe(false);
+  });
+
 });

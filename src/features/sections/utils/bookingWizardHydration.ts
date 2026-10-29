@@ -1,3 +1,4 @@
+import { idsEqual } from "../../../shared/utils/uuid";
 import { TicketAudience, TicketOrderStatus } from "@dataconnect/generated";
 import type { GuestDetailRow } from "../hooks/bookingWizardModel";
 
@@ -68,4 +69,20 @@ export function hydrateFormFromExistingBooking(
     sitNextToUserIds: booking.sitNextToUserIds ?? [],
     accommodationRequested: booking.accommodationRequested === true,
   };
+}
+
+/** Compare the submitted payload, ignoring server-assigned line/place IDs and
+ * payment flags. A retry may have changed before its first successful commit. */
+export function bookingFormMatchesSavedSnapshot(form: WizardFormSnapshot, saved: WizardFormSnapshot): boolean {
+  const seats = (ids: string[]) => JSON.stringify(ids.map(id => id.trim()).filter(Boolean).sort());
+  return idsEqual(form.memberTicketTypeId, saved.memberTicketTypeId) &&
+    form.memberDietaryNote.trim() === saved.memberDietaryNote.trim() &&
+    form.accommodationRequested === saved.accommodationRequested &&
+    seats(form.sitNextToUserIds) === seats(saved.sitNextToUserIds) &&
+    form.guests.length === saved.guests.length && form.guests.every((guest, index) => {
+      const persisted = saved.guests[index];
+      return idsEqual(guest.ticketTypeId, persisted.ticketTypeId) &&
+        guest.guestDisplayName.trim() === persisted.guestDisplayName.trim() &&
+        guest.dietaryNote.trim() === persisted.dietaryNote.trim();
+    });
 }

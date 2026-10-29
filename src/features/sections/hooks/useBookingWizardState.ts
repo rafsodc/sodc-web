@@ -7,14 +7,14 @@ import {
   submitEventBooking,
   type SubmitEventBookingResponse,
 } from "../../../shared/utils/firebaseFunctions";
-import { toCanonicalUuid } from "../../../shared/utils/uuid";
+import { idsEqual, toCanonicalUuid } from "../../../shared/utils/uuid";
 import { refreshMyBookingsFromServer } from "../../../shared/query/invalidation";
 import {
   extractDomainErrorCode,
   reportError,
   toBookingUserFacingError,
 } from "../../../shared/errors";
-import { hydrateFormFromExistingBooking } from "../utils/bookingWizardHydration";
+import { bookingFormMatchesSavedSnapshot, hydrateFormFromExistingBooking } from "../utils/bookingWizardHydration";
 import {
   BOOKING_STEPS,
   buildBookingSubmissionLines,
@@ -98,7 +98,7 @@ export function useBookingWizardState({
   const dirty = hasUnsavedForm(draft);
   useDraftUnloadWarning(dirty || draft.submissionBase !== null);
   const requestGuard = useLatestRequestGuard();
-  const submittingAttempt = useRef<{ resourceKey: string; session: SessionToken } | null>(null);
+  const submittingAttempt = useRef<{ resourceKey: string; session: SessionToken; idempotencyKey: string | null } | null>(null);
   useLayoutEffect(() => () => {
     requestGuard.invalidate();
     submittingAttempt.current = null;
@@ -133,6 +133,7 @@ export function useBookingWizardState({
 
   const {
     bookingTicketOrders,
+    bookingRevisions = [],
     bookingsError,
     bookingsQueryError,
     bookingPaymentAdjustments,
@@ -142,6 +143,7 @@ export function useBookingWizardState({
     gate,
     guestTicketTypes,
     loadingBookings,
+    refreshingBookings = false,
     loadingProfile,
     memberTicketTypes,
     membershipStatus,
@@ -152,6 +154,51 @@ export function useBookingWizardState({
     showExpiredDraftHoldNotice,
     ticketOrdersData,
   } = useBookingWizardData({ section, event, postSubmitFlow: Boolean(lastSubmission) });
+
+  const savedRetainedBooking = draft.submissionBase && draft.idempotencyKey &&
+    !loadingBookings && !refreshingBookings && !bookingsError
+    ? bookingRevisions.find(booking =>
+      (booking.status === BookingStatus.SUBMITTED || booking.status === BookingStatus.CONFIRMED) &&
+      idsEqual(booking.clientSubmissionKey, draft.idempotencyKey))
+    : undefined;
+  const savedRetainedSubmission = Boolean(savedRetainedBooking);
+  const savedSubmissionSnapshot = useMemo(() => savedRetainedBooking
+    ? hydrateFormFromExistingBooking(savedRetainedBooking, bookingTicketOrders) : null,
+  [savedRetainedBooking, bookingTicketOrders]);
+  const submittedFormUnchanged = savedSubmissionSnapshot !== null &&
+    bookingFormMatchesSavedSnapshot(draft, savedSubmissionSnapshot);
+  const checkingRetainedSubmission = draft.submissionBase !== null && refreshingBookings;
+  const savedWithNewEditsMessage = "Your earlier save completed, but these newer edits have not been saved. Cancel these edits to review the saved booking, then choose Edit booking to make another change.";
+
+  useEffect(() => {
+    if (!savedRetainedSubmission) return;
+    // A server read can observe the commit before its callable response arrives.
+    // Retire that response so it cannot later reset a newly opened edit.
+    if (submittingAttempt.current?.idempotencyKey === draft.idempotencyKey) {
+      requestGuard.invalidate();
+      submittingAttempt.current = null;
+      setSubmitting(false);
+    }
+    if (!submittedFormUnchanged) {
+      // Keep a new booking's newer edits visible too, with a real Cancel action.
+      setDraft(previous => previous.idempotencyKey === draft.idempotencyKey && previous.submissionBase &&
+        !previous.isEditingBooking ? { ...previous, isEditingBooking: true } : previous);
+      setSubmitError(savedWithNewEditsMessage);
+      return;
+    }
+    const retainedKey = draft.idempotencyKey;
+    const snapshot = existingTerminalBooking
+      ? hydrateFormFromExistingBooking(existingTerminalBooking, bookingTicketOrders)
+      : emptyBookingDraft().baseline;
+    const values = { ...snapshot, guestCountInput: String(snapshot.guests.length) };
+    setDraft(previous => previous.idempotencyKey !== retainedKey || !previous.submissionBase ||
+      !savedSubmissionSnapshot || !bookingFormMatchesSavedSnapshot(previous, savedSubmissionSnapshot) ? previous : {
+        ...emptyBookingDraft(), ...values, baseline: values,
+      });
+    setLastSubmission(null);
+    setSubmitError(null);
+  }, [savedRetainedSubmission, submittedFormUnchanged, savedSubmissionSnapshot, draft.idempotencyKey, existingTerminalBooking,
+    bookingTicketOrders, requestGuard, setDraft, setLastSubmission, setSubmitError, setSubmitting]);
 
   const resetDraft = () => {
     discardDraft();
@@ -304,10 +351,14 @@ export function useBookingWizardState({
     }
 
     const pending = submittingAttempt.current;
-    if (submitting || (pending?.resourceKey === resourceKey && sessionMatches(pending.session, session))) return;
+    if (savedRetainedSubmission) {
+      setSubmitError(savedWithNewEditsMessage);
+      return;
+    }
+    if (submitting || checkingRetainedSubmission || (pending?.resourceKey === resourceKey && sessionMatches(pending.session, session))) return;
     const request = requestGuard.start();
     if (!operationCurrent(request)) return;
-    const attempt = { resourceKey, session };
+    const attempt: NonNullable<typeof submittingAttempt.current> = { resourceKey, session, idempotencyKey: null };
     submittingAttempt.current = attempt;
     setSubmitting(true);
     setSubmitError(null);
@@ -319,6 +370,7 @@ export function useBookingWizardState({
     }
     const submissionBase = draft.submissionBase ?? draft.editingBase ?? { baseBookingId: existingTerminalBooking?.id,
       baseRevisionNumber: existingTerminalBooking?.revisionNumber };
+    attempt.idempotencyKey = idempotencyKey;
     setDraft(previous => ({ ...previous, idempotencyKey, submissionBase }));
     try {
       const result = await submitEventBooking({
@@ -356,6 +408,17 @@ export function useBookingWizardState({
         await refreshMyBookingsFromServer(queryClient, event.id);
       } else if (code === "OUTSIDE_BOOKING_WINDOW") {
         setSubmitError("The booking window is closed.");
+      } else if (code === "IDEMPOTENCY_KEY_REUSE_CONFLICT") {
+        // Reconciliation is read-only. Never rotate the key and replay changed
+        // details automatically when the original request may have committed.
+        setSubmitError(toBookingUserFacingError(error, "booking-submit").message);
+        try {
+          await refreshMyBookingsFromServer(queryClient, event.id);
+        } catch (refreshError) {
+          if (!operationCurrent(request)) return;
+          reportError("booking.refresh-after-conflict", refreshError);
+          setSubmitError("An earlier save has already been processed, but the latest booking could not be loaded. Refresh and review it before making another change.");
+        }
       } else if (code === "IDEMPOTENCY_DRAFT_CONFLICT") {
         const refreshed = await refreshMyBookingsFromServer(queryClient, event.id);
         if (!operationCurrent(request)) return;
@@ -414,7 +477,7 @@ export function useBookingWizardState({
     if (!existingTerminalBooking) return;
     applyBookingSnapshot(existingTerminalBooking, true);
     setDraft(previous => ({ ...previous, activeStep: 0, idempotencyKey: crypto.randomUUID(), submissionBase: null,
-      editingBase: { baseBookingId: existingTerminalBooking.id, baseRevisionNumber: existingTerminalBooking.revisionNumber } }));
+        editingBase: { baseBookingId: existingTerminalBooking.id, baseRevisionNumber: existingTerminalBooking.revisionNumber } }));
     setLastSubmission(null);
     setSubmitError(null);
     onWizardOpenChange?.(true);
@@ -459,7 +522,7 @@ export function useBookingWizardState({
     seatingOptionsLoading,
     submitError,
     setSubmitError,
-    submitting,
+    submitting: submitting || checkingRetainedSubmission,
     payingAllTickets,
     memberTicketTypes,
     guestTicketTypes,
