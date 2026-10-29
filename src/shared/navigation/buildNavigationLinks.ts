@@ -1,3 +1,4 @@
+import { sectionPath } from "./sectionRoutes";
 import type { GetSectionsForUserData, SectionUserGroupPurpose } from "@dataconnect/generated";
 import { SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import { ROUTES } from "../../constants";
@@ -41,18 +42,11 @@ function addSectionLink(map: Map<string, NavigationLink>, link: SectionLinkSourc
   const label = section.name || "Untitled section";
   map.set(section.id, {
     label,
-    to: `/sections/${section.id}`,
+    to: sectionPath(section.id),
     state: sectionDetailLocationState(ROUTES.HOME),
   });
 }
 
-function markSectionAdministerable(map: Map<string, boolean>, link: SectionLinkSource) {
-  const section = link.section;
-  if (!linkHasPurpose(link, SectionPurpose.MODERATOR) || !section?.id) {
-    return;
-  }
-  map.set(section.id, true);
-}
 
 function sortLinks<T extends NavigationLink>(links: Iterable<T>): T[] {
   return Array.from(links).sort((a, b) => a.label.localeCompare(b.label));
@@ -60,30 +54,20 @@ function sortLinks<T extends NavigationLink>(links: Iterable<T>): T[] {
 
 function buildAdminLinks({
   isAdmin,
-  administerableSectionIds,
 }: {
   isAdmin: boolean;
-  administerableSectionIds: Map<string, boolean>;
 }): NavigationLink[] {
-  const links: NavigationLink[] = [];
-
-  if (isAdmin) {
-    links.push({ label: "Manage Users", to: ROUTES.MANAGE_USERS });
-    links.push({ label: "Approvals", to: ROUTES.APPROVE_USERS });
-  }
-
-  if (isAdmin || administerableSectionIds.size > 0) {
-    links.push({ label: "Manage Sections", to: ROUTES.MANAGE_SECTIONS });
-  }
-
-  if (isAdmin) {
-    links.push({ label: "User Groups", to: ROUTES.USER_GROUPS });
-    links.push({ label: "Payment Reconciliation", to: ROUTES.PAYMENT_RECONCILIATION });
-    links.push({ label: "Email Templates", to: ROUTES.EMAIL_TEMPLATES });
-    links.push({ label: "Email Delivery", to: ROUTES.EMAIL_DELIVERY });
-    links.push({ label: "Audit Logs", to: ROUTES.AUDIT_LOGS });
-  }
-
+  if (!isAdmin) return [];
+  const links: NavigationLink[] = [
+    { label: "Manage Users", to: ROUTES.MANAGE_USERS },
+    { label: "Approvals", to: ROUTES.APPROVE_USERS },
+    { label: "Manage Sections", to: ROUTES.MANAGE_SECTIONS },
+    { label: "User Groups", to: ROUTES.USER_GROUPS },
+    { label: "Payment Reconciliation", to: ROUTES.PAYMENT_RECONCILIATION },
+    { label: "Email Templates", to: ROUTES.EMAIL_TEMPLATES },
+    { label: "Email Delivery", to: ROUTES.EMAIL_DELIVERY },
+    { label: "Audit Logs", to: ROUTES.AUDIT_LOGS },
+  ];
   return links;
 }
 
@@ -97,7 +81,6 @@ export function buildNavigationLinks({
   }
 
   const sectionMap = new Map<string, NavigationLink>();
-  const administerableSectionIds = new Map<string, boolean>();
   const explicitGroups = sectionsData?.user?.userGroups ?? [];
 
   for (const groupRelation of explicitGroups) {
@@ -108,7 +91,6 @@ export function buildNavigationLinks({
       ) {
         addSectionLink(sectionMap, purposeLink);
       }
-      markSectionAdministerable(administerableSectionIds, purposeLink);
     }
   }
 
@@ -125,19 +107,14 @@ export function buildNavigationLinks({
         ) {
           addSectionLink(sectionMap, purposeLink);
         }
-        markSectionAdministerable(administerableSectionIds, purposeLink);
-      }
+        }
     }
   }
 
-  if (isAdmin) {
-    for (const sectionId of sectionMap.keys()) {
-      administerableSectionIds.set(sectionId, true);
-    }
-  }
+
 
   return {
     sections: sortLinks(sectionMap.values()),
-    admin: buildAdminLinks({ isAdmin, administerableSectionIds }),
+    admin: buildAdminLinks({ isAdmin }),
   };
 }

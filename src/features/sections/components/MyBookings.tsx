@@ -1,3 +1,4 @@
+import { memberEventPath } from "../../../shared/navigation/sectionRoutes";
 import {
   Box,
   Button,
@@ -148,8 +149,8 @@ export default function MyBookings({ onBack }: MyBookingsProps) {
                   <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
                     <Button
                       component={RouterLink}
-                      to={`/sections/${sectionId}`}
-                      state={sectionDetailLocationState(ROUTES.HOME, { selectedEventId: eventId })}
+                      to={memberEventPath(sectionId,eventId,"book")}
+                      state={sectionDetailLocationState(ROUTES.HOME)}
                       variant="contained"
                       size="small"
                     >

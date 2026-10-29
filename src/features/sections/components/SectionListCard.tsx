@@ -1,3 +1,4 @@
+import { Link as RouterLink } from "react-router-dom";
 import {
   Card,
   CardActionArea,
@@ -17,15 +18,16 @@ export interface SectionListCardSection {
 export interface SectionListCardProps {
   section: SectionListCardSection;
   onSelect: (sectionId: string) => void;
+  href?: string;
 }
 
-export default function SectionListCard({ section, onSelect }: SectionListCardProps) {
+export default function SectionListCard({ section, onSelect, href }: SectionListCardProps) {
   const description = section.description?.trim() || "No description.";
 
   return (
     <Card variant="outlined" sx={{ height: "100%" }}>
       <CardActionArea
-        onClick={() => onSelect(section.id)}
+        {...(href ? {component:RouterLink,to:href} : {onClick: () => onSelect(section.id)})}
         sx={{ height: "100%", textAlign: "left" }}
       >
         <CardContent>

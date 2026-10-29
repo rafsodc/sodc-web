@@ -1,3 +1,4 @@
+import { Link as RouterLink } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -19,6 +20,8 @@ import type { EventRow } from "../sectionEventsManagerTypes";
 import { AdminTable } from "./adminSurfacePrimitives";
 
 interface EventListSurfaceProps {
+  eventAdminHref?: (eventId: string) => string;
+  addEventHref?: string;
   sectionName: string;
   onBack: () => void;
   error: string | null;
@@ -33,6 +36,7 @@ interface EventListSurfaceProps {
   onDeleteEvent: (event: EventRow) => void;
 }
 export function EventListSurface({
+  eventAdminHref, addEventHref,
   sectionName,
   onBack,
   error,
@@ -55,7 +59,7 @@ export function EventListSurface({
         </Alert>
       )}
       <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-        <Button startIcon={<AddIcon />} variant="contained" onClick={onAddEvent}>
+        <Button startIcon={<AddIcon />} variant="contained" {...(addEventHref ? {component:RouterLink,to:addEventHref} : {onClick:onAddEvent})}>
           Add event
         </Button>
         <Button startIcon={<CampaignIcon />} variant="outlined" onClick={onSendAnnouncement}>
@@ -93,7 +97,7 @@ export function EventListSurface({
                     <Button
                       size="small"
                       variant="outlined"
-                      onClick={() => onManageEventAdmin(event.id)}
+                      {...(eventAdminHref ? {component: RouterLink, to: eventAdminHref(event.id)} : {onClick: () => onManageEventAdmin(event.id)})}
                       sx={{ mr: 1 }}
                     >
                       Event admin

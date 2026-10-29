@@ -1,3 +1,4 @@
+import { memberEventPath, sectionManagementPath, eventManagementPath } from "./shared/navigation/sectionRoutes";
 import { signOutPrivateSession } from "./shared/appShell/sessionLifecycle";
 import { useEffect, useState, useCallback, useMemo, lazy, Suspense, type ReactElement } from "react";
 import { Box, Button, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
@@ -72,7 +73,7 @@ const LoadingFallback = () => (
 );
 
 function SectionDetailRoute() {
-  const { sectionId } = useParams<{ sectionId: string }>();
+  const { sectionId, eventId } = useParams<{ sectionId: string; eventId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   if (!sectionId) {
@@ -83,7 +84,23 @@ function SectionDetailRoute() {
     navigateBackOrHelper(getSectionReturnTo(location.state), location, navigate);
   };
 
-  return <SectionDetail sectionId={sectionId} onBack={handleBack} />;
+  const legacyEventId = (location.state as {selectedEventId?: unknown} | null)?.selectedEventId;
+  if (!eventId && typeof legacyEventId === "string" && legacyEventId) return <Navigate replace to={memberEventPath(sectionId, legacyEventId)} />;
+  return <SectionDetail key={sectionId} sectionId={sectionId} eventId={eventId} onBack={handleBack} />;
+}
+
+function LegacySectionAdminRoute() {
+  const {sectionId} = useParams();
+  const location = useLocation();
+  return <Navigate replace to={`${sectionManagementPath(sectionId!)}${location.search}${location.hash}`} />;
+}
+
+function LegacySectionConfigurationRoute({children}: {children: ReactElement}) {
+  const location = useLocation();
+  const state = location.state as {managedSection?: {id?: unknown}; eventId?: unknown} | null;
+  const sid = state?.managedSection?.id;
+  if (typeof sid === "string" && sid) return <Navigate replace to={typeof state?.eventId === "string" && state.eventId ? eventManagementPath(sid,state.eventId) : sectionManagementPath(sid,"events")} />;
+  return children;
 }
 
 function SectionFileRoute() {
@@ -388,6 +405,7 @@ function AppContent() {
     if (!authInitialized) {
       return <LoadingFallback />;
     }
+    if (!user) return <Navigate to={accountSignInPath(`${location.pathname}${location.search}${location.hash}`)} replace />;
     if (user && isAdmin) {
       return element;
     }
@@ -706,18 +724,20 @@ function AppContent() {
                   path={ROUTES.SECTION_ADMIN}
                   element={protectedRoute(
                     <Suspense fallback={<LoadingFallback />}>
-                      <SectionAdminPage />
+                      <LegacySectionAdminRoute />
                     </Suspense>
                   )}
                 />
+                <Route path={ROUTES.SECTION_MANAGEMENT} element={protectedRoute(<Suspense fallback={<LoadingFallback />}><SectionAdminPage /></Suspense>)} />
+                <Route path={ROUTES.SECTION_EVENT} element={protectedRoute(<Suspense fallback={<LoadingFallback />}><SectionDetailRoute /></Suspense>)} />
                 <Route
                   path={ROUTES.MANAGE_SECTIONS}
-                  element={renderAdminOnly(
+                  element={<LegacySectionConfigurationRoute>{renderAdminOnly(
                     "Manage Sections",
                     <Suspense fallback={<LoadingFallback />}>
                       <ManageSections onBack={() => navigateBackOr(ROUTES.HOME)} />
                     </Suspense>
-                  )}
+                  )}</LegacySectionConfigurationRoute>}
                 />
                 <Route
                   path={ROUTES.MY_BOOKINGS}

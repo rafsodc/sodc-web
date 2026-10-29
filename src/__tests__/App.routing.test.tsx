@@ -849,7 +849,7 @@ describe("App routing", () => {
     expect(screen.queryByRole("link", { name: "Audit Logs" })).not.toBeInTheDocument();
   });
 
-  it("shows a moderator the flat Manage Sections link without admin-only management links", async () => {
+  it("keeps the global Admin menu out of section moderator navigation", async () => {
     signInEnabledUser({
       data: sectionsData({
         user: {
@@ -872,7 +872,7 @@ describe("App routing", () => {
     renderApp([ROUTES.HOME]);
 
     expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Manage Sections" })).toHaveAttribute("href", ROUTES.MANAGE_SECTIONS);
+    expect(screen.queryByRole("link", { name: "Manage Sections" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Administer" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Manage Users" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Audit Logs" })).not.toBeInTheDocument();
@@ -941,4 +941,40 @@ describe("App routing", () => {
 
     await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME));
   });
+  it.each([
+    "/sections/section-1/manage",
+    "/sections/section-1/manage/events/event-2?task=approvals",
+    "/sections/section-1/events/event-2?tab=book",
+  ])("retains %s through delayed initial Auth and sign-in return", async destination => {
+    deferAuthState = true;
+    signInEnabledUser();
+    renderApp([destination]);
+    expect(screen.getByTestId("location")).toHaveTextContent(destination);
+    expect(screen.queryByText("Section Admin Page")).not.toBeInTheDocument();
+    await act(async () => { for (const listener of authStateListeners) listener(currentUser); });
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(destination));
+    expect(await screen.findByRole("heading",{name:destination.includes("manage")?"Section Admin Page":"Section Detail section-1"})).toBeInTheDocument();
+  });
+  it("redirects a legacy section-admin URL to the canonical resource", async () => {
+    signInEnabledUser(); renderApp(["/admin/section/section-1"]);
+    expect(await screen.findByRole("heading",{name:"Section Admin Page"})).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/sections/section-1/manage");
+  });
+  it("redirects old management state before applying the global-admin configuration boundary", async () => {
+    signInEnabledUser(); renderApp([{pathname:"/admin/sections",state:{managedSection:{id:"section-1",name:"Forged name"},eventId:"event-2"}}]);
+    expect(await screen.findByRole("heading",{name:"Section Admin Page"})).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/sections/section-1/manage/events/event-2");
+  });
+  it("converts old member-event state into a shareable URL", async () => {
+    signInEnabledUser(); renderApp([{pathname:"/sections/section-1",state:{selectedEventId:"event-2"}}]);
+    expect(await screen.findByRole("heading",{name:"Section Detail section-1"})).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/sections/section-1/events/event-2");
+  });
+  it("preserves a signed-out management destination, including task and hash", async () => {
+    const destination="/sections/section-1/manage/events/event-2?task=approvals#pending";
+    renderApp([destination]);
+    expect(await screen.findByRole("heading",{name:"Account Page"})).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(`/account?returnTo=${encodeURIComponent(destination)}`);
+  });
+
 });

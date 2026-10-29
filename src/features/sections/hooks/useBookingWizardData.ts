@@ -33,10 +33,15 @@ export function useBookingWizardData(args: {
   const {
     data: myBookingsData,
     isLoading: loadingBookings,
+    isFetching: refreshingBookings,
     isError: bookingsError,
     error: bookingsQueryError,
     refetch: refetchMyBookings,
-  } = useGetMyBookingsForEvent(dataConnect, { eventId: event.id as UUIDString });
+  } = useGetMyBookingsForEvent(dataConnect, { eventId: event.id as UUIDString }, {
+    // A retained submission must be checked against the server on a return visit,
+    // even when TanStack still considers its pre-submit cache fresh.
+    refetchOnMount: "always",
+  });
   const membershipStatus = currentUserData?.user?.membershipStatus;
 
   const explicitGroupIds = useMemo(() => {
@@ -162,6 +167,7 @@ export function useBookingWizardData(args: {
 
   return {
     bookingTicketOrders: myBookingsData?.user?.bookingTicketOrders ?? [],
+    bookingRevisions: myBookingsData?.user?.bookings ?? [],
     bookingsError,
     bookingsQueryError,
     bookingPaymentAdjustments,
@@ -173,6 +179,7 @@ export function useBookingWizardData(args: {
     guestTicketTypes,
     isAdmin,
     loadingBookings,
+    refreshingBookings,
     loadingProfile,
     memberTicketTypes,
     membershipStatus,

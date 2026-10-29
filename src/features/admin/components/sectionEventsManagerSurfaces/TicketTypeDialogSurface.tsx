@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Alert,
   Autocomplete,
@@ -26,6 +27,8 @@ import type { TicketTypeRow } from "../sectionEventsManagerTypes";
 
 interface TicketTypeDialogSurfaceProps {
   open: boolean;
+  notice?: ReactNode;
+  saveDisabled?: boolean;
   error?: string | null;
   editingTicketType: TicketTypeRow | null;
   title: string;
@@ -52,6 +55,7 @@ interface TicketTypeDialogSurfaceProps {
 }
 export function TicketTypeDialogSurface({
   open,
+  notice, saveDisabled,
   error,
   editingTicketType,
   title,
@@ -82,6 +86,7 @@ export function TicketTypeDialogSurface({
         {editingTicketType ? "Edit ticket type" : "Add ticket type"}
       </DialogTitle>
       <DialogContent>
+        {notice}
         <TextField
           label="Title"
           fullWidth
@@ -191,9 +196,10 @@ export function TicketTypeDialogSurface({
         <Button onClick={onClose}>Cancel</Button>
         <Button
           variant="contained"
+          aria-label="Save"
           onClick={onSubmit}
           disabled={
-            submitting ||
+            submitting || saveDisabled ||
             !title.trim() ||
             !accessGroup
           }

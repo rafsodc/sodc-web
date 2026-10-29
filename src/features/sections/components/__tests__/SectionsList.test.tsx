@@ -1,5 +1,8 @@
+import { MemoryRouter } from "react-router-dom";
+import type { ReactElement } from "react";
+const render = (ui: ReactElement) => baseRender(<MemoryRouter>{ui}</MemoryRouter>);
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '../../../../test-utils';
+import { render as baseRender, screen, waitFor } from '../../../../test-utils';
 import SectionsList from '../SectionsList';
 import * as reactGenerated from '../../../../shared/query/authoritativeHooks';
 import {
@@ -326,7 +329,7 @@ describe('SectionsList', () => {
     expect(screen.getByText('Another Section')).toBeInTheDocument();
   });
 
-  it('should call onSelectSection when section is clicked', async () => {
+  it('provides an ordinary section link', async () => {
     const mockSectionsData = {
       user: {
         id: 'user-1',
@@ -373,10 +376,10 @@ describe('SectionsList', () => {
       expect(screen.getByText('Test Section')).toBeInTheDocument();
     });
 
-    const viewButton = screen.getByRole('button', { name: /test section/i });
+    const viewButton = screen.getByRole('link', { name: /test section/i });
     await user.click(viewButton);
 
-    expect(mockOnSelectSection).toHaveBeenCalledWith('section-1');
+    expect(screen.getByRole('link', { name: /Test Section/i })).toHaveAttribute('href','/sections/section-1');
   });
 
   it('should show empty state when no sections match search', async () => {

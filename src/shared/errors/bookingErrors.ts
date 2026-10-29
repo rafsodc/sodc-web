@@ -85,6 +85,12 @@ const BOOKING_DOMAIN_ERRORS: Record<string, UserFacingErrorInput> = {
     message: "You already have a submitted booking for this event.",
     retryable: false,
   },
+  IDEMPOTENCY_KEY_REUSE_CONFLICT: {
+    category: "conflict",
+    title: "Earlier save already processed",
+    message: "An earlier save has already been processed. Cancel these edits to review the saved booking, then choose Edit booking to make another change.",
+    retryable: false,
+  },
   BOOKING_REVISION_BASE_REQUIRED: {
     category: "conflict",
     title: "Booking changed",

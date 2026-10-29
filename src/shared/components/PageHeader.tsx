@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import { AdminPanelSettings } from "@mui/icons-material";
 import { Box, Button, Typography } from "@mui/material";
 import "./PageHeader.css";
 
 export interface PageHeaderAdminAction {
   visible: boolean;
-  onClick: () => void;
+  onClick?: () => void;
+  to?: string;
 }
 
 interface PageHeaderProps {
@@ -33,7 +35,7 @@ export default function PageHeader({ title, adminAction, breadcrumbs, extraActio
           <Box className="page-header-actions">
             {extraActions}
             {adminAction?.visible && (
-              <Button variant="contained" startIcon={<AdminPanelSettings />} onClick={adminAction.onClick}>
+              <Button variant="contained" startIcon={<AdminPanelSettings />} {...(adminAction.to ? {component: RouterLink, to: adminAction.to} : {onClick: adminAction.onClick})}>
                 Admin
               </Button>
             )}

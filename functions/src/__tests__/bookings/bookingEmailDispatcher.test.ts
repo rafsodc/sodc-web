@@ -12,13 +12,19 @@ import {
   bookingTotalMinorFromLines,
   buildTicketLinesSummary,
   formatBookingEventDateTime,
+  notifyBookingApprovedEmail,
+  notifyBookingChangesRequestedEmail,
   notifyBookingConfirmationEmail,
+  notifyBookingRevisionEmail,
   notifyBookingPendingApprovalEmails,
 } from "../../bookingEmailDispatcher";
 import * as recipientPolicy from "../../privilegedNotificationRecipient";
 import * as legacyPolicy from "../../privilegedNotificationLegacy";
 import * as bookingModerators from "../../bookingModerators";
 import * as notificationDelivery from "../../notificationDelivery";
+import * as mailer from "../../mailer";
+import { createNotificationRecoveryDispatcher, notificationRecoveryIdentity } from "../../notificationRecovery";
+import type { NotificationRecoveryPayload } from "../../notificationRecoveryPayload";
 
 const mockGetBooking = vi.spyOn(admin, "getBookingForNotification");
 const mockSendOnce = vi.spyOn(notificationDelivery, "sendNotificationOnce");
@@ -133,7 +139,7 @@ describe("notifyBookingConfirmationEmail", () => {
         personalisation: expect.objectContaining({
           firstName: "Sam",
           eventTitle: "Annual dinner",
-          sectionBookingsUrl: "https://app.example/sections/sec-1",
+          sectionBookingsUrl: "https://app.example/sections/sec-1/events/evt-1?tab=book",
           myPaymentsUrl: "https://app.example/payments",
         }),
       })
@@ -171,5 +177,99 @@ describe("staff booking disclosure boundary", () => {
     await notifyBookingPendingApprovalEmails({ bookingId, idempotencyKey: "submission", appBaseUrl: "https://app.example", getMailer: () => ({ sendEmail }) });
     expect(mockSendOnce).toHaveBeenCalledOnce();
     await mockSendOnce.mock.calls[0][0].send("LIVE"); expect(sendEmail).toHaveBeenCalledOnce();
+  });
+});
+
+describe("canonical booking links in actual mailer personalisation", () => {
+  const bookingId = "00000000-0000-4000-8000-000000000001";
+  const eventId = "00000000-0000-4000-8000-000000000002";
+  const sectionId = "00000000-0000-4000-8000-000000000003";
+  const sendEmail = vi.fn(async (_args: unknown) => ({ provider: "govuk_notify" as const, providerNotificationId: "offline-only" }));
+  const args = { bookingId, idempotencyKey: "submission", appBaseUrl: "https://app.example///", getMailer: () => ({ sendEmail }) };
+  const paymentDelta = { previousTotalMinor: 1000, revisedTotalMinor: 2000, deltaAmountMinor: 1000,
+    paymentRemainingMinor: 1000, status: admin.BookingPaymentAdjustmentStatus.PENDING_AUTO_CHARGE };
+  const memberUrl = `https://app.example/sections/${sectionId}/events/${eventId}?tab=book`;
+  const managementUrl = `https://app.example/sections/${sectionId}/manage/events/${eventId}?task=approvals`;
+
+  beforeEach(() => {
+    mockGetBooking.mockReset().mockResolvedValue({ data: { booking: {
+      id: bookingId, revisionNumber: 1, approvalStatus: "PENDING", accommodationRequested: false,
+      booker: { id: "member", firstName: "Member", lastName: "One", email: "member@example.invalid" },
+      event: { id: eventId, title: "Offline event", startDateTime: "2026-10-28T12:00:00Z",
+        endDateTime: "2026-10-28T14:00:00Z", section: { id: sectionId, name: "Section" } }, lines: sampleLines,
+    } } } as never);
+    mockSendOnce.mockReset().mockImplementation(async (request) => {
+      await request.send("LIVE");
+      return { outcome: "sent" };
+    });
+    sendEmail.mockClear();
+    vi.spyOn(mailer, "createConfiguredGovNotifyMailer").mockReturnValue({ sendEmail } as never);
+    vi.spyOn(legacyPolicy, "hasLegacyPrivilegedNotificationEvent").mockResolvedValue(false);
+    vi.spyOn(recipientPolicy, "authorizePrivilegedNotificationRecipient").mockResolvedValue({ eligible: true, email: "staff@example.invalid" });
+  });
+
+  it.each([
+    ["bookingConfirmation", () => notifyBookingConfirmationEmail(args)],
+    ["bookingRevision", () => notifyBookingRevisionEmail({ ...args, paymentDelta })],
+    ["bookingPendingApproval", () => notifyBookingPendingApprovalEmails({ ...args, recipientUserIds: [] })],
+    ["bookingChangesRequested", () => notifyBookingChangesRequestedEmail(args)],
+    ["bookingApproved", () => notifyBookingApprovedEmail(args)],
+  ] as const)("links %s directly to the member event booking", async (templateName, notify) => {
+    await notify();
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      templateName, to: "member@example.invalid",
+      personalisation: expect.objectContaining({ sectionBookingsUrl: memberUrl, myPaymentsUrl: "https://app.example/payments" }),
+    }));
+  });
+
+  it("links an authorised moderator directly to the event approval task", async () => {
+    await notifyBookingPendingApprovalEmails({ ...args, recipientUserIds: ["staff"], notifyMember: false });
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      templateName: "bookingPendingApprovalModerator", to: "staff@example.invalid",
+      personalisation: expect.objectContaining({ moderationUrl: managementUrl }),
+    }));
+    expect(recipientPolicy.authorizePrivilegedNotificationRecipient).toHaveBeenCalledWith("staff", { kind: "BOOKING", sectionId });
+  });
+
+  it.each(["member", "moderator"] as const)("percent-encodes each resource path segment for a %s link", async (recipient) => {
+    // The booking ID is not an input to the URL; the authoritative resource IDs are.
+    mockGetBooking.mockResolvedValue({ data: { booking: {
+      id: bookingId, accommodationRequested: false,
+      booker: { id: "member", firstName: "Member", lastName: "One", email: "member@example.invalid" },
+      event: { id: "event/one?task=wrong#fragment", title: "Offline event", startDateTime: "2026-10-28T12:00:00Z",
+        endDateTime: "2026-10-28T14:00:00Z", section: { id: "section/one?next=wrong", name: "Section" } }, lines: sampleLines,
+    } } } as never);
+    if (recipient === "member") await notifyBookingConfirmationEmail(args);
+    else await notifyBookingPendingApprovalEmails({ ...args, recipientUserIds: ["staff"], notifyMember: false });
+    const expected = recipient === "member"
+      ? "https://app.example/sections/section%2Fone%3Fnext%3Dwrong/events/event%2Fone%3Ftask%3Dwrong%23fragment?tab=book"
+      : "https://app.example/sections/section%2Fone%3Fnext%3Dwrong/manage/events/event%2Fone%3Ftask%3Dwrong%23fragment?task=approvals";
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ personalisation: expect.objectContaining({
+      [recipient === "member" ? "sectionBookingsUrl" : "moderationUrl"]: expected,
+    }) }));
+  });
+
+  it.each([
+    { version: 1, deliveryMode: "LIVE", kind: "BOOKING_CONFIRMATION", bookingId, idempotencyKey: "submission" },
+    { version: 2, deliveryMode: "LIVE", kind: "BOOKING_PENDING_MODERATOR", bookingId, recipientUserId: "staff" },
+  ] satisfies NotificationRecoveryPayload[])("rebuilds the canonical link on real $kind recovery dispatch", async (payload) => {
+    const identity = notificationRecoveryIdentity(payload);
+    const previousAttempt = "2026-10-27T12:00:00Z";
+    const candidate = { id: bookingId, channel: admin.NotificationChannel.EMAIL, notificationType: identity.notificationType,
+      deliveryKey: identity.deliveryKey, recoveryPayload: JSON.stringify(payload), status: admin.NotificationDeliveryStatus.FAILED,
+      attemptCount: 1, lastAttemptedAt: previousAttempt, createdAt: previousAttempt, deliveryMode: "LIVE" as const,
+      recipientUserId: "recipientUserId" in payload ? payload.recipientUserId : null, subjectBookingId: bookingId,
+    };
+    await createNotificationRecoveryDispatcher(args.appBaseUrl)(candidate, payload);
+    const moderator = payload.kind === "BOOKING_PENDING_MODERATOR";
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      templateName: moderator ? "bookingPendingApprovalModerator" : "bookingConfirmation",
+      personalisation: expect.objectContaining(moderator ? { moderationUrl: managementUrl } : { sectionBookingsUrl: memberUrl }),
+    }));
+    expect(mockSendOnce).toHaveBeenCalledOnce();
+    expect(mockSendOnce.mock.calls[0][0]).toMatchObject({
+      preserveDeliveryKey: true, deliveryKey: candidate.deliveryKey,
+      recoveryClaim: expect.objectContaining({ id: candidate.id, attemptCount: 1 }),
+    });
   });
 });

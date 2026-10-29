@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import {
   Alert,
   Autocomplete,
@@ -69,6 +71,8 @@ const SECTION_PURPOSE_HELP: Record<SectionUserGroupPurpose, { title: string; bod
 };
 
 interface ManageSectionsListSurfaceProps {
+  eventsHref?: (sectionId: string) => string;
+  configurationHref?: (sectionId: string) => string;
   onBack: () => void;
   error: string | null;
   onDismissError: () => void;
@@ -81,6 +85,7 @@ interface ManageSectionsListSurfaceProps {
 }
 
 export function ManageSectionsListSurface({
+  eventsHref, configurationHref,
   onBack,
   error,
   onDismissError,
@@ -149,11 +154,11 @@ export function ManageSectionsListSurface({
                   </TableCell>
                   <TableCell align="right">
                     {section.type === "EVENTS" && (
-                      <Button size="small" variant="outlined" onClick={() => onManageEvents(section)} sx={{ mr: 1 }}>
+                      <Button size="small" variant="outlined" {...(eventsHref ? {component:RouterLink,to:eventsHref(section.id)} : {onClick: () => onManageEvents(section)})} sx={{ mr: 1 }}>
                         Manage events
                       </Button>
                     )}
-                    <IconButton size="small" onClick={() => onEdit(section)} color="primary">
+                    <IconButton size="small" {...(configurationHref ? {component:RouterLink,to:configurationHref(section.id)} : {onClick: () => onEdit(section)})} color="primary">
                       <EditIcon />
                     </IconButton>
                     <IconButton size="small" onClick={() => onDelete(section)} color="error">
@@ -171,6 +176,9 @@ export function ManageSectionsListSurface({
 }
 
 interface SectionEditorDialogSurfaceProps {
+  notice?: ReactNode;
+  error?: string | null;
+  saveDisabled?: boolean;
   open: boolean;
   editingSection: SectionWithDetails | null;
   sectionName: string;
@@ -190,6 +198,7 @@ interface SectionEditorDialogSurfaceProps {
 }
 
 export function SectionEditorDialogSurface({
+  notice, error, saveDisabled,
   open,
   editingSection,
   sectionName,
@@ -211,6 +220,8 @@ export function SectionEditorDialogSurface({
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>{editingSection ? "Edit Section" : "Create Section"}</DialogTitle>
       <DialogContent sx={{ maxHeight: "70vh", overflowY: "auto" }}>
+        {notice}
+        {error && <Alert severity="error" sx={{mb:2}}>{error}</Alert>}
         <TextField
           autoFocus
           margin="dense"
@@ -350,7 +361,7 @@ export function SectionEditorDialogSurface({
         <Button onClick={onClose} disabled={submitting}>
           Cancel
         </Button>
-        <Button onClick={onSubmit} variant="contained" disabled={submitting || !sectionName.trim()}>
+        <Button onClick={onSubmit} variant="contained" disabled={submitting || saveDisabled || !sectionName.trim()}>
           {submitting ? <CircularProgress size={20} /> : editingSection ? "Update" : "Create"}
         </Button>
       </DialogActions>

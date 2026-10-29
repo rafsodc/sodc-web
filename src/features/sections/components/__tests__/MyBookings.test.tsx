@@ -68,7 +68,7 @@ describe("MyBookings", () => {
     expect(screen.getByText("Events Section")).toBeInTheDocument();
     expect(screen.getByText("Submitted")).toBeInTheDocument();
     expect(screen.getByText("Awaiting approval")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View booking" })).toHaveAttribute("href", "/sections/section-1");
+    expect(screen.getByRole("link", { name: "View booking" })).toHaveAttribute("href", "/sections/section-1/events/event-1?tab=book");
   });
 
   it("shows approved guest names in the ticket summary line", () => {

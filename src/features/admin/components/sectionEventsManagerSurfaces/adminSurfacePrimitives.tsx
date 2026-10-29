@@ -13,15 +13,21 @@ import type { ReactNode } from "react";
 export function AdminAccordion({
   title,
   defaultExpanded = false,
+  expanded,
+  onToggle,
   children,
 }: {
   title: string;
   defaultExpanded?: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
   children: ReactNode;
 }) {
   return (
     <Accordion
       defaultExpanded={defaultExpanded}
+      expanded={expanded}
+      onChange={onToggle}
       disableGutters
       sx={{
         mb: 2,

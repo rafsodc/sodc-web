@@ -1,3 +1,4 @@
+import { idsEqual } from "../../../shared/utils/uuid";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Box,
@@ -23,8 +24,8 @@ import {
 } from "../utils/sectionHelpers";
 import type { SectionMember } from "../utils/sectionHelpers";
 import { auth } from "../../../config/firebase";
-import { useAdminClaim } from "../../users/hooks/useAdminClaim";
 import { useNavigate, useLocation } from "react-router-dom";
+import { memberEventPath, sectionPath } from "../../../shared/navigation/sectionRoutes";
 import {
   getSectionMembersMerged,
   subscribeToUserGroup,
@@ -37,12 +38,11 @@ import type {
   SectionEventsForUserResponse,
   EventForUserResponse,
 } from "../../../shared/utils/firebaseFunctions";
-import type { SectionUserGroupPurpose, UUIDString } from "@dataconnect/generated";
+import type { UUIDString } from "@dataconnect/generated";
 import { MembershipStatus, SectionUserGroupPurpose as SectionPurpose } from "@dataconnect/generated";
 import { ITEMS_PER_PAGE, ROUTES } from "../../../constants";
 import "../../../shared/components/PageContainer.css";
 import NavigationBreadcrumbs from "../../../shared/components/NavigationBreadcrumbs";
-import type { SectionDetailLocationState } from "../../../shared/navigation/sectionNavigationState";
 import { getSectionAdminDestination } from "../utils/sectionDetailAdminNavigation";
 import {
   SectionDescriptionHeader,
@@ -56,13 +56,14 @@ import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGua
 interface SectionDetailProps {
   sectionId: string;
   onBack: () => void;
+  eventId?: string;
 }
 
-export default function SectionDetail({ sectionId, onBack }: SectionDetailProps) {
+export default function SectionDetail({ sectionId, eventId, onBack }: SectionDetailProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
-  const locationState = location.state as SectionDetailLocationState | null;
+
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
@@ -83,10 +84,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [sectionMembers, setSectionMembers] = useState<SectionMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [errorMembers, setErrorMembers] = useState(false);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const selectedEventId = eventId ?? location.pathname.match(/\/events\/([^/]+)$/)?.[1] ?? null;
 
   const currentUser = auth.currentUser;
-  const isAdmin = useAdminClaim(currentUser);
 
   // Get section details (for user group info and subscribability). GetSectionById itself is
   // admin-only in Data Connect (see #328) — this callable checks the caller's actual section
@@ -94,6 +94,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const [sectionData, setSectionData] = useState<{ section: SectionForUserResponse["section"] } | undefined>(undefined);
   const [loadingSection, setLoadingSection] = useState(true);
   const [errorSection, setErrorSection] = useState(false);
+  const [serverCanModerate, setServerCanModerate] = useState(false);
 
   // Guards against a superseded call (effect re-run on a sectionId change, a remount, or a
   // manual refetchSection() from a retry/subscribe handler racing an in-flight one) overwriting
@@ -104,11 +105,14 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     if (!sectionId) return false;
     const requestToken = sectionRequestGuard.start();
     setLoadingSection(true);
+    setSectionData(undefined);
+    setServerCanModerate(false);
     setErrorSection(false);
     try {
       const result = await getSectionForUser(sectionId);
       if (!sectionRequestGuard.isCurrent(requestToken)) return false;
       setSectionData({ section: result.section });
+      setServerCanModerate(result.canModerate);
       return true;
     } catch (error) {
       if (!sectionRequestGuard.isCurrent(requestToken)) return false;
@@ -224,10 +228,14 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     if (!selectedEventId) return;
     const requestToken = eventDetailRequestGuard.start();
     setLoadingEventDetail(true);
+    setEventDetailData(undefined);
     setErrorEventDetail(false);
     try {
       const result = await getEventForUser(selectedEventId);
       if (!eventDetailRequestGuard.isCurrent(requestToken)) return;
+      if (result.event && !idsEqual(result.event.section?.id,sectionId)) {
+        setEventDetailData(undefined); setErrorEventDetail(true); return;
+      }
       setEventDetailData({ event: result.event });
     } catch (error) {
       if (!eventDetailRequestGuard.isCurrent(requestToken)) return;
@@ -239,7 +247,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         setLoadingEventDetail(false);
       }
     }
-  }, [selectedEventId, eventDetailRequestGuard]);
+  }, [selectedEventId, sectionId, eventDetailRequestGuard]);
 
   useEffect(() => {
     if (!selectedEventId) {
@@ -284,13 +292,13 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
       purposes?.includes(SectionPurpose.ACCESS) || purposes?.includes(SectionPurpose.MODERATOR);
     for (const ug of userSectionsData.user.userGroups ?? []) {
       for (const pl of ug.userGroup.purposeLinks ?? []) {
-        if (grantsAccess(pl.purposes) && pl.section?.id === sectionId) return true;
+        if (grantsAccess(pl.purposes) && idsEqual(pl.section?.id,sectionId)) return true;
       }
     }
     for (const ug of userSectionsData.allUserGroups ?? []) {
       if (!ug.membershipStatuses?.includes(userStatus as MembershipStatus)) continue;
       for (const pl of ug.purposeLinks ?? []) {
-        if (grantsAccess(pl.purposes) && pl.section?.id === sectionId) return true;
+        if (grantsAccess(pl.purposes) && idsEqual(pl.section?.id,sectionId)) return true;
       }
     }
     return false;
@@ -310,13 +318,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     );
   }, [sectionData, currentUser, userUserGroupIds, sectionPurposeLinks, memberGroups]);
 
-  const canModerateSection = useMemo(() => {
-    return sectionPurposeLinks.some(
-      (link) =>
-        (link.purposes?.includes(SectionPurpose.MODERATOR as SectionUserGroupPurpose) ?? false) &&
-        userUserGroupIds.includes(link.userGroup.id)
-    );
-  }, [sectionPurposeLinks, userUserGroupIds]);
+  const canModerateSection = serverCanModerate;
 
   const allMembers = sectionMembers;
   const refetchMembers = fetchMembers;
@@ -459,25 +461,8 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   const loadedSection = sectionData?.section;
   const isMembersSectionType = loadedSection ? isMembersSection(loadedSection as any) : false;
 
-  useEffect(() => {
-    if (!loadedSection) {
-      return;
-    }
-    const pendingEventId = locationState?.selectedEventId;
-    if (pendingEventId) {
-      setSelectedEventId(pendingEventId);
-      return;
-    }
-    setSelectedEventId(null);
-  }, [sectionId, loadedSection, locationState?.selectedEventId]);
-
-  const handleSelectEvent = (eventId: string) => {
-    setSelectedEventId(eventId);
-  };
-
-  const handleBackToEvents = useCallback(() => {
-    setSelectedEventId(null);
-  }, []);
+  const handleSelectEvent = (eventId: string) => navigate(memberEventPath(sectionId,eventId));
+  const handleBackToEvents = useCallback(() => { navigate(sectionPath(sectionId)); }, [navigate,sectionId]);
 
   const handleHeaderBack = useCallback(() => {
     if (selectedEventId) {
@@ -487,7 +472,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
     onBack();
   }, [selectedEventId, handleBackToEvents, onBack]);
 
-  const eventTitle = eventDetailData?.event?.title;
+  const eventTitle = idsEqual(eventDetailData?.event?.id,selectedEventId) && idsEqual(eventDetailData?.event?.section?.id,sectionId) ? eventDetailData?.event?.title : undefined;
   const pageTitle =
     selectedEventId && eventTitle ? eventTitle : loadedSection?.name ?? "Section Details";
   const headerBreadcrumbs = useMemo(() => {
@@ -500,16 +485,16 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         <NavigationBreadcrumbs
           items={[
             ...items,
-            { label: loadedSection.name, onClick: handleBackToEvents },
+            { label: loadedSection.name, to: sectionPath(sectionId) },
             { label: eventTitle ?? "Event" },
           ]}
         />
       );
     }
     return <NavigationBreadcrumbs items={[...items, { label: loadedSection.name }]} />;
-  }, [loadedSection, selectedEventId, eventTitle, handleBackToEvents]);
+  }, [loadedSection, selectedEventId, eventTitle, sectionId]);
 
-  if (loadingSection || loadingUserGroups) {
+  if (loadingSection || loadingUserGroups || (sectionData?.section && !idsEqual(sectionData.section.id,sectionId))) {
     return (
       <Box className="page-container" sx={{ backgroundColor: "background.default" }}>
         <PageHeader title="Section Details" onBack={onBack} />
@@ -540,19 +525,13 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
   }
 
   const section = sectionData.section;
+  if (selectedEventId && section.type !== "EVENTS") return <Box className="page-container"><Alert severity="error">Event unavailable in this section.</Alert><Button onClick={handleBackToEvents}>Back to section</Button></Box>;
   const isMembers = isMembersSectionType;
   const hasSubscribableMemberGroup = memberGroups.some((group) => group.subscribable === true);
   const eventRows = eventsData?.section?.events ?? [];
   const sectionAdminAction = {
-    visible: Boolean(currentUser && (isAdmin || canModerateSection)),
-    onClick: () => {
-      const destination = getSectionAdminDestination(
-        { ...section, type: section.type ?? undefined },
-        isMembers,
-        selectedEventId
-      );
-      navigate(destination.to, { state: destination.state });
-    },
+    visible: Boolean(currentUser && canModerateSection),
+    to: getSectionAdminDestination({ ...section, type: section.type ?? undefined }, isMembers, selectedEventId).to,
   };
 
   return (
@@ -601,8 +580,9 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
         />
       ) : selectedEventId ? (
         <SectionEventDetailView
+          key={selectedEventId}
           section={section}
-          event={eventDetailData?.event ?? null}
+          event={idsEqual(eventDetailData?.event?.id,selectedEventId) && idsEqual(eventDetailData?.event?.section?.id,sectionId) ? eventDetailData?.event ?? null : null}
           loading={loadingEventDetail}
           isError={errorEventDetail}
           hasCurrentUser={Boolean(currentUser)}
@@ -620,6 +600,7 @@ export default function SectionDetail({ sectionId, onBack }: SectionDetailProps)
           isError={errorEvents}
           onRetry={() => refetchEvents()}
           onSelectEvent={handleSelectEvent}
+          eventHref={(id) => memberEventPath(sectionId,id)}
         />
       )}
 

@@ -1,3 +1,4 @@
+import { sectionPath } from "../../../shared/navigation/sectionRoutes";
 import { useState, useMemo, useEffect } from "react";
 import {
   Box,
@@ -216,7 +217,7 @@ function SectionsListComponent({ onBack, onSelectSection }: SectionsListProps) {
         >
           {filteredSections.map((section) => (
             <Box component="li" key={section.id} sx={{ minWidth: 0 }}>
-              <SectionListCard section={section} onSelect={onSelectSection} />
+              <SectionListCard section={section} onSelect={onSelectSection} href={sectionPath(section.id)} />
             </Box>
           ))}
         </Box>

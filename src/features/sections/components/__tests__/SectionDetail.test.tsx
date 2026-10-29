@@ -151,7 +151,7 @@ function mockGetEventById(overrides: DataConnectQueryResultOverrides) {
     return;
   }
   const event = (overrides.data as { event?: unknown } | undefined)?.event ?? null;
-  mocked.mockResolvedValue({ event } as Awaited<ReturnType<typeof getEventForUser>>);
+  mocked.mockResolvedValue({ event: event ? {...(event as object), section: {id: "section-1"}} : null } as Awaited<ReturnType<typeof getEventForUser>>);
 }
 
 function mockGetCurrentUser(overrides: DataConnectQueryResultOverrides) {
@@ -757,7 +757,7 @@ describe('SectionDetail', () => {
 
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
+    await user.click(screen.getByRole('link', { name: /annual dinner/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Back to events')).toBeInTheDocument();
@@ -768,7 +768,7 @@ describe('SectionDetail', () => {
       expect(screen.getByText('Jane Doe')).toBeInTheDocument();
       expect(screen.queryByText(/Standard/)).not.toBeInTheDocument();
       expect(screen.queryByText(/£25\.00/)).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Book this event' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Book this event' })).toBeInTheDocument();
       expect(screen.queryByText('Ticket types')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Pay' })).not.toBeInTheDocument();
     });
@@ -838,9 +838,9 @@ describe('SectionDetail', () => {
     const user = userEvent.setup();
     renderSectionDetail();
 
-    await user.click(await screen.findByRole('button', { name: /first dinner/i }));
+    await user.click(await screen.findByRole('link', { name: /first dinner/i }));
     await user.click(await screen.findByText('Back to events'));
-    await user.click(await screen.findByRole('button', { name: /second dinner/i }));
+    await user.click(await screen.findByRole('link', { name: /second dinner/i }));
 
     expect(await screen.findByRole('heading', { name: 'Second Dinner', level: 2 })).toBeInTheDocument();
 
@@ -985,7 +985,7 @@ describe('SectionDetail', () => {
 
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
+    await user.click(screen.getByRole('link', { name: /annual dinner/i }));
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: 'Book' })).toBeInTheDocument();
@@ -1085,14 +1085,14 @@ describe('SectionDetail', () => {
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
+    await user.click(screen.getByRole('link', { name: /annual dinner/i }));
 
     await waitFor(() => {
       expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: 'Annual Dinner', level: 4 })).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: 'Events Section' }));
+    await user.click(screen.getByRole('link', { name: 'Events Section' }));
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Events Section', level: 4 })).toBeInTheDocument();
@@ -1161,13 +1161,13 @@ describe('SectionDetail', () => {
 
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
+    await user.click(screen.getByRole('link', { name: /annual dinner/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Back to events')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: /back to events/i }));
+    await user.click(screen.getByRole('link', { name: /back to events/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Annual Dinner')).toBeInTheDocument();
@@ -1230,7 +1230,7 @@ describe('SectionDetail', () => {
     });
 
     expect(screen.queryByText('Old Dinner')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /view past events/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /view past events/i })).toBeInTheDocument();
   });
 
   it('should show past events when View past events is clicked', async () => {
@@ -1283,7 +1283,7 @@ describe('SectionDetail', () => {
       expect(screen.getByText(/no upcoming events right now/i)).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: /view past events/i }));
+    await user.click(screen.getByRole('link', { name: /view past events/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Old Dinner')).toBeInTheDocument();
@@ -1381,7 +1381,7 @@ describe('SectionDetail', () => {
     const user = userEvent.setup();
 
     await waitFor(() => expect(screen.getByText('Annual Dinner')).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: /annual dinner/i }));
+    await user.click(screen.getByRole('link', { name: /annual dinner/i }));
 
     await waitFor(() => expect(screen.getByText('Booking window')).toBeInTheDocument());
     expect(screen.queryByText('Standard')).not.toBeInTheDocument();
@@ -1754,7 +1754,7 @@ describe('SectionDetail', () => {
 
     const userEvent = (await import('@testing-library/user-event')).userEvent;
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: /annual dinner/i }));
+    await user.click(await screen.findByRole('link', { name: /annual dinner/i }));
 
     expect(await screen.findByText(/could not load this event/i)).toBeInTheDocument();
     expect(consoleError).toHaveBeenCalledWith('[sections.event-detail]', expect.any(Error), {});
@@ -1951,14 +1951,36 @@ describe('SectionDetail', () => {
     renderSectionDetail();
 
     await waitFor(() => expect(screen.getByText('Spring Dinner')).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: /view past events/i }));
+    await user.click(screen.getByRole('link', { name: /view past events/i }));
 
     await waitFor(() => expect(screen.getByText('Old Dinner')).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: /back to upcoming events/i }));
+    await user.click(screen.getByRole('link', { name: /back to upcoming events/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Spring Dinner')).toBeInTheDocument();
       expect(screen.queryByText('Old Dinner')).not.toBeInTheDocument();
     });
   });
+  it('loads a member event directly from a mixed-format UUID URL without navigation state', async () => {
+    const sid='AABBCCDD-1111-4222-8333-ABCDEF123456';
+    const eid='EEFF0011-2222-4333-8444-ABCDEF654321';
+    const compactSid=sid.replaceAll('-','').toLowerCase();
+    const compactEid=eid.replaceAll('-','').toLowerCase();
+    vi.mocked(getSectionForUser).mockResolvedValue({section:{id:compactSid,name:'Direct events',type:'EVENTS',purposeLinks:[]} as never,hasAccess:true,canModerate:false});
+    vi.mocked(getEventForUser).mockResolvedValue({event:{id:compactEid,section:{id:compactSid},title:'Direct dinner',...upcomingEventTimes,maxGuestsWithoutModeratorApproval:0,ticketTypes:[]} as never});
+    mockGetUserAccessGroups({data:{user:{id:'user-1',userGroups:[]}},isLoading:false,isError:false});
+    render(<MemoryRouter initialEntries={[`/sections/${sid}/events/${eid}`]}><SectionDetail sectionId={sid} onBack={mockOnBack}/></MemoryRouter>);
+    expect(await screen.findByRole('heading',{name:'Direct dinner',level:2})).toBeInTheDocument();
+    expect(getEventForUser).toHaveBeenCalledWith(eid);
+    expect(screen.getByRole('link',{name:'Book this event'})).toHaveAttribute('href',`/sections/${sid.toLowerCase()}/events/${eid.toLowerCase()}?tab=book`);
+  });
+  it('rejects a member event whose authoritative parent differs from the URL', async () => {
+    mockGetSectionById({data:{section:{id:sectionId,name:'Events Section',type:'EVENTS',purposeLinks:[]}},isLoading:false,isError:false});
+    vi.mocked(getEventForUser).mockResolvedValue({event:{id:'event-1',section:{id:'different-section'},title:'Private other event',...upcomingEventTimes,ticketTypes:[]} as never});
+    mockGetUserAccessGroups({data:{user:{id:'user-1',userGroups:[]}},isLoading:false,isError:false});
+    render(<MemoryRouter initialEntries={['/sections/section-1/events/event-1']}><SectionDetail sectionId={sectionId} onBack={mockOnBack}/></MemoryRouter>);
+    expect(await screen.findByRole('heading',{name:'Event unavailable'})).toBeInTheDocument();
+    expect(screen.queryByText('Private other event')).not.toBeInTheDocument();
+  });
+
 });
