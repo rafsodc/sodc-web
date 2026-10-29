@@ -26,7 +26,7 @@ This document summarizes how access is enforced across Data Connect and Firebase
 
 - **Admin-level enabled access**
   - Pattern: `@auth(expr: "auth.token.admin == true && auth.token.enabled == true")`
-  - Used for admin workflows and moderation.
+  - Used for global administration (sections, group assignment, users and global payment reconciliation). Section moderation instead combines enabled access with current administrator authority or a current explicit/status-derived MODERATOR relationship to the resource's section.
 
 - **Service-only / admin SDK access**
   - Pattern: `@auth(level: NO_ACCESS)`
@@ -37,7 +37,7 @@ This document summarizes how access is enforced across Data Connect and Firebase
 | Surface | Operation / Function | Expected access |
 |---|---|---|
 | Data Connect query | `GetMyBookingsForEvent` | enabled user |
-| Data Connect query | `ListTicketOrdersForAdmin` | enabled admin |
+| Data Connect query | `ListTicketOrdersForAdmin` | current enabled section moderator or global administrator |
 | Callable | `submitEventBooking` | enabled user |
 | Callable | `createTicketCheckoutSession` | enabled user |
 | Callable | `grantAdmin` / `revokeAdmin` / `listAdminUsers` | enabled admin |
@@ -60,6 +60,9 @@ Guard helpers in `functions/src/helpers.ts`:
 Typical usage:
 
 - Member flows (`submitEventBooking`, checkout start, membership self-service): `requireEnabled`.
+- Event/ticket configuration and per-event booking/payment reads use redacted current authority plus a resource-owned section check. Mutations repeat both checks inside the writing transaction; update IDs cannot move events or ticket types into another section. Booking decisions repeat actor security version and section relationship inside either approval transaction.
+- Ticket access-group choices are restricted to groups linked to the section or already used by its ticket types, for administrators and moderators alike. Global group assignment remains administrator-only.
+- Directory reads permit a current administrator without a section relationship, but MEMBER roster selection, Auth email verification and contact redaction remain unchanged. Seating labels resolve at most 100 requested IDs against that same verified population; unrelated IDs return no names.
 - Section-file reads require current `ACCESS` or `MODERATOR` purpose after `requireEnabled`; management requires current `MODERATOR` purpose. Enabled global admins may bypass the relationship check, while disabled admins remain denied.
 - PII-bearing member directories and all announcement template, preview, send, history, and recipient callables: `requireEnabled` before section/group checks.
 - Admin-only operations: `requireAdmin`, which also enforces `enabled: true`.

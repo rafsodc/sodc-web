@@ -43,6 +43,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `reviewBookingRevision` | 30 | 1 hour | Exact-revision approval mutation and transactional email |
 | `updateMembershipStatus` | 20 | 1 hour | Auth/Data Connect writes and transactional email |
 | `resignMembership` | 3 | 1 hour | Auth/Data Connect writes and transactional email |
+| `getSectionMemberNamesByIds` | 60 | 5 minutes | Scoped moderator seating-label lookup; at most 100 IDs, verified section population only |
 | `getSectionMembersMerged` | 60 | 5 minutes | Member-directory enumeration |
 | `searchSectionMembers` | 60 | 5 minutes | Member-directory enumeration (bounded, name-match only) |
 | `listPotentialLostMembers` | 30 | 5 minutes | Admin-only member review evidence |
@@ -97,6 +98,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `syncPendingUserClaims` | Medium | None | Firebase Auth | Medium | Authenticated onboarding exception; 10/hour |
 | `updateMembershipStatus` | High | None | Firebase Auth, GOV.UK Notify | High | Enabled; ownership/transition checks; 20/hour |
 | `resignMembership` | Medium | None | Firebase Auth, GOV.UK Notify | Medium | Enabled; terminal transition; 3/hour |
+| `getSectionMemberNamesByIds` | Medium | High | None | High | Enabled + section moderation; 60/5 minutes; at most 100 requested IDs resolved from the verified section roster, no contact fields |
 | `getSectionMembersMerged` | High | High | None | High | Enabled + section access; 60/5 minutes |
 | `searchSectionMembers` | Medium | Medium | None | Low | Enabled + section access; 60/5 minutes; name-match only, capped result set. Booking mode additionally requires section moderation and returns identifying email. |
 | `getSectionForUser` | Low | Low | None | Low | Enabled + section access; bounded lookup |

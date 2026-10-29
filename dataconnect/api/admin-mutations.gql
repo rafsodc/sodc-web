@@ -1538,14 +1538,32 @@ mutation SettleBookingPaymentAdjustmentsFromCallable(
 }
 
 # Booking-level moderation targets one exact revision. The callable layer owns
-# authorisation and supplies the reviewer identity after checking admin access.
+# entry authorization and supplies the verified reviewer identity/version. The transaction
+# repeats current actor authority and the booking-owned section relationship before writing.
 mutation UpdateBookingApprovalFromCallable(
   $id: UUID!
   $expectedRevisionNumber: Int!
   $status: BookingApprovalStatus!
-  $reviewedById: String
+  $reviewedById: String!
+  $actorSecurityVersion: Int!
+  $actorIsAdmin: Boolean!
   $approvalNote: String
 ) @auth(level: NO_ACCESS) @transaction {
+  query @redact {
+    currentAuthorization: userSecurityState(key: {userId: $reviewedById})
+      @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus && this.membershipStatus in ['REGULAR','RETIRED','RESERVE','INDUSTRY','CIVIL_SERVICE']", message: "ACCESS_REVOKED") {
+      accessReady syncStatus membershipStatus adminReady
+      securityVersion @check(expr: "this == vars.actorSecurityVersion", message: "SESSION_VERSION_STALE")
+      user {membershipStatus}
+    }
+    managementBooking: booking(id: $id)
+      @check(expr: "this != null && ((response.query.currentAuthorization.adminReady && vars.actorIsAdmin) || this.event.section.links.exists(l, type(l.purposes) == list && 'MODERATOR' in l.purposes && (l.userGroup.users.size() > 0 || (type(l.userGroup.membershipStatuses) == list && response.query.currentAuthorization.membershipStatus in l.userGroup.membershipStatuses))))", message: "SECTION_MODERATOR_REQUIRED") {
+      event {section {links: sectionUserGroupPurposeLinks_on_section(limit: 1000) {
+        purposes userGroup {membershipStatuses users: userUserGroups_on_userGroup(where: {userId: {eq: $reviewedById}}, limit: 1) {userId}}
+      }}}
+    }
+  }
+
   changed: booking_updateMany(
     where: {
       id: { eq: $id }

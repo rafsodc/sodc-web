@@ -188,3 +188,24 @@ jobs:
 
       - name: Run scanner tests and coverage gate
         run: node .github/scripts/fail-on-warning-output.mjs -- npm --prefix services/section-file-malware-scanner run test:coverage
+
+  section-permissions-sql:
+    name: Section permissions SQL authorization
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - name: Install functions dependencies
+        run: npm ci --prefix functions
+      - name: Run isolated section authorization SQL suite
+        env:
+          RUN_SECTION_PERMISSIONS_INTEGRATION: '1'
+          SECTION_PERMISSIONS_INTEGRATION_PROJECT: demo-sodc-section-permissions
+        run: npx --yes --package firebase-tools@15.22.3 -- npm --prefix functions run test:section-permissions-integration

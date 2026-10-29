@@ -6,6 +6,7 @@ import {
   getSectionEventsForUser,
   getEventForUser,
   getSectionMembersMerged,
+  getSectionMemberNamesByIds,
   searchSectionMembers,
 } from "../../sections";
 
@@ -82,6 +83,7 @@ describe("getSectionForUser", () => {
     const result = await callAs(getSectionForUser, "admin-1", true, { sectionId });
 
     expect(result.hasAccess).toBe(true);
+    expect(result.canModerate).toBe(true);
     expect(result.section?.id).toBe(sectionId);
   });
 
@@ -302,6 +304,41 @@ describe("getSectionMembersMerged", () => {
     expect(mockGetSectionById).not.toHaveBeenCalled();
     expect(mockGetSectionMembers).not.toHaveBeenCalled();
     expect(mockGetUserAccessGroupsById).not.toHaveBeenCalled();
+  });
+
+  it("lets a current admin without a relationship read the same MEMBER roster and contact redaction", async () => {
+    mockGetUserAccessGroupsById.mockResolvedValue({data:{user:{userGroups:[]}}} as never);
+    mockMembers([member({id:"roster-member",shareContactInfo:false})]);
+    const result = await callAs(getSectionMembersMerged, "unlinked-admin", true, {sectionId});
+    expect(result.members).toHaveLength(1);
+    expect(result.members[0]).toMatchObject({id:"roster-member",email:null,mobileNumber:null,sharesContactInfo:false});
+    expect(result.members.some((m) => m.id === "unlinked-admin")).toBe(false);
+  });
+
+  it("resolves only requested verified roster names and never returns contact fields", async () => {
+    mockGetUserAccessGroupsById.mockResolvedValue({data:{user:{userGroups:[]}}} as never);
+    mockMembers([member({id:"visible",shareContactInfo:false}),member({id:"unverified"}),member({id:"not-requested"})]);
+    mockGetUsers.mockResolvedValue({users:[{uid:"visible",emailVerified:true},{uid:"unverified",emailVerified:false},{uid:"not-requested",emailVerified:true}]});
+    const result = await callAs(getSectionMemberNamesByIds, "unlinked-admin", true, {sectionId,ids:["visible","unverified","unrelated-id"]});
+    expect(result).toEqual({users:[{id:"visible",firstName:"Ada",lastName:"Lovelace"}]});
+    expect(mockGetUsers).toHaveBeenCalledExactlyOnceWith([{uid:"visible"},{uid:"unverified"}]);
+  });
+
+  it("performs no Auth lookup for requested IDs outside the eligible section roster", async () => {
+    mockGetUserAccessGroupsById.mockResolvedValue({data:{user:{userGroups:[]}}} as never);
+    mockMembers([member({id:"eligible-not-requested",shareContactInfo:false})]);
+    expect(await callAs(getSectionMemberNamesByIds,"admin",true,{sectionId,ids:["unrelated-id"]})).toEqual({users:[]});
+    expect(mockGetUsers).not.toHaveBeenCalled();
+  });
+
+  it("does not allow an ordinary section reader to enumerate seating labels", async () => {
+    mockMembers([member()]);
+    await expect(callAs(getSectionMemberNamesByIds, "member-1", false, {sectionId,ids:["member-1"]})).rejects.toMatchObject({code:"not-found"});
+    expect(mockGetUsers).not.toHaveBeenCalled();
+  });
+
+  it.each([null,{},[""],Array.from({length:101},()=>"member"),[42]])("rejects invalid or oversized label requests %j", async (ids) => {
+    await expect(callAs(getSectionMemberNamesByIds,"admin",true,{sectionId,ids})).rejects.toMatchObject({code:"invalid-argument"});
   });
 
   it("batches verification checks for directories larger than the Auth lookup limit", async () => {
