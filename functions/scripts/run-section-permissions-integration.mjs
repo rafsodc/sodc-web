@@ -64,7 +64,7 @@ const shellQuote = value => `'${value.replace(/'/g, "'\\''")}'`;
 export async function runSectionPermissionsIntegration(env = process.env, args = process.argv.slice(2)) {
   const options = validateSectionPermissionsIntegrationEnvironment(env, args);
   if (options.checkOnly) {
-    console.log("Notification recovery targeting check passed: fixed demo project and disposable loopback SQL only. No emulator, SDK, provider or network operation ran.");
+    console.log("Section permissions targeting check passed: fixed demo project and disposable loopback SQL only. No emulator, SDK, provider or network operation ran.");
     return 0;
   }
   const repositoryRoot = await realpath(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../.."));
