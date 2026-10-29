@@ -8,7 +8,8 @@ import {
   useGetMyTicketOrders,
   useGetUserAccessGroups,
 } from "../../../shared/query/authoritativeHooks";
-import { dataConnect } from "../../../config/firebase";
+import { useAdminClaim } from "../../users/hooks/useAdminClaim";
+import { auth, dataConnect } from "../../../config/firebase";
 import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/bookingEligibility";
 import {
   buildBookingTicketRowsWithPaymentStatus,
@@ -26,6 +27,7 @@ export function useBookingWizardData(args: {
   postSubmitFlow: boolean;
 }) {
   const { section, event, postSubmitFlow } = args;
+  const isAdmin = useAdminClaim(auth.currentUser);
   const { data: currentUserData, isLoading: loadingProfile } = useGetCurrentUser(dataConnect, {});
   const { data: accessData } = useGetUserAccessGroups(dataConnect, {});
   const {
@@ -50,13 +52,14 @@ export function useBookingWizardData(args: {
       };
     }
     return evaluateBookingGatePreview({
+      isAdmin,
       purposeLinks: section.purposeLinks ?? [],
       membershipStatus,
       explicitGroupIds,
       bookingStartDateTime: event.bookingStartDateTime,
       bookingEndDateTime: event.bookingEndDateTime,
     });
-  }, [membershipStatus, section.purposeLinks, explicitGroupIds, event]);
+  }, [isAdmin, membershipStatus, section.purposeLinks, explicitGroupIds, event]);
 
   const memberTicketTypes = useMemo(() => {
     if (!membershipStatus || gate.ok !== true) return [];
@@ -168,6 +171,7 @@ export function useBookingWizardData(args: {
     existingTerminalBooking,
     gate,
     guestTicketTypes,
+    isAdmin,
     loadingBookings,
     loadingProfile,
     memberTicketTypes,

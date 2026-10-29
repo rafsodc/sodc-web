@@ -165,6 +165,39 @@ describe("bookingRules", () => {
     expect(result).toEqual({ ok: true, moderatorWindowOverride: true });
   });
 
+  it.each(["2024-12-31T23:59:59Z", "2026-01-01T00:00:00Z"])(
+    "allows verified administrators outside the window without a moderator relationship (%s)", (now) => {
+      expect(evaluateBookingGatekeeping({
+        purposeLinks: [{ purposes: ["ACCESS", "BOOKER"], userGroup: group("g1", ["REGULAR"]) }],
+        membershipStatus: "REGULAR", explicitGroupIds: new Set(), verifiedAdmin: true,
+        bookingStartDateTime: "2025-01-01T00:00:00Z", bookingEndDateTime: "2025-12-31T23:59:59Z",
+        nowMs: Date.parse(now),
+      })).toEqual({ ok: true, moderatorWindowOverride: true });
+    }
+  );
+
+  it.each([
+    [[{ purposes: ["BOOKER"], userGroup: group("g1", ["REGULAR"]) }], "NO_SECTION_ACCESS"],
+    [[{ purposes: ["ACCESS"], userGroup: group("g1", ["REGULAR"]) }], "NO_BOOKER_PURPOSE"],
+    [[{ purposes: ["ACCESS"], userGroup: group("g1", ["REGULAR"]) },
+      { purposes: ["BOOKER"], userGroup: group("excluded") }], "NOT_AUTHORIZED_BOOKER"],
+  ])("keeps non-window eligibility required for administrators (%s)", (purposeLinks, code) => {
+    expect(evaluateBookingGatekeeping({
+      purposeLinks, membershipStatus: "REGULAR", explicitGroupIds: new Set(), verifiedAdmin: true,
+      bookingStartDateTime: "2099-01-01", bookingEndDateTime: "2100-01-01",
+    })).toMatchObject({ ok: false, code });
+  });
+
+  it.each([["invalid", "2100-01-01"], ["2100-01-01", "2099-01-01"]])(
+    "refuses malformed or reversed administrator booking windows", (start, end) => {
+      expect(evaluateBookingGatekeeping({
+        purposeLinks: [{ purposes: ["ACCESS", "BOOKER"], userGroup: group("g1", ["REGULAR"]) }],
+        membershipStatus: "REGULAR", explicitGroupIds: new Set(), verifiedAdmin: true,
+        bookingStartDateTime: start, bookingEndDateTime: end,
+      })).toMatchObject({ ok: false, code: "OUTSIDE_BOOKING_WINDOW" });
+    }
+  );
+
   it("evaluateBookingLines accepts member-only then guest", () => {
     const lines: LineInputForRules[] = [
       { ticketTypeId: "tt-m", sortOrder: 0 },

@@ -80,7 +80,9 @@ export default function EventBookingWizard({
           {wizard.gate.moderatorWindowOverride === "BEFORE"
             ? "Bookings are not yet open to members."
             : "Bookings are closed to members."}{" "}
-          As a moderator for this section, you can create or amend your own booking.
+          {wizard.isAdmin
+            ? "As an administrator, you can create or amend your own booking."
+            : "As a moderator for this section, you can create or amend your own booking."}
         </Alert>
       ) : null}
       {(showClosedBooking || wizard.showBookingSummary) && wizard.existingTerminalBooking ? (
