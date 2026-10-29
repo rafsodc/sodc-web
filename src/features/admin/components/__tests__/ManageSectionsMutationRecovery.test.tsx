@@ -96,6 +96,12 @@ function saveButton() {
     .at(-1)!;
 }
 
+function unloadBlocked() {
+  const event = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   failSectionReads = false;
@@ -292,4 +298,37 @@ describe("global section save receipt reconciliation", () => {
       expect.objectContaining({ kind: "create" }),
     );
   }, 20_000);
+  it("acknowledges a found saved section without replay and discards its draft and unload warning", async () => {
+    vi.mocked(executeMutation).mockImplementationOnce(async () => {
+      committed = true;
+      throw new Error("Response lost after commit");
+    });
+    open();
+    const user = await fill();
+    await user.click(saveButton());
+    await screen.findByText(/The previous save could not be confirmed/);
+    await act(async () => navigate("/elsewhere"));
+    expect(unloadBlocked()).toBe(true);
+    await act(async () => navigate(-1));
+    expect(await screen.findByLabelText("Section Name")).toHaveValue(savedSection.name);
+    await user.click(screen.getByRole("button", { name: "Check latest list" }));
+    const review = await screen.findByRole("dialog", { name: "Start a new section save request?" });
+    expect(within(review).getByText(savedSection.name)).toBeInTheDocument();
+    await user.click(within(review).getByRole("button", { name: "I found the saved change — close this draft" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
+    expect(screen.getByText("/admin/sections")).toBeInTheDocument();
+    expect(unloadBlocked()).toBe(false);
+    expect(executeMutation).toHaveBeenCalledOnce();
+    await act(async () => navigate("/admin/sections?create=section"));
+    expect(await screen.findByLabelText("Section Name")).toHaveValue("");
+    expect(screen.queryByText(/The previous save could not be confirmed/)).not.toBeInTheDocument();
+    expect(unloadBlocked()).toBe(false);
+    fireEvent.change(screen.getByLabelText("Section Name"), { target: { value: "A separate unsent section" } });
+    expect(saveButton()).toBeEnabled();
+    await user.click(within(screen.getByRole("dialog", { name: "Create Section" })).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
+    expect(unloadBlocked()).toBe(false);
+    expect(executeMutation).toHaveBeenCalledOnce();
+  }, 20_000);
+
 });

@@ -155,6 +155,31 @@ function unloadBlocked() {
   return event.defaultPrevented;
 }
 
+describe("exact receipt acknowledgement", () => {
+  it("cannot acknowledge a replacement request even when it reuses the same error", async () => {
+    session();
+    const failure = new Error("Uncertain response");
+    const hook = renderHook(() => useSessionMutation<string>("same-resource"));
+    await act(async () => { await expect(hook.result.current.runOnce(async () => { throw failure; })).rejects.toBe(failure); });
+    const firstReceipt = hook.result.current.receipt!;
+    act(() => { expect(hook.result.current.acknowledgeIfCurrent(firstReceipt)).toBe(true); });
+    const pending = deferred<string>();
+    let promise!: Promise<string>;
+    act(() => { promise = hook.result.current.runOnce(() => pending.promise); });
+    const replacementReceipt = hook.result.current.receipt!;
+    expect(replacementReceipt).not.toBe(firstReceipt);
+    act(() => { expect(hook.result.current.acknowledgeIfCurrent(firstReceipt)).toBe(false); });
+    act(() => { expect(hook.result.current.acknowledgeIfCurrent(replacementReceipt)).toBe(false); });
+    await act(async () => { pending.reject(failure); await expect(promise).rejects.toBe(failure); });
+    act(() => { expect(hook.result.current.acknowledgeIfCurrent(firstReceipt)).toBe(false); });
+    expect(hook.result.current.status).toBe("error");
+    expect(unloadBlocked()).toBe(true);
+    act(() => { expect(hook.result.current.acknowledgeIfCurrent(replacementReceipt)).toBe(true); });
+    expect(hook.result.current.status).toBe("idle");
+    expect(unloadBlocked()).toBe(false);
+  });
+});
+
 describe("document protection for unreconciled session writes", () => {
   it("keeps the warning after every editor unmounts and removes it when the write succeeds", async () => {
     session(); const pending = deferred<string>();

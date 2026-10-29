@@ -244,7 +244,7 @@ export default function SectionEventsManager({
     setSubmittingTicketType(false);
     setRefreshing(false);
     setError(null);
-    setResetWrite(null);
+    setWriteReview(null);
   }, [routeLocation.pathname, routeLocation.search]);
   const { snackbar, showSuccess, close: closeSnackbar } = useSnackbar();
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
@@ -349,8 +349,15 @@ export default function SectionEventsManager({
   const ticketWrite = useSessionMutation<unknown>(
     `ticket-write:${normalizedResourceId(sectionId)}:${normalizedResourceId(ticketTypesEventId ?? "none")}:${normalizedResourceId(routeControlled ? (ticketSelector ?? "new") : (editingTicketType?.id ?? "new"))}`,
   );
-  const [resetWrite, setResetWrite] = useState<"event" | "ticket" | null>(null);
-  const [latestWriteOptions, setLatestWriteOptions] = useState<string[]>([]);
+  const [writeReview, setWriteReview] = useState<{
+    kind: "event" | "ticket";
+    titles: string[];
+    receipt: object;
+    isCurrent: () => boolean;
+  } | null>(null);
+  const activeWriteReview = writeReview?.isCurrent === isCurrentView && writeReview.isCurrent() &&
+    (writeReview.kind === "event" ? eventWrite : ticketWrite).receipt === writeReview.receipt
+    ? writeReview : null;
   const {
     title,
     location,
@@ -744,23 +751,37 @@ export default function SectionEventsManager({
     }
   };
   const reviewUnconfirmedWrite = async (kind: "event" | "ticket") => {
+    const receipt = kind === "event" ? eventWrite : ticketWrite;
+    if (receipt.status !== "error" || !receipt.receipt) return;
+    setWriteReview(null);
     try {
-      const data =
-        kind === "event" ? await refetchEvents() : await refetchEventDetail();
+      const data = kind === "event" ? await refetchEvents() : await refetchEventDetail();
       if (!isCurrentView()) return;
-      const eventRows = (
-        data as { section?: { events?: Array<{ title: string }> } }
-      )?.section?.events;
-      const ticketRows = (
-        data as { event?: { ticketTypes?: Array<{ title: string }> } }
-      )?.event?.ticketTypes;
-      setLatestWriteOptions(
-        (eventRows ?? ticketRows ?? []).map((row) => row.title),
-      );
-      setResetWrite(kind);
+      const rows = kind === "event"
+        ? (data as { section?: { events?: Array<{ title: string }> } })?.section?.events
+        : (data as { event?: { ticketTypes?: Array<{ title: string }> } })?.event?.ticketTypes;
+      if (!Array.isArray(rows)) throw new Error("The latest list could not be verified.");
+      setWriteReview({ kind, titles: rows.map(row => row.title), receipt: receipt.receipt, isCurrent: isCurrentView });
     } catch (caught) {
-      if (isCurrentView())
+      if (isCurrentView()) {
+        setWriteReview(null);
         setError(toAdminUserFacingError(caught, "events").message);
+      }
+    }
+  };
+  const acknowledgeReviewedWrite = (found: boolean) => {
+    if (!activeWriteReview?.isCurrent()) return;
+    const { kind, receipt } = activeWriteReview;
+    if (!(kind === "event" ? eventWrite : ticketWrite).acknowledgeIfCurrent(receipt)) return;
+    setWriteReview(null);
+    setError(null);
+    if (!found) return;
+    if (kind === "event") {
+      discardEventDraft();
+      setEventDialogOpen(false);
+    } else {
+      discardTicketDraft();
+      setTicketTypeDialogOpen(false);
     }
   };
   const writeNotice = (kind: "event" | "ticket") => {
@@ -802,26 +823,24 @@ export default function SectionEventsManager({
   };
   const resetWriteConfirmation = (
     <ConfirmationDialog
-      open={!!resetWrite}
+      open={!!activeWriteReview}
       title="Start a new save request?"
       confirmLabel="I checked — start a new request"
-      onCancel={() => setResetWrite(null)}
-      onConfirm={() => {
-        if (resetWrite === "event") eventWrite.acknowledge();
-        else ticketWrite.acknowledge();
-        setResetWrite(null);
-        setError(null);
-      }}
+      onCancel={() => setWriteReview(null)}
+      onConfirm={() => acknowledgeReviewedWrite(false)}
     >
-      The previous save may already exist. Confirm only if the intended change
-      is absent from the latest list below. Otherwise cancel and open the saved
-      item.
+      If you found the intended change in the latest list below, close this
+      draft without submitting it again. Start a new request only if the change
+      is absent.
       <Box component="ul">
-        {latestWriteOptions.map((title, index) => (
+        {(activeWriteReview?.titles ?? []).map((title, index) => (
           <li key={`${index}:${title}`}>{title}</li>
         ))}
       </Box>
-      {latestWriteOptions.length === 0 && <Box>The latest list is empty.</Box>}
+      {activeWriteReview?.titles.length === 0 && <Box>The latest list is empty.</Box>}
+      <Button onClick={() => acknowledgeReviewedWrite(true)} sx={{ mt: 2 }}>
+        I found the saved change — close this draft
+      </Button>
     </ConfirmationDialog>
   );
 
