@@ -3,6 +3,7 @@ import type { EventAttendeeTicketFilters } from "../utils/bookingApprovalsAdmin"
 import type { EventAnnouncementPreview } from "../../../shared/utils/firebaseFunctions/announcements";
 import { useEffect, useState } from "react";
 import { useSessionDraft, useDraftUnloadWarning } from "../../../shared/hooks/useSessionDraft";
+import { normalizedResourceId } from "../../../shared/navigation/sectionRoutes";
 import {
   Alert,
   Box,
@@ -63,12 +64,13 @@ function AnnouncementComposer({
     deliveryMode: GovNotifyDeliveryMode | null;
     replyToAddressId: string;
     sendRequestId: string | null;
+    sendAudienceFingerprint: string | null;
     sendResult: SendAnnouncementResult | null;
-  }>(draftKey, { selectedId: "", audienceFilters: eventAudience?.filters, deliveryMode: null, replyToAddressId: "", sendRequestId: null, sendResult: null });
-  const { selectedId, audienceFilters, replyToAddressId, sendRequestId, sendResult } = draft;
+  }>(draftKey, { selectedId: "", audienceFilters: eventAudience?.filters, deliveryMode: null, replyToAddressId: "", sendRequestId: null, sendAudienceFingerprint: null, sendResult: null });
+  const { selectedId, audienceFilters, replyToAddressId, sendRequestId, sendAudienceFingerprint, sendResult } = draft;
   const setAudienceFilters = (value: EventAttendeeTicketFilters) => setDraft(current => ({ ...current, audienceFilters: value }));
   const setReplyToAddressId = (value: string) => setDraft(current => ({ ...current, replyToAddressId: value }));
-  const setSendRequestId = (value: string | null) => setDraft(current => ({ ...current, sendRequestId: value }));
+  const setSendRequestId = (value: string | null) => setDraft(current => ({ ...current, sendRequestId: value, sendAudienceFingerprint: value ? current.sendAudienceFingerprint : null }));
   const setSendResult = (value: SendAnnouncementResult | null) => setDraft(current => ({ ...current, sendResult: value }));
   const setDeliveryMode = (value: GovNotifyDeliveryMode) => setDraft(current => ({ ...current, deliveryMode: value }));
   useDraftUnloadWarning(!!selectedId && !sendResult);
@@ -138,7 +140,7 @@ function AnnouncementComposer({
   }, [sectionId, setDraft]);
 
   const handleTemplateChange = (e: SelectChangeEvent) => {
-    setDraft(previous => ({ ...previous, selectedId: e.target.value, sendResult: null, sendRequestId: null }));
+    setDraft(previous => ({ ...previous, selectedId: e.target.value, sendResult: null, sendRequestId: null, sendAudienceFingerprint: null }));
     setSendError(null);
   };
 
@@ -163,18 +165,22 @@ function AnnouncementComposer({
     return () => { current = false; };
   }, [sectionId, selectedId]);
 
+  const canResumeEventSend = !!(sendRequestId && sendAudienceFingerprint);
   const handleSend = async () => {
-    if (!selectedId || (eventAudience && !audiencePreview?.recipients.length)) return;
+    if (!selectedId || (eventAudience && !canResumeEventSend && !audiencePreview?.recipients.length)) return;
     setSending(true);
     setSendError(null);
     setSendResult(null);
     try {
       const selectedTemplate = templates.find((t) => t.id === selectedId);
       const requestId = sendRequestId ?? crypto.randomUUID();
-      setSendRequestId(requestId);
-      const result = eventAudience && audienceFilters && audiencePreview
+      const audienceFingerprint = sendAudienceFingerprint ?? audiencePreview?.fingerprint;
+      // Keep the reviewed audience identity with an uncertain request, without
+      // retaining recipient details. The server reconciles the original request.
+      setDraft(current => ({ ...current, sendRequestId: requestId, sendAudienceFingerprint: eventAudience ? audienceFingerprint ?? null : null }));
+      const result = eventAudience && audienceFilters && audienceFingerprint
         ? await sendSectionAnnouncement(sectionId, selectedId, requestId, selectedTemplate?.name, deliveryMode, replyToAddressId || undefined,
-          { eventAudience: { eventId: eventAudience.eventId, filters: audienceFilters }, audienceFingerprint: audiencePreview.fingerprint })
+          { eventAudience: { eventId: eventAudience.eventId, filters: audienceFilters }, audienceFingerprint })
         : replyToAddressId
         ? await sendSectionAnnouncement(
           sectionId,
@@ -383,7 +389,7 @@ function AnnouncementComposer({
                 variant="contained"
                 startIcon={sending ? <CircularProgress size={16} color="inherit" /> : <Campaign />}
                 onClick={() => void handleSend()}
-                disabled={sending || !siteDeliveryMode || (!!eventAudience && !audiencePreview?.recipients.length)}
+                disabled={sending || !siteDeliveryMode || (!!eventAudience && !canResumeEventSend && !audiencePreview?.recipients.length)}
               >
                 {sending ? "Starting…"
                   : sendRequestId ? "Resume announcement send"
@@ -414,7 +420,7 @@ function announcementDraftKey({ sectionId, eventAudience }: Pick<SendAnnouncemen
   const audience = eventAudience
     ? JSON.stringify(Object.entries(eventAudience.filters).sort(([a], [b]) => a.localeCompare(b)))
     : "members";
-  return `announcement:${sectionId}:${eventAudience?.eventId ?? "section"}:${audience}`;
+  return `announcement:${normalizedResourceId(sectionId)}:${eventAudience ? normalizedResourceId(eventAudience.eventId) : "section"}:${audience}`;
 }
 
 export default function SendAnnouncementPage(props: SendAnnouncementPageProps) {

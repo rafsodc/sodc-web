@@ -85,6 +85,166 @@ describe("announcement drafts during navigation", () => {
     expect(api.sendSectionAnnouncement).toHaveBeenCalledTimes(2);
     for (const args of vi.mocked(api.sendSectionAnnouncement).mock.calls) expect(args.slice(0, 5)).toEqual(["section-1", "template-1", id, "BULK: Section update", "SIMULATION"]);
   }, 20_000);
+  it("retains an uncertain member send and its accepted acknowledgement across equivalent section ID spellings", async () => {
+    const sectionId = "aabbccdd-1111-4222-8333-abcdef123456";
+    const compactId = sectionId.replaceAll("-", "");
+    const requestId = "00000000-0000-4000-8000-000000000506";
+    vi.spyOn(crypto, "randomUUID").mockReturnValue(requestId);
+    vi.mocked(api.sendSectionAnnouncement).mockRejectedValueOnce(new Error("Response lost")).mockResolvedValueOnce({
+      sendId: requestId, recipientCount: 2, skippedCount: 0, preparationQueued: true, resumed: true,
+      requestedDeliveryMode: "LIVE", siteDeliveryMode: "LIVE", effectiveDeliveryMode: "LIVE",
+    });
+    const user = userEvent.setup();
+    const first = render(<SendAnnouncementPage sectionId={compactId} sectionName="Signals" onBack={vi.fn()} />);
+    await user.click(await screen.findByLabelText("Template"));
+    await user.click(screen.getByRole("option", { name: /BULK: Section update/ }));
+    await user.click(screen.getByRole("button", { name: "Send to Signals members" }));
+    await screen.findByRole("button", { name: "Resume announcement send" });
+    first.unmount();
+
+    for (const equivalentId of [sectionId, sectionId.toUpperCase()]) {
+      const returning = render(<SendAnnouncementPage sectionId={equivalentId} sectionName="Signals" onBack={vi.fn()} />);
+      const resume = await screen.findByRole("button", { name: "Resume announcement send" });
+      await waitFor(() => expect(resume).toBeEnabled());
+      expect(api.sendSectionAnnouncement).toHaveBeenCalledTimes(1);
+      returning.unmount();
+    }
+    const retry = render(<SendAnnouncementPage sectionId={sectionId} sectionName="Signals" onBack={vi.fn()} />);
+    const resume = await screen.findByRole("button", { name: "Resume announcement send" });
+    await waitFor(() => expect(resume).toBeEnabled());
+    await user.click(resume);
+    expect(await screen.findByText(/Announcement accepted/)).toBeInTheDocument();
+    retry.unmount();
+
+    for (const equivalentId of [compactId, sectionId.toUpperCase()]) {
+      const acknowledged = render(<SendAnnouncementPage sectionId={equivalentId} sectionName="Signals" onBack={vi.fn()} />);
+      expect(await screen.findByText(/Announcement accepted/)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Resume announcement send" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Send to Signals members" })).not.toBeInTheDocument();
+      expect(api.sendSectionAnnouncement).toHaveBeenCalledTimes(2);
+      acknowledged.unmount();
+    }
+    expect(api.sendSectionAnnouncement).toHaveBeenNthCalledWith(1, compactId, "template-1", requestId, "BULK: Section update", "LIVE");
+    expect(api.sendSectionAnnouncement).toHaveBeenNthCalledWith(2, sectionId, "template-1", requestId, "BULK: Section update", "LIVE");
+    expect(crypto.randomUUID).toHaveBeenCalledOnce();
+  }, 20_000);
+
+  it.each(["section", "event"] as const)("keeps the event retry identity, accepted acknowledgement and template draft when only the %s ID spelling changes", async (resource) => {
+    const sectionId = "aabbccdd-1111-4222-8333-abcdef123456";
+    const eventId = "eeff0011-2222-4333-8444-abcdef654321";
+    const requestId = "00000000-0000-4000-8000-000000000507";
+    const filters = { attendeeName: "", rank: "", membershipStatus: "", audience: "", ticketType: "", includesDinner: "", includesSymposium: "", accommodationRequested: "", approvalStatus: "", paymentState: "" };
+    const props = (spelling: "compact" | "hyphenated" | "uppercase") => {
+      const varied = resource === "section" ? sectionId : eventId;
+      const formatted = spelling === "compact" ? varied.replaceAll("-", "") : spelling === "uppercase" ? varied.toUpperCase() : varied;
+      return { sectionId: resource === "section" ? formatted : sectionId, sectionName: "Signals", onBack: vi.fn(), eventAudience: { eventId: resource === "event" ? formatted : eventId, filters } };
+    };
+    vi.spyOn(crypto, "randomUUID").mockReturnValue(requestId);
+    vi.mocked(api.previewEventAnnouncementAudience).mockResolvedValue({
+      eventTitle: "Annual dinner", fingerprint: "audience-1", matchedTicketCount: 1,
+      recipients: [{ name: "Jane Smith", email: "jane@example.invalid" }], skipped: [],
+    });
+    vi.mocked(api.sendSectionAnnouncement).mockRejectedValueOnce(new Error("Response lost")).mockResolvedValueOnce({
+      sendId: requestId, recipientCount: 1, skippedCount: 0, preparationQueued: true, resumed: true,
+      requestedDeliveryMode: "LIVE", siteDeliveryMode: "LIVE", effectiveDeliveryMode: "LIVE",
+    });
+    const user = userEvent.setup();
+    const first = render(<SendAnnouncementPage {...props("compact")} />);
+    await user.click(await screen.findByLabelText("Template"));
+    await user.click(screen.getByRole("option", { name: /BULK: Section update/ }));
+    await user.click(screen.getByText("Create a GOV Notify template"));
+    fireEvent.change(screen.getByLabelText("Template body"), { target: { value: "Unsent event template" } });
+    await user.click(screen.getByRole("button", { name: "Preview recipients" }));
+    await user.click(await screen.findByRole("button", { name: "Send to 1 attendee contacts" }));
+    await screen.findByRole("button", { name: "Resume announcement send" });
+
+    first.unmount();
+    const distinctResource = props("hyphenated");
+    if (resource === "section") distinctResource.sectionId = "aabbccdd-1111-4222-8333-abcdef123457";
+    else distinctResource.eventAudience.eventId = "eeff0011-2222-4333-8444-abcdef654322";
+    const other = render(<SendAnnouncementPage {...distinctResource} />);
+    await waitFor(() => expect(screen.getByLabelText("Template")).toBeEnabled());
+    expect(screen.getByLabelText("Template")).not.toHaveTextContent("BULK: Section update");
+    expect(screen.getByLabelText("Template body")).toHaveValue("");
+    expect(screen.queryByRole("button", { name: "Resume announcement send" })).not.toBeInTheDocument();
+    expect(api.sendSectionAnnouncement).toHaveBeenCalledTimes(1);
+    other.unmount();
+    for (const spelling of ["compact", "hyphenated"] as const) {
+      const returning = render(<SendAnnouncementPage {...props(spelling)} />);
+      const resume = await screen.findByRole("button", { name: "Resume announcement send" });
+      await waitFor(() => expect(resume).toBeEnabled());
+      expect(screen.getByLabelText("Template body")).toHaveValue("Unsent event template");
+      expect(screen.queryByLabelText("Recipient preview")).not.toBeInTheDocument();
+      expect(api.sendSectionAnnouncement).toHaveBeenCalledTimes(1);
+      returning.unmount();
+    }
+    const retry = render(<SendAnnouncementPage {...props("uppercase")} />);
+    const resume = await screen.findByRole("button", { name: "Resume announcement send" });
+    await waitFor(() => expect(resume).toBeEnabled());
+    await user.click(resume);
+    expect(await screen.findByText(/Announcement accepted/)).toBeInTheDocument();
+    retry.unmount();
+
+    for (const spelling of ["compact", "hyphenated", "uppercase"] as const) {
+      const acknowledged = render(<SendAnnouncementPage {...props(spelling)} />);
+      expect(await screen.findByText(/Announcement accepted/)).toBeInTheDocument();
+      expect(screen.getByLabelText("Template body")).toHaveValue("Unsent event template");
+      expect(screen.queryByRole("button", { name: "Resume announcement send" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Send to .*attendee contacts/ })).not.toBeInTheDocument();
+      expect(api.sendSectionAnnouncement).toHaveBeenCalledTimes(2);
+      acknowledged.unmount();
+    }
+    expect(crypto.randomUUID).toHaveBeenCalledOnce();
+    for (const [index, spelling] of ["compact", "uppercase"].entries()) {
+      const submitted = props(spelling as "compact" | "uppercase");
+      expect(api.sendSectionAnnouncement).toHaveBeenNthCalledWith(index + 1, submitted.sectionId, "template-1", requestId, "BULK: Section update", "LIVE", undefined,
+        { eventAudience: { eventId: submitted.eventAudience.eventId, filters }, audienceFingerprint: "audience-1" });
+    }
+  }, 20_000);
+
+  it("requires a fresh audience preview if an uncertain uncommitted event retry reports that the audience changed", async () => {
+    const sectionId = "aabbccdd-1111-4222-8333-abcdef123456";
+    const eventId = "eeff0011-2222-4333-8444-abcdef654321";
+    const firstRequestId = "00000000-0000-4000-8000-000000000508";
+    const nextRequestId = "00000000-0000-4000-8000-000000000509";
+    const filters = { attendeeName: "", rank: "", membershipStatus: "", audience: "", ticketType: "", includesDinner: "", includesSymposium: "", accommodationRequested: "", approvalStatus: "", paymentState: "" };
+    vi.spyOn(crypto, "randomUUID").mockReturnValueOnce(firstRequestId).mockReturnValueOnce(nextRequestId);
+    const audience = { eventTitle: "Annual dinner", fingerprint: "original-audience", matchedTicketCount: 1, recipients: [{ name: "Jane Smith", email: "jane@example.invalid" }], skipped: [] };
+    vi.mocked(api.previewEventAnnouncementAudience).mockResolvedValueOnce(audience).mockResolvedValueOnce({ ...audience, fingerprint: "current-audience" });
+    vi.mocked(api.sendSectionAnnouncement)
+      .mockRejectedValueOnce(new Error("Response lost"))
+      .mockRejectedValueOnce({ code: "functions/failed-precondition", details: { code: "ANNOUNCEMENT_AUDIENCE_CHANGED" }, message: "Audience changed" })
+      .mockResolvedValueOnce({ sendId: nextRequestId, recipientCount: 1, skippedCount: 0, preparationQueued: true, resumed: false,
+        requestedDeliveryMode: "LIVE", siteDeliveryMode: "LIVE", effectiveDeliveryMode: "LIVE" });
+    const user = userEvent.setup();
+    const first = render(<SendAnnouncementPage sectionId={sectionId.replaceAll("-", "")} sectionName="Signals" onBack={vi.fn()} eventAudience={{ eventId: eventId.replaceAll("-", ""), filters }} />);
+    await user.click(await screen.findByLabelText("Template"));
+    await user.click(screen.getByRole("option", { name: /BULK: Section update/ }));
+    await user.click(screen.getByRole("button", { name: "Preview recipients" }));
+    await user.click(await screen.findByRole("button", { name: "Send to 1 attendee contacts" }));
+    await screen.findByRole("button", { name: "Resume announcement send" });
+    first.unmount();
+
+    render(<SendAnnouncementPage sectionId={sectionId.toUpperCase()} sectionName="Signals" onBack={vi.fn()} eventAudience={{ eventId, filters }} />);
+    const resume = await screen.findByRole("button", { name: "Resume announcement send" });
+    await waitFor(() => expect(resume).toBeEnabled());
+    await user.click(resume);
+    expect(await screen.findByRole("button", { name: "Preview recipients before sending" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Preview recipients" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Resume announcement send" })).not.toBeInTheDocument();
+    expect(api.sendSectionAnnouncement).toHaveBeenCalledTimes(2);
+    expect(crypto.randomUUID).toHaveBeenCalledOnce();
+    for (const args of vi.mocked(api.sendSectionAnnouncement).mock.calls) {
+      expect(args[2]).toBe(firstRequestId);
+      expect(args[6]).toEqual({ eventAudience: { eventId: expect.any(String), filters }, audienceFingerprint: "original-audience" });
+    }
+    await user.click(screen.getByRole("button", { name: "Preview recipients" }));
+    await user.click(await screen.findByRole("button", { name: "Send to 1 attendee contacts" }));
+    expect(await screen.findByText(/Announcement accepted/)).toBeInTheDocument();
+    expect(api.sendSectionAnnouncement).toHaveBeenNthCalledWith(3, sectionId.toUpperCase(), "template-1", nextRequestId, "BULK: Section update", "LIVE", undefined,
+      { eventAudience: { eventId, filters }, audienceFingerprint: "current-audience" });
+  }, 20_000);
+
   it("keeps an explicitly different event audience separate from the earlier composition", async () => {
     const filters = { attendeeName: "", rank: "", membershipStatus: "", audience: "", ticketType: "", includesDinner: "", includesSymposium: "", accommodationRequested: "", approvalStatus: "", paymentState: "" };
     const user = userEvent.setup();
