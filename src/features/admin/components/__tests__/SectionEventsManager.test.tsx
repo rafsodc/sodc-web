@@ -1172,6 +1172,9 @@ describe("SectionEventsManager", () => {
       await act(async()=>managerNavigation(-1));
       expect(await screen.findByText(/The previous save completed/)).toBeInTheDocument();
       await user.click(screen.getByRole("button",{name:"Load saved change"}));
+      // Navigation closes the editor before MUI removes its exiting portal and
+      // accessibility mask. Wait for that transition before querying the page.
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
       expect(await screen.findByRole("link",{name:"Add ticket type"})).toBeInTheDocument();
       expect(generated.createTicketTypeRef).toHaveBeenCalledOnce();
       expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
