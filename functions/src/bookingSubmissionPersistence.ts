@@ -230,6 +230,8 @@ export async function activateApprovedBookingRevision(args: {
   revisionGroupId: UUIDString;
   activeBookingId: UUIDString;
   reviewedById: string;
+  actorSecurityVersion: number;
+  actorIsAdmin: boolean;
   approvalNote?: string | null;
   deltaAmountMinor: number;
   adjustmentStatus: BookingPaymentAdjustmentStatus;
@@ -239,6 +241,8 @@ export async function activateApprovedBookingRevision(args: {
     revisionGroupId: UUIDString;
     activeBookingId: UUIDString;
     reviewedById: string;
+    actorSecurityVersion: number;
+    actorIsAdmin: boolean;
     approvalNote?: string | null;
     deltaAmountMinor: number;
     adjustmentStatus: BookingPaymentAdjustmentStatus;

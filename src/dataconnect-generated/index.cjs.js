@@ -3025,6 +3025,21 @@ exports.getMyAnnouncementPreferences = function getMyAnnouncementPreferences(dcO
 }
 ;
 
+const listSectionTicketAccessGroupsRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListSectionTicketAccessGroups', inputVars);
+}
+listSectionTicketAccessGroupsRef.operationName = 'ListSectionTicketAccessGroups';
+exports.listSectionTicketAccessGroupsRef = listSectionTicketAccessGroupsRef;
+
+exports.listSectionTicketAccessGroups = function listSectionTicketAccessGroups(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(listSectionTicketAccessGroupsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
 const serviceGetUserByIdRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

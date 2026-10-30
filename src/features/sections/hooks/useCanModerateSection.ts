@@ -1,59 +1,65 @@
-import { useEffect, useState } from "react";
-import { getSectionForUser } from "../../../shared/utils/firebaseFunctions";
+import { idsEqual } from "../../../shared/utils/uuid";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import {
+  getSectionForUser,
+  type SectionForUserResponse,
+} from "../../../shared/utils/firebaseFunctions";
 import { auth } from "../../../config/firebase";
-import { useAdminClaim } from "../../users/hooks/useAdminClaim";
-import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
+import {
+  captureSession,
+  isSessionCurrent,
+} from "../../../shared/appShell/sessionLifecycle";
 
-interface UseCanModerateSectionResult {
-  /** True once the section access check has resolved (or failed). */
-  isResolved: boolean;
-  isAdmin: boolean;
-  canModerateSection: boolean;
-}
-
-/**
- * Whether the current user can administer a section — either as a global admin or as a
- * member of a user group with MODERATOR purpose on that section. Backed by the
- * getSectionForUser callable, which is the only path a non-admin has to a section's
- * purpose links (the underlying GetSectionById query is admin-only — see #328) and
- * computes canModerate server-side against the caller's own group memberships.
- */
-export function useCanModerateSection(sectionId: string | undefined): UseCanModerateSectionResult {
-  const currentUser = auth.currentUser;
-  const isAdmin = useAdminClaim(currentUser);
-  const [canModerateSection, setCanModerateSection] = useState(false);
-  const [isResolved, setIsResolved] = useState(false);
-  const requestGuard = useLatestRequestGuard();
-
+/** Metadata and the section-scoped permission come from the same server decision.
+ * Never retain an old section's authority while its replacement is loading. */
+export function useCanModerateSection(sectionId: string | undefined) {
+  const session = captureSession();
+  const lifecycle = session.lifecycle;
+  const snapshot = useSyncExternalStore(
+    lifecycle?.subscribe ?? (() => () => {}),
+    lifecycle?.getSnapshot ?? (() => null),
+  );
+  const owner = `${sectionId ?? ""}:${snapshot?.uid ?? auth.currentUser?.uid ?? ""}:${snapshot?.generation ?? 0}`;
+  const [state, setState] = useState<{
+    owner: string;
+    result?: SectionForUserResponse;
+    failed?: boolean;
+  }>();
   useEffect(() => {
+    let active = true;
+    const token = captureSession();
     if (!sectionId) {
-      setCanModerateSection(false);
-      setIsResolved(true);
+      setState({ owner, failed: true });
       return;
     }
-    const requestToken = requestGuard.start();
-    setIsResolved(false);
     getSectionForUser(sectionId)
       .then((result) => {
-        if (!requestGuard.isCurrent(requestToken)) return;
-        setCanModerateSection(result.canModerate);
+        if (active && isSessionCurrent(token))
+          setState({
+            owner,
+            result: idsEqual(result.section?.id, sectionId)
+              ? result
+              : undefined,
+            failed: !!result.section && !idsEqual(result.section.id, sectionId),
+          });
       })
       .catch(() => {
-        if (!requestGuard.isCurrent(requestToken)) return;
-        setCanModerateSection(false);
-      })
-      .finally(() => {
-        if (!requestGuard.isCurrent(requestToken)) return;
-        setIsResolved(true);
+        if (active && isSessionCurrent(token))
+          setState({ owner, failed: true });
       });
     return () => {
-      if (requestGuard.isCurrent(requestToken)) requestGuard.invalidate();
+      active = false;
     };
-  }, [sectionId, requestGuard]);
-
+  }, [sectionId, owner]);
+  const current =
+    state?.owner === owner && isSessionCurrent(session) ? state : undefined;
   return {
-    isResolved,
-    isAdmin,
-    canModerateSection,
+    isResolved: !!current,
+    canModerateSection:
+      !!current?.result?.section &&
+      current.result.hasAccess &&
+      current.result.canModerate,
+    section: current?.result?.section ?? null,
+    failed: !!current?.failed,
   };
 }

@@ -165,11 +165,28 @@ mutation ActivateApprovedBookingRevisionFromCallable(
   $revisionGroupId: UUID!
   $activeBookingId: UUID!
   $reviewedById: String!
+  $actorSecurityVersion: Int!
+  $actorIsAdmin: Boolean!
   $approvalNote: String
   $deltaAmountMinor: Int!
   $adjustmentStatus: BookingPaymentAdjustmentStatus!
   $orchestrationKey: String!
 ) @auth(level: NO_ACCESS) @transaction {
+  query @redact {
+    currentAuthorization: userSecurityState(key: {userId: $reviewedById})
+      @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus && this.membershipStatus in ['REGULAR','RETIRED','RESERVE','INDUSTRY','CIVIL_SERVICE']", message: "ACCESS_REVOKED") {
+      accessReady syncStatus membershipStatus adminReady
+      securityVersion @check(expr: "this == vars.actorSecurityVersion", message: "SESSION_VERSION_STALE")
+      user {membershipStatus}
+    }
+    managementBooking: booking(id: $bookingId)
+      @check(expr: "this != null && ((response.query.currentAuthorization.adminReady && vars.actorIsAdmin) || this.event.section.links.exists(l, type(l.purposes) == list && 'MODERATOR' in l.purposes && (l.userGroup.users.size() > 0 || (type(l.userGroup.membershipStatuses) == list && response.query.currentAuthorization.membershipStatus in l.userGroup.membershipStatuses))))", message: "SECTION_MODERATOR_REQUIRED") {
+      event {section {links: sectionUserGroupPurposeLinks_on_section(limit: 1000) {
+        purposes userGroup {membershipStatuses users: userUserGroups_on_userGroup(where: {userId: {eq: $reviewedById}}, limit: 1) {userId}}
+      }}}
+    }
+  }
+
   reviewed: booking_updateMany(
     where: {
       id: { eq: $bookingId }

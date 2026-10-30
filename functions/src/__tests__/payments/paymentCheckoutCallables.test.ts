@@ -7,6 +7,7 @@ import {
   TicketOrderStatus,
 } from "@dataconnect/admin-generated";
 import * as admin from "@dataconnect/admin-generated";
+import { getUserSecurityState } from "../../securityRepository";
 
 const mocks = vi.hoisted(() => ({
   requireStripe: vi.fn(),
@@ -118,6 +119,10 @@ function stripeClient() {
 describe("payment checkout callables", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getUserSecurityState).mockResolvedValue({ data: { userSecurityState: {
+      userId: USER_ID, securityVersion: 1, membershipStatus: "REGULAR", accessReady: true,
+      adminReady: true, syncStatus: "READY", user: { membershipStatus: "REGULAR" },
+    } } } as never);
     ensureRateLimitBucket.mockResolvedValue({ data: {} } as never);
     consumeRateLimit.mockResolvedValue({ data: {} } as never);
     getUser.mockResolvedValue({ data: { user: { id: USER_ID, email: "member@example.com", firstName: "Sam", lastName: "Member", membershipStatus: MembershipStatus.REGULAR, stripeCustomerId: "cus_existing" } } } as never);
@@ -331,4 +336,136 @@ describe("payment checkout callables", () => {
     expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
     expect(result).toEqual({ url: null, orderIds: [], confirmed: true });
   });
+  describe("current administrator early checkout", () => {
+    function adminRequest(data: Record<string, unknown> = { eventId: EVENT_ID }) {
+      const input = enabledRequest(data);
+      return { ...input, auth: { ...input.auth, token: { ...input.auth.token, admin: true } } };
+    }
+    function setAuthority(overrides: Record<string, unknown>) {
+      vi.mocked(getUserSecurityState).mockResolvedValue({ data: { userSecurityState: {
+        userId: USER_ID, securityVersion: 1, membershipStatus: "REGULAR", accessReady: true,
+        adminReady: true, syncStatus: "READY", user: { membershipStatus: "REGULAR" }, ...overrides,
+      } } } as never);
+    }
+    beforeEach(() => {
+      const futureTicket = ticketType();
+      futureTicket.event.bookingStartDateTime = "2099-01-01";
+      futureTicket.event.bookingEndDateTime = "2100-01-01";
+      getTicketType.mockResolvedValue({ data: { ticketType: futureTicket } } as never);
+      getSection.mockResolvedValue({ data: { section: { id: SECTION_ID, purposeLinks: [
+        { purposes: [SectionUserGroupPurpose.ACCESS, SectionUserGroupPurpose.BOOKER], userGroup: { id: GROUP_ID, membershipStatuses: null } },
+      ] } } } as never);
+      getBookings.mockResolvedValue({ data: { user: { bookings: [booking(BookingApprovalStatus.NOT_REQUIRED)] } } } as never);
+      mocks.requireStripe.mockReturnValue(stripeClient());
+    });
+
+    it("allows eligible admin checkout before opening without moderator membership", async () => {
+      await expect(eventHandler(adminRequest())).resolves.toMatchObject({ url: "https://checkout.stripe.test/session" });
+      expect(mocks.createAllocatedTicketOrder).toHaveBeenCalledOnce();
+    });
+
+    it("allows the same admin exception for a free booking without contacting Stripe", async () => {
+      getBookings.mockResolvedValue({ data: { user: { bookings: [booking(BookingApprovalStatus.NOT_REQUIRED, [0])] } } } as never);
+      await expect(eventHandler(adminRequest())).resolves.toMatchObject({ confirmed: true });
+      expect(mocks.createAllocatedTicketOrder).toHaveBeenCalledWith(expect.objectContaining({ status: TicketOrderStatus.PAID }));
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+    });
+
+    it("requires current section access for the newly granted administrator early exception", async () => {
+      getSection.mockResolvedValue({ data: { section: { id: SECTION_ID, purposeLinks: [
+        { purposes: [SectionUserGroupPurpose.BOOKER], userGroup: { id: GROUP_ID, membershipStatuses: null } },
+      ] } } } as never);
+      await expect(eventHandler(adminRequest())).rejects.toThrow(/not open/);
+      expect(mocks.createAllocatedTicketOrder).not.toHaveBeenCalled();
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+      expect(markFailed).not.toHaveBeenCalled();
+      expect(updateAllocationRefund).not.toHaveBeenCalled();
+    });
+
+    it("preserves existing after-close checkout eligibility without adding a new section access gate", async () => {
+      const closed = ticketType();
+      closed.event.bookingEndDateTime = "2020-02-01";
+      getTicketType.mockResolvedValue({ data: { ticketType: closed } } as never);
+      getSection.mockResolvedValue({ data: { section: { id: SECTION_ID, purposeLinks: [
+        { purposes: [SectionUserGroupPurpose.BOOKER], userGroup: { id: GROUP_ID, membershipStatuses: null } },
+      ] } } } as never);
+      await expect(eventHandler(adminRequest())).resolves.toMatchObject({ url: "https://checkout.stripe.test/session" });
+    });
+
+    it("keeps the disabled direct-ticket checkout refused for administrators", async () => {
+      await expect(ticketHandler(adminRequest({ ticketTypeId: TICKET_TYPE_ID, quantity: 1 }))).rejects.toThrow(/no longer supported/);
+      expect(getTicketType).not.toHaveBeenCalled();
+      expect(mocks.createAllocatedTicketOrder).not.toHaveBeenCalled();
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+    });
+
+    it.each(["booker", "ticket group"])("keeps %s eligibility required for admin checkout", async (gate) => {
+      if (gate === "booker") {
+        getSection.mockResolvedValue({ data: { section: { purposeLinks: [] } } } as never);
+      } else {
+        getUserGroups.mockResolvedValue({ data: { user: { userGroups: [] } } } as never);
+        getSection.mockResolvedValue({ data: { section: { purposeLinks: [{ purposes: [SectionUserGroupPurpose.BOOKER],
+          userGroup: { id: GROUP_ID, membershipStatuses: [MembershipStatus.REGULAR] },
+        }] } } } as never);
+      }
+      await expect(eventHandler(adminRequest())).rejects.toMatchObject({ code: "permission-denied" });
+      expect(mocks.createAllocatedTicketOrder).not.toHaveBeenCalled();
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+    });
+
+    it.each([BookingApprovalStatus.PENDING, BookingApprovalStatus.REJECTED])("does not bypass %s approval", async (status) => {
+      getBookings.mockResolvedValue({ data: { user: { bookings: [booking(status)] } } } as never);
+      await expect(eventHandler(adminRequest())).rejects.toMatchObject({ code: "failed-precondition" });
+      expect(mocks.createAllocatedTicketOrder).not.toHaveBeenCalled();
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+    });
+
+    it.each([["invalid", "2100-01-01"], ["2100-01-01", "2099-01-01"]])("rejects invalid admin windows", async (start, end) => {
+      const invalidTicket = ticketType();
+      invalidTicket.event.bookingStartDateTime = start;
+      invalidTicket.event.bookingEndDateTime = end;
+      getTicketType.mockResolvedValue({ data: { ticketType: invalidTicket } } as never);
+      await expect(eventHandler(adminRequest())).rejects.toMatchObject({ code: "failed-precondition" });
+      expect(mocks.createAllocatedTicketOrder).not.toHaveBeenCalled();
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+    });
+
+    it("denies the early exception when server admin readiness has been revoked", async () => {
+      setAuthority({ adminReady: false });
+      await expect(eventHandler(adminRequest())).rejects.toThrow(/not open/);
+      expect(mocks.createAllocatedTicketOrder).not.toHaveBeenCalled();
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+    });
+
+    it("ignores body administrator and override flags", async () => {
+      await expect(eventHandler(enabledRequest({ eventId: EVENT_ID, isAdmin: true, verifiedAdmin: true }))).rejects.toThrow(/not open/);
+      expect(mocks.createAllocatedTicketOrder).not.toHaveBeenCalled();
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["stale", { securityVersion: 2 }, "unauthenticated"],
+      ["revoked", { accessReady: false }, "permission-denied"],
+      ["synchronizing", { syncStatus: "PENDING" }, "permission-denied"],
+      ["restricted", { membershipStatus: "SUSPENDED", user: { membershipStatus: "SUSPENDED" } }, "permission-denied"],
+    ])("rejects %s current authorization on both checkout entry points", async (_label, state, code) => {
+      setAuthority(state);
+      await expect(eventHandler(adminRequest())).rejects.toMatchObject({ code });
+      await expect(ticketHandler(adminRequest())).rejects.toMatchObject({ code });
+      expect(getBookings).not.toHaveBeenCalled();
+      expect(getTicketType).not.toHaveBeenCalled();
+      expect(mocks.createAllocatedTicketOrder).not.toHaveBeenCalled();
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+    });
+
+    it("rejects disabled administrator claims on both checkout entry points", async () => {
+      const input = adminRequest();
+      input.auth.token.enabled = false;
+      await expect(eventHandler(input)).rejects.toMatchObject({ code: "permission-denied" });
+      await expect(ticketHandler(input)).rejects.toMatchObject({ code: "permission-denied" });
+      expect(getBookings).not.toHaveBeenCalled();
+      expect(mocks.requireStripe).not.toHaveBeenCalled();
+    });
+  });
+
 });

@@ -156,7 +156,7 @@ function buildBasePersonalisation(args: {
     ticketLinesSummary: buildTicketLinesSummary(booking.lines),
     accommodationRequested: accommodationRequestedCondition(booking.accommodationRequested),
     bookingTotalFormatted: formatMinorCurrency(totalMinor, "GBP"),
-    sectionBookingsUrl: `${base}/sections/${booking.event.section.id}`,
+    sectionBookingsUrl: `${base}/sections/${encodeURIComponent(booking.event.section.id)}/events/${encodeURIComponent(booking.event.id)}?tab=book`,
     myPaymentsUrl: `${base}/payments`,
   };
 }
@@ -381,7 +381,7 @@ export async function notifyBookingPendingApprovalEmails(args: {
       bookerDisplay: `${booking.booker.firstName} ${booking.booker.lastName} <${booking.booker.email}>`.trim(),
       guestCount: booking.lines.filter((line) => line.ticketType.audience === "GUEST").length,
       ticketLinesSummary: buildTicketLinesSummary(booking.lines),
-      moderationUrl: `${base}/admin/sections`,
+      moderationUrl: `${base}/sections/${encodeURIComponent(booking.event.section.id)}/manage/events/${encodeURIComponent(booking.event.id)}?task=approvals`,
     };
     for (const recipientUserId of recipients) {
       try {

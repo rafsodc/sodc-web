@@ -1,3 +1,4 @@
+import { memberEventPath } from "../../../shared/navigation/sectionRoutes";
 import { useMemo } from "react";
 import {
   Box,
@@ -92,7 +93,7 @@ export default function MemberWelcomePage({
               <Card variant="outlined">
                 <CardActionArea
                   component={RouterLink}
-                  to={`/sections/${event.sectionId}`}
+                  to={memberEventPath(event.sectionId,event.id)}
                   state={sectionDetailLocationState(ROUTES.HOME)}
                   sx={{ textAlign: "left" }}
                 >

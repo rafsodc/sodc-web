@@ -3441,6 +3441,17 @@ export interface ListSectionFilesForQuotaVariables {
   limit: number;
 }
 
+export interface ListSectionTicketAccessGroupsData {
+  userGroups: ({
+    id: UUIDString;
+    name: string;
+  } & UserGroup_Key)[];
+}
+
+export interface ListSectionTicketAccessGroupsVariables {
+  sectionId: UUIDString;
+}
+
 export interface ListSectionsData {
   sections: ({
     id: UUIDString;
@@ -4599,7 +4610,9 @@ export interface UpdateBookingApprovalFromCallableVariables {
   id: UUIDString;
   expectedRevisionNumber: number;
   status: BookingApprovalStatus;
-  reviewedById?: string | null;
+  reviewedById: string;
+  actorSecurityVersion: number;
+  actorIsAdmin: boolean;
   approvalNote?: string | null;
 }
 
@@ -7255,6 +7268,18 @@ export const getMyAnnouncementPreferencesRef: GetMyAnnouncementPreferencesRef;
 
 export function getMyAnnouncementPreferences(options?: ExecuteQueryOptions): QueryPromise<GetMyAnnouncementPreferencesData, undefined>;
 export function getMyAnnouncementPreferences(dc: DataConnect, options?: ExecuteQueryOptions): QueryPromise<GetMyAnnouncementPreferencesData, undefined>;
+
+interface ListSectionTicketAccessGroupsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: ListSectionTicketAccessGroupsVariables): QueryRef<ListSectionTicketAccessGroupsData, ListSectionTicketAccessGroupsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: ListSectionTicketAccessGroupsVariables): QueryRef<ListSectionTicketAccessGroupsData, ListSectionTicketAccessGroupsVariables>;
+  operationName: string;
+}
+export const listSectionTicketAccessGroupsRef: ListSectionTicketAccessGroupsRef;
+
+export function listSectionTicketAccessGroups(vars: ListSectionTicketAccessGroupsVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionTicketAccessGroupsData, ListSectionTicketAccessGroupsVariables>;
+export function listSectionTicketAccessGroups(dc: DataConnect, vars: ListSectionTicketAccessGroupsVariables, options?: ExecuteQueryOptions): QueryPromise<ListSectionTicketAccessGroupsData, ListSectionTicketAccessGroupsVariables>;
 
 interface ServiceGetUserByIdRef {
   /* Allow users to create refs without passing in DataConnect */

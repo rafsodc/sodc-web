@@ -25,6 +25,7 @@ vi.mock("../../../users/hooks/useAdminClaim", () => ({ useAdminClaim: () => true
 vi.mock("../../../users/utils/searchUsers", () => ({ searchUsers: vi.fn() }));
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   reviewBookingRevision: vi.fn(), submitEventBooking: vi.fn(), getSectionMembersMerged: vi.fn().mockResolvedValue({ members: [] }),
+  getSectionMemberNamesByIds: vi.fn().mockResolvedValue({users:[]}),
 }));
 vi.mock("../../../guests/api", () => ({
   guestCall: vi.fn(), money: (value: number) => String(value), paymentLabel: (value: string) => value,
@@ -86,6 +87,7 @@ beforeEach(() => {
     let data: unknown;
     switch (name) {
       case "ListUserGroups": data = { userGroups: groups }; break;
+      case "ListSectionTicketAccessGroups": data = {userGroups:groups.map(({id,name})=>({id,name}))}; break;
       case "ListUsers": data = { users: [] }; break;
       case "GetUserGroupById": data = { userGroup: groups.some((row) => row.id === variables.id)
         ? { ...groups.find((row) => row.id === variables.id), users: [], purposeLinks: [] } : null }; break;
@@ -373,18 +375,23 @@ describe("rendered administration freshness with the installed SDK cache", () =>
   it("keeps failed ticket drafts and revalidates a failed confirmed-write refresh on a later visit", async () => {
     const rendered = render(view("event")); const user = await openCreateTicket(); failingWrite = true;
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeEnabled());
+    expect(await screen.findByText(/The previous save could not be confirmed/)).toBeInTheDocument();
+    expect(screen.getByRole("button", {name:"Save"})).toBeDisabled();
     expect(screen.getByLabelText(/^title/i)).toHaveValue("New ticket");
     expect(ticketTypes.map((row) => row.title)).toEqual(["Dinner"]);
+    await user.click(screen.getByRole("button",{name:"Check latest list"}));
+    await user.click(within(await screen.findByRole("dialog",{name:"Start a new save request?"})).getByRole("button",{name:"I checked — start a new request"}));
+    await waitFor(() => expect(screen.queryByRole("dialog",{name:"Start a new save request?",hidden:true})).not.toBeInTheDocument());
     failingWrite = false; failReadsAfterWrite = "GetEventById";
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByText(/Ticket type created.*already saved/)).toBeInTheDocument();
-    await waitForDialogToClose();
-    await user.click(screen.getByRole("button", { name: "Retry refresh" }));
-    expect(await screen.findByText(/Ticket type created.*already saved/)).toBeInTheDocument();
-    expect(screen.queryByText(/Event data refreshed/)).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Retry refresh" })).toBeEnabled());
+    expect((await screen.findAllByText(/Ticket type created.*already saved/)).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
+    await user.click(await screen.findByRole("button", { name: "Load saved change" }));
+    expect((await screen.findAllByText(/Saved change loaded.*already saved/)).length).toBeGreaterThan(0);
+    expect(write).toHaveBeenCalledTimes(2);
     failingRead = null;
+    await user.click(screen.getByRole("button",{name:"Load saved change"}));
+    await waitForDialogToClose();
     rendered.rerender(view("events", "revisit-list"));
     await user.click(await screen.findByRole("button", { name: /event admin/i }));
     await user.click(screen.getByRole("button", { name: "Ticket types" }));
@@ -434,7 +441,8 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Unsaved title" } });
     failingWrite = true;
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeEnabled());
+    expect(await screen.findByText(/The previous save could not be confirmed/)).toBeInTheDocument();
+    expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
     expect(screen.getByLabelText(/^title/i)).toHaveValue("Unsaved title");
     expect(ticketTypes[0].title).toBe("Dinner");
     await user.click(screen.getByRole("button", { name: "Cancel" }));

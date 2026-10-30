@@ -1,4 +1,6 @@
 import { useId, useMemo, useState } from "react";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { memberEventPath, readMemberEventTab, sectionPath } from "../../../shared/navigation/sectionRoutes";
 import {
   Alert,
   Box,
@@ -237,6 +239,7 @@ interface SectionEventsListViewProps {
   isError: boolean;
   onRetry: () => void;
   onSelectEvent: (eventId: string) => void;
+  eventHref?: (eventId: string) => string;
 }
 
 type SectionEventsListMode = "upcoming" | "past";
@@ -247,8 +250,11 @@ export function SectionEventsListView({
   isError,
   onRetry,
   onSelectEvent,
+  eventHref,
 }: SectionEventsListViewProps) {
-  const [listMode, setListMode] = useState<SectionEventsListMode>("upcoming");
+  const location = useLocation();
+  const listMode: SectionEventsListMode = new URLSearchParams(location.search).get("view") === "past" ? "past" : "upcoming";
+  const listPath = (mode: SectionEventsListMode) => `${location.pathname}${mode === "past" ? "?view=past" : ""}`;
   const { upcoming, past } = useMemo(() => partitionSectionEventsByTiming(events), [events]);
   const visibleEvents = listMode === "upcoming" ? upcoming : past;
 
@@ -269,12 +275,12 @@ export function SectionEventsListView({
             {listMode === "upcoming" ? "Upcoming events" : "Past events"}
           </Typography>
           {listMode === "upcoming" && past.length > 0 ? (
-            <Button size="small" onClick={() => setListMode("past")}>
+            <Button size="small" component={RouterLink} to={listPath("past")}>
               View past events
             </Button>
           ) : null}
           {listMode === "past" ? (
-            <Button size="small" onClick={() => setListMode("upcoming")}>
+            <Button size="small" component={RouterLink} to={listPath("upcoming")}>
               Back to upcoming events
             </Button>
           ) : null}
@@ -317,6 +323,7 @@ export function SectionEventsListView({
                 event={event}
                 variant={listMode}
                 onSelect={onSelectEvent}
+                href={eventHref?.(event.id)}
               />
             </Box>
           ))}
@@ -343,19 +350,22 @@ export function SectionEventDetailView({
   loading,
   isError,
   hasCurrentUser,
-  onBackToEvents,
   onRetry,
   onBookingComplete,
 }: SectionEventDetailViewProps) {
   const tabId = useId();
-  const [activeTab, setActiveTab] = useState<EventDetailTab>("about");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = readMemberEventTab(location.search);
+  const setActiveTab = (tab: EventDetailTab) => { if (event) navigate(memberEventPath(section.id,event.id,tab)); };
   const [hasExistingBooking, setHasExistingBooking] = useState(false);
+  const [bookingVisited, setBookingVisited] = useState(activeTab === "book");
+  if (activeTab === "book" && !bookingVisited) setBookingVisited(true);
 
-  const handleGoToBook = () => setActiveTab("book");
 
   return (
     <Box sx={{ mt: 2 }}>
-      <Button size="small" onClick={onBackToEvents} sx={{ mb: 2 }}>
+      <Button size="small" component={RouterLink} to={sectionPath(section.id)} sx={{ mb: 2 }}>
         Back to events
       </Button>
       {loading && !event ? (
@@ -376,11 +386,10 @@ export function SectionEventDetailView({
             <Tabs
               aria-label="Event information"
               value={activeTab}
-              onChange={(_, v: EventDetailTab) => setActiveTab(v)}
               sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
             >
               {(["about", "book", "attendees"] as const).map((tab) => (
-                <Tab key={tab} label={eventDetailTabLabel(tab)} value={tab} id={`${tabId}-${tab}-tab`} aria-controls={`${tabId}-${tab}-panel`} />
+                <Tab component={RouterLink} to={memberEventPath(section.id,event.id,tab)} key={tab} label={eventDetailTabLabel(tab)} value={tab} id={`${tabId}-${tab}-tab`} aria-controls={`${tabId}-${tab}-panel`} />
               ))}
             </Tabs>
           ) : null}
@@ -393,7 +402,8 @@ export function SectionEventDetailView({
                 <Box sx={{ mt: 2 }}>
                   <Button
                     variant="contained"
-                    onClick={handleGoToBook}
+                    component={RouterLink}
+                    to={memberEventPath(section.id,event.id,"book")}
                     sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
                   >
                     {hasExistingBooking ? "View my booking" : "Book this event"}
@@ -409,8 +419,8 @@ export function SectionEventDetailView({
             </Box>
           ) : null}
 
-          {activeTab === "book" && hasCurrentUser ? (
-            <Box role="tabpanel" id={`${tabId}-book-panel`} aria-labelledby={`${tabId}-book-tab`}>
+          {hasCurrentUser && bookingVisited ? (
+            <Box hidden={activeTab !== "book"} role="tabpanel" id={`${tabId}-book-panel`} aria-labelledby={`${tabId}-book-tab`}>
               <EventBookingWizard
                 section={section}
                 event={event}

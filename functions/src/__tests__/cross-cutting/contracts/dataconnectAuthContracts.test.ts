@@ -75,8 +75,8 @@ describe("Data Connect auth contracts", () => {
 
     assertAuth(queries, [
       { op: "query CheckUserProfileExists", mustInclude: EMAIL_VERIFIED_EXPR },
-      { op: "query ListEventBookingsForAdmin", mustInclude: ADMIN_EXPR },
-      { op: "query ListTicketOrdersForAdmin", mustInclude: ADMIN_EXPR },
+      { op: "query ListEventBookingsForAdmin", mustInclude: USER_EXPR },
+      { op: "query ListTicketOrdersForAdmin", mustInclude: USER_EXPR },
       { op: "query GetMyTicketOrderById", mustInclude: USER_EXPR },
       { op: "query GetMyBookings", mustInclude: USER_EXPR },
     ]);
@@ -133,8 +133,8 @@ describe("Data Connect auth contracts", () => {
       { op: "mutation CreateSection", mustInclude: ADMIN_EXPR },
       { op: "mutation CreateUserGroup", mustInclude: ADMIN_EXPR },
       { op: "mutation GrantUserGroupToSectionForPurpose", mustInclude: ADMIN_EXPR },
-      { op: "mutation CreateEvent", mustInclude: ADMIN_EXPR },
-      { op: "mutation CreateTicketType", mustInclude: ADMIN_EXPR },
+      { op: "mutation CreateEvent", mustInclude: USER_EXPR },
+      { op: "mutation CreateTicketType", mustInclude: USER_EXPR },
     ]);
   });
 
@@ -254,14 +254,14 @@ describe("Data Connect auth contracts", () => {
       { op: "query GetUserWithAccessGroups", mustInclude: ADMIN_EXPR },
       { op: "query GetUserAccessGroupsById", mustInclude: ADMIN_EXPR },
       { op: "query GetUserGroupById", mustInclude: ADMIN_EXPR },
-      { op: "query ListBookingPaymentAdjustmentsForAdmin", mustInclude: ADMIN_EXPR },
+      { op: "query ListBookingPaymentAdjustmentsForAdmin", mustInclude: USER_EXPR },
       { op: "query ListOpenPaymentReconciliationExceptions", mustInclude: ADMIN_EXPR },
       // GetEventsForSection/GetEventById/GetSectionById accept an arbitrary id with no
       // relationship check — must stay admin-only. Non-admin members go through the
       // getSectionEventsForUser/getEventForUser/getSectionForUser callables
       // (functions/src/sections.ts), which verify the caller's own section access first.
-      { op: "query GetEventsForSection", mustInclude: ADMIN_EXPR },
-      { op: "query GetEventById", mustInclude: ADMIN_EXPR },
+      { op: "query GetEventsForSection", mustInclude: USER_EXPR },
+      { op: "query GetEventById", mustInclude: USER_EXPR },
       { op: "query GetSectionById", mustInclude: ADMIN_EXPR },
     ]);
 
@@ -276,7 +276,7 @@ describe("Data Connect auth contracts", () => {
     ]);
   });
 
-  it("Phase E: all user-group-mutations.gql operations require admin", () => {
+  it("Phase E: global configuration remains admin-only and section CRUD is scoped", () => {
     const groupMutations = readApiFile("user-group-mutations.gql");
 
     // Section operations
@@ -296,8 +296,8 @@ describe("Data Connect auth contracts", () => {
 
     // Event CRUD
     assertAuth(groupMutations, [
-      { op: "mutation UpdateEvent", mustInclude: ADMIN_EXPR },
-      { op: "mutation DeleteEvent", mustInclude: ADMIN_EXPR },
+      { op: "mutation UpdateEvent", mustInclude: USER_EXPR },
+      { op: "mutation DeleteEvent", mustInclude: USER_EXPR },
     ]);
     expect(groupMutations).toContain("event_deleteMany(");
     expect(groupMutations).toContain(
@@ -315,8 +315,8 @@ describe("Data Connect auth contracts", () => {
 
     // Ticket type CRUD
     assertAuth(groupMutations, [
-      { op: "mutation UpdateTicketType", mustInclude: ADMIN_EXPR },
-      { op: "mutation DeleteTicketType", mustInclude: ADMIN_EXPR },
+      { op: "mutation UpdateTicketType", mustInclude: USER_EXPR },
+      { op: "mutation DeleteTicketType", mustInclude: USER_EXPR },
     ]);
     expect(groupMutations).toContain("ticketType_deleteMany(");
     expect(groupMutations).toContain(

@@ -137,6 +137,49 @@ describe("bookingEligibility", () => {
       expect(r).toEqual({ ok: true, moderatorWindowOverride: "BEFORE" });
     });
 
+    it.each([
+      ["2024-12-31T23:59:59.000Z", "BEFORE"],
+      ["2026-01-01T00:00:00.000Z", "AFTER"],
+    ])("allows an otherwise eligible administrator at %s without a moderator group", (now, override) => {
+      expect(evaluateBookingGatePreview({
+        purposeLinks: baseLinks,
+        membershipStatus: MembershipStatus.REGULAR,
+        explicitGroupIds: new Set(),
+        ...window,
+        nowMs: Date.parse(now),
+        isAdmin: true,
+      })).toEqual({ ok: true, moderatorWindowOverride: override });
+    });
+
+    it.each([
+      [baseLinks.filter((link) => link.purpose !== "ACCESS"), "NO_SECTION_ACCESS"],
+      [baseLinks.filter((link) => link.purpose !== "BOOKER"), "NO_BOOKER_PURPOSE"],
+      [[baseLinks[0]!, { purpose: "BOOKER", userGroup: { id: "excluded" } }], "NOT_AUTHORIZED_BOOKER"],
+    ])("keeps administrator eligibility gates: %s", (purposeLinks, code) => {
+      expect(evaluateBookingGatePreview({
+        purposeLinks,
+        membershipStatus: MembershipStatus.REGULAR,
+        explicitGroupIds: new Set(),
+        ...window,
+        nowMs: Date.parse("2024-12-31T23:59:59Z"),
+        isAdmin: true,
+      })).toMatchObject({ ok: false, code });
+    });
+
+    it.each([
+      ["invalid", window.bookingEndDateTime],
+      [window.bookingEndDateTime, window.bookingStartDateTime],
+    ])("does not let an administrator bypass an invalid window", (start, end) => {
+      expect(evaluateBookingGatePreview({
+        purposeLinks: baseLinks,
+        membershipStatus: MembershipStatus.REGULAR,
+        explicitGroupIds: new Set(),
+        bookingStartDateTime: start,
+        bookingEndDateTime: end,
+        isAdmin: true,
+      })).toMatchObject({ ok: false, code: "OUTSIDE_BOOKING_WINDOW" });
+    });
+
     it("fails without BOOKER purpose", () => {
       const r = evaluateBookingGatePreview({
         purposeLinks: [{ purpose: "ACCESS", userGroup: { id: "ag", membershipStatuses: ["REGULAR"] } }],

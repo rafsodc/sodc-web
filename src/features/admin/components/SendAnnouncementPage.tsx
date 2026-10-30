@@ -2,6 +2,8 @@ import EventAnnouncementAudience from "./EventAnnouncementAudience";
 import type { EventAttendeeTicketFilters } from "../utils/bookingApprovalsAdmin";
 import type { EventAnnouncementPreview } from "../../../shared/utils/firebaseFunctions/announcements";
 import { useEffect, useState } from "react";
+import { useSessionDraft, useDraftUnloadWarning } from "../../../shared/hooks/useSessionDraft";
+import { normalizedResourceId } from "../../../shared/navigation/sectionRoutes";
 import {
   Alert,
   Box,
@@ -48,61 +50,77 @@ function formatUpdatedAt(iso: string): string {
   });
 }
 
-export default function SendAnnouncementPage({
+function AnnouncementComposer({
   sectionId,
   sectionName,
   onBack,
   eventAudience,
 }: SendAnnouncementPageProps) {
   const isEventAnnouncement = !!eventAudience;
-  const [audienceFilters, setAudienceFilters] = useState(eventAudience?.filters);
+  const draftKey = announcementDraftKey({ sectionId, eventAudience });
+  const [draft, setDraft, discardDraft] = useSessionDraft<{
+    selectedId: string;
+    audienceFilters: EventAttendeeTicketFilters | undefined;
+    deliveryMode: GovNotifyDeliveryMode | null;
+    replyToAddressId: string;
+    sendRequestId: string | null;
+    sendAudienceFingerprint: string | null;
+    sendResult: SendAnnouncementResult | null;
+  }>(draftKey, { selectedId: "", audienceFilters: eventAudience?.filters, deliveryMode: null, replyToAddressId: "", sendRequestId: null, sendAudienceFingerprint: null, sendResult: null });
+  const { selectedId, audienceFilters, replyToAddressId, sendRequestId, sendAudienceFingerprint, sendResult } = draft;
+  const setAudienceFilters = (value: EventAttendeeTicketFilters) => setDraft(current => ({ ...current, audienceFilters: value }));
+  const setReplyToAddressId = (value: string) => setDraft(current => ({ ...current, replyToAddressId: value }));
+  const setSendRequestId = (value: string | null) => setDraft(current => ({ ...current, sendRequestId: value, sendAudienceFingerprint: value ? current.sendAudienceFingerprint : null }));
+  const setSendResult = (value: SendAnnouncementResult | null) => setDraft(current => ({ ...current, sendResult: value }));
+  const setDeliveryMode = (value: GovNotifyDeliveryMode) => setDraft(current => ({ ...current, deliveryMode: value }));
+  useDraftUnloadWarning(!!selectedId && !sendResult);
   const [audiencePreview, setAudiencePreview] = useState<EventAnnouncementPreview | null>(null);
   const [templates, setTemplates] = useState<AnnouncementTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
 
-  const [selectedId, setSelectedId] = useState("");
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   const [sending, setSending] = useState(false);
-  const [sendResult, setSendResult] = useState<SendAnnouncementResult | null>(null);
-  const [sendRequestId, setSendRequestId] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [historyTrigger, setHistoryTrigger] = useState(0);
   const [templatesTrigger, setTemplatesTrigger] = useState(0);
-  const [deliveryMode, setDeliveryMode] = useState<GovNotifyDeliveryMode>("SIMULATION");
   const [siteDeliveryMode, setSiteDeliveryMode] = useState<GovNotifyDeliveryMode | null>(null);
   const [deliveryModeError, setDeliveryModeError] = useState<string | null>(null);
+  const deliveryMode = draft.deliveryMode ?? siteDeliveryMode ?? "SIMULATION";
   const [replyToOptions, setReplyToOptions] = useState<Array<{
     id: string;
     displayLabel: string;
     emailAddress: string;
   }>>([]);
-  const [replyToAddressId, setReplyToAddressId] = useState("");
   const [replyToDefaultDescription, setReplyToDefaultDescription] = useState("Notify service default");
 
   useEffect(() => {
+    let current = true;
     setLoadingTemplates(true);
     setTemplatesError(null);
     getAnnouncementTemplates(sectionId)
-      .then((items) => setTemplates(isEventAnnouncement ? items.filter((template) => !template.requiredPersonalisation.includes("unsubscribeUrl")) : items))
+      .then((items) => { if (current) setTemplates(isEventAnnouncement ? items.filter((template) => !template.requiredPersonalisation.includes("unsubscribeUrl")) : items); })
       .catch((caught) => {
         reportError("admin.announcements.templates", caught, { sectionId });
-        setTemplatesError(toAdminUserFacingError(caught, "announcements").message);
+        if (current) setTemplatesError(toAdminUserFacingError(caught, "announcements").message);
       })
-      .finally(() => setLoadingTemplates(false));
+      .finally(() => { if (current) setLoadingTemplates(false); });
+    return () => { current = false; };
   }, [sectionId, templatesTrigger, isEventAnnouncement]);
 
   useEffect(() => {
+    let current = true;
     setDeliveryModeError(null);
     getAnnouncementDeliveryConfiguration(sectionId)
       .then((configuration) => {
+        if (!current) return;
         const configuredMode = configuration.siteDeliveryMode;
         setSiteDeliveryMode(configuredMode);
-        setDeliveryMode(configuredMode === "SIMULATION" ? "SIMULATION" : configuredMode);
+        setDraft(previous => ({ ...previous, deliveryMode: configuredMode === "SIMULATION" ? "SIMULATION" : previous.deliveryMode ?? configuredMode }));
         const options = configuration.replyToOptions ?? [];
         setReplyToOptions(options);
         const defaultAddress = options.find(
@@ -116,45 +134,53 @@ export default function SendAnnouncementPage({
       })
       .catch((caught) => {
         reportError("admin.announcements.delivery-mode", caught, { sectionId });
-        setDeliveryModeError(toAdminUserFacingError(caught, "email-configuration").message);
+        if (current) setDeliveryModeError(toAdminUserFacingError(caught, "email-configuration").message);
       });
-  }, [sectionId]);
+    return () => { current = false; };
+  }, [sectionId, setDraft]);
 
-  const handleTemplateChange = async (e: SelectChangeEvent) => {
-    const id = e.target.value;
-    setSelectedId(id);
+  const handleTemplateChange = (e: SelectChangeEvent) => {
+    setDraft(previous => ({ ...previous, selectedId: e.target.value, sendResult: null, sendRequestId: null, sendAudienceFingerprint: null }));
+    setSendError(null);
+  };
+
+  useEffect(() => {
+    let current = true;
     setPreviewHtml(null);
     setPreviewSubject(null);
     setPreviewError(null);
-    setSendResult(null);
-    setSendError(null);
-    setSendRequestId(null);
-    if (!id) return;
+    if (!selectedId) { setLoadingPreview(false); return; }
     setLoadingPreview(true);
-    try {
-      const { html, subject } = await previewAnnouncementTemplate(sectionId, id);
-      setPreviewHtml(html);
-      setPreviewSubject(subject);
-    } catch (err) {
-      reportError("admin.announcements.preview", err, { sectionId, templateId: id });
-      setPreviewError(toAdminUserFacingError(err, "announcements").message);
-    } finally {
-      setLoadingPreview(false);
-    }
-  };
+    previewAnnouncementTemplate(sectionId, selectedId)
+      .then(({ html, subject }) => {
+        if (!current) return;
+        setPreviewHtml(html);
+        setPreviewSubject(subject);
+      })
+      .catch(error => {
+        reportError("admin.announcements.preview", error, { sectionId, templateId: selectedId });
+        if (current) setPreviewError(toAdminUserFacingError(error, "announcements").message);
+      })
+      .finally(() => { if (current) setLoadingPreview(false); });
+    return () => { current = false; };
+  }, [sectionId, selectedId]);
 
+  const canResumeEventSend = !!(sendRequestId && sendAudienceFingerprint);
   const handleSend = async () => {
-    if (!selectedId || (eventAudience && !audiencePreview?.recipients.length)) return;
+    if (!selectedId || (eventAudience && !canResumeEventSend && !audiencePreview?.recipients.length)) return;
     setSending(true);
     setSendError(null);
     setSendResult(null);
     try {
       const selectedTemplate = templates.find((t) => t.id === selectedId);
       const requestId = sendRequestId ?? crypto.randomUUID();
-      setSendRequestId(requestId);
-      const result = eventAudience && audienceFilters && audiencePreview
+      const audienceFingerprint = sendAudienceFingerprint ?? audiencePreview?.fingerprint;
+      // Keep the reviewed audience identity with an uncertain request, without
+      // retaining recipient details. The server reconciles the original request.
+      setDraft(current => ({ ...current, sendRequestId: requestId, sendAudienceFingerprint: eventAudience ? audienceFingerprint ?? null : null }));
+      const result = eventAudience && audienceFilters && audienceFingerprint
         ? await sendSectionAnnouncement(sectionId, selectedId, requestId, selectedTemplate?.name, deliveryMode, replyToAddressId || undefined,
-          { eventAudience: { eventId: eventAudience.eventId, filters: audienceFilters }, audienceFingerprint: audiencePreview.fingerprint })
+          { eventAudience: { eventId: eventAudience.eventId, filters: audienceFilters }, audienceFingerprint })
         : replyToAddressId
         ? await sendSectionAnnouncement(
           sectionId,
@@ -363,7 +389,7 @@ export default function SendAnnouncementPage({
                 variant="contained"
                 startIcon={sending ? <CircularProgress size={16} color="inherit" /> : <Campaign />}
                 onClick={() => void handleSend()}
-                disabled={sending || !siteDeliveryMode || (!!eventAudience && !audiencePreview?.recipients.length)}
+                disabled={sending || !siteDeliveryMode || (!!eventAudience && !canResumeEventSend && !audiencePreview?.recipients.length)}
               >
                 {sending ? "Starting…"
                   : sendRequestId ? "Resume announcement send"
@@ -379,9 +405,26 @@ export default function SendAnnouncementPage({
         </>
       )}
 
-      <TemplateEditor sectionName={sectionName} />
+      {selectedId && <Button sx={{ mt: 2 }} disabled={sending} onClick={() => { discardDraft(); setAudiencePreview(null); setSendError(null); }}>
+        {sendResult ? "New announcement" : "Discard announcement draft"}
+      </Button>}
+
+      <TemplateEditor sectionName={sectionName} draftKey={draftKey} />
 
       <AnnouncementSendHistory sectionId={sectionId} refreshTrigger={historyTrigger} />
     </Box>
   );
+}
+
+function announcementDraftKey({ sectionId, eventAudience }: Pick<SendAnnouncementPageProps, "sectionId" | "eventAudience">): string {
+  const audience = eventAudience
+    ? JSON.stringify(Object.entries(eventAudience.filters).sort(([a], [b]) => a.localeCompare(b)))
+    : "members";
+  return `announcement:${normalizedResourceId(sectionId)}:${eventAudience ? normalizedResourceId(eventAudience.eventId) : "section"}:${audience}`;
+}
+
+export default function SendAnnouncementPage(props: SendAnnouncementPageProps) {
+  // An explicit audience URL is a distinct composition; private previews and
+  // uncertain send IDs cannot migrate into a different requested audience.
+  return <AnnouncementComposer key={announcementDraftKey(props)} {...props} />;
 }

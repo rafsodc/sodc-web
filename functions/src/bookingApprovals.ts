@@ -12,11 +12,13 @@ import type {
   GetBookingRevisionForApprovalFromCallableData,
 } from "@dataconnect/admin-generated";
 import { FUNCTIONS_REGION } from "./constants";
+import { currentAuthorization } from "./currentAuthorization";
+import { requireSectionModerator } from "./sectionAccess";
 import { enforceRateLimit } from "./rateLimiter";
 import {
   handleFunctionError,
   MAX_DESCRIPTION_LENGTH,
-  requireAdmin,
+  requireEnabled,
   requireString,
   validateUUID,
 } from "./helpers";
@@ -124,11 +126,11 @@ export function resolveBookingApprovalReview(args: {
   };
 }
 
-/** One admin decision targets one exact, current pending booking revision. */
+/** One section moderator decision targets one exact, current pending booking revision. */
 export const reviewBookingRevision = onCall(
   { region: FUNCTIONS_REGION, secrets: [...govNotifySecrets] },
   async (request) => {
-    await requireAdmin(request);
+    await requireEnabled(request);
     const reviewerId = request.auth!.uid;
     await enforceRateLimit("reviewBookingRevision", reviewerId);
 
@@ -144,6 +146,9 @@ export const reviewBookingRevision = onCall(
       const targetResult = await getBookingRevisionForApprovalFromCallable({ id: bookingId });
       const target = targetResult.data?.booking;
       if (!target) throw new HttpsError("not-found", "Booking revision not found");
+
+      const actor = currentAuthorization(request);
+      await requireSectionModerator(target.event.section.id, reviewerId, actor.isAdmin);
 
       const allResult = await getBookingsForBookerAndEvent({
         bookerId: target.booker.id,
@@ -162,6 +167,8 @@ export const reviewBookingRevision = onCall(
           revisionGroupId: target.revisionGroupId as UUIDString,
           activeBookingId: activeBooking.id as UUIDString,
           reviewedById: reviewerId,
+          actorSecurityVersion: actor.securityVersion,
+          actorIsAdmin: actor.isAdmin,
           approvalNote,
           deltaAmountMinor: paymentDelta.deltaAmountMinor,
           adjustmentStatus: paymentDelta.status,
@@ -172,6 +179,8 @@ export const reviewBookingRevision = onCall(
           expectedRevisionNumber,
           status: decision,
           reviewedById: reviewerId,
+          actorSecurityVersion: actor.securityVersion,
+          actorIsAdmin: actor.isAdmin,
           approvalNote,
         });
       }
@@ -206,6 +215,13 @@ export const reviewBookingRevision = onCall(
         paymentDelta: paymentDelta?.deltaAmountMinor ?? null,
       };
     } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("SESSION_VERSION_STALE")) {
+        throw new HttpsError("unauthenticated", "Refresh your sign-in session", {code: "SESSION_VERSION_STALE"});
+      }
+      if (/ACCESS_REVOKED|SECTION_MODERATOR_REQUIRED/.test(message)) {
+        throw new HttpsError("permission-denied", "Account access is unavailable", {code: "ACCESS_REVOKED"});
+      }
       if (isApprovalConflict(error)) throw approvalConflict();
       handleFunctionError(error, "reviewing booking revision");
     }

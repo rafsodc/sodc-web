@@ -48,6 +48,7 @@ export const CALLABLE_RATE_LIMITS = {
   reviewBookingRevision: { limit: 30, windowMs: HOUR_MS },
   updateMembershipStatus: { limit: 20, windowMs: HOUR_MS },
   resignMembership: { limit: 3, windowMs: HOUR_MS },
+  getSectionMemberNamesByIds: { limit: 60, windowMs: 5 * MINUTE_MS },
   getSectionMembersMerged: { limit: 60, windowMs: 5 * MINUTE_MS },
   searchSectionMembers: { limit: 60, windowMs: 5 * MINUTE_MS },
   getEventAttendees: { limit: 60, windowMs: 5 * MINUTE_MS },

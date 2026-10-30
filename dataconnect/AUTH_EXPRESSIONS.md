@@ -1,75 +1,39 @@
-# Firebase Data Connect Auth Expressions
+# Data Connect authorization boundaries
 
-This file documents all auth expressions used in queries and mutations. Use these exact strings to ensure consistency and avoid typing errors.
+Auth claims are restrictive compatibility mirrors. They never grant authority by
+themselves. Every enabled client operation also reads redacted server-owned
+`UserSecurityState`, requires READY access, profile/status consistency and eligible
+membership, and compares the exact current security version to the session claim.
+Protected client mutations perform these checks before writing in `@transaction`.
 
-## File Organization
+- Onboarding: verified-email own-profile operations only.
+- Current member: enabled claim plus current authority; resource/ownership checks
+  apply in the operation or its callable.
+- Current section moderator: the member boundary plus either current adminReady
+  and an admin claim, or an explicit/status-derived MODERATOR group relationship
+  to the section owned by the event/ticket being read or changed.
+- Current global administrator: enabled/admin claims and current adminReady.
+  Section configuration, global groups and assignments, users and global payment
+  reconciliation retain this boundary.
+- Service-only: `@auth(level: NO_ACCESS)` rejects all client identities. Trusted
+  callables must await their current-authority and resource checks. Both booking
+  decision transactions additionally check the caller-supplied server-verified
+  actor identity/version and current section relationship at the database write.
 
-- **`queries.gql`** - All queries (user-facing and admin)
-- **`user-mutations.gql`** - User profile mutations (require user authentication)
-- **`user-group-mutations.gql`** - Section and user group mutations (admin only)
-- **`admin-mutations.gql`** - SDK-only mutations (NO_ACCESS, used by Firebase Functions/CLI)
-- **`mutations.gql`** - Legacy file (deprecated, kept for backward compatibility)
+Section event/ticket mutations cannot move an existing event or ticket to another
+section: UpdateEvent has no sectionId parameter, and UpdateTicketType has no
+eventId parameter. Ticket access groups must already be linked to the section or
+used by an existing ticket type in it. Group assignment is still global admin.
 
-## Auth Expression Constants
+`ListSectionTicketAccessGroups` exposes bounded id/name options only.
+`GetSectionMembers` remains service-only. The directory and
+`getSectionMemberNamesByIds` callable preserve the existing MEMBER/event fallback
+population, Auth verification and contact-privacy rules; admin access does not
+add an administrator to the roster.
 
-### Onboarding Profile Access (Verified Email, Not Enabled)
-**Expression:** `"auth.token.email_verified == true"`
-
-**Usage:** Authenticated users who have verified their email but do not yet have `enabled: true`. Used only for initial profile creation and checking whether a profile exists during onboarding.
-
-**Used in:**
-- `CheckUserProfileExists` query
-- `CreateUserProfile` mutation
-
-### User Access (Enabled Required)
-**Expression:** `"auth.token.enabled == true"`
-
-**Usage:** All authenticated users (including admins) must have the `enabled` claim set to `true` to access these operations.
-
-**Used in:**
-- `GetCurrentUser` query
-- `GetSectionsForUser` query
-- `GetUserAccessGroups` query
-- `UpsertUser` mutation
-
-### Admin Access (Admin + Enabled Required)
-**Expression:** `"auth.token.admin == true && auth.token.enabled == true"`
-
-**Usage:** Admin-only operations. Admins must have both `admin == true` AND `enabled == true` to access these operations.
-
-**Used in:**
-- `GetUserById` query
-- `ListUsers` query
-- `ListSections` query
-- `ListAccessGroups` query
-- `UpdateUser` mutation
-- `CreateSection` mutation
-- `CreateAccessGroup` mutation
-- `AddUserToAccessGroup` mutation
-- `RemoveUserFromAccessGroup` mutation
-- `GrantUserGroupToSectionForPurpose` mutation
-- `RevokeUserGroupFromSectionForPurpose` mutation
-- `CreateEvent` mutation
-- `UpdateEvent` mutation
-- `DeleteEvent` mutation
-- `CreateTicketType` mutation
-- `UpdateTicketType` mutation
-- `DeleteTicketType` mutation
-
-### System Access (No Auth Required)
-**Expression:** `@auth(level: NO_ACCESS)`
-
-**Usage:** Operations used by Firebase Functions with service account credentials. No user authentication required.
-
-**Used in:**
-- `GetUserMembershipStatus` query (queries.gql)
-- `UpdateUserMembershipStatus` mutation (admin-mutations.gql)
-- `DeleteUser` mutation (admin-mutations.gql)
-- `CreateUser` mutation (admin-mutations.gql)
-
-## Notes
-
-- All users (including admins) must have `enabled == true` to access any user-facing operations
-- Admins must have both `admin == true` AND `enabled == true` to access admin operations
-- When copying expressions, ensure exact string matching including quotes and spacing
-
+The complete reviewed boundary inventory is
+[authorization-operations.json](../docs/security/authorization-operations.json).
+Run `node scripts/check-authorization-inventory.mjs` to verify drift and required
+current-authority, scope and transaction markers. The isolated section SQL suite
+exercises actual operation authorization and rollback without signed JWTs or
+cloud deployment.

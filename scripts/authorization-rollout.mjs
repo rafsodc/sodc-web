@@ -4,12 +4,17 @@ import path from "node:path";
 export const AUTHORIZATION_PROJECTS = ["sodc-web", "sodc-web-beta", "sodc-web-production"];
 export const LEGACY_POTENTIAL_LOST_OPERATIONS = ["ConfirmPotentialLostWithSecurityState", "ConfirmPotentialLost"];
 
-/** Remove only the named redacted authority lookup; retain every existing claim/ownership check. */
-export function compatibilityOperationSource(source) {
+const LEGACY_SECTION_ADMIN_OPERATIONS = new Set([
+  "CreateEvent", "UpdateEvent", "DeleteEvent", "CreateTicketType", "UpdateTicketType", "DeleteTicketType",
+  "GetEventsForSection", "GetEventById", "ListEventBookingsForAdmin", "ListTicketOrdersForAdmin",
+  "ListBookingPaymentAdjustmentsForAdmin", "ListSectionTicketAccessGroups",
+]);
+
+function removeGuardSelection(source, marker) {
   let result = source;
   for (;;) {
-    const start = result.indexOf("currentAuthorization: userSecurityState");
-    if (start < 0) break;
+    const start = result.indexOf(marker);
+    if (start < 0) return result;
     let quote = false; let escaped = false; let parentheses = 0; let braces = 0; let selection = -1; let end = -1;
     for (let index = start; index < result.length; index++) {
       const char = result[index];
@@ -27,10 +32,38 @@ export function compatibilityOperationSource(source) {
         braces++;
       } else if (char === "}" && selection >= 0 && parentheses === 0 && --braces === 0) {end = index + 1; break;}
     }
-    if (end < 0) throw new Error("Cannot identify currentAuthorization selection; refusing compatibility artifact");
+    if (end < 0) throw new Error("Cannot identify authorization guard selection; refusing compatibility artifact");
     result = result.slice(0, start) + result.slice(end);
   }
-  return result.replace(/query\s+@redact\s*\{\s*\}/g, "");
+}
+
+/** Legacy-only sealed artifacts retain the old administrator boundary. They must
+ * not emit dangling current-state references or grant the new moderator scope
+ * before current authority has been backfilled. Checked-in strict sources are
+ * never changed by this transformation.
+ */
+export function compatibilityOperationSource(source) {
+  const starts = [...source.matchAll(/^(?:query|mutation)\s+(\w+)/gm)];
+  const chunks = starts.length ? [source.slice(0, starts[0].index)] : [source];
+  for (let index = 0; index < starts.length; index++) {
+    let operation = source.slice(starts[index].index, starts[index + 1]?.index ?? source.length);
+    const scoped = operation.includes("managementScope:");
+    if (scoped) {
+      if (!LEGACY_SECTION_ADMIN_OPERATIONS.has(starts[index][1]) || !operation.includes("SECTION_MODERATOR_REQUIRED") ||
+          !operation.includes('@auth(expr: "auth.token.enabled == true")')) {
+        throw new Error("Unknown section management scope; refusing compatibility artifact");
+      }
+      operation = operation.replace('@auth(expr: "auth.token.enabled == true")', '@auth(expr: "auth.token.admin == true && auth.token.enabled == true")');
+    }
+    for (const marker of ["currentAuthorization: userSecurityState", "managementScope:", "audienceGroup:", "managementBooking:"]) {
+      operation = removeGuardSelection(operation, marker);
+    }
+    if (/response(?:\.query)?\.currentAuthorization/.test(operation)) throw new Error("Unresolved current authority reference; refusing compatibility artifact");
+    chunks.push(operation);
+  }
+  // Preserve malformed-source refusal even when no complete named definition exists.
+  if (!starts.length && source.includes("currentAuthorization: userSecurityState")) throw new Error("Unknown current authorization source; refusing compatibility artifact");
+  return chunks.join("").replace(/query\s+@redact\s*\{\s*\}/g, "");
 }
 
 /** Source preparation only. This function never authenticates, deploys, or changes checked-in sources. */

@@ -46,6 +46,8 @@ describe("function entry guard contracts", () => {
 
     const sections = readSource("sections.ts");
     assertOnCallGuard(sections, "getSectionMembersMerged", "requireEnabled(request);");
+    assertOnCallGuard(sections, "getSectionMemberNamesByIds", "requireEnabled(request);");
+    expect(sections).toContain("await requireSectionModerator(sectionId, actor.uid, actor.isAdmin)");
     assertOnCallGuard(sections, "getSectionForUser", "requireEnabled(request);");
     assertOnCallGuard(sections, "getSectionEventsForUser", "requireEnabled(request);");
     assertOnCallGuard(sections, "getEventForUser", "requireEnabled(request);");
@@ -215,7 +217,8 @@ describe("function entry guard contracts", () => {
     expect(replayLimitIdx).toBeLessThan(weightedLimitIdx);
 
     const bookingApprovals = readSource("bookingApprovals.ts");
-    assertOnCallGuard(bookingApprovals, "reviewBookingRevision", "requireAdmin(request);", 300);
+    assertOnCallGuard(bookingApprovals, "reviewBookingRevision", "requireEnabled(request);", 300);
+    expect(bookingApprovals).toContain("await requireSectionModerator(target.event.section.id, reviewerId, actor.isAdmin)");
     assertOnCallGuard(
       bookingApprovals,
       "reviewBookingRevision",

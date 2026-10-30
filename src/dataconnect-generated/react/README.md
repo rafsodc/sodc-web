@@ -125,6 +125,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*ListOpenPaymentReconciliationExceptions*](#listopenpaymentreconciliationexceptions)
   - [*GetSectionAnnouncementOptOut*](#getsectionannouncementoptout)
   - [*GetMyAnnouncementPreferences*](#getmyannouncementpreferences)
+  - [*ListSectionTicketAccessGroups*](#listsectionticketaccessgroups)
   - [*ServiceGetUserById*](#servicegetuserbyid)
   - [*ServiceListUsers*](#servicelistusers)
   - [*ServiceListUserNamesByIds*](#servicelistusernamesbyids)
@@ -10908,6 +10909,91 @@ export default function GetMyAnnouncementPreferencesComponent() {
 }
 ```
 
+## ListSectionTicketAccessGroups
+You can execute the `ListSectionTicketAccessGroups` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useListSectionTicketAccessGroups(dc: DataConnect, vars: ListSectionTicketAccessGroupsVariables, options?: useDataConnectQueryOptions<ListSectionTicketAccessGroupsData>): UseDataConnectQueryResult<ListSectionTicketAccessGroupsData, ListSectionTicketAccessGroupsVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useListSectionTicketAccessGroups(vars: ListSectionTicketAccessGroupsVariables, options?: useDataConnectQueryOptions<ListSectionTicketAccessGroupsData>): UseDataConnectQueryResult<ListSectionTicketAccessGroupsData, ListSectionTicketAccessGroupsVariables>;
+```
+
+### Variables
+The `ListSectionTicketAccessGroups` Query requires an argument of type `ListSectionTicketAccessGroupsVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface ListSectionTicketAccessGroupsVariables {
+  sectionId: UUIDString;
+}
+```
+### Return Type
+Recall that calling the `ListSectionTicketAccessGroups` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `ListSectionTicketAccessGroups` Query is of type `ListSectionTicketAccessGroupsData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface ListSectionTicketAccessGroupsData {
+  userGroups: ({
+    id: UUIDString;
+    name: string;
+  } & UserGroup_Key)[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `ListSectionTicketAccessGroups`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, ListSectionTicketAccessGroupsVariables } from '@dataconnect/generated';
+import { useListSectionTicketAccessGroups } from '@dataconnect/generated/react'
+
+export default function ListSectionTicketAccessGroupsComponent() {
+  // The `useListSectionTicketAccessGroups` Query hook requires an argument of type `ListSectionTicketAccessGroupsVariables`:
+  const listSectionTicketAccessGroupsVars: ListSectionTicketAccessGroupsVariables = {
+    sectionId: ..., 
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useListSectionTicketAccessGroups(listSectionTicketAccessGroupsVars);
+  // Variables can be defined inline as well.
+  const query = useListSectionTicketAccessGroups({ sectionId: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useListSectionTicketAccessGroups(dataConnect, listSectionTicketAccessGroupsVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useListSectionTicketAccessGroups(listSectionTicketAccessGroupsVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useListSectionTicketAccessGroups(dataConnect, listSectionTicketAccessGroupsVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.userGroups);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
 ## ServiceGetUserById
 You can execute the `ServiceGetUserById` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
 
@@ -15900,7 +15986,9 @@ export interface UpdateBookingApprovalFromCallableVariables {
   id: UUIDString;
   expectedRevisionNumber: number;
   status: BookingApprovalStatus;
-  reviewedById?: string | null;
+  reviewedById: string;
+  actorSecurityVersion: number;
+  actorIsAdmin: boolean;
   approvalNote?: string | null;
 }
 ```
@@ -15954,12 +16042,14 @@ export default function UpdateBookingApprovalFromCallableComponent() {
     id: ..., 
     expectedRevisionNumber: ..., 
     status: ..., 
-    reviewedById: ..., // optional
+    reviewedById: ..., 
+    actorSecurityVersion: ..., 
+    actorIsAdmin: ..., 
     approvalNote: ..., // optional
   };
   mutation.mutate(updateBookingApprovalFromCallableVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., expectedRevisionNumber: ..., status: ..., reviewedById: ..., approvalNote: ..., });
+  mutation.mutate({ id: ..., expectedRevisionNumber: ..., status: ..., reviewedById: ..., actorSecurityVersion: ..., actorIsAdmin: ..., approvalNote: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

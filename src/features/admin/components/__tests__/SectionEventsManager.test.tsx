@@ -1,6 +1,10 @@
+import { MemoryRouter, Routes, Route, useParams, useNavigate, useLocation } from "react-router-dom";
+import { createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
+import { useEffect, type ReactElement } from "react";
+const render = (ui: ReactElement) => baseRender(<MemoryRouter>{ui}</MemoryRouter>);
 import { guestCall } from "../../../guests/api";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, fireEvent, render, screen, waitFor, within } from "../../../../test-utils";
+import { act, fireEvent, render as baseRender, screen, waitFor, within } from "../../../../test-utils";
 import SectionEventsManager from "../SectionEventsManager";
 import * as reactGenerated from "../../../../shared/query/authoritativeHooks";
 import * as generated from "@dataconnect/generated";
@@ -17,12 +21,12 @@ vi.mock("../../../../shared/query/authoritativeHooks", () => ({
   useGetEventById: vi.fn(),
   useListBookingPaymentAdjustmentsForAdmin: vi.fn(),
   useListEventBookingsForAdmin: vi.fn(),
-  useListUserNamesByIds: vi.fn(),
   useListTicketOrdersForAdmin: vi.fn(),
 }));
 
 vi.mock("firebase/data-connect", () => ({
   executeQuery: vi.fn().mockResolvedValue({ data: null }),
+  queryRef: vi.fn(() => ({type:"query"})),
   executeMutation: vi.fn().mockResolvedValue({}),
   validateArgs: vi.fn((_config: unknown, dcOrVars: unknown, vars: unknown) => {
     if (vars !== undefined) return { dc: dcOrVars, vars };
@@ -38,6 +42,7 @@ vi.mock("../../../../config/firebase", () => ({
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   reviewBookingRevision: vi.fn().mockResolvedValue({ success: true }),
+  getSectionMemberNamesByIds: vi.fn().mockResolvedValue({users:[]}),
 }));
 
 vi.mock("../../../guests/api", () => ({ guestCall: vi.fn().mockResolvedValue({ event: {}, guests: [], ticketTypes: [] }), money: (value: number) => String(value), paymentLabel: (value: string) => value }));
@@ -61,9 +66,7 @@ function mockEventBookings(overrides: DataConnectQueryResultOverrides) {
 }
 
 function mockUserNames(overrides: DataConnectQueryResultOverrides) {
-  vi.mocked(reactGenerated.useListUserNamesByIds).mockReturnValue(
-    dataConnectQueryResult<typeof reactGenerated.useListUserNamesByIds>(overrides)
-  );
+  vi.mocked(firebaseFunctions.getSectionMemberNamesByIds).mockResolvedValue((overrides.data ?? {users:[]}) as never);
 }
 
 function mockBookingPaymentAdjustments(overrides: DataConnectQueryResultOverrides) {
@@ -88,7 +91,6 @@ vi.mock("@dataconnect/generated", async () => {
     createTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     updateTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     deleteTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
-    listUserGroupsRef: vi.fn(() => ({ type: "query" })),
     ...Object.fromEntries([
       ["getEventsForSectionRef", "GetEventsForSection"], ["getEventByIdRef", "GetEventById"],
       ["listEventBookingsForAdminRef", "ListEventBookingsForAdmin"], ["listTicketOrdersForAdminRef", "ListTicketOrdersForAdmin"],
@@ -96,6 +98,26 @@ vi.mock("@dataconnect/generated", async () => {
     ].map(([key, name]) => [key, vi.fn((dataConnect: unknown, variables: unknown) => ({ name, dataConnect, variables }))])),
   };
 });
+
+function CanonicalManagerRoute() {
+  const {sectionId = "section-1",eventId} = useParams();
+  return <SectionEventsManager key={`${sectionId}:${eventId ?? "list"}`} sectionId={sectionId} sectionName="Events Section" initialEventId={eventId} routeControlled onBack={() => {}} />;
+}
+let managerNavigation: ReturnType<typeof useNavigate>;
+function ManagerHistory() {
+  const navigate = useNavigate(); const location = useLocation();
+  useEffect(() => {managerNavigation=navigate;},[navigate]);
+  return <><output>{location.pathname+location.search}</output><button onClick={() => navigate("/elsewhere")}>Leave task</button><button onClick={() => navigate(-1)}>History back</button><button onClick={() => navigate(1)}>History forward</button></>;
+}
+function canonicalManager(path: string) {
+  return baseRender(<MemoryRouter initialEntries={[path]}><ManagerHistory/><Routes><Route path="/sections/:sectionId/manage/events" element={<CanonicalManagerRoute/>}/><Route path="/sections/:sectionId/manage/events/:eventId" element={<CanonicalManagerRoute/>}/><Route path="/elsewhere" element={<div>Elsewhere</div>}/></Routes></MemoryRouter>);
+}
+
+function unloadBlocked() {
+  const event = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
+}
 
 describe("SectionEventsManager", () => {
   const sectionId = "section-1";
@@ -653,18 +675,10 @@ describe("SectionEventsManager", () => {
     expect(screen.getByRole("columnheader", { name: "Symposium" })).toBeInTheDocument();
     expect(screen.getAllByRole("columnheader", { name: "Accommodation" })).toHaveLength(2);
     expect(screen.getAllByRole("columnheader", { name: "Seating preferences" })).toHaveLength(2);
-    expect(screen.getByText("Taylor Member")).toBeInTheDocument();
+    expect(await screen.findByText("Taylor Member")).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Revision" })).not.toBeInTheDocument();
-    expect(reactGenerated.useListUserNamesByIds).toHaveBeenCalledWith(
-      expect.anything(),
-      { ids: ["u-2"] },
-      { enabled: true }
-    );
-    expect(reactGenerated.useListUserNamesByIds).not.toHaveBeenCalledWith(
-      expect.anything(),
-      { ids: expect.arrayContaining(["u-rejected-preference"]) },
-      expect.anything()
-    );
+    expect(firebaseFunctions.getSectionMemberNamesByIds).toHaveBeenCalledWith(sectionId,["u-2"]);
+    expect(firebaseFunctions.getSectionMemberNamesByIds).not.toHaveBeenCalledWith(sectionId,expect.arrayContaining(["u-rejected-preference"]));
     expect(screen.getByRole("columnheader", { name: "Rank" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Membership status" })).toBeInTheDocument();
     expect(screen.getByText("Wing Commander")).toBeInTheDocument();
@@ -995,4 +1009,296 @@ describe("SectionEventsManager", () => {
     expect(screen.getByText("Current Guest")).toBeInTheDocument();
     expect(screen.queryByText("Superseded Guest")).not.toBeInTheDocument();
   });
+  it("loads a cold event URL with its approval task selected and all navigation as links", async () => {
+    const event = {id:"ev-1",title:"Cold event",section:{id:sectionId},startDateTime:"2030-03-01T18:00:00Z",endDateTime:"2030-03-01T22:00:00Z",bookingStartDateTime:"2030-01-01T00:00:00Z",bookingEndDateTime:"2030-02-28T00:00:00Z",maxGuestsWithoutModeratorApproval:0,ticketTypes:[]};
+    mockGetEventsForSection({data:{section:{id:sectionId,events:[event]}},isLoading:false,isError:false});
+    mockGetEventById({data:{event},isLoading:false,isError:false});
+    canonicalManager("/sections/section-1/manage/events/ev-1?task=approvals");
+    expect(screen.getByRole("link",{name:"Booking approvals"})).toHaveAttribute("aria-current","page");
+    expect(screen.getByRole("button",{name:"Booking approvals"})).toHaveAttribute("aria-expanded","true");
+    expect(screen.getByRole("link",{name:"Attendee tickets"})).toHaveAttribute("href","/sections/section-1/manage/events/ev-1?task=attendees");
+    expect(reactGenerated.useListEventBookingsForAdmin).toHaveBeenCalledWith(expect.anything(),{eventId:"ev-1"},{enabled:true});
+  });
+
+  it("refuses an event absent from the authoritative section list before enabling private management reads", () => {
+    canonicalManager("/sections/section-1/manage/events/forged");
+    expect(screen.getByText(/Event unavailable in this section/)).toBeInTheDocument();
+    expect(reactGenerated.useGetEventById).toHaveBeenCalledWith(expect.anything(),{id:"forged"},{enabled:false});
+    expect(reactGenerated.useListEventBookingsForAdmin).toHaveBeenCalledWith(expect.anything(),{eventId:"forged"},{enabled:false});
+    expect(screen.queryByRole("button",{name:"Add ticket type"})).not.toBeInTheDocument();
+  });
+
+  it("does not render a mismatched event returned for another section", () => {
+    mockGetEventsForSection({data:{section:{id:sectionId,events:[{id:"ev-1",title:"Event"}]}},isLoading:false,isError:false});
+    mockGetEventById({data:{event:{id:"ev-1",section:{id:"other"},title:"Wrong section private title",ticketTypes:[]}},isLoading:false,isError:false});
+    canonicalManager("/sections/section-1/manage/events/ev-1");
+    expect(screen.getByText(/Event unavailable in this section/)).toBeInTheDocument();
+    expect(screen.queryByText(/Wrong section private title/)).not.toBeInTheDocument();
+  });
+
+  it("restores a new-event form after leaving its resource and browser back, then clears it on Cancel", async () => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({lifecycle:owner,retire:()=>owner.retire(),signOut:async()=>owner.retire()});
+    const view = canonicalManager("/sections/section-1/manage/events?edit=new-event");
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Unsent event draft"}});
+      await act(async () => managerNavigation("/elsewhere"));
+      expect(screen.getByText("Elsewhere")).toBeInTheDocument();
+      await act(async () => managerNavigation(-1));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("Unsent event draft");
+      await user.click(screen.getByRole("button",{name:"Cancel"}));
+      await user.click(await screen.findByRole("link",{name:"Add event"}));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("");
+    } finally { view.unmount(); uninstall(); }
+  },20_000);
+
+  it("opens a ticket editor from its cold URL and rejects missing ticket IDs", async () => {
+    const event = {id:"ev-1",section:{id:sectionId},title:"Event",ticketTypes:[{id:"ticket-1",title:"Member dinner",price:25,sortOrder:0,audience:generated.TicketAudience.MEMBER,includesDinner:true,includesSymposium:false,userGroup:{id:"group-1",name:"Members"}}]};
+    mockGetEventsForSection({data:{section:{id:sectionId,events:[event]}},isLoading:false,isError:false});
+    mockGetEventById({data:{event},isLoading:false,isError:false});
+    const view = canonicalManager("/sections/section-1/manage/events/ev-1?task=tickets&ticket=ticket-1");
+    expect(await screen.findByLabelText(/^title/i)).toHaveValue("Member dinner");
+    view.unmount();
+    canonicalManager("/sections/section-1/manage/events/ev-1?task=tickets&ticket=foreign");
+    expect(screen.getByText("Ticket type unavailable in this event.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  },20_000);
+
+  it("matches compact server event and section UUIDs to uppercase hyphenated direct URLs", () => {
+    const sid="AABBCCDD-1111-4222-8333-ABCDEF123456";
+    const eid="EEFF0011-2222-4333-8444-ABCDEF654321";
+    const event={id:eid.replaceAll("-","").toLowerCase(),section:{id:sid.replaceAll("-","").toLowerCase()},title:"Mixed format event",ticketTypes:[],maxGuestsWithoutModeratorApproval:0};
+    mockGetEventsForSection({data:{section:{id:event.section.id,events:[event]}},isLoading:false,isError:false});
+    mockGetEventById({data:{event},isLoading:false,isError:false});
+    canonicalManager(`/sections/${sid}/manage/events/${eid}?task=tickets`);
+    expect(screen.getByRole("heading",{name:"Event admin: Mixed format event"})).toBeInTheDocument();
+    expect(screen.getByRole("link",{name:"Add ticket type"})).toHaveAttribute("href",`/sections/${sid.toLowerCase()}/manage/events/${eid.toLowerCase()}?task=tickets&ticket=new`);
+    expect(reactGenerated.useGetEventById).toHaveBeenCalledWith(expect.anything(),{id:eid},{enabled:true});
+  });
+
+  it("keeps exactly one event create while leaving, returning pending, then completing away", async () => {
+    const owner=createSessionLifecycle(); owner.observe("admin");
+    const uninstall=installSessionRuntime({lifecycle:owner,retire:()=>owner.retire(),signOut:async()=>owner.retire()});
+    let complete!:(value:unknown)=>void;
+    const pending=new Promise(resolve=>{complete=resolve});
+    vi.mocked(firebaseDataConnect.executeMutation).mockReturnValueOnce(pending as never);
+    const view=canonicalManager("/sections/section-1/manage/events?edit=new-event");
+    try {
+      const user=userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Pending one event"}});
+      await user.click(screen.getByRole("button",{name:"Save"}));
+      await waitFor(()=>expect(generated.createEventRef).toHaveBeenCalledOnce());
+      await act(async()=>managerNavigation("/elsewhere"));
+      await act(async()=>managerNavigation(-1));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("Pending one event");
+      expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
+      expect(screen.getByText(/This save is still being confirmed/)).toBeInTheDocument();
+      expect(generated.createEventRef).toHaveBeenCalledOnce();
+      await act(async()=>managerNavigation(1));
+      await act(async()=>{complete({data:{event_insert:{id:"created-event"}}});await pending;});
+      expect(screen.getByText("Elsewhere")).toBeInTheDocument();
+      await act(async()=>managerNavigation(-1));
+      expect(await screen.findByText(/The previous save completed/)).toBeInTheDocument();
+      expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
+      await user.click(screen.getByRole("button",{name:"Load saved change"}));
+      expect(await screen.findByRole("link",{name:"Add event"})).toBeInTheDocument();
+      expect(generated.createEventRef).toHaveBeenCalledOnce();
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    } finally {view.unmount();uninstall();}
+  },20_000);
+
+  it("does not close a different editor when an old update completes", async () => {
+    const event={id:"ev-1",section:{id:sectionId},title:"Original event",startDateTime:"2030-03-01T18:00:00Z",endDateTime:"2030-03-01T22:00:00Z",bookingStartDateTime:"2030-01-01T00:00:00Z",bookingEndDateTime:"2030-02-28T00:00:00Z",maxGuestsWithoutModeratorApproval:0,ticketTypes:[]};
+    mockGetEventsForSection({data:{section:{id:sectionId,events:[event]}},isLoading:false,isError:false});
+    mockGetEventById({data:{event},isLoading:false,isError:false});
+    let complete!:(value:unknown)=>void;
+    const pending=new Promise(resolve=>{complete=resolve});
+    vi.mocked(firebaseDataConnect.executeMutation).mockReturnValueOnce(pending as never);
+    canonicalManager("/sections/section-1/manage/events/ev-1?edit=event");
+    const user=userEvent.setup();
+    fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Saved old edit"}});
+    await user.click(screen.getByRole("button",{name:"Save"}));
+    await act(async()=>managerNavigation("/sections/section-1/manage/events?edit=new-event"));
+    fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Newer unsaved event"}});
+    await act(async()=>{complete({});await pending;});
+    expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer unsaved event");
+    expect(screen.getByText("/sections/section-1/manage/events?edit=new-event")).toBeInTheDocument();
+    expect(screen.queryByText(/The previous save completed/)).not.toBeInTheDocument();
+  },20_000);
+
+  it("retains an uncertain create failure until explicit latest-list review instead of replaying", async () => {
+    const owner=createSessionLifecycle();owner.observe("admin");
+    const uninstall=installSessionRuntime({lifecycle:owner,retire:()=>owner.retire(),signOut:async()=>owner.retire()});
+    let fail!:(error:Error)=>void;
+    const pending=new Promise((_resolve,reject)=>{fail=reject});
+    vi.mocked(firebaseDataConnect.executeMutation).mockReturnValueOnce(pending as never);
+    const view=canonicalManager("/sections/section-1/manage/events?edit=new-event");
+    try {
+      const user=userEvent.setup();fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Unconfirmed create"}});
+      await user.click(screen.getByRole("button",{name:"Save"}));
+      await act(async()=>managerNavigation("/elsewhere"));
+      await act(async()=>{fail(new Error("Network timeout"));await pending.catch(()=>{});});
+      expect(screen.getByText("Elsewhere")).toBeInTheDocument();
+      await act(async()=>managerNavigation(-1));
+      expect(await screen.findByText(/The previous save could not be confirmed/)).toBeInTheDocument();
+      expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
+      expect(generated.createEventRef).toHaveBeenCalledOnce();
+      vi.mocked(firebaseDataConnect.executeQuery).mockResolvedValue({ data: { section: { id: sectionId, events: [] } } } as never);
+      await user.click(screen.getByRole("button",{name:"Check latest list"}));
+      const review = await screen.findByRole("dialog",{name:"Start a new save request?"});
+      expect(generated.createEventRef).toHaveBeenCalledOnce();
+      await user.click(within(review).getByRole("button", { name: "I checked — start a new request" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Start a new save request?", hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Unconfirmed create");
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+      expect(unloadBlocked()).toBe(true);
+    } finally {view.unmount();uninstall();}
+  },20_000);
+
+  it("keeps exactly one ticket create across a pending leave/back and reconciles its saved receipt", async () => {
+    const owner=createSessionLifecycle();owner.observe("admin");
+    const uninstall=installSessionRuntime({lifecycle:owner,retire:()=>owner.retire(),signOut:async()=>owner.retire()});
+    const event={id:"ev-1",section:{id:sectionId},title:"Event",ticketTypes:[],maxGuestsWithoutModeratorApproval:0};
+    mockGetEventsForSection({data:{section:{id:sectionId,events:[event]}},isLoading:false,isError:false});
+    mockGetEventById({data:{event},isLoading:false,isError:false});
+    vi.mocked(firebaseDataConnect.executeQuery).mockResolvedValue({data:{userGroups:[{id:"group-1",name:"Members"}]}} as never);
+    let complete!:(value:unknown)=>void;
+    const pending=new Promise(resolve=>{complete=resolve});
+    vi.mocked(firebaseDataConnect.executeMutation).mockReturnValueOnce(pending as never);
+    const view=canonicalManager("/sections/section-1/manage/events/ev-1?task=tickets&ticket=new");
+    try {
+      const user=userEvent.setup();fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Pending ticket"}});
+      await user.click(screen.getByRole("combobox",{name:/access group/i}));
+      await user.click(await screen.findByRole("option",{name:"Members"}));
+      await user.click(screen.getByRole("button",{name:"Save"}));
+      await waitFor(()=>expect(generated.createTicketTypeRef).toHaveBeenCalledOnce());
+      await act(async()=>managerNavigation("/elsewhere"));
+      await act(async()=>managerNavigation(-1));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("Pending ticket");
+      expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
+      expect(generated.createTicketTypeRef).toHaveBeenCalledOnce();
+      await act(async()=>managerNavigation(1));
+      await act(async()=>{complete({});await pending;});
+      expect(screen.getByText("Elsewhere")).toBeInTheDocument();
+      await act(async()=>managerNavigation(-1));
+      expect(await screen.findByText(/The previous save completed/)).toBeInTheDocument();
+      await user.click(screen.getByRole("button",{name:"Load saved change"}));
+      // Navigation closes the editor before MUI removes its exiting portal and
+      // accessibility mask. Wait for that transition before querying the page.
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
+      expect(await screen.findByRole("link",{name:"Add ticket type"})).toBeInTheDocument();
+      expect(generated.createTicketTypeRef).toHaveBeenCalledOnce();
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    } finally {view.unmount();uninstall();}
+  },20_000);
+
+  it.each(["event", "ticket"] as const)("clears a found %s save receipt and draft only after successful list review without another mutation", async (kind) => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const savedTitle = `Saved ${kind} after timeout`;
+    const event = { id: "ev-1", section: { id: sectionId }, title: kind === "event" ? savedTitle : "Owned event", ticketTypes: [], maxGuestsWithoutModeratorApproval: 0 };
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [event] } }, isLoading: false, isError: false });
+    mockGetEventById({ data: { event }, isLoading: false, isError: false });
+    let reviewFailure: "error" | "missing" | null = null;
+    let reviews = 0;
+    vi.mocked(firebaseDataConnect.executeQuery).mockImplementation(async (ref) => {
+      const name = (ref as { name?: string }).name;
+      if (name === (kind === "event" ? "GetEventsForSection" : "GetEventById")) {
+        reviews += 1;
+        if (reviewFailure === "error") throw new Error("Latest list unavailable");
+        if (reviewFailure === "missing") return { data: null } as never;
+      }
+      return { data: name === "GetEventsForSection" ? { section: { id: sectionId, events: [event] } }
+        : name === "GetEventById" ? { event: { ...event, ticketTypes: [{ id: "saved-ticket", title: savedTitle }] } }
+        : { userGroups: [{ id: "group-1", name: "Members" }] } } as never;
+    });
+    vi.mocked(firebaseDataConnect.executeMutation).mockRejectedValueOnce(new Error("Response lost after server commit"));
+    const url = kind === "event" ? "/sections/section-1/manage/events?edit=new-event" : "/sections/section-1/manage/events/ev-1?task=tickets&ticket=new";
+    const view = canonicalManager(url);
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: savedTitle } });
+      if (kind === "ticket") {
+        await user.click(screen.getByRole("combobox", { name: /access group/i }));
+        await user.click(await screen.findByRole("option", { name: "Members" }));
+      }
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await screen.findByText(/The previous save could not be confirmed/);
+      expect(unloadBlocked()).toBe(true);
+      await act(async () => managerNavigation("/elsewhere"));
+      expect(unloadBlocked()).toBe(true);
+      await act(async () => managerNavigation(-1));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue(savedTitle);
+      for (const failure of ["error", "missing"] as const) {
+        reviewFailure = failure;
+        const before = reviews;
+        await user.click(screen.getByRole("button", { name: "Check latest list" }));
+        await waitFor(() => expect(reviews).toBe(before + 1));
+        expect(screen.queryByRole("button", { name: "I found the saved change — close this draft" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        expect(unloadBlocked()).toBe(true);
+      }
+      reviewFailure = null;
+      await user.click(screen.getByRole("button", { name: "Check latest list" }));
+      const review = await screen.findByRole("dialog", { name: "Start a new save request?" });
+      expect(within(review).getByText(savedTitle)).toBeInTheDocument();
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+      await user.click(within(review).getByRole("button", { name: "I found the saved change — close this draft" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
+      expect(unloadBlocked()).toBe(false);
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+      await act(async () => managerNavigation(url));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("");
+      expect(screen.queryByText(/The previous save could not be confirmed/)).not.toBeInTheDocument();
+      expect(unloadBlocked()).toBe(false);
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "A separate unsent draft" } });
+      if (kind === "ticket") {
+        await user.click(screen.getByRole("combobox", { name: /access group/i }));
+        await user.click(await screen.findByRole("option", { name: "Members" }));
+      }
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
+      await act(async () => managerNavigation("/elsewhere"));
+      expect(unloadBlocked()).toBe(false);
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    } finally { view.unmount(); owner.retire(); uninstall(); }
+  }, 20_000);
+
+  it("ignores a deferred review after leaving and returning while preserving another editor's draft", async () => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const event = { id: "ev-1", section: { id: sectionId }, title: "Existing event", ticketTypes: [], maxGuestsWithoutModeratorApproval: 0 };
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [event] } }, isLoading: false, isError: false });
+    mockGetEventById({ data: { event }, isLoading: false, isError: false });
+    vi.mocked(firebaseDataConnect.executeMutation).mockRejectedValueOnce(new Error("Uncertain create"));
+    let complete!: (data: unknown) => void;
+    const latest = new Promise(resolve => { complete = resolve; });
+    vi.mocked(firebaseDataConnect.executeQuery).mockReturnValueOnce(latest as never);
+    const firstUrl = "/sections/section-1/manage/events?edit=new-event";
+    const otherUrl = "/sections/section-1/manage/events/ev-1?edit=event";
+    const view = canonicalManager(firstUrl);
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "Original uncertain draft" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await screen.findByText(/The previous save could not be confirmed/);
+      await user.click(screen.getByRole("button", { name: "Check latest list" }));
+      await waitFor(() => expect(firebaseDataConnect.executeQuery).toHaveBeenCalledOnce());
+      await act(async () => managerNavigation(otherUrl));
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "Another editor's unsent changes" } });
+      await act(async () => managerNavigation(-1));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("Original uncertain draft");
+      await act(async () => { complete({ data: { section: { id: sectionId, events: [event] } } }); await latest; });
+      expect(screen.queryByRole("dialog", { name: "Start a new save request?" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(unloadBlocked()).toBe(true);
+      await act(async () => managerNavigation(otherUrl));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("Another editor's unsent changes");
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    } finally { view.unmount(); owner.retire(); uninstall(); }
+  }, 20_000);
+
 });

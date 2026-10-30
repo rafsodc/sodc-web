@@ -8,7 +8,8 @@ import {
   useGetMyTicketOrders,
   useGetUserAccessGroups,
 } from "../../../shared/query/authoritativeHooks";
-import { dataConnect } from "../../../config/firebase";
+import { useAdminClaim } from "../../users/hooks/useAdminClaim";
+import { auth, dataConnect } from "../../../config/firebase";
 import { evaluateBookingGatePreview, userMatchesUserGroup } from "../utils/bookingEligibility";
 import {
   buildBookingTicketRowsWithPaymentStatus,
@@ -26,15 +27,21 @@ export function useBookingWizardData(args: {
   postSubmitFlow: boolean;
 }) {
   const { section, event, postSubmitFlow } = args;
+  const isAdmin = useAdminClaim(auth.currentUser);
   const { data: currentUserData, isLoading: loadingProfile } = useGetCurrentUser(dataConnect, {});
   const { data: accessData } = useGetUserAccessGroups(dataConnect, {});
   const {
     data: myBookingsData,
     isLoading: loadingBookings,
+    isFetching: refreshingBookings,
     isError: bookingsError,
     error: bookingsQueryError,
     refetch: refetchMyBookings,
-  } = useGetMyBookingsForEvent(dataConnect, { eventId: event.id as UUIDString });
+  } = useGetMyBookingsForEvent(dataConnect, { eventId: event.id as UUIDString }, {
+    // A retained submission must be checked against the server on a return visit,
+    // even when TanStack still considers its pre-submit cache fresh.
+    refetchOnMount: "always",
+  });
   const membershipStatus = currentUserData?.user?.membershipStatus;
 
   const explicitGroupIds = useMemo(() => {
@@ -50,13 +57,14 @@ export function useBookingWizardData(args: {
       };
     }
     return evaluateBookingGatePreview({
+      isAdmin,
       purposeLinks: section.purposeLinks ?? [],
       membershipStatus,
       explicitGroupIds,
       bookingStartDateTime: event.bookingStartDateTime,
       bookingEndDateTime: event.bookingEndDateTime,
     });
-  }, [membershipStatus, section.purposeLinks, explicitGroupIds, event]);
+  }, [isAdmin, membershipStatus, section.purposeLinks, explicitGroupIds, event]);
 
   const memberTicketTypes = useMemo(() => {
     if (!membershipStatus || gate.ok !== true) return [];
@@ -159,6 +167,7 @@ export function useBookingWizardData(args: {
 
   return {
     bookingTicketOrders: myBookingsData?.user?.bookingTicketOrders ?? [],
+    bookingRevisions: myBookingsData?.user?.bookings ?? [],
     bookingsError,
     bookingsQueryError,
     bookingPaymentAdjustments,
@@ -168,7 +177,9 @@ export function useBookingWizardData(args: {
     existingTerminalBooking,
     gate,
     guestTicketTypes,
+    isAdmin,
     loadingBookings,
+    refreshingBookings,
     loadingProfile,
     memberTicketTypes,
     membershipStatus,

@@ -88,7 +88,9 @@ interface RawSectionMemberUser {
  */
 async function loadSectionMemberPopulation(
   sectionId: string,
-  callerUid: string
+  callerUid: string,
+  callerIsAdmin = false,
+  requestedIds?: ReadonlySet<string>
 ): Promise<SectionMemberResponse[]> {
   const [sectionResult, membersResult, callerGroupsResult, userStatusResult] = await Promise.all([
     getSectionById({ id: sectionId }),
@@ -125,7 +127,7 @@ async function loadSectionMemberPopulation(
     }
   }
 
-  if (!canAccess && !canAccessByStatus) {
+  if (!callerIsAdmin && !canAccess && !canAccessByStatus) {
     throw new HttpsError("permission-denied", "You do not have permission to view this section");
   }
 
@@ -168,8 +170,13 @@ async function loadSectionMemberPopulation(
     }
   }
 
+  // Name chunks use the identical roster rules but need verify only their own
+  // requested members. The full directory still verifies its entire population.
+  const verifyPopulation = (members: SectionMemberResponse[]) => verifiedDirectoryMembers(
+    requestedIds ? members.filter((member) => requestedIds.has(member.id)) : members
+  );
   if (statuses.size === 0) {
-    return verifiedDirectoryMembers(Array.from(explicitMap.values()));
+    return verifyPopulation(Array.from(explicitMap.values()));
   }
 
   const listResult = await listUsers();
@@ -181,12 +188,12 @@ async function loadSectionMemberPopulation(
     }
   }
 
-  return verifiedDirectoryMembers(Array.from(explicitMap.values()));
+  return verifyPopulation(Array.from(explicitMap.values()));
 }
 
 /**
  * Returns merged section members (explicit UserUserGroup + inherited by membership status).
- * Caller must have ACCESS to the section (or MODERATOR on a matching group).
+ * Caller must have ACCESS/MODERATOR on a matching group, or current global admin authority.
  */
 export const getSectionMembersMerged = onCall(
   { region: FUNCTIONS_REGION },
@@ -197,13 +204,34 @@ export const getSectionMembersMerged = onCall(
     const callerUid = request.auth!.uid;
 
     try {
-      const members = await loadSectionMemberPopulation(sectionId, callerUid);
+      const members = await loadSectionMemberPopulation(sectionId, callerUid, currentAuthorization(request).isAdmin);
       logger.info(`getSectionMembersMerged: sectionId=${sectionId}, caller=${callerUid}, count=${members.length}`);
       return { members };
     } catch (e: unknown) {
       if (e instanceof HttpsError) throw e;
       handleFunctionError(e as Error, "getSectionMembersMerged");
     }
+  }
+);
+
+/** Resolve seating labels from the same verified section population as the directory. */
+export const getSectionMemberNamesByIds = onCall(
+  { region: FUNCTIONS_REGION },
+  async (request) => {
+    await requireEnabled(request);
+    await enforceRateLimit("getSectionMemberNamesByIds", request.auth!.uid);
+    const sectionId = requireString(request.data?.sectionId, "sectionId");
+    const ids: unknown = request.data?.ids;
+    if (!Array.isArray(ids) || ids.length > 100 || ids.some((id) => typeof id !== "string" || !id || id.length > 128)) {
+      throw new HttpsError("invalid-argument", "Provide at most 100 member IDs");
+    }
+    const actor = currentAuthorization(request);
+    await requireSectionModerator(sectionId, actor.uid, actor.isAdmin);
+    if (ids.length === 0) return { users: [] };
+    const requested = new Set(ids as string[]);
+    const population = await loadSectionMemberPopulation(sectionId, actor.uid, actor.isAdmin, requested);
+    return { users: population.filter((member) => requested.has(member.id))
+      .map(({ id, firstName, lastName }) => ({ id, firstName, lastName })) };
   }
 );
 
@@ -380,7 +408,7 @@ export const getSectionForUser = onCall(
       if (!callerIsAdmin && !hasAccess) {
         return { section: null, hasAccess: false, canModerate: false };
       }
-      return { section, hasAccess: true, canModerate };
+      return { section, hasAccess: true, canModerate: callerIsAdmin || canModerate };
     } catch (e: unknown) {
       if (e instanceof HttpsError) throw e;
       handleFunctionError(e as Error, "getSectionForUser");

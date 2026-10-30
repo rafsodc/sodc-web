@@ -159,33 +159,21 @@ describe("GQL schema integrity", () => {
     }
   });
 
-  it("admin-only operations in user-group-mutations.gql require both admin and enabled claims", () => {
-    // Requiring only admin without enabled would let a disabled admin retain write access.
-    const groupMutations = readApiFile("user-group-mutations.gql");
-    const ops = extractAllOperationHeaders(groupMutations);
-
-    for (const { name, header } of ops) {
-      // Every operation in this file is admin-only; none should be user-level or onboarding
-      expect(
-        header,
-        `user-group-mutations.gql: ${name} must not use user-level auth (enabled only)`,
-      ).not.toMatch(/@auth\(expr: "auth\.token\.enabled == true"\)/);
-
-      expect(
-        header,
-        `user-group-mutations.gql: ${name} must not use email_verified auth`,
-      ).not.toContain("email_verified");
-
-      // Verify the admin expression includes both claims
-      expect(
-        header,
-        `user-group-mutations.gql: ${name} must require admin claim`,
-      ).toContain("auth.token.admin == true");
-
-      expect(
-        header,
-        `user-group-mutations.gql: ${name} must require enabled claim alongside admin`,
-      ).toContain("auth.token.enabled == true");
+  it("keeps global configuration administrator-only and checks resource scope for section mutations", () => {
+    const source = readApiFile("user-group-mutations.gql");
+    const scoped = new Set(["CreateEvent","UpdateEvent","DeleteEvent","CreateTicketType","UpdateTicketType","DeleteTicketType"]);
+    for (const { name, header } of extractAllOperationHeaders(source)) {
+      expect(header, name).toContain("auth.token.enabled == true");
+      expect(header, name).not.toContain("email_verified");
+      if (scoped.has(name)) {
+        const start = source.indexOf(`mutation ${name}(`), end = source.indexOf("\n}", start);
+        const block = source.slice(start, end + 2);
+        expect(header, name).toContain("@transaction");
+        expect(block, name).toContain("managementScope:");
+        expect(block, name).toContain("SECTION_MODERATOR_REQUIRED");
+        expect(block, name).toContain("currentAuthorization.adminReady");
+        expect(block, name).toContain("'MODERATOR' in l.purposes");
+      } else expect(header, name).toContain("auth.token.admin == true");
     }
   });
 

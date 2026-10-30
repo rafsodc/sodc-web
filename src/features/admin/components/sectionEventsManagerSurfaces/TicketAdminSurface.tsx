@@ -1,3 +1,4 @@
+import { Link as RouterLink } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -57,7 +58,14 @@ import { useCookiePreferences } from "../../../../shared/cookies/CookiePreferenc
 import { AdminAccordion, AdminTable } from "./adminSurfacePrimitives";
 import RemovedTicketsSection from "../RemovedTicketsSection";
 
+import type { EventManagementTask } from "../../../../shared/navigation/sectionRoutes";
+
 interface TicketAdminSurfaceProps {
+  selectedTask?: EventManagementTask;
+  taskCollapsed?: boolean;
+  onTaskSelect?: (task: EventManagementTask) => void;
+  eventEditorHref?: string;
+  ticketEditorHref?: (ticketId?: string) => string;
   event: EventRow | null;
   eventTitle: string;
   error: string | null;
@@ -96,6 +104,7 @@ interface TicketAdminSurfaceProps {
   bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[];
 }
 export function TicketAdminSurface({
+  selectedTask, taskCollapsed, onTaskSelect, eventEditorHref, ticketEditorHref,
   event,
   eventTitle,
   error,
@@ -138,14 +147,15 @@ export function TicketAdminSurface({
           {error}
         </Alert>
       )}
-      <AdminAccordion title="Event details">
-        <EventDetailsSection event={event} loading={loadingEventDetail} onEditEvent={onEditEvent} />
+      <AdminAccordion title="Event details" expanded={selectedTask ? !taskCollapsed && selectedTask === "details" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("details") : undefined}>
+        <EventDetailsSection event={event} loading={loadingEventDetail} onEditEvent={onEditEvent} editorHref={eventEditorHref} />
       </AdminAccordion>
-      <AdminAccordion title="Ticket types">
-        <Button startIcon={<AddIcon />} variant="contained" onClick={onAddTicketType} sx={{ mb: 2 }}>
+      <AdminAccordion title="Ticket types" expanded={selectedTask ? !taskCollapsed && selectedTask === "tickets" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("tickets") : undefined}>
+        <Button startIcon={<AddIcon />} variant="contained" {...(ticketEditorHref ? {component:RouterLink,to:ticketEditorHref()} : {onClick:onAddTicketType})} sx={{ mb: 2 }}>
           Add ticket type
         </Button>
         <TicketTypesTable
+          editorHref={ticketEditorHref}
           loading={loadingEventDetail}
           ticketTypes={ticketTypes}
           deletingTicketTypeId={deletingTicketTypeId}
@@ -153,7 +163,7 @@ export function TicketAdminSurface({
           onDelete={onDeleteTicketType}
         />
       </AdminAccordion>
-      <AdminAccordion title="Booking approvals">
+      <AdminAccordion title="Booking approvals" expanded={selectedTask ? !taskCollapsed && selectedTask === "approvals" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("approvals") : undefined}>
         <BookingApprovalsSection
           filter={approvalStatusFilter}
           onFilterChange={onApprovalStatusFilterChange}
@@ -167,15 +177,15 @@ export function TicketAdminSurface({
           onReview={onReviewBooking}
         />
       </AdminAccordion>
-      <AdminAccordion title="Current attendee tickets">
+      <AdminAccordion title="Current attendee tickets" expanded={selectedTask ? !taskCollapsed && selectedTask === "attendees" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("attendees") : undefined}>
         {onAddUserTicket && <Button startIcon={<AddIcon />} variant="contained" sx={{ mb: 2 }} onClick={onAddUserTicket}>Add ticket</Button>}
         {attendeeGuestsUnavailable ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert> : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} onManageTicket={onManageTicket} onAnnounce={onAnnounce} />}
         {!loadingEventBookings && onManageTicket && <RemovedTicketsSection rows={removedTickets} onRestore={(row) => onManageTicket(row, "restore")} />}
       </AdminAccordion>
-      <AdminAccordion title="Booking audit activity">
+      <AdminAccordion title="Booking audit activity" expanded={selectedTask ? !taskCollapsed && selectedTask === "activity" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("activity") : undefined}>
         <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />
       </AdminAccordion>
-      <AdminAccordion title="Payment status activity">
+      <AdminAccordion title="Payment status activity" expanded={selectedTask ? !taskCollapsed && selectedTask === "payments" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("payments") : undefined}>
         <PaymentActivitySection
           loading={loadingTicketOrders || loadingPaymentAdjustments}
           ticketOrders={ticketOrders}
@@ -187,10 +197,12 @@ export function TicketAdminSurface({
 }
 
 function EventDetailsSection({
+  editorHref,
   event,
   loading,
   onEditEvent,
 }: {
+  editorHref?: string;
   event: EventRow | null;
   loading: boolean;
   onEditEvent: (event: EventRow) => void;
@@ -207,7 +219,7 @@ function EventDetailsSection({
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        <Button size="small" startIcon={<EditIcon />} variant="outlined" onClick={() => onEditEvent(event)}>
+        <Button size="small" startIcon={<EditIcon />} variant="outlined" {...(editorHref ? {component:RouterLink,to:editorHref} : {onClick:()=>onEditEvent(event)})}>
           Edit event details
         </Button>
       </Box>
@@ -264,6 +276,7 @@ function EventDetailsSection({
 }
 
 export function TicketTypesTable({
+  editorHref,
   loading,
   ticketTypes,
   deletingTicketTypeId,
@@ -273,6 +286,7 @@ export function TicketTypesTable({
   loading: boolean;
   ticketTypes: TicketTypeRow[];
   deletingTicketTypeId: string | null;
+  editorHref?: (ticketId: string) => string;
   onEdit: (ticketType: TicketTypeRow) => void;
   onDelete: (id: string) => void;
 }) {
@@ -314,7 +328,7 @@ export function TicketTypesTable({
                 <IconButton
                   size="small"
                   aria-label={`Edit ${ticketType.title}`}
-                  onClick={() => onEdit(ticketType)}
+                  {...(editorHref ? {component:RouterLink,to:editorHref(ticketType.id)} : {onClick:()=>onEdit(ticketType)})}
                 >
                   <EditIcon />
                 </IconButton>

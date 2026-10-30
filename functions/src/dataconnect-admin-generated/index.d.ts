@@ -3418,6 +3418,17 @@ export interface ListSectionFilesForQuotaVariables {
   limit: number;
 }
 
+export interface ListSectionTicketAccessGroupsData {
+  userGroups: ({
+    id: UUIDString;
+    name: string;
+  } & UserGroup_Key)[];
+}
+
+export interface ListSectionTicketAccessGroupsVariables {
+  sectionId: UUIDString;
+}
+
 export interface ListSectionsData {
   sections: ({
     id: UUIDString;
@@ -4576,7 +4587,9 @@ export interface UpdateBookingApprovalFromCallableVariables {
   id: UUIDString;
   expectedRevisionNumber: number;
   status: BookingApprovalStatus;
-  reviewedById?: string | null;
+  reviewedById: string;
+  actorSecurityVersion: number;
+  actorIsAdmin: boolean;
   approvalNote?: string | null;
 }
 
@@ -5860,6 +5873,11 @@ export function getSectionAnnouncementOptOut(vars: GetSectionAnnouncementOptOutV
 export function getMyAnnouncementPreferences(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyAnnouncementPreferencesData>>;
 /** Generated Node Admin SDK operation action function for the 'GetMyAnnouncementPreferences' Query. Allow users to pass in custom DataConnect instances. */
 export function getMyAnnouncementPreferences(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMyAnnouncementPreferencesData>>;
+
+/** Generated Node Admin SDK operation action function for the 'ListSectionTicketAccessGroups' Query. Allow users to execute without passing in DataConnect. */
+export function listSectionTicketAccessGroups(dc: DataConnect, vars: ListSectionTicketAccessGroupsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionTicketAccessGroupsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListSectionTicketAccessGroups' Query. Allow users to pass in custom DataConnect instances. */
+export function listSectionTicketAccessGroups(vars: ListSectionTicketAccessGroupsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ListSectionTicketAccessGroupsData>>;
 
 /** Generated Node Admin SDK operation action function for the 'ServiceGetUserById' Query. Allow users to execute without passing in DataConnect. */
 export function serviceGetUserById(dc: DataConnect, vars: ServiceGetUserByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<ServiceGetUserByIdData>>;
