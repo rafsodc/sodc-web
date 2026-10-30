@@ -25,6 +25,7 @@ import {
   buildRecipientPersonalisation,
 } from "../../announcements";
 import { govNotifyLiveApiKey } from "../../mailer";
+import { govNotifyTestApiKey } from "../../govNotifyDeliveryMode";
 import { unsubscribeSecret } from "../../unsubscribe";
 
 const mockGetAnnouncementSendById = vi.spyOn(admin, "getAnnouncementSendById");
@@ -942,5 +943,169 @@ describe("attendee announcement preview and durable send", () => {
     vi.spyOn(admin, "getUserMembershipStatus").mockResolvedValue({ data: { user: { membershipStatus: "REGULAR" } } } as never);
     await expect(previewEventAnnouncementAudience.run({ auth: { uid: "member", token: { enabled: true, securityVersion: 1 } }, data } as never)).rejects.toMatchObject({ code: "permission-denied" });
     expect(eventAudiences.resolveEventAnnouncementAudience).toHaveBeenCalledOnce();
+  });
+});
+
+describe("announcement UUID representations at Data Connect boundaries", () => {
+  const sectionId = "abcdefab-1234-4abc-8abc-abcdefabcd00";
+  const replyToId = "abcdefab-1234-4abc-8abc-abcdefabcd01";
+  const templateId = "abcdefab-1234-4abc-8abc-abcdefabcd02";
+  // A UUID-shaped Firebase UID is still an opaque, case-sensitive string.
+  const callerUid = "abcdefab-1234-4abc-8abc-abcdefabcd03";
+  const eventId = "abcdefab-1234-4abc-8abc-abcdefabcd04";
+  const requestId = "abcdefab-1234-4abc-8abc-abcdefabcd05";
+  const attemptId = "abcdefab-1234-4abc-8abc-abcdefabcd06";
+  const eventAudience = {
+    eventId,
+    filters: { ...emptyEventAttendeeTicketFilters, paymentState: "UNPAID" },
+    recipientTarget: "BOOKERS",
+  };
+  const snapshot = {
+    version: 1,
+    effectiveDeliveryMode: "SIMULATION",
+    eventAudience,
+    tasks: [{
+      sendId: requestId, recipientId: "owner", email: "owner@example.invalid",
+      firstName: "Owner", lastName: "One", templateUuid: templateId,
+      effectiveDeliveryMode: "SIMULATION", personalisation: {},
+    }],
+    skippedRecipients: [],
+  };
+  const compact = (id: string) => id.replaceAll("-", "");
+  const representations = [
+    { label: "compact SQL / dashed request", stored: compact, supplied: (id: string) => id },
+    { label: "dashed SQL / compact request", stored: (id: string) => id, supplied: compact },
+    { label: "compact SQL / uppercase dashed request", stored: compact, supplied: (id: string) => id.toUpperCase() },
+    { label: "uppercase compact SQL / dashed request", stored: (id: string) => compact(id).toUpperCase(), supplied: (id: string) => id },
+  ];
+  const storedSend = (overrides = {}) => ({
+    id: compact(requestId), sectionId: compact(sectionId), templateUuid: templateId,
+    sentBy: callerUid, requestedDeliveryMode: "SIMULATION", siteDeliveryMode: "TEAM_TEST",
+    effectiveDeliveryMode: "SIMULATION", recipientCount: 1, skippedCount: 0,
+    recipientSnapshot: JSON.stringify(snapshot), replyToAddressId: null, ...overrides,
+  });
+  const auth = { uid: callerUid, token: { admin: true, enabled: true, securityVersion: 1 } };
+  const send = (overrides = {}) => sendSectionAnnouncement.run({ auth, data: {
+    sectionId, templateUuid: templateId, requestId, deliveryMode: "SIMULATION",
+    eventAudience, audienceFingerprint: "reviewed-owner", ...overrides,
+  } } as never);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.GOV_NOTIFY_DELIVERY_MODE = "TEAM_TEST";
+    mockGetGovNotifyDeliveryConfiguration.mockResolvedValue({ data: {
+      govNotifyDeliveryConfiguration: { mode: "TEAM_TEST", version: 14 },
+    } } as never);
+    mockGetAnnouncementSendById.mockReset().mockResolvedValue({ data: { announcementSend: storedSend() } } as never);
+    mockCreateAnnouncementSend.mockReset().mockResolvedValue({ data: {} } as never);
+    mockGetAnnouncementSendRecipientPage.mockReset().mockResolvedValue({ data: {
+      total: [{ _count: 0 }], filtered: [], recipients: [],
+    } } as never);
+    taskQueueMocks.enqueue.mockReset().mockResolvedValue(undefined);
+    vi.spyOn(govNotifyTestApiKey, "value").mockReturnValue("simulated-test-key");
+    vi.spyOn(NotifyClient.prototype, "getTemplateById").mockResolvedValue({ data: { body: "Update", subject: "Update" } } as never);
+    vi.spyOn(eventAudiences, "resolveEventAnnouncementAudience").mockResolvedValue({
+      sectionName: "Synthetic", audienceSummary: "Booking owners", deliverable: [{
+        id: "owner", firstName: "Owner", lastName: "One", email: "owner@example.invalid",
+        serviceNumber: "test", membershipStatus: "LOST",
+      }], skippedRecipients: [], preview: {
+        eventTitle: "Synthetic event", fingerprint: "reviewed-owner", matchedTicketCount: 2,
+        recipientTarget: "BOOKERS", recipients: [{ name: "Owner One", email: "owner@example.invalid" }], skipped: [],
+      },
+    });
+    mockGetNotifyReplyToConfiguration.mockResolvedValue({ data: {
+      notifyEmailConfiguration: { version: 1, defaultReplyToAddress: null },
+      notifyReplyToAddresses: [{ id: compact(replyToId), enabled: true,
+        verificationStatus: "VERIFIED", announcementSelectable: true,
+        displayLabel: "Test reply-to", emailAddress: "reply@example.invalid", notifyUuid: "provider-reply-to" }],
+      notifyTemplateReplyToOverrides: [],
+    } } as never);
+  });
+
+  it.each(representations)("resumes the original owner snapshot with $label", async ({ stored, supplied }) => {
+    mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: storedSend({ sectionId: stored(sectionId) }) } } as never);
+    await expect(send({ sectionId: supplied(sectionId) })).resolves.toMatchObject({
+      sendId: requestId, resumed: true, recipientCount: 1, effectiveDeliveryMode: "SIMULATION",
+    });
+    expect(mockCreateAnnouncementSend).not.toHaveBeenCalled();
+    expect(eventAudiences.resolveEventAnnouncementAudience).not.toHaveBeenCalled();
+    expect(NotifyClient.prototype.getTemplateById).not.toHaveBeenCalled();
+    expect(mockCreateAnnouncementRecipient).not.toHaveBeenCalled();
+    expect(taskQueueMocks.enqueue).toHaveBeenCalledExactlyOnceWith({ sendId: requestId }, expect.anything());
+  });
+
+  it.each(representations)("resumes an explicitly selected reply-to with $label", async ({ stored, supplied }) => {
+    mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: storedSend({
+      sectionId, replyToAddressId: stored(replyToId),
+    }) } } as never);
+    await expect(send({ replyToAddressId: supplied(replyToId) })).resolves.toMatchObject({ resumed: true });
+    expect(mockCreateAnnouncementSend).not.toHaveBeenCalled();
+    expect(taskQueueMocks.enqueue).toHaveBeenCalledOnce();
+  });
+
+  it.each(representations)("recovers a duplicate-key race with $label", async ({ stored, supplied }) => {
+    mockGetAnnouncementSendById.mockResolvedValueOnce({ data: { announcementSend: null } } as never)
+      .mockResolvedValueOnce({ data: { announcementSend: storedSend({
+        sectionId: stored(sectionId), replyToAddressId: stored(replyToId),
+      }) } } as never);
+    mockCreateAnnouncementSend.mockRejectedValueOnce(new Error("duplicate key"));
+    await expect(send({ sectionId: supplied(sectionId), replyToAddressId: supplied(replyToId) })).resolves.toMatchObject({
+      sendId: requestId, resumed: true, recipientCount: 1, effectiveDeliveryMode: "SIMULATION",
+    });
+    expect(mockCreateAnnouncementSend).toHaveBeenCalledOnce();
+    expect(mockCreateAnnouncementRecipient).not.toHaveBeenCalled();
+    expect(taskQueueMocks.enqueue).toHaveBeenCalledExactlyOnceWith({ sendId: requestId }, expect.anything());
+  });
+
+  it.each(representations)("allows preparation retry with $label", async ({ stored, supplied }) => {
+    mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: storedSend({ sectionId: stored(sectionId) }) } } as never);
+    await expect(retryAnnouncementPreparation.run({ auth, data: {
+      sectionId: supplied(sectionId), sendId: requestId, attemptId,
+    } } as never)).resolves.toEqual({ preparationQueued: true });
+    expect(taskQueueMocks.enqueue).toHaveBeenCalledExactlyOnceWith({ sendId: requestId }, expect.anything());
+    expect(mockCreateAnnouncementSend).not.toHaveBeenCalled();
+  });
+
+  it.each(representations)("reads the recipient page with $label", async ({ stored, supplied }) => {
+    mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: storedSend({ sectionId: stored(sectionId) }) } } as never);
+    await expect(getAnnouncementSendRecipients.run({ auth, data: {
+      sectionId: supplied(sectionId), sendId: requestId,
+    } } as never)).resolves.toMatchObject({ recipients: [], totalCount: 0 });
+    expect(mockGetAnnouncementSendRecipientPage).toHaveBeenCalledOnce();
+    expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
+  });
+
+  const differentBindings = [
+    { label: "different section", overrides: { sectionId: compact(sectionBId) } },
+    { label: "different selected reply-to", overrides: { replyToAddressId: compact(sectionBId) } },
+    { label: "missing selected reply-to", overrides: { replyToAddressId: null } },
+    { label: "case-changed Auth UID", overrides: { sentBy: callerUid.toUpperCase() } },
+    { label: "compact Auth UID", overrides: { sentBy: compact(callerUid) } },
+    { label: "case-changed template string", overrides: { templateUuid: templateId.toUpperCase() } },
+    { label: "compact template string", overrides: { templateUuid: compact(templateId) } },
+  ];
+  it.each(differentBindings)("rejects a $label on normal resume and duplicate-key recovery", async ({ overrides }) => {
+    const conflict = storedSend({ replyToAddressId: compact(replyToId), ...overrides });
+    mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: conflict } } as never);
+    await expect(send({ replyToAddressId: replyToId })).rejects.toMatchObject({ code: "already-exists" });
+    expect(mockCreateAnnouncementSend).not.toHaveBeenCalled();
+    expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
+
+    mockGetAnnouncementSendById.mockResolvedValueOnce({ data: { announcementSend: null } } as never)
+      .mockResolvedValueOnce({ data: { announcementSend: conflict } } as never);
+    mockCreateAnnouncementSend.mockRejectedValueOnce(new Error("duplicate key"));
+    await expect(send({ replyToAddressId: replyToId })).rejects.toMatchObject({ code: "already-exists" });
+    expect(mockCreateAnnouncementSend).toHaveBeenCalledOnce();
+    expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("still rejects another section before retry or recipient access", async () => {
+    mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: storedSend({ sectionId: compact(sectionBId) }) } } as never);
+    await expect(retryAnnouncementPreparation.run({ auth, data: { sectionId, sendId: requestId, attemptId } } as never))
+      .rejects.toMatchObject({ code: "not-found" });
+    await expect(getAnnouncementSendRecipients.run({ auth, data: { sectionId, sendId: requestId } } as never))
+      .rejects.toMatchObject({ code: "not-found" });
+    expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
+    expect(mockGetAnnouncementSendRecipientPage).not.toHaveBeenCalled();
   });
 });
