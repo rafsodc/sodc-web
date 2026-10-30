@@ -125,9 +125,18 @@ export async function resolveEventAnnouncementAudience(sectionId: string, select
   // Attendance messages reach every selected contact, independently of section announcement preferences.
   const deliverable = emails.map((email) => contacts.get(email)!);
   const skippedRecipients: Array<{ userId: string; firstName: string; lastName: string; email: string; reason: string }> = [];
-  for (const row of missing) skippedRecipients.push({ userId: `missing:${row.key}`,
-    firstName: bookersOnly ? `${row.contact.firstName} ${row.contact.lastName}`.trim() : row.attendeeName,
-    lastName: "", email: "", reason: "missing_contact" });
+  const skippedBookerIds = new Set<string>();
+  for (const row of missing) {
+    // A booking owner is one recipient even when several matching places lack
+    // their email. Legacy attendee snapshots retain their original per-place IDs.
+    if (bookersOnly) {
+      if (skippedBookerIds.has(row.contact.id)) continue;
+      skippedBookerIds.add(row.contact.id);
+    }
+    skippedRecipients.push({ userId: bookersOnly ? `missing:booker:${row.contact.id}` : `missing:${row.key}`,
+      firstName: bookersOnly ? `${row.contact.firstName} ${row.contact.lastName}`.trim() : row.attendeeName,
+      lastName: "", email: "", reason: "missing_contact" });
+  }
   skippedRecipients.sort((a, b) => a.userId.localeCompare(b.userId));
   const fingerprint = createHash("sha256").update(JSON.stringify({ selection, deliverable, skippedRecipients, matchedTicketCount: matching.length })).digest("hex");
   const preview: EventAnnouncementPreview = { eventTitle: event.title, fingerprint, matchedTicketCount: matching.length,

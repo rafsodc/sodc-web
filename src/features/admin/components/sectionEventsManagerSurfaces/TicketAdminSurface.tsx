@@ -37,6 +37,7 @@ import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import type { Guest } from "../../../guests/api";
 import { money } from "../../../guests/api";
 import { getEventWorkspaceSummary, getSettledEventPayments } from "../../utils/eventWorkspaceSummary";
+import { getBookingCheckoutEstimate } from "../../utils/bookingCheckoutEstimate";
 import { BookingApprovalStatus } from "@dataconnect/generated";
 import PageHeader from "../../../../shared/components/PageHeader";
 import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../../shared/utils/ticketAudienceLabels";
@@ -429,25 +430,20 @@ function BookingRevisionSnapshot({ booking, ticketOrdersById, seatingPreferenceU
 
 function RevisionFinancialPreview({ previous, proposed, ticketOrdersById }: { previous: EventBookingAdminRow | null; proposed: EventBookingAdminRow; ticketOrdersById: TicketOrdersById }) {
   const total = (booking: EventBookingAdminRow | null) => (booking?.lines ?? []).reduce((amount, line) => amount + Math.round(line.ticketType.price * 100), 0);
-  const allocations = (previous?.lines ?? []).flatMap((line) => line.bookingPlace?.paymentAllocations ?? []);
+  const estimate = getBookingCheckoutEstimate(proposed, ticketOrdersById);
   const includesRemovedPlaces = [...(previous?.lines ?? []), ...proposed.lines].some((line) => line.bookingPlace?.attendanceRemoved);
-  const unknown = allocations.some((allocation) => !ticketOrdersById.has(allocation.ticketOrderId));
-  const settled = allocations.reduce((amount, allocation) => {
-    const status = ticketOrdersById.get(allocation.ticketOrderId)?.status;
-    return amount + (status === "PAID" || status === "REFUNDED" ? Math.max(0, allocation.allocatedAmountMinor - allocation.refundedAmountMinor) : 0);
-  }, 0);
-  const outstanding = Math.max(0, total(proposed) - settled);
-  const refundDue = Math.max(0, settled - total(proposed));
   return <Box sx={recordCardSx}>
     <Typography component="h3" variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Financial effect</Typography>
+    {estimate.unknownPaymentPlaceCount > 0 && <Alert severity="warning" sx={{ mb: 2 }}>Payment evidence is incomplete for one or more current places. Checkout estimates are unavailable until allocation and order records load.</Alert>}
     <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, m: 0 }}>
       <RecordField label="Previous ticket total">{previous ? money(total(previous)) : "No previous booking"}</RecordField>
       <RecordField label="Proposed ticket total">{money(total(proposed))}</RecordField>
-      <RecordField label="Net payment already settled">{unknown ? "Payment records incomplete" : money(settled)}</RecordField>
-      <RecordField label={refundDue > 0 ? "Estimated refund due" : "Estimated booking balance after approval"}>{unknown ? "Unavailable until payment records load" : money(refundDue || outstanding)}</RecordField>
+      <RecordField label="Estimated refund due at checkout">{estimate.refundDueMinor == null ? "Unavailable until payment records load" : money(estimate.refundDueMinor)}</RecordField>
+      <RecordField label="Estimated to pay at checkout">{estimate.toPayMinor == null ? "Unavailable until payment records load" : money(estimate.toPayMinor)}</RecordField>
     </Box>
-    {includesRemovedPlaces && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>This estimate includes the complete booking revision. Payments shows the places currently eligible for payment.</Typography>}
-    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Approval and payment are separate. The payment service checks the final balance and applies the existing payment or refund process.</Typography>
+    {includesRemovedPlaces && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Removed attendance tickets are excluded from automatic refunds and checkout charges. Their financial records are kept for manual adjustment.</Typography>}
+    {estimate.hasPendingPayments && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Payments in progress are not treated as settled until confirmed.</Typography>}
+    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Approving this revision does not move money. These estimates apply when the member next opens checkout. Each place is refunded or charged separately.</Typography>
   </Box>;
 }
 

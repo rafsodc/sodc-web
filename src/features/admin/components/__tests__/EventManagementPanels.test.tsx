@@ -19,6 +19,7 @@ function booking(overrides: Partial<EventBookingAdminRow> = {}): EventBookingAdm
 const pending = booking();
 const previous = booking({ id: "booking-1", revisionNumber: 1, approvalStatus: BookingApprovalStatus.APPROVED });
 previous.lines = [{ ...previous.lines[0], guestDisplayName: "Previous Guest", ticketType: { ...previous.lines[0].ticketType, price: 50 }, bookingPlace: { ...previous.lines[0].bookingPlace, paymentAllocations: [{ id: "allocation", ticketOrderId: "paid", allocatedAmountMinor: 5000, refundedAmountMinor: 0 }] } }];
+pending.lines[0].bookingPlace.paymentAllocations = previous.lines[0].bookingPlace.paymentAllocations.map((allocation) => ({ ...allocation }));
 afterEach(() => vi.restoreAllMocks());
 
 const orders = new Map([["paid", { id: "paid", status: TicketOrderStatus.PAID }]]);
@@ -58,41 +59,63 @@ describe("event management task panels", () => {
   });
 
   it.each([
-    { allocated: 5000, refunded: 0, proposedPrice: 75, expected: "£25.00", label: "Estimated booking balance after approval" },
-    { allocated: 3000, refunded: 0, proposedPrice: 75, expected: "£45.00", label: "Estimated booking balance after approval" },
-    { allocated: 5000, refunded: 1000, proposedPrice: 75, expected: "£35.00", label: "Estimated booking balance after approval" },
-    { allocated: 5000, refunded: 5000, proposedPrice: 75, expected: "£75.00", label: "Estimated booking balance after approval" },
-    { allocated: 5000, refunded: 0, proposedPrice: 35, expected: "£15.00", label: "Estimated refund due" },
-    { allocated: 5000, refunded: 0, proposedPrice: 50, expected: "£0.00", label: "Estimated booking balance after approval" },
-  ])("previews the server's complete-revision financial calculation with $allocated settled and $refunded refunded", async ({ allocated, refunded, proposedPrice, expected, label }) => {
+    { allocated: 5000, refunded: 0, proposedPrice: 75, toPay: "£25.00", refundDue: "£0.00" },
+    { allocated: 3000, refunded: 0, proposedPrice: 75, toPay: "£45.00", refundDue: "£0.00" },
+    { allocated: 5000, refunded: 1000, proposedPrice: 75, toPay: "£35.00", refundDue: "£0.00" },
+    { allocated: 5000, refunded: 5000, proposedPrice: 75, toPay: "£75.00", refundDue: "£0.00" },
+    { allocated: 5000, refunded: 0, proposedPrice: 35, toPay: "£0.00", refundDue: "£15.00" },
+    { allocated: 5000, refunded: 0, proposedPrice: 50, toPay: "£0.00", refundDue: "£0.00" },
+  ])("previews checkout's per-place calculation with $allocated allocated and $refunded refunded", async ({ allocated, refunded, proposedPrice, toPay, refundDue }) => {
     const user = userEvent.setup();
     const before = booking({ id: "before", revisionNumber: 1, approvalStatus: BookingApprovalStatus.APPROVED });
-    before.lines[0].bookingPlace.paymentAllocations = [{ id: "allocation", ticketOrderId: "paid", allocatedAmountMinor: allocated, refundedAmountMinor: refunded }];
     const proposed = booking(); proposed.lines[0].ticketType.price = proposedPrice;
+    proposed.lines[0].bookingPlace.paymentAllocations = [{ id: "allocation", ticketOrderId: "paid", allocatedAmountMinor: allocated, refundedAmountMinor: refunded }];
     render(<TicketAdminSurface {...panelProps()} selectedTask="approvals" approvalBookings={[proposed]} allEventBookings={[before, proposed]} />);
     await user.click(screen.getByRole("button", { name: "Review change" }));
-    const field = screen.getByText(label).parentElement;
-    expect(field).not.toBeNull();
-    expect(within(field!).getByText(expected)).toBeInTheDocument();
+    expect(within(screen.getByText("Estimated to pay at checkout").parentElement!).getByText(toPay)).toBeInTheDocument();
+    expect(within(screen.getByText("Estimated refund due at checkout").parentElement!).getByText(refundDue)).toBeInTheDocument();
   });
 
-  it("retains removed revision evidence and explains the separate currently payable balance", async () => {
+  it("shows a downgrade refund and a new-place charge separately even when their net change is zero", async () => {
+    const user = userEvent.setup(); const proposed = booking();
+    proposed.lines[0].ticketType.price = 30;
+    proposed.lines[0].bookingPlace.paymentAllocations = [{ id: "allocation", ticketOrderId: "paid", allocatedAmountMinor: 5000, refundedAmountMinor: 0 }];
+    proposed.lines.push({ ...booking().lines[0], id: "new-line", guestDisplayName: "New Guest", ticketType: { ...booking().lines[0].ticketType, price: 20 }, bookingPlace: { id: "new-place", attendanceVersion: 0, attendanceRemoved: false, paymentAllocations: [] } });
+    render(<TicketAdminSurface {...panelProps()} selectedTask="approvals" approvalBookings={[proposed]} allEventBookings={[previous, proposed]} />);
+    await user.click(screen.getByRole("button", { name: "Review change" }));
+    expect(within(screen.getByText("Estimated to pay at checkout").parentElement!).getByText("£20.00")).toBeInTheDocument();
+    expect(within(screen.getByText("Estimated refund due at checkout").parentElement!).getByText("£20.00")).toBeInTheDocument();
+    expect(screen.getByText("Approving this revision does not move money. These estimates apply when the member next opens checkout. Each place is refunded or charged separately.")).toBeInTheDocument();
+  });
+
+  it("retains removed revision evidence while excluding it from automatic refunds and charges", async () => {
     const user = userEvent.setup(); const proposed = booking();
     proposed.lines[0].bookingPlace.attendanceRemoved = true;
+    proposed.lines[0].bookingPlace.paymentAllocations = [{ id: "allocation", ticketOrderId: "paid", allocatedAmountMinor: 10000, refundedAmountMinor: 0 }];
     render(<TicketAdminSurface {...panelProps()} selectedTask="approvals" approvalBookings={[proposed]} allEventBookings={[previous, proposed]} />);
     await user.click(screen.getByRole("button", { name: "Review change" }));
     expect(screen.getByText("Removed from attendance")).toBeInTheDocument();
-    expect(screen.getByText("This estimate includes the complete booking revision. Payments shows the places currently eligible for payment.")).toBeInTheDocument();
-    expect(within(screen.getByText("Estimated booking balance after approval").parentElement!).getByText("£25.00")).toBeInTheDocument();
+    expect(screen.getByText("Removed attendance tickets are excluded from automatic refunds and checkout charges. Their financial records are kept for manual adjustment.")).toBeInTheDocument();
+    expect(within(screen.getByText("Estimated to pay at checkout").parentElement!).getByText("£0.00")).toBeInTheDocument();
+    expect(within(screen.getByText("Estimated refund due at checkout").parentElement!).getByText("£0.00")).toBeInTheDocument();
   });
 
-  it("uses zero previous settled credit for a first revision even if proposed lines contain allocations", async () => {
+  it("uses payment evidence attached to proposed places even without a previous revision", async () => {
     const user = userEvent.setup(); const proposed = booking();
     proposed.lines[0].bookingPlace.paymentAllocations = [{ id: "allocation", ticketOrderId: "paid", allocatedAmountMinor: 7500, refundedAmountMinor: 0 }];
     render(<TicketAdminSurface {...panelProps()} selectedTask="approvals" approvalBookings={[proposed]} allEventBookings={[proposed]} />);
     await user.click(screen.getByRole("button", { name: "Review change" }));
-    expect(within(screen.getByText("Net payment already settled").parentElement!).getByText("£0.00")).toBeInTheDocument();
-    expect(within(screen.getByText("Estimated booking balance after approval").parentElement!).getByText("£75.00")).toBeInTheDocument();
+    expect(within(screen.getByText("Estimated to pay at checkout").parentElement!).getByText("£0.00")).toBeInTheDocument();
+    expect(within(screen.getByText("Estimated refund due at checkout").parentElement!).getByText("£0.00")).toBeInTheDocument();
+  });
+
+  it("withholds both checkout estimates when proposed-place payment evidence is missing", async () => {
+    const user = userEvent.setup(); const proposed = booking();
+    proposed.lines[0].bookingPlace.paymentAllocations = [{ id: "allocation", ticketOrderId: "missing-order", allocatedAmountMinor: 7500, refundedAmountMinor: 0 }];
+    render(<TicketAdminSurface {...panelProps()} selectedTask="approvals" approvalBookings={[proposed]} allEventBookings={[previous, proposed]} />);
+    await user.click(screen.getByRole("button", { name: "Review change" }));
+    expect(within(screen.getByText("Estimated to pay at checkout").parentElement!).getByText("Unavailable until payment records load")).toBeInTheDocument();
+    expect(within(screen.getByText("Estimated refund due at checkout").parentElement!).getByText("Unavailable until payment records load")).toBeInTheDocument();
   });
 
   it("keeps a moderator note when closing and moving away from the approvals task", async () => {

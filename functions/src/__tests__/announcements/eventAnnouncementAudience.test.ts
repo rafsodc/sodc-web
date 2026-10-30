@@ -162,7 +162,52 @@ describe("event announcement audience", () => {
     const result = await resolveBookers({ paymentState: "UNPAID" });
     expect(result.deliverable).toEqual([]);
     expect(result.preview.skipped).toEqual([{ name: "owner Smith", email: "", reason: "missing_contact" }]);
-    expect(result.skippedRecipients[0].userId).toBe("missing:linked");
+    expect(result.skippedRecipients[0].userId).toBe("missing:booker:owner");
+  });
+  it("counts one missing-contact owner across multiple matching places and bookings", async () => {
+    const owner = person("owner", "");
+    const b = { ...booking("booking-one", owner), lines: [line("member-place"), line("guest-place", "GUEST", person("linked-guest"))] };
+    bookings.mockResolvedValue({ data: { bookings: [b, booking("booking-two", owner)] } } as never);
+    const result = await resolveBookers({ paymentState: "UNPAID" });
+    expect(result.preview.matchedTicketCount).toBe(3);
+    expect(result.deliverable).toEqual([]);
+    expect(result.preview.skipped).toEqual([{ name: "owner Smith", email: "", reason: "missing_contact" }]);
+    expect(result.skippedRecipients).toEqual([{ userId: "missing:booker:owner", firstName: "owner Smith", lastName: "", email: "", reason: "missing_contact" }]);
+  });
+  it("keeps distinct missing owners even when their names and unusable emails match", async () => {
+    const firstOwner = { ...person("owner-one", ""), firstName: "Same", lastName: "Name" };
+    const secondOwner = { ...person("owner-two", ""), firstName: "Same", lastName: "Name" };
+    bookings.mockResolvedValue({ data: { bookings: [booking("booking-one", firstOwner), booking("booking-two", secondOwner)] } } as never);
+    const result = await resolveBookers({ paymentState: "UNPAID" });
+    expect(result.preview.matchedTicketCount).toBe(2);
+    expect(result.preview.skipped).toHaveLength(2);
+    expect(result.skippedRecipients.map(r => r.userId)).toEqual(["missing:booker:owner-one", "missing:booker:owner-two"]);
+  });
+  it("keeps missing owner identity and fingerprint stable when matching places are reordered or replaced", async () => {
+    const owner = person("owner", "not-an-email");
+    const b = { ...booking("booking-one", owner), lines: [line("place-a"), line("place-b", "GUEST", person("linked-guest"))] };
+    bookings.mockResolvedValue({ data: { bookings: [b] } } as never);
+    const original = await resolveBookers({ paymentState: "UNPAID" });
+    b.lines.reverse();
+    const reordered = await resolveBookers({ paymentState: "UNPAID" });
+    expect(reordered.skippedRecipients).toEqual(original.skippedRecipients);
+    expect(reordered.preview.fingerprint).toBe(original.preview.fingerprint);
+    b.lines = [line("replacement-a"), line("replacement-b", "GUEST", person("linked-guest"))];
+    const replaced = await resolveBookers({ paymentState: "UNPAID" });
+    expect(replaced.skippedRecipients).toEqual(original.skippedRecipients);
+    expect(replaced.preview.fingerprint).toBe(original.preview.fingerprint);
+  });
+  it("preserves legacy per-place missing contacts when one attendee contact owns multiple places", async () => {
+    const b = { ...booking("booking-one", person("owner", "")), lines: [line("place-a"), line("place-b")] };
+    bookings.mockResolvedValue({ data: { bookings: [b] } } as never);
+    const result = await resolve({ paymentState: "UNPAID" });
+    expect(result.preview.matchedTicketCount).toBe(2);
+    expect(result.preview.skipped).toEqual([
+      { name: "owner Smith", email: "", reason: "missing_contact" },
+      { name: "owner Smith", email: "", reason: "missing_contact" },
+    ]);
+    expect(result.skippedRecipients.map(r => r.userId)).toEqual(["missing:place-a", "missing:place-b"]);
+    expect(result.preview.fingerprint).toBe("c7c98bd3953933682f59a8fe7b2e1f671cbe47db0c3809b9fdd6ce64920cc892");
   });
   it("keeps latest revision, removed-place and exact payment filters for owners", async () => {
     const previous = booking("stale-owner");

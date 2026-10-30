@@ -46,6 +46,8 @@ vi.mock("../../../../shared/utils/firebaseFunctions", () => ({
   getAnnouncementTemplates: vi.fn().mockResolvedValue([]),
   getAnnouncementDeliveryConfiguration: vi.fn().mockResolvedValue({ siteDeliveryMode: "SIMULATION" }),
   getAnnouncementSendHistory: vi.fn().mockResolvedValue([]),
+  previewEventAnnouncementAudience: vi.fn(),
+  sendSectionAnnouncement: vi.fn(),
 }));
 
 vi.mock("../../../guests/api", () => ({ guestCall: vi.fn().mockResolvedValue({ event: {}, guests: [], ticketTypes: [] }), money: (value: number) => String(value), paymentLabel: (value: string) => value }));
@@ -1052,6 +1054,69 @@ describe("SectionEventsManager", () => {
         ticketType: { id: "routed-type", title: "Dinner place", audience: "MEMBER", price: 0, includesDinner: true, includesSymposium: false } }],
     };
   }
+
+  it("opens an unpaid-booker announcement from the real Payments shortcut with its exact audience URL", async () => {
+    prepareRoutedEvent();
+    const approved = routedBooking();
+    const unpaid = { ...approved, lines: approved.lines.map((line) => ({ ...line, ticketType: { ...line.ticketType, price: 25 } })) };
+    mockEventBookings({ data: { event: { id: "ev-1", bookings: [unpaid], bookingTicketOrders: [] } }, isLoading: false, isError: false });
+    const view = canonicalManager("/sections/section-1/manage/events/ev-1?task=payments");
+    try {
+      const user = userEvent.setup();
+      const contact = await screen.findByRole("button", { name: "Contact unpaid bookers" });
+      await waitFor(() => expect(contact).toBeEnabled());
+      await user.click(contact);
+      expect(screen.getByText("/sections/section-1/manage/events/ev-1?task=announcement&recipientTarget=BOOKERS&audience.paymentState=UNPAID")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Communications" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Booking owners" })).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Payment" })).toHaveTextContent("Unpaid");
+      expect(screen.queryByRole("heading", { name: "Event attendees" })).not.toBeInTheDocument();
+      expect(firebaseFunctions.previewEventAnnouncementAudience).not.toHaveBeenCalled();
+      expect(firebaseFunctions.sendSectionAnnouncement).not.toHaveBeenCalled();
+    } finally { view.unmount(); }
+  }, 20_000);
+
+  it("retains a confirmed approval across failed refresh, task history and remount without another decision", async () => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    prepareRoutedEvent();
+    mockEventBookings({ data: { event: { id: "ev-1", bookings: [routedBooking("PENDING")] } }, isLoading: false, isError: false });
+    vi.mocked(firebaseDataConnect.executeQuery).mockRejectedValue(new Error("Authoritative booking reload unavailable"));
+    const view = canonicalManager("/sections/section-1/manage/events/ev-1?task=approvals");
+    try {
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Review change" }));
+      let review = screen.getByRole("dialog", { name: /Review booking change/ });
+      await user.click(within(review).getByRole("button", { name: "Approve revision" }));
+      await waitFor(() => expect(within(review).getByText(/Decision saved/)).toBeInTheDocument());
+      await waitFor(() => expect(within(review).getByRole("button", { name: "Close review" })).toBeEnabled());
+      expect(within(review).getByRole("button", { name: "Approve revision" })).toBeDisabled();
+      expect(within(review).getByRole("button", { name: "Request changes" })).toBeDisabled();
+      fireEvent.click(within(review).getByRole("button", { name: "Approve revision" }));
+      expect(firebaseFunctions.reviewBookingRevision).toHaveBeenCalledOnce();
+      await user.click(within(review).getByRole("button", { name: "Close review" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+      expect(screen.getByText(/The latest event data could not be loaded/)).toBeInTheDocument();
+      await user.click(screen.getByRole("tab", { name: "Payments" }));
+      await act(async () => managerNavigation(-1));
+      await user.click(screen.getByRole("button", { name: "Review change" }));
+      review = screen.getByRole("dialog", { name: /Review booking change/ });
+      expect(within(review).getByText(/Decision saved/)).toBeInTheDocument();
+      expect(within(review).getByRole("button", { name: "Approve revision" })).toBeDisabled();
+      await user.click(within(review).getByRole("button", { name: "Close review" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+      await act(async () => managerNavigation("/elsewhere"));
+      await act(async () => managerNavigation(-1));
+      await user.click(screen.getByRole("button", { name: "Review change" }));
+      review = screen.getByRole("dialog", { name: /Review booking change/ });
+      expect(within(review).getByText(/Decision saved/)).toBeInTheDocument();
+      expect(within(review).getByRole("textbox", { name: "Moderator note" })).toBeDisabled();
+      expect(within(review).getByRole("button", { name: "Request changes" })).toBeDisabled();
+      expect(within(review).getByRole("button", { name: "Approve revision" })).toBeDisabled();
+      fireEvent.click(within(review).getByRole("button", { name: "Request changes" }));
+      expect(firebaseFunctions.reviewBookingRevision).toHaveBeenCalledOnce();
+    } finally { view.unmount(); owner.retire(); uninstall(); }
+  }, 20_000);
 
   it("defaults a canonical event page to Overview with exactly six main task tabs", async () => {
     prepareRoutedEvent();
