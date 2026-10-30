@@ -2,6 +2,8 @@ import TicketPreferencesFields from "./TicketPreferencesFields";
 import { organiserGuestTicketRows } from "./reporting";
 import { eventTicketRowsCsv } from "../admin/utils/bookingApprovalsAdmin";
 import { useState } from "react";
+import { useSessionDraft, useDraftUnloadWarning } from "../../shared/hooks/useSessionDraft";
+import { normalizedResourceId } from "../../shared/navigation/sectionRoutes";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
@@ -60,17 +62,21 @@ function startClipboardWrite(
 export default function OrganiserGuestsManager({
   eventId,
   sectionId,
+  active = true,
 }: {
   eventId: string;
   sectionId: string;
+  active?: boolean;
 }) {
   const client = useQueryClient();
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["organiser-guests", eventId, auth.currentUser?.uid],
     queryFn: () => guestCall<GuestList>("getOrganiserGuestList", { eventId }),
     gcTime: 0,
+    enabled: active,
   });
-  const [guest, setGuest] = useState<Partial<Guest> | null>(null);
+  const [guest, setGuest] = useSessionDraft<Partial<Guest> | null>(`organiser-guest-draft:${normalizedResourceId(sectionId)}:${normalizedResourceId(eventId)}`, null);
+  useDraftUnloadWarning(guest !== null);
   const [cancel, setCancel] = useState<Guest | null>(null);
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
@@ -298,7 +304,7 @@ export default function OrganiserGuestsManager({
           </Typography>
         </>
       )}
-      <Dialog open={Boolean(link)} onClose={() => setLink("")} fullWidth>
+      <Dialog open={active && Boolean(link)} onClose={() => setLink("")} fullWidth>
         <DialogTitle>Copy guest link</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>
@@ -332,7 +338,7 @@ export default function OrganiserGuestsManager({
         </DialogActions>
       </Dialog>
       <Dialog
-        open={Boolean(guest)}
+        open={active && Boolean(guest)}
         onClose={() => !busy && setGuest(null)}
         fullWidth
       >
@@ -395,7 +401,7 @@ export default function OrganiserGuestsManager({
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog open={Boolean(cancel)} onClose={() => !busy && setCancel(null)}>
+      <Dialog open={active && Boolean(cancel)} onClose={() => !busy && setCancel(null)}>
         <DialogTitle>Delete this guest ticket?</DialogTitle>
         <DialogContent>
           This releases {cancel?.firstName} {cancel?.lastName}'s place and stops

@@ -139,6 +139,25 @@ describe("attendee audience", () => {
     await user.click(screen.getByRole("option", { name: /BULK: Dinner/ }));
     return user;
   }
+  it("embeds communications without a second page header and keeps recipient review required", async () => {
+    const onBack = vi.fn();
+    const user = userEvent.setup();
+    render(<SendAnnouncementPage sectionId="section-1" sectionName="Signals" onBack={onBack} embedded eventAudience={{ eventId: "event-1", eventTitle: "Annual Dinner", filters }} />);
+    expect(screen.getByRole("heading", { name: "Communications", level: 2 })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "New announcement", level: 3 })).toBeVisible();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    await user.click(await screen.findByLabelText("Template"));
+    await user.click(screen.getByRole("option", { name: /BULK: Dinner/ }));
+    expect(screen.getByRole("heading", { name: "Draft announcement" })).toBeVisible();
+    expect(screen.getByText(/draft is kept while you switch tabs/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "New announcement" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview recipients before sending" })).toBeDisabled();
+    expect(firebaseFunctions.sendSectionAnnouncement).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Discard announcement draft" }));
+    expect(screen.getByRole("heading", { name: "New announcement" })).toBeVisible();
+    expect(screen.queryByText(/draft is kept while you switch tabs/)).not.toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+  });
   it("carries filters into preview and sends only the confirmed server audience", async () => {
     const user = await open();
     expect(screen.getByLabelText("Dinner")).toHaveTextContent("Yes");

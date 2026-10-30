@@ -39,6 +39,8 @@ interface SendAnnouncementPageProps {
   sectionId: string;
   sectionName: string;
   onBack: () => void;
+  /** Render within the event workspace without a second page header. */
+  embedded?: boolean;
   eventAudience?: { eventId: string; eventTitle?: string; filters: EventAttendeeTicketFilters };
 }
 
@@ -55,6 +57,7 @@ function AnnouncementComposer({
   sectionName,
   onBack,
   eventAudience,
+  embedded = false,
 }: SendAnnouncementPageProps) {
   const isEventAnnouncement = !!eventAudience;
   const draftKey = announcementDraftKey({ sectionId, eventAudience });
@@ -213,11 +216,30 @@ function AnnouncementComposer({
   };
 
   return (
-    <Box className="page-container">
-      <PageHeader
-        title={`Send announcement — ${audiencePreview?.eventTitle ?? eventAudience?.eventTitle ?? sectionName}`}
-        onBack={onBack}
-      />
+    <Box className={embedded ? undefined : "page-container"}>
+      {embedded ? (
+        <>
+          <Typography component="h2" variant="h5" gutterBottom>Communications</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Send an announcement to selected attendee contacts. Review the audience and email preview before sending.
+          </Typography>
+          <Typography component="h3" variant="h6" sx={{ mb: 2 }}>
+            {sendResult ? "Announcement accepted" : selectedId ? "Draft announcement" : "New announcement"}
+          </Typography>
+          {selectedId && !sendResult && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {sendRequestId
+                ? "This announcement has an existing send request. Resume the announcement send below to check its outcome."
+                : "Your announcement draft is kept while you switch tabs in this signed-in session. Continue below, or discard it explicitly to start again."}
+            </Alert>
+          )}
+        </>
+      ) : (
+        <PageHeader
+          title={`Send announcement — ${audiencePreview?.eventTitle ?? eventAudience?.eventTitle ?? sectionName}`}
+          onBack={onBack}
+        />
+      )}
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Select a GOV Notify template named starting with <strong>BULK:</strong>. Review the preview
@@ -411,7 +433,7 @@ function AnnouncementComposer({
 
       <TemplateEditor sectionName={sectionName} draftKey={draftKey} />
 
-      <AnnouncementSendHistory sectionId={sectionId} refreshTrigger={historyTrigger} />
+      <AnnouncementSendHistory sectionId={sectionId} refreshTrigger={historyTrigger} sectionScopeNotice={isEventAnnouncement} />
     </Box>
   );
 }

@@ -85,6 +85,30 @@ describe("announcement drafts during navigation", () => {
     expect(api.sendSectionAnnouncement).toHaveBeenCalledTimes(2);
     for (const args of vi.mocked(api.sendSectionAnnouncement).mock.calls) expect(args.slice(0, 5)).toEqual(["section-1", "template-1", id, "BULK: Section update", "SIMULATION"]);
   }, 20_000);
+  it("restores an embedded event draft and uncertain send without creating a new request", async () => {
+    const requestId = "00000000-0000-4000-8000-000000000599";
+    vi.spyOn(crypto, "randomUUID").mockReturnValue(requestId);
+    const filters = { attendeeName: "", rank: "", membershipStatus: "", audience: "MEMBER", ticketType: "", includesDinner: "", includesSymposium: "", accommodationRequested: "", approvalStatus: "", paymentState: "" };
+    vi.mocked(api.previewEventAnnouncementAudience).mockResolvedValue({ eventTitle: "Annual Dinner", fingerprint: "embedded-audience", matchedTicketCount: 1, recipients: [{ name: "Jane Smith", email: "jane@example.com" }], skipped: [] });
+    vi.mocked(api.sendSectionAnnouncement).mockRejectedValueOnce(new Error("Response lost"));
+    const user = userEvent.setup();
+    const props = { sectionId: "section-1", sectionName: "Signals", onBack: vi.fn(), embedded: true, eventAudience: { eventId: "event-1", filters } };
+    const first = render(<SendAnnouncementPage {...props} />);
+    await user.click(await screen.findByLabelText("Template"));
+    await user.click(screen.getByRole("option", { name: /BULK: Section update/ }));
+    await user.click(screen.getByRole("button", { name: "Preview recipients" }));
+    await user.click(await screen.findByRole("button", { name: "Send to 1 attendee contacts" }));
+    await screen.findByRole("button", { name: "Resume announcement send" });
+    first.unmount();
+    render(<SendAnnouncementPage {...props} />);
+    const resume = await screen.findByRole("button", { name: "Resume announcement send" });
+    await waitFor(() => expect(resume).toBeEnabled());
+    expect(screen.getByText(/existing send request/)).toBeVisible();
+    expect(screen.getByLabelText("Template")).toHaveTextContent("BULK: Section update");
+    expect(screen.queryByRole("button", { name: "New announcement" })).not.toBeInTheDocument();
+    expect(api.sendSectionAnnouncement).toHaveBeenCalledTimes(1);
+    expect(api.sendSectionAnnouncement).toHaveBeenCalledWith("section-1", "template-1", requestId, "BULK: Section update", "LIVE", undefined, { eventAudience: { eventId: "event-1", filters }, audienceFingerprint: "embedded-audience" });
+  }, 20_000);
   it("retains an uncertain member send and its accepted acknowledgement across equivalent section ID spellings", async () => {
     const sectionId = "aabbccdd-1111-4222-8333-abcdef123456";
     const compactId = sectionId.replaceAll("-", "");

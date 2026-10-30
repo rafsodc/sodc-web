@@ -1,6 +1,6 @@
 import { BookingApprovalStatus, MembershipStatus, TicketAudience } from "@dataconnect/generated";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "../../../../test-utils";
 import type { EventAttendeeTicketRow } from "../../utils/bookingApprovalsAdmin";
 import { EventAttendeeTicketsSection } from "../sectionEventsManagerSurfaces/TicketAdminSurface";
@@ -125,4 +125,35 @@ it("offers announcement preview even when there are no member rows", async () =>
   render(<EventAttendeeTicketsSection eventTitle="Dinner" loading={false} rows={[]} onAnnounce={onAnnounce} />);
   await user.click(screen.getByRole("button", { name: "Send announcement to attendees" }));
   expect(onAnnounce).toHaveBeenCalledWith(expect.objectContaining({ audience: "", paymentState: "" }));
+});
+
+
+describe("responsive attendee ticket report", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("shows labelled attendee cards, distinct booking owners, and working actions and filters", async () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ matches: query.includes("max-width"), media: query, onchange: null, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn() }));
+    const user = userEvent.setup(); const onManageTicket = vi.fn();
+    const row = attendeeRow({ ticketId: "ticket-1", attendeeName: "Jamie Guest", bookingOwnerName: "Alex Booker", bookingOwnerEmail: "booker@example.com", accommodationRequested: true, accommodationNote: "Accessible room", seatingPreferences: ["Robin Member"], dietaryNote: "No nuts" });
+    render(<EventAttendeeTicketsSection eventTitle="Dinner" loading={false} rows={[row]} onManageTicket={onManageTicket} />);
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Jamie Guest" })).toBeInTheDocument();
+    expect(screen.getByText("Booked by")).toBeInTheDocument();
+    expect(screen.getByText("Alex Booker")).toBeInTheDocument();
+    expect(screen.getByText("booker@example.com")).toBeInTheDocument();
+    expect(screen.getByText("Accessible room")).toBeInTheDocument();
+    expect(screen.getByText("Robin Member")).toBeInTheDocument();
+    expect(screen.getByText("No nuts")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit ticket for Jamie Guest" }));
+    expect(onManageTicket).toHaveBeenCalledWith(row, "edit");
+    expect(screen.queryByRole("textbox", { name: "Filter attendee" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show filters" }));
+    await user.type(screen.getByRole("textbox", { name: "Filter attendee" }), "nobody");
+    expect(screen.getByText("No attendees match the current filters.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Hide filters (1 active)" }));
+    expect(screen.getByRole("button", { name: "Show filters (1 active)" })).toHaveAttribute("aria-expanded", "false");
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getByRole("button", { name: "Show filters" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Jamie Guest" })).toBeInTheDocument();
+  });
 });

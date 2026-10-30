@@ -47,6 +47,8 @@ import {
 interface Props {
   sectionId: string;
   refreshTrigger?: number;
+  /** The history API returns section sends without an event identifier. */
+  sectionScopeNotice?: boolean;
 }
 
 const ALPHABET = [
@@ -594,7 +596,7 @@ function SendRow({
   );
 }
 
-export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: Props) {
+export default function AnnouncementSendHistory({ sectionId, refreshTrigger, sectionScopeNotice = false }: Props) {
   const [sends, setSends] = useState<AnnouncementSend[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -627,7 +629,7 @@ export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: P
       <Divider sx={{ mb: 3 }} />
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
         <History fontSize="small" color="action" />
-        <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>Send history</Typography>
+        <Typography component="h3" variant="subtitle1" sx={{ flexGrow: 1 }}>{sectionScopeNotice ? "Section send history" : "Send history"}</Typography>
         <Tooltip title="Refresh send history and expanded recipients">
           <span>
             <IconButton
@@ -642,6 +644,11 @@ export default function AnnouncementSendHistory({ sectionId, refreshTrigger }: P
         </Tooltip>
       </Box>
 
+      {sectionScopeNotice && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Includes announcements across this section. This list is not filtered to this event.
+        </Typography>
+      )}
       {loading && sends === null && <CircularProgress size={24} />}
       {error && <Alert severity="error">{error}</Alert>}
       {sends && sends.length === 0 && (

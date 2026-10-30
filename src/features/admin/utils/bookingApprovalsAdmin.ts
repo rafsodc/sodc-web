@@ -32,6 +32,8 @@ export interface EventAttendeeTicketRow {
   ticketTypeId?: string;
   attendanceVersion?: number;
   attendeeName: string;
+  bookingOwnerName?: string;
+  bookingOwnerEmail?: string | null;
   email: string | null;
   rank: string | null;
   membershipStatus: MembershipStatus | null;
@@ -136,6 +138,8 @@ export function activeEventTicketRows(
           ticketTypeId: ticket.id,
           attendanceVersion: line.bookingPlace?.attendanceVersion ?? 0,
           attendeeName: line.bookingPlace?.attendanceName ?? attendeeName,
+          bookingOwnerName: `${booking.booker.firstName} ${booking.booker.lastName}`.trim(),
+          bookingOwnerEmail: booking.booker.email.trim() || null,
           email:
             line.ticketType.audience === TicketAudience.MEMBER
               ? booking.booker.email.trim() || null
