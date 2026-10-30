@@ -10,6 +10,7 @@ import {
 
 export type SessionMutationStatus = "idle" | "pending" | "success" | "error";
 interface MutationSnapshot<T> {
+  receipt: object | null;
   status: SessionMutationStatus;
   result: T | undefined;
   error: unknown | null;
@@ -27,7 +28,7 @@ interface MutationJournal {
   removeUnload: (() => void) | null;
 }
 const journals = new WeakMap<SessionLifecycle, MutationJournal>();
-const IDLE: MutationSnapshot<never> = Object.freeze({ status: "idle", result: undefined, error: null });
+const IDLE: MutationSnapshot<never> = Object.freeze({ receipt: null, status: "idle", result: undefined, error: null });
 const available = (session: SessionToken) => isSessionCurrent(session) && !isPrivateSessionSuspended(session);
 const publish = (journal: MutationJournal) => journal.listeners.forEach(listener => listener());
 function clear(journal: MutationJournal): void {
@@ -142,14 +143,14 @@ export function useSessionMutation<T>(resourceKey: string) {
     const promise = new Promise<T>((done, failed) => { resolve = done; reject = failed; });
     // Keep abandoned navigation promises handled while retaining rejection for callers.
     void promise.catch(() => {});
-    const entry: MutationEntry<T> = { promise, snapshot: { status: "pending", result: undefined, error: null } };
+    const entry: MutationEntry<T> = { promise, snapshot: { receipt: Object.freeze({}), status: "pending", result: undefined, error: null } };
     journal.entries.set(resourceKey, entry as MutationEntry<unknown>);
     syncUnload(journal, session);
     publish(journal);
     const current = () => available(session) && findJournal(session, isolated) === journal && journal.entries.get(resourceKey) === entry;
     const fail = (error: unknown) => {
       if (!current()) { clearUnavailableJournal(session, isolated); reject(new SessionChangedError()); return; }
-      entry.snapshot = { status: "error", result: undefined, error };
+      entry.snapshot = { receipt: entry.snapshot.receipt, status: "error", result: undefined, error };
       syncUnload(journal, session);
       publish(journal);
       reject(error);
@@ -157,7 +158,7 @@ export function useSessionMutation<T>(resourceKey: string) {
     try {
       void Promise.resolve(operation()).then(result => {
         if (!current()) { clearUnavailableJournal(session, isolated); reject(new SessionChangedError()); return; }
-        entry.snapshot = { status: "success", result, error: null };
+        entry.snapshot = { receipt: entry.snapshot.receipt, status: "success", result, error: null };
         syncUnload(journal, session);
         publish(journal);
         resolve(result);
@@ -168,14 +169,20 @@ export function useSessionMutation<T>(resourceKey: string) {
     return promise;
   }, [resource, session, resourceKey, isolated]);
 
-  const acknowledge = useCallback(() => {
-    if (active.current !== resource || !available(session)) return;
+  const acknowledgeIfCurrent = useCallback((receipt: object): boolean => {
+    if (active.current !== resource || !available(session)) return false;
     const journal = findJournal(session, isolated);
-    if (!journal || journal.entries.get(resourceKey)?.snapshot.status === "pending") return;
+    const entry = journal?.entries.get(resourceKey);
+    if (!journal || !entry || entry.snapshot.receipt !== receipt || entry.snapshot.status === "pending") return false;
     journal.entries.delete(resourceKey);
     syncUnload(journal, session);
     publish(journal);
+    return true;
   }, [resource, session, resourceKey, isolated]);
+  const acknowledge = useCallback(() => {
+    const receipt = findJournal(session, isolated)?.entries.get(resourceKey)?.snapshot.receipt;
+    if (receipt) acknowledgeIfCurrent(receipt);
+  }, [session, resourceKey, isolated, acknowledgeIfCurrent]);
 
-  return { ...state, pending: state.status === "pending", runOnce, acknowledge };
+  return { ...state, pending: state.status === "pending", runOnce, acknowledge, acknowledgeIfCurrent };
 }

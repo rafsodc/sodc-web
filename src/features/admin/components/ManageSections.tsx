@@ -1,3 +1,4 @@
+import { captureSession, isSessionCurrent, isPrivateSessionSuspended } from "../../../shared/appShell/sessionLifecycle";
 import { useSessionMutation } from "../../../shared/hooks/useSessionMutation";
 import ConfirmationDialog from "../../../shared/components/ConfirmationDialog";
 import { idsEqual } from "../../../shared/utils/uuid";
@@ -98,7 +99,15 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   const configurationWrite = useSessionMutation<unknown>(
     `section-config-write:${normalizedResourceId(configurationId)}`,
   );
-  const [resetConfigurationWrite, setResetConfigurationWrite] = useState(false);
+  const [configurationReview, setConfigurationReview] = useState<{
+    receipt: object;
+    locationKey: string;
+    isCurrent: () => boolean;
+    titles: string[];
+  } | null>(null);
+  const activeConfigurationReview = configurationReview?.locationKey === location.key &&
+    configurationReview.receipt === configurationWrite.receipt && configurationReview.isCurrent()
+    ? configurationReview : null;
   const {
     name: sectionName,
     type: sectionType,
@@ -128,7 +137,7 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   useEffect(() => {
     editorSaveGuard.invalidate();
     setSubmitting(false);
-    setResetConfigurationWrite(false);
+    setConfigurationReview(null);
     return () => editorSaveGuard.invalidate();
   }, [location.search, editorSaveGuard]);
   const [submitting, setSubmitting] = useState(false);
@@ -438,23 +447,40 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
   };
 
   const reconcileConfigurationWrite = async () => {
+    if (configurationWrite.pending || !configurationWrite.receipt) return;
     const token = editorSaveGuard.start();
+    const session = captureSession();
+    const current = () => editorSaveGuard.isCurrent(token) && isSessionCurrent(session) && !isPrivateSessionSuspended(session);
+    setConfigurationReview(null);
     try {
       const [latestSections] = await Promise.all([
         fetchSections(),
         invalidateSectionsForUser(queryClient),
       ]);
-      if (!editorSaveGuard.isCurrent(token) || latestSections === null) return;
+      if (!current() || latestSections === null) return;
       if (configurationWrite.status === "success") {
-        configurationWrite.acknowledge();
+        if (!configurationWrite.acknowledgeIfCurrent(configurationWrite.receipt)) return;
         discardConfigurationDraft();
         setDialogOpen(false);
         navigate("/admin/sections");
-      } else setResetConfigurationWrite(true);
+      } else setConfigurationReview({ receipt: configurationWrite.receipt, locationKey: location.key,
+        isCurrent: current, titles: latestSections.map(section => section.name) });
     } catch (caught) {
-      if (editorSaveGuard.isCurrent(token))
+      if (current()) {
+        setConfigurationReview(null);
         setError(toAdminUserFacingError(caught, "sections").message);
+      }
     }
+  };
+  const acknowledgeReviewedConfiguration = (found: boolean) => {
+    if (!activeConfigurationReview?.isCurrent() ||
+      !configurationWrite.acknowledgeIfCurrent(activeConfigurationReview.receipt)) return;
+    setConfigurationReview(null);
+    setError(null);
+    if (!found) return;
+    discardConfigurationDraft();
+    setDialogOpen(false);
+    navigate("/admin/sections");
   };
   const configurationWriteNotice =
     configurationWrite.status === "idle" ? null : (
@@ -708,23 +734,23 @@ export default function ManageSections({ onBack }: ManageSectionsProps) {
       />
 
       <ConfirmationDialog
-        open={resetConfigurationWrite}
+        open={!!activeConfigurationReview}
         title="Start a new section save request?"
         confirmLabel="I checked — start a new request"
-        onCancel={() => setResetConfigurationWrite(false)}
-        onConfirm={() => {
-          configurationWrite.acknowledge();
-          setResetConfigurationWrite(false);
-          setError(null);
-        }}
+        onCancel={() => setConfigurationReview(null)}
+        onConfirm={() => acknowledgeReviewedConfiguration(false)}
       >
-        Confirm only if the intended section change is absent from this latest
-        list. Otherwise cancel and open the saved section.
+        If you found the intended section change in this latest list, close this
+        draft without submitting it again. Start a new request only if the
+        change is absent.
         <Box component="ul">
-          {sections.map((section) => (
-            <li key={section.id}>{section.name}</li>
+          {(activeConfigurationReview?.titles ?? []).map((name, index) => (
+            <li key={`${index}:${name}`}>{name}</li>
           ))}
         </Box>
+        <Button onClick={() => acknowledgeReviewedConfiguration(true)} sx={{ mt: 2 }}>
+          I found the saved change — close this draft
+        </Button>
       </ConfirmationDialog>
       <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
     </Box>
