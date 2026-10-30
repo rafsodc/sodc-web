@@ -452,6 +452,12 @@ const RECIPIENT_INITIAL_PAGE_SIZE = 250;
 const DATA_CONNECT_PAGE_SIZE = 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// Data Connect returns UUID fields without hyphens; route and selection IDs may
+// use either form. Keep opaque identities (Auth UIDs and template IDs) exact.
+function sameUuid(stored: string | null | undefined, supplied: string): boolean {
+  return stored != null && validateUUID(stored) === validateUUID(supplied);
+}
+
 function isDuplicateKeyError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /unique|duplicate|already exists|violates/i.test(message);
@@ -759,13 +765,13 @@ export const sendSectionAnnouncement = onCall(
 
     if (existing) {
       if (
-        existing.sectionId !== sectionId ||
+        !sameUuid(existing.sectionId, sectionId) ||
         existing.templateUuid !== templateUuid ||
         existing.sentBy !== callerUid ||
         existing.requestedDeliveryMode !== deliveryMode.requestedMode ||
         existing.siteDeliveryMode !== deliveryMode.siteMode ||
         existing.effectiveDeliveryMode !== deliveryMode.effectiveMode
-        || (selectedReplyToAddressId !== undefined && existing.replyToAddressId !== selectedReplyToAddressId)
+        || (selectedReplyToAddressId !== undefined && !sameUuid(existing.replyToAddressId, selectedReplyToAddressId))
       ) {
         throw new HttpsError("already-exists", "requestId is already in use");
       }
@@ -880,13 +886,13 @@ export const sendSectionAnnouncement = onCall(
         existing = existingResult.data?.announcementSend;
         if (
           !existing ||
-          existing.sectionId !== sectionId ||
+          !sameUuid(existing.sectionId, sectionId) ||
           existing.templateUuid !== templateUuid ||
           existing.sentBy !== callerUid ||
           existing.requestedDeliveryMode !== deliveryMode.requestedMode ||
           existing.siteDeliveryMode !== deliveryMode.siteMode ||
           existing.effectiveDeliveryMode !== deliveryMode.effectiveMode ||
-          (selectedReplyToAddressId !== undefined && existing.replyToAddressId !== selectedReplyToAddressId)
+          (selectedReplyToAddressId !== undefined && !sameUuid(existing.replyToAddressId, selectedReplyToAddressId))
         ) {
           throw new HttpsError("already-exists", "requestId is already in use");
         }
@@ -935,7 +941,7 @@ export const retryAnnouncementPreparation = onCall(
     }
     await requireSectionModerator(request.auth!.uid, sectionId, currentAuthorization(request).isAdmin);
     const sendResult = await getAnnouncementSendById({ id: sendId });
-    if (!sendResult.data?.announcementSend || sendResult.data.announcementSend.sectionId !== sectionId) {
+    if (!sendResult.data?.announcementSend || !sameUuid(sendResult.data.announcementSend.sectionId, sectionId)) {
       throw new HttpsError("not-found", "Announcement send not found");
     }
     await enqueueAnnouncementPreparation(sendId, attemptId);
@@ -1064,7 +1070,7 @@ export const getAnnouncementSendRecipients = onCall(
     // sendId that isn't theirs.
     const sendResult = await getAnnouncementSendById({ id: sendId });
     const send = sendResult.data?.announcementSend;
-    if (!send || send.sectionId !== sectionId) {
+    if (!send || !sameUuid(send.sectionId, sectionId)) {
       throw new HttpsError("not-found", "Announcement send not found");
     }
 
