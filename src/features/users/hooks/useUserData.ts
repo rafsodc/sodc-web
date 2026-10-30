@@ -48,7 +48,7 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean,
       if (!enabled) { fetched.current = uid; return; }
       let result;
       try {
-        result = await withTimeout(runSessionRead(() => executeQuery(getCurrentUserRef(dataConnect), force ? { fetchPolicy: QueryFetchPolicy.SERVER_ONLY } : undefined), token), requestTimeoutMs, "Loading the current user timed out");
+        result = await withTimeout(runSessionRead(() => executeQuery(getCurrentUserRef(dataConnect), { fetchPolicy: QueryFetchPolicy.SERVER_ONLY }), token), requestTimeoutMs, "Loading the current user timed out");
       } catch (error) {
         if (!current()) return;
         // Explicit current-authority failures belong to the shared coordinator,
@@ -62,10 +62,12 @@ export function useUserData(firebaseUser: User | null, accountEnabled?: boolean,
         result = await withTimeout(runSessionRead(() => executeQuery(getCurrentUserRef(dataConnect), { fetchPolicy: QueryFetchPolicy.SERVER_ONLY }), token), requestTimeoutMs, "Retrying the current user request timed out");
       }
       if (!current()) return;
-      fetched.current = uid;
       const data = result.data?.user as UserData | undefined;
-      // Defense in depth if a cache/provider ever returns a different owner.
-      setState({ uid, userData: data?.id === uid ? data : null, loading: false, error: null });
+      // A mismatched response is a failed read, not a loaded profile for this
+      // account. Never show another owner's data or silently accept the result.
+      if (data && data.id !== uid) throw new Error("The loaded profile does not belong to the signed-in account. Reload your profile and try again.");
+      fetched.current = uid;
+      setState({ uid, userData: data ?? null, loading: false, error: null });
     } catch (error) {
       if (!current()) return;
       if (classifyAuthorizationFailure(error)) return;

@@ -27,9 +27,9 @@ function getFullName(userData: UserData | null): string {
 }
 
 function accountDisplayName(userData: UserData | null, firebaseUser: User | null): string {
-  const name = getFullName(userData);
+  const name = firebaseUser && userData?.id === firebaseUser.uid ? getFullName(userData) : "";
   if (name) return name;
-  return firebaseUser?.displayName?.trim() || firebaseUser?.email || "Account";
+  return firebaseUser?.email?.trim() || "Account";
 }
 
 export default function Header({

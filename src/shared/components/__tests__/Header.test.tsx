@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "../../../test-utils";
+import { render, screen, within } from "../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import type { User } from "firebase/auth";
 import Header from "../Header";
 import { createMockUser } from "../../../test-utils/mocks/firebase";
+import { createUserData } from "../../../test-utils/factories/userData";
 
 const enabledUser = createMockUser({ uid: "user-1" });
 
@@ -127,5 +128,88 @@ describe("Header account menu", () => {
 
     expect(screen.queryByRole("menuitem", { name: "My Bookings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "My Payments" })).not.toBeInTheDocument();
+  });
+});
+
+
+describe("Header account identity", () => {
+  it("updates the visible name and tooltip through sign-out, replacement, and profile loading", () => {
+    const accountA = createMockUser({ uid: "account-a", email: "a@example.invalid", displayName: "Alice Owner" });
+    const accountB = createMockUser({ uid: "account-b", email: "b@example.invalid", displayName: "Alice Owner" });
+    const profileA = createUserData({ id: accountA.uid, firstName: "Alice", lastName: "Owner" });
+    const profileB = createUserData({ id: accountB.uid, firstName: "Bob", lastName: "Member" });
+    const callbacks = { onAccountClick: vi.fn(), onLogoClick: vi.fn() };
+    const { rerender } = render(<Header {...callbacks} user={accountA} userData={profileA} />);
+    const expectAccountLabel = (label: string) => {
+      const accountButton = screen.getByRole("button", { name: "Account menu" });
+      expect(within(accountButton).getByText(label)).toHaveAttribute("title", label);
+    };
+
+    expectAccountLabel("Alice Owner");
+
+    rerender(<Header {...callbacks} user={null} userData={profileA} />);
+    expect(screen.queryByRole("button", { name: "Account menu" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.queryByText("Alice Owner")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Alice Owner")).not.toBeInTheDocument();
+
+    rerender(<Header {...callbacks} user={accountB} userData={null} />);
+    expectAccountLabel("b@example.invalid");
+    expect(screen.queryByText("Alice Owner")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Alice Owner")).not.toBeInTheDocument();
+
+    // A previous profile must not supply either the label or its tooltip while B loads.
+    rerender(<Header {...callbacks} user={accountB} userData={profileA} />);
+    expectAccountLabel("b@example.invalid");
+    expect(screen.queryByText("Alice Owner")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Alice Owner")).not.toBeInTheDocument();
+
+    rerender(<Header {...callbacks} user={accountB} userData={profileB} />);
+    expectAccountLabel("Bob Member");
+    expect(screen.queryByText("b@example.invalid")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("b@example.invalid")).not.toBeInTheDocument();
+  });
+
+  it.each([null, "", "   "])("uses a neutral label when the current account email is %j", (email) => {
+    const accountB = createMockUser({ uid: "account-b", email, displayName: "Alice Owner" });
+    render(
+      <Header
+        user={accountB}
+        userData={createUserData({ id: "account-a", firstName: "Alice", lastName: "Owner" })}
+        onAccountClick={vi.fn()}
+        onLogoClick={vi.fn()}
+      />
+    );
+
+    const accountButton = screen.getByRole("button", { name: "Account menu" });
+    expect(within(accountButton).getByText("Account")).toHaveAttribute("title", "Account");
+    expect(screen.queryByText("Alice Owner")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Alice Owner")).not.toBeInTheDocument();
+  });
+
+  it("requires an exact profile owner and falls back to the current email for an empty owned name", () => {
+    const accountB = createMockUser({ uid: "account-b", email: "b@example.invalid", displayName: "Alice Owner" });
+    const callbacks = { onAccountClick: vi.fn(), onLogoClick: vi.fn() };
+    const { rerender } = render(
+      <Header
+        {...callbacks}
+        user={accountB}
+        userData={createUserData({ id: "ACCOUNT-B", firstName: "Alice", lastName: "Owner" })}
+      />
+    );
+
+    const accountLabel = () => within(screen.getByRole("button", { name: "Account menu" })).getByText("b@example.invalid");
+    expect(accountLabel()).toHaveAttribute("title", "b@example.invalid");
+    expect(screen.queryByTitle("Alice Owner")).not.toBeInTheDocument();
+
+    rerender(
+      <Header
+        {...callbacks}
+        user={accountB}
+        userData={createUserData({ id: accountB.uid, firstName: " ", lastName: " " })}
+      />
+    );
+    expect(accountLabel()).toHaveAttribute("title", "b@example.invalid");
+    expect(screen.queryByTitle("Alice Owner")).not.toBeInTheDocument();
   });
 });
