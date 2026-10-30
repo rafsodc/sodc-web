@@ -163,6 +163,14 @@ describe("AnnouncementSendHistory", () => {
     });
   });
 
+  it("labels section-wide history honestly when displayed inside an event", async () => {
+    vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockResolvedValue(mockSends);
+    render(<AnnouncementSendHistory sectionId={SECTION_ID} sectionScopeNotice />);
+    expect(screen.getByRole("heading", { name: "Section send history" })).toBeVisible();
+    expect(screen.getByText(/This list is not filtered to this event/)).toBeVisible();
+    expect(await screen.findByText("BULK: Alpha Update")).toBeVisible();
+    expect(firebaseFunctions.getAnnouncementSendHistory).toHaveBeenCalledWith(SECTION_ID);
+  });
   it("shows an error when history fails to load", async () => {
     vi.mocked(firebaseFunctions.getAnnouncementSendHistory).mockRejectedValue(new Error("network"));
 

@@ -139,6 +139,25 @@ describe("attendee audience", () => {
     await user.click(screen.getByRole("option", { name: /BULK: Dinner/ }));
     return user;
   }
+  it("embeds communications without a second page header and keeps recipient review required", async () => {
+    const onBack = vi.fn();
+    const user = userEvent.setup();
+    render(<SendAnnouncementPage sectionId="section-1" sectionName="Signals" onBack={onBack} embedded eventAudience={{ eventId: "event-1", eventTitle: "Annual Dinner", filters }} />);
+    expect(screen.getByRole("heading", { name: "Communications", level: 2 })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "New announcement", level: 3 })).toBeVisible();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    await user.click(await screen.findByLabelText("Template"));
+    await user.click(screen.getByRole("option", { name: /BULK: Dinner/ }));
+    expect(screen.getByRole("heading", { name: "Draft announcement" })).toBeVisible();
+    expect(screen.getByText(/draft is kept while you switch tabs/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "New announcement" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview recipients before sending" })).toBeDisabled();
+    expect(firebaseFunctions.sendSectionAnnouncement).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Discard announcement draft" }));
+    expect(screen.getByRole("heading", { name: "New announcement" })).toBeVisible();
+    expect(screen.queryByText(/draft is kept while you switch tabs/)).not.toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+  });
   it("carries filters into preview and sends only the confirmed server audience", async () => {
     const user = await open();
     expect(screen.getByLabelText("Dinner")).toHaveTextContent("Yes");
@@ -200,5 +219,59 @@ describe("attendee audience", () => {
     expect(await screen.findByText((text) => text.startsWith(message))).toBeInTheDocument();
     expect(screen.getByText(/3 matching tickets/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send to 1 attendee contacts" })).toBeEnabled();
+  });
+});
+
+describe("booking-owner audience", () => {
+  const filters = { attendeeName: "", rank: "", membershipStatus: "", audience: "GUEST", ticketType: "", includesDinner: "", includesSymposium: "", accommodationRequested: "", approvalStatus: "", paymentState: "UNPAID" };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(firebaseFunctions.getAnnouncementDeliveryConfiguration).mockResolvedValue({ siteDeliveryMode: "SIMULATION" });
+    vi.mocked(firebaseFunctions.getAnnouncementTemplates).mockResolvedValue([{ id: "template-1", name: "BULK: Dinner", updatedAt: "2026-01-01", requiredPersonalisation: [] }]);
+    vi.mocked(firebaseFunctions.previewAnnouncementTemplate).mockResolvedValue({ html: "<p>Update</p>", subject: "Dinner" });
+    vi.mocked(firebaseFunctions.previewEventAnnouncementAudience).mockResolvedValue({ eventTitle: "Annual Dinner", fingerprint: "reviewed-bookers", recipientTarget: "BOOKERS", matchedTicketCount: 2, recipients: [{ name: "Booking Owner", email: "owner@example.invalid" }], skipped: [] });
+    vi.mocked(firebaseFunctions.sendSectionAnnouncement).mockResolvedValue({ sendId: "send", recipientCount: 1, skippedCount: 0, preparationQueued: true, resumed: false, requestedDeliveryMode: "SIMULATION", siteDeliveryMode: "SIMULATION", effectiveDeliveryMode: "SIMULATION" });
+  });
+
+  it("rejects an old backend preview without a BOOKERS acknowledgement and keeps sending blocked", async () => {
+    vi.mocked(firebaseFunctions.previewEventAnnouncementAudience).mockResolvedValueOnce({
+      eventTitle: "Annual Dinner", fingerprint: "legacy-attendee-preview", matchedTicketCount: 1,
+      recipients: [{ name: "Accompanying Guest", email: "guest@example.invalid" }], skipped: [],
+    });
+    const user = userEvent.setup();
+    render(<SendAnnouncementPage sectionId="section-1" sectionName="Signals" onBack={vi.fn()} eventAudience={{ eventId: "event-1", filters, recipientTarget: "BOOKERS" }} />);
+    await user.click(await screen.findByLabelText("Template"));
+    await user.click(screen.getByRole("option", { name: /BULK: Dinner/ }));
+    await user.click(screen.getByRole("button", { name: "Preview recipients" }));
+    expect(await screen.findByText("Booking-owner preview is not available yet. Retry after the update finishes.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Preview recipients before sending" })).toBeDisabled();
+    expect(screen.queryByText("Accompanying Guest — guest@example.invalid")).not.toBeInTheDocument();
+    expect(firebaseFunctions.sendSectionAnnouncement).not.toHaveBeenCalled();
+    // The same explicit action works once the updated backend confirms the target.
+    await user.click(screen.getByRole("button", { name: "Preview recipients" }));
+    expect(await screen.findByRole("button", { name: "Send to 1 booking owner" })).toBeEnabled();
+    expect(screen.queryByText(/Booking-owner preview is not available yet/)).not.toBeInTheDocument();
+    expect(firebaseFunctions.sendSectionAnnouncement).not.toHaveBeenCalled();
+  });
+
+  it("requires owner preview and carries the immutable target through matching guest filters and send", async () => {
+    const user = userEvent.setup();
+    render(<SendAnnouncementPage sectionId="section-1" sectionName="Signals" onBack={vi.fn()} embedded eventAudience={{ eventId: "event-1", eventTitle: "Annual Dinner", filters, recipientTarget: "BOOKERS" }} />);
+    expect(screen.getByRole("heading", { name: "Booking owners" })).toBeVisible();
+    expect(screen.getByText(/Guests and organiser guests will not be emailed/)).toBeVisible();
+    expect(screen.getByText(/Unpaid filter excludes partially paid tickets and payments in progress/)).toBeVisible();
+    await user.click(await screen.findByLabelText("Template"));
+    await user.click(screen.getByRole("option", { name: /BULK: Dinner/ }));
+    expect(screen.getByRole("button", { name: "Preview recipients before sending" })).toBeDisabled();
+    expect(screen.getByText(/This send is manual; no automatic payment reminder is scheduled/)).toBeVisible();
+    expect(firebaseFunctions.sendSectionAnnouncement).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Preview recipients" }));
+    expect(await screen.findByText(/2 matching tickets, 1 unique booking owner, 0 skipped/)).toBeVisible();
+    expect(firebaseFunctions.previewEventAnnouncementAudience).toHaveBeenCalledWith("section-1", "event-1", filters, "BOOKERS");
+    expect(screen.getByText("Booking Owner — owner@example.invalid")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Send to 1 booking owner" }));
+    expect(firebaseFunctions.sendSectionAnnouncement).toHaveBeenCalledWith("section-1", "template-1", expect.any(String), "BULK: Dinner", "SIMULATION", undefined,
+      { eventAudience: { eventId: "event-1", filters, recipientTarget: "BOOKERS" }, audienceFingerprint: "reviewed-bookers" });
+    expect(await screen.findByText(/Preparing 1 email/)).toBeVisible();
   });
 });

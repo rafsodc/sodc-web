@@ -8,12 +8,13 @@ import { idsEqual } from "../../../shared/utils/uuid";
 import {
   eventAnnouncementPath,
   readEventAnnouncementFilters,
+  readEventAnnouncementTarget,
 } from "../utils/eventAnnouncementNavigation";
 import {
   useSessionDraft,
   useDraftUnloadWarning,
 } from "../../../shared/hooks/useSessionDraft";
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction, ReactNode } from "react";
 import { listSectionTicketAccessGroupsRef } from "../../../shared/query/sectionModerationMetadata";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -23,6 +24,7 @@ import {
   normalizedResourceId,
   sectionManagementPath,
   readEventManagementTask,
+  type EventManagementTask,
 } from "../../../shared/navigation/sectionRoutes";
 import { emptyEventAttendeeTicketFilters } from "../utils/bookingApprovalsAdmin";
 import type { EventAttendeeTicketFilters } from "../utils/bookingApprovalsAdmin";
@@ -33,6 +35,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { guestCall, type GuestList } from "../../guests/api";
 import { organiserGuestTicketRows } from "../../guests/reporting";
 import OrganiserGuestsManager from "../../guests/OrganiserGuestsManager";
+import EventWorkspaceShell from "./EventWorkspaceShell";
+import EventOverview from "./EventOverview";
+import { getEventWorkspaceSummary } from "../utils/eventWorkspaceSummary";
 import {
   useState,
   useCallback,
@@ -41,7 +46,7 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { Alert, Box, Button } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
 import { invalidateMyBookings } from "../../../shared/query/invalidation";
 import {
   refreshDataConnectQuery,
@@ -211,7 +216,17 @@ export default function SectionEventsManager({
 }: SectionEventsManagerProps) {
   const routeLocation = useLocation();
   const navigate = useNavigate();
-  const task = readEventManagementTask(routeLocation.search);
+  const routeTask = readEventManagementTask(routeLocation.search);
+  const task = new URLSearchParams(routeLocation.search).get("edit") === "event" ? "details" : routeTask;
+  const needsBookings = !routeControlled || ["overview", "attendees", "removed", "approvals", "activity", "payments"].includes(task);
+  const needsGuests = !routeControlled || ["overview", "attendees", "guests", "payments"].includes(task);
+  const needsPaymentHistory = !routeControlled || task === "payments";
+  const needsSeatingNames = !routeControlled || ["attendees", "removed", "approvals"].includes(task);
+  const [openedGuestEventId, setOpenedGuestEventId] = useState<string | null>(null);
+  useEffect(() => {
+    if (task === "guests" && initialEventId) setOpenedGuestEventId(initialEventId);
+  }, [task, initialEventId]);
+  const isCurrentEvent = useCurrentView(`${sectionId}:${initialEventId ?? "list"}`);
   const isCurrentView = useCurrentView(
     `${sectionId}:${initialEventId ?? "list"}:${routeLocation.pathname}${routeLocation.search}`,
   );
@@ -299,13 +314,13 @@ export default function SectionEventsManager({
   const ticketSelector = searchParams.get("ticket");
   const eventDialogOpen = routeControlled
     ? editSelector === "new-event" ||
-      (editSelector === "event" && !!ticketTypesEventId)
+      ((editSelector === "event" || task === "details") && !!ticketTypesEventId)
     : localEventDialogOpen;
   const ticketTypeDialogOpen = routeControlled
     ? !!ticketSelector && !!ticketTypesEventId
     : localTicketTypeDialogOpen;
   const editingEvent = routeControlled
-    ? editSelector === "event"
+    ? editSelector === "event" || (task === "details" && !!ticketTypesEventId)
       ? (eventDetailData?.event ?? null)
       : null
     : localEditingEvent;
@@ -325,7 +340,9 @@ export default function SectionEventsManager({
     });
   };
   const setEventDialogOpen = (open: boolean) =>
-    routeControlled
+    routeControlled && !open && ticketTypesEventId && task === "details"
+      ? navigate(eventManagementPath(sectionId, ticketTypesEventId))
+      : routeControlled
       ? changeEditor(
           open ? "edit" : undefined,
           open ? (ticketTypesEventId ? "event" : "new-event") : undefined,
@@ -446,11 +463,20 @@ export default function SectionEventsManager({
   const [reviewingBookingId, setReviewingBookingId] = useState<string | null>(
     null,
   );
+  const bookingReviewRequest = useRef<object | null>(null);
+  useEffect(() => {
+    bookingReviewRequest.current = null;
+    setReviewingBookingId(null);
+  }, [isCurrentEvent]);
+  const [savedReviewDecisions, setSavedReviewDecisions] = useSessionDraft<Record<string, number>>(
+    `event-review-decisions:${normalizedResourceId(sectionId)}:${normalizedResourceId(ticketTypesEventId ?? "none")}`, {},
+  );
   const [eventAnnouncement, setEventAnnouncement] = useState<
     | {
         eventId: string;
         eventTitle?: string;
         filters: EventAttendeeTicketFilters;
+        recipientTarget?: "BOOKERS";
       }
     | undefined
   >();
@@ -474,7 +500,7 @@ export default function SectionEventsManager({
     },
     {
       enabled:
-        !!ticketTypesEventId && (!routeControlled || selectedEventIsKnown),
+        !!ticketTypesEventId && (!routeControlled || selectedEventIsKnown) && needsBookings,
     },
   );
   const {
@@ -490,16 +516,16 @@ export default function SectionEventsManager({
     },
     {
       enabled:
-        !!ticketTypesEventId && (!routeControlled || selectedEventIsKnown),
+        !!ticketTypesEventId && (!routeControlled || selectedEventIsKnown) && needsPaymentHistory,
     },
   );
   const seatingPreferenceUserIds = useMemo(
     () =>
       Array.from(
         new Set(
-          currentActiveBookings(
+          (task === "approvals" ? (eventBookingsData?.event?.bookings ?? []) : currentActiveBookings(
             eventBookingsData?.event?.bookings ?? [],
-          ).flatMap((booking) => [
+          )).flatMap((booking) => [
             ...(booking.sitNextToUserIds ?? []),
             ...booking.lines.flatMap(
               (line) => line.bookingPlace?.attendanceSitNextToUserIds ?? [],
@@ -507,7 +533,7 @@ export default function SectionEventsManager({
           ]),
         ),
       ),
-    [eventBookingsData],
+    [eventBookingsData, task],
   );
   const { data: seatingPreferenceUsersData } = useQuery({
     queryKey: [
@@ -532,7 +558,7 @@ export default function SectionEventsManager({
     enabled:
       !!ticketTypesEventId &&
       (!routeControlled || selectedEventIsKnown) &&
-      seatingPreferenceUserIds.length > 0,
+      seatingPreferenceUserIds.length > 0 && needsSeatingNames,
   });
   const {
     data: paymentAdjustmentsData,
@@ -547,7 +573,7 @@ export default function SectionEventsManager({
     },
     {
       enabled:
-        !!ticketTypesEventId && (!routeControlled || selectedEventIsKnown),
+        !!ticketTypesEventId && (!routeControlled || selectedEventIsKnown) && needsPaymentHistory,
     },
   );
 
@@ -597,6 +623,7 @@ export default function SectionEventsManager({
       refetchEventBookings(),
       refetchTicketOrders(),
       refetchPaymentAdjustments(),
+      guestReport.refetch({ throwOnError: true }),
       queryClient.invalidateQueries(
         { queryKey: ["eventAttendees", ticketTypesEventId] },
         { throwOnError: true },
@@ -665,19 +692,19 @@ export default function SectionEventsManager({
         context: "events" as const,
       },
       {
-        failed: eventBookingsFailed,
+        failed: eventBookingsFailed && needsBookings,
         error: eventBookingsError,
         operation: "bookings",
         context: "tickets" as const,
       },
       {
-        failed: ticketOrdersFailed,
+        failed: ticketOrdersFailed && needsPaymentHistory,
         error: ticketOrdersError,
         operation: "orders",
         context: "tickets" as const,
       },
       {
-        failed: paymentAdjustmentsFailed,
+        failed: paymentAdjustmentsFailed && needsPaymentHistory,
         error: paymentAdjustmentsError,
         operation: "adjustments",
         context: "payment-reconciliation" as const,
@@ -696,6 +723,8 @@ export default function SectionEventsManager({
       toAdminUserFacingError(failures[0].error, failures[0].context).message,
     );
   }, [
+    needsBookings,
+    needsPaymentHistory,
     eventBookingsError,
     eventBookingsFailed,
     eventDetailError,
@@ -738,7 +767,7 @@ export default function SectionEventsManager({
     const refreshed = await refreshSavedChange("Saved change loaded", () =>
       kind === "event"
         ? Promise.all([refetchEvents(), refetchEventDetail()])
-        : Promise.all([refetchEventDetail(), refetchEvents()]),
+        : refreshEventAdministration(),
     );
     if (!refreshed || !isCurrentView()) return;
     receipt.acknowledge();
@@ -769,10 +798,22 @@ export default function SectionEventsManager({
       }
     }
   };
-  const acknowledgeReviewedWrite = (found: boolean) => {
-    if (!activeWriteReview?.isCurrent()) return;
-    const { kind, receipt } = activeWriteReview;
-    if (!(kind === "event" ? eventWrite : ticketWrite).acknowledgeIfCurrent(receipt)) return;
+  const acknowledgeReviewedWrite = async (found: boolean) => {
+    const review = activeWriteReview;
+    if (!review?.isCurrent() || refreshing) return;
+    const { kind, receipt } = review;
+    if (found && kind === "ticket") {
+      setRefreshing(true);
+      try {
+        await refreshEventAdministration();
+      } catch (caught) {
+        if (review.isCurrent()) setError(toAdminUserFacingError(caught, "tickets").message);
+        return;
+      } finally {
+        if (review.isCurrent()) setRefreshing(false);
+      }
+    }
+    if (!review.isCurrent() || !(kind === "event" ? eventWrite : ticketWrite).acknowledgeIfCurrent(receipt)) return;
     setWriteReview(null);
     setError(null);
     if (!found) return;
@@ -826,6 +867,9 @@ export default function SectionEventsManager({
       open={!!activeWriteReview}
       title="Start a new save request?"
       confirmLabel="I checked — start a new request"
+      pending={refreshing}
+      pendingLabel="Loading…"
+      error={error}
       onCancel={() => setWriteReview(null)}
       onConfirm={() => acknowledgeReviewedWrite(false)}
     >
@@ -838,7 +882,7 @@ export default function SectionEventsManager({
         ))}
       </Box>
       {activeWriteReview?.titles.length === 0 && <Box>The latest list is empty.</Box>}
-      <Button onClick={() => acknowledgeReviewedWrite(true)} sx={{ mt: 2 }}>
+      <Button disabled={refreshing} onClick={() => void acknowledgeReviewedWrite(true)} sx={{ mt: 2 }}>
         I found the saved change — close this draft
       </Button>
     </ConfirmationDialog>
@@ -853,7 +897,7 @@ export default function SectionEventsManager({
     if (
       !eventDialogOpen ||
       eventForm.initialized ||
-      (routeControlled && editSelector === "event" && !editingEvent)
+      (routeControlled && (editSelector === "event" || task === "details") && !editingEvent)
     )
       return;
     const now = toDatetimeLocal(new Date().toISOString());
@@ -893,6 +937,7 @@ export default function SectionEventsManager({
     editingEvent,
     routeControlled,
     editSelector,
+    task,
     updateEventForm,
   ]);
 
@@ -1115,7 +1160,7 @@ export default function SectionEventsManager({
       });
       const refreshed = await refreshSavedChange(
         `Ticket type ${editingTicketType ? "updated" : "created"}`,
-        () => Promise.all([refetchEventDetail(), refetchEvents()]),
+        refreshEventAdministration,
       );
       if (!isCurrentView() || !refreshed) return;
       ticketWrite.acknowledge();
@@ -1255,7 +1300,7 @@ export default function SectionEventsManager({
         eventId: ticketTypesEventId,
       }),
     enabled:
-      Boolean(ticketTypesEventId) && (!routeControlled || selectedEventIsKnown),
+      Boolean(ticketTypesEventId) && (!routeControlled || selectedEventIsKnown) && needsGuests,
     gcTime: 0,
   });
   const attendeeTickets = useMemo(
@@ -1295,6 +1340,9 @@ export default function SectionEventsManager({
     booking: EventBookingAdminRow,
     decision: BookingApprovalStatus.APPROVED | BookingApprovalStatus.REJECTED,
   ) => {
+    if (bookingReviewRequest.current || savedReviewDecisions[booking.id] === booking.revisionNumber) return;
+    const request = {};
+    bookingReviewRequest.current = request;
     setReviewingBookingId(booking.id);
     setError(null);
     try {
@@ -1304,6 +1352,7 @@ export default function SectionEventsManager({
         decision,
         moderatorNote: moderatorNoteDraft[booking.id]?.trim() || null,
       });
+      setSavedReviewDecisions((previous) => ({ ...previous, [booking.id]: booking.revisionNumber }));
       if (!isCurrentView()) {
         await refreshEventAdministration();
         return;
@@ -1321,7 +1370,10 @@ export default function SectionEventsManager({
       });
       setError(toAdminUserFacingError(err, "booking-approval").message);
     } finally {
-      if (isCurrentView()) setReviewingBookingId(null);
+      if (bookingReviewRequest.current === request) {
+        bookingReviewRequest.current = null;
+        if (isCurrentEvent()) setReviewingBookingId((current) => current === booking.id ? null : current);
+      }
     }
   };
 
@@ -1363,9 +1415,10 @@ export default function SectionEventsManager({
       </Box>
     );
   const announcing = routeControlled
-    ? task === "announcement"
+    ? task === "announcement" || task === "communications"
     : sendingAnnouncement;
-  if (announcing) {
+  const announcementTarget = readEventAnnouncementTarget(routeLocation.search);
+  if (announcing && (!routeControlled || !ticketTypesEventId)) {
     return (
       <SendAnnouncementPage
         sectionId={sectionId}
@@ -1426,56 +1479,74 @@ export default function SectionEventsManager({
         sx={{ backgroundColor: "background.default" }}
       >
         {refreshWarning}
-        {routeControlled && (
-          <Box
-            component="nav"
-            aria-label="Event management"
-            sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}
-          >
-            {(
-              [
-                ["details", "Event details"],
-                ["tickets", "Ticket types"],
-                ["approvals", "Booking approvals"],
-                ["attendees", "Attendee tickets"],
-                ["guests", "Organiser guests"],
-                ["activity", "Booking activity"],
-                ["payments", "Payment activity"],
-                ["announcement", "Announcement"],
-              ] as const
-            ).map(([value, label]) => (
-              <Button
-                key={value}
-                component={RouterLink}
-                to={eventManagementPath(sectionId, ticketTypesEventId, value)}
-                aria-current={task === value ? "page" : undefined}
-              >
-                {label}
-              </Button>
-            ))}
-          </Box>
+        <WorkspaceFrame
+          enabled={routeControlled}
+          event={eventForAdmin}
+          sectionId={sectionId}
+          sectionName={sectionName}
+          selectedTask={task}
+          pendingCount={!eventBookingsFailed && eventBookingsData?.event ? pendingBookingRevisions(eventBookings).length : undefined}
+        >
+        {routeControlled && error && (task !== "details" || eventDetailFailed) && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)} action={
+          (eventDetailFailed || (needsBookings && eventBookingsFailed) || (needsPaymentHistory && (ticketOrdersFailed || paymentAdjustmentsFailed))) && <Button disabled={refreshing} onClick={async () => {
+            setRefreshing(true);
+            try {
+              await Promise.all([
+                eventDetailFailed ? refetchEventDetail() : Promise.resolve(),
+                needsBookings && eventBookingsFailed ? refetchEventBookings() : Promise.resolve(),
+                needsPaymentHistory && ticketOrdersFailed ? refetchTicketOrders() : Promise.resolve(),
+                needsPaymentHistory && paymentAdjustmentsFailed ? refetchPaymentAdjustments() : Promise.resolve(),
+              ]);
+              if (isCurrentView()) setError(null);
+            } catch (caught) {
+              if (isCurrentView()) setError(toAdminUserFacingError(caught, "events").message);
+            } finally { if (isCurrentView()) setRefreshing(false); }
+          }}>Retry loading</Button>
+        }>{error}</Alert>}
+        {routeControlled && needsGuests && guestReport.isError && <Alert severity="error" sx={{ mb: 2 }} action={<Button onClick={() => void guestReport.refetch()}>Retry guest list</Button>}>Organiser guest data could not be loaded. Combined ticket and payment totals are unavailable.</Alert>}
+        {routeControlled && task === "overview" && (() => {
+          const summary = eventBookingsData?.event && !eventBookingsFailed && guestReport.data && !guestReport.isError
+            ? getEventWorkspaceSummary(eventBookings, ticketOrdersById, guestReport.data.guests) : undefined;
+          return eventForAdmin && <EventOverview event={eventForAdmin} sectionId={sectionId}
+            activeTicketCount={summary?.activeTicketCount}
+            pendingRevisionCount={!eventBookingsFailed && eventBookingsData?.event ? pendingBookingRevisions(eventBookings).length : undefined}
+            outstandingAmountPence={summary && !summary.unknownPaymentTicketCount ? summary.outstandingAmountPence : undefined}
+            outstandingTicketCount={summary && !summary.unknownPaymentTicketCount ? summary.outstandingTicketCount : undefined} />;
+        })()}
+        {routeControlled && task === "details" && !eventDetailFailed && (!eventDetailData?.event || !eventForm.initialized) && (
+          loadingEventDetail || (eventDetailData?.event && !eventForm.initialized)
+            ? <Box role="status" sx={{ display: "flex", gap: 1, alignItems: "center", py: 3 }}><CircularProgress size={22} /><Typography>Loading event details…</Typography></Box>
+            : <Alert severity="error" action={<Button onClick={() => void refetchEventDetail().catch((caught) => {
+              if (isCurrentView()) setError(toAdminUserFacingError(caught, "events").message);
+            })}>Retry loading</Button>}>Event details are unavailable. Reload them before editing.</Alert>
         )}
-        <TicketAdminSurface
+        {routeControlled && announcing && announcementTarget === null && <Alert severity="error" action={<Button component={RouterLink} to={eventManagementPath(sectionId, ticketTypesEventId, "communications")}>Open Communications</Button>}>This announcement link has an invalid recipient target. Open Communications again to choose a valid audience.</Alert>}
+        {routeControlled && announcing && announcementTarget !== null && <SendAnnouncementPage
+          embedded sectionId={sectionId} sectionName={sectionName}
+          eventAudience={{ eventId: ticketTypesEventId, eventTitle: eventForAdmin?.title, filters: readEventAnnouncementFilters(routeLocation.search), ...(announcementTarget ? { recipientTarget: announcementTarget } : {}) }}
+          onBack={() => navigate(eventManagementPath(sectionId, ticketTypesEventId, "overview"))} />}
+        {(!routeControlled || (task !== "details" && task !== "overview" && !announcing && task !== "guests")) && <TicketAdminSurface
           selectedTask={routeControlled ? task : undefined}
           taskCollapsed={searchParams.get("collapsed") === "1"}
-          onTaskSelect={
-            routeControlled
-              ? (selected) => {
-                  const next = new URLSearchParams(routeLocation.search);
-                  next.set("task", selected);
-                  if (
-                    selected === task &&
-                    searchParams.get("collapsed") !== "1"
-                  )
-                    next.set("collapsed", "1");
-                  else next.delete("collapsed");
-                  navigate({
-                    pathname: routeLocation.pathname,
-                    search: `?${next}`,
-                  });
-                }
-              : undefined
-          }
+          taskHref={(selected) => eventManagementPath(sectionId, ticketTypesEventId, selected)}
+          organiserGuests={guestReport.data?.guests ?? []}
+          seatingPreferenceUserNamesById={seatingPreferenceUserNamesById}
+          paymentDataUnavailable={eventBookingsFailed || !eventBookingsData?.event || guestReport.isPending || guestReport.isError || !guestReport.data}
+          settledPaymentsUnavailable={ticketOrdersFailed || !ticketOrdersData?.event}
+          paymentView={routeControlled ? (searchParams.get("payment") === "all" ? "all" : "required") : undefined}
+          onPaymentViewChange={(view) => {
+            const next = new URLSearchParams(routeLocation.search);
+            next.set("payment", view);
+            navigate({ pathname: routeLocation.pathname, search: `?${next}` });
+          }}
+          onContactUnpaid={() => {
+            const filters = { ...emptyEventAttendeeTicketFilters, paymentState: "UNPAID" };
+            if (routeControlled) navigate(eventAnnouncementPath(sectionId, ticketTypesEventId, filters, "BOOKERS"));
+            else {
+              setEventAnnouncement({ eventId: ticketTypesEventId, eventTitle: eventForAdmin?.title, filters, recipientTarget: "BOOKERS" });
+              setSendingAnnouncement(true);
+            }
+          }}
           eventEditorHref={
             routeControlled
               ? eventEditorPath(sectionId, ticketTypesEventId)
@@ -1527,6 +1598,7 @@ export default function SectionEventsManager({
             guestReport.isPending || guestReport.isError
           }
           moderatorNoteDraft={moderatorNoteDraft}
+          savedReviewDecisions={savedReviewDecisions}
           onModeratorNoteChange={(bookingId, value) =>
             setModeratorNoteDraft((prev) => ({ ...prev, [bookingId]: value }))
           }
@@ -1540,7 +1612,7 @@ export default function SectionEventsManager({
           ticketOrders={ticketOrders}
           loadingPaymentAdjustments={loadingPaymentAdjustments}
           bookingPaymentAdjustments={bookingPaymentAdjustments}
-        />
+        />}
 
         {addingUserTicket && (
           <AddUserTicketDialog
@@ -1588,13 +1660,15 @@ export default function SectionEventsManager({
             }}
           />
         )}
-        <Box hidden={routeControlled && task !== "guests"}>
+        {(!routeControlled || task === "guests" || openedGuestEventId === ticketTypesEventId) && <Box hidden={routeControlled && task !== "guests"}>
+          {routeControlled && <Button component={RouterLink} to={eventManagementPath(sectionId, ticketTypesEventId, "attendees")} sx={{ mb: 1 }}>Back to attendees</Button>}
           <OrganiserGuestsManager
+            active={!routeControlled || task === "guests"}
             sectionId={sectionId}
             key={ticketTypesEventId}
             eventId={ticketTypesEventId}
           />
-        </Box>
+        </Box>}
 
         <TicketTypeDialogSurface
           open={ticketTypeDialogOpen}
@@ -1629,7 +1703,9 @@ export default function SectionEventsManager({
         />
 
         <EventDialogSurface
-          open={eventDialogOpen}
+          embedded={routeControlled && task === "details"}
+          dirty={eventForm.initialized && formSnapshot(eventForm) !== eventForm.baseline}
+          open={eventDialogOpen && (!routeControlled || task !== "details" || (!!eventDetailData?.event && eventForm.initialized && !eventDetailFailed))}
           editingEvent={editingEvent}
           title={title}
           location={location}
@@ -1662,6 +1738,7 @@ export default function SectionEventsManager({
           onMaxGuestsChange={setMaxGuestsStr}
         />
 
+        </WorkspaceFrame>
         {resetWriteConfirmation}
         {deleteConfirmation}
         <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
@@ -1741,4 +1818,13 @@ export default function SectionEventsManager({
       <SnackbarAlert snackbar={snackbar} onClose={closeSnackbar} />
     </Box>
   );
+}
+
+function WorkspaceFrame({ enabled, event, sectionId, sectionName, selectedTask, pendingCount, children }: {
+  enabled: boolean; event: EventRow | null; sectionId: string; sectionName: string;
+  selectedTask: EventManagementTask; pendingCount?: number; children: ReactNode;
+}) {
+  return enabled && event
+    ? <EventWorkspaceShell event={event} sectionId={sectionId} sectionName={sectionName} selectedTask={selectedTask} pendingCount={pendingCount}>{children}</EventWorkspaceShell>
+    : <>{children}</>;
 }

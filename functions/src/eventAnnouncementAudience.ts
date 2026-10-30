@@ -9,12 +9,21 @@ import type { AnnouncementAudienceRecipient } from "./announcementRecipients";
 import { attendeePaymentState, emptyEventAttendeeTicketFilters, filterEventAttendeeTicketRows,
   type EventAttendeeTicketFilters, type FilterableAttendee } from "./shared/attendeeFilters";
 
-export interface EventAnnouncementSelection { eventId: string; filters: EventAttendeeTicketFilters }
+export interface EventAnnouncementSelection {
+  eventId: string;
+  filters: EventAttendeeTicketFilters;
+  /** Omission retains the original attendee-contact audience and snapshot shape. */
+  recipientTarget?: "BOOKERS";
+}
 export function parseEventAnnouncementSelection(value: unknown): EventAnnouncementSelection | undefined {
   if (value === undefined) return undefined;
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new HttpsError("invalid-argument", "Invalid event audience");
   const input = value as Record<string, unknown>;
   const eventId = validateUUID(requireString(input.eventId, "eventId"), "eventId");
+  const target = input.recipientTarget;
+  if (target !== undefined && target !== "ATTENDEES" && target !== "BOOKERS") {
+    throw new HttpsError("invalid-argument", "Invalid event recipient target");
+  }
   if (!input.filters || typeof input.filters !== "object" || Array.isArray(input.filters)) throw new HttpsError("invalid-argument", "Invalid attendee filters");
   const supplied = input.filters as Record<string, unknown>;
   const filters = { ...emptyEventAttendeeTicketFilters };
@@ -24,7 +33,7 @@ export function parseEventAnnouncementSelection(value: unknown): EventAnnounceme
     if (typeof filter !== "string" || filter.length > 200) throw new HttpsError("invalid-argument", "Invalid attendee filter");
     filters[key] = filter.trim();
   }
-  return { eventId, filters };
+  return { eventId, filters, ...(target === "BOOKERS" ? { recipientTarget: target } : {}) };
 }
 
 async function pages<T>(fetch: (offset: number) => Promise<T[]>): Promise<T[]> {
@@ -40,13 +49,14 @@ const usableEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.t
 type Contact = AnnouncementAudienceRecipient;
 type Row = FilterableAttendee & { key: string; contact: Contact };
 export interface EventAnnouncementPreview {
-  eventTitle: string; fingerprint: string; matchedTicketCount: number;
+  eventTitle: string; fingerprint: string; matchedTicketCount: number; recipientTarget?: "BOOKERS";
   recipients: Array<{ name: string; email: string }>;
   skipped: Array<{ name: string; email: string; reason: string }>;
 }
 
 export async function resolveEventAnnouncementAudience(sectionId: string, selection: EventAnnouncementSelection) {
   const { eventId, filters } = selection;
+  const bookersOnly = selection.recipientTarget === "BOOKERS";
   const event = (await getOrganiserGuestEvent({ eventId })).data.event;
   if (!event || event.section.id.replace(/-/g, "").toLowerCase() !== sectionId.replace(/-/g, "").toLowerCase()) {
     throw new HttpsError("not-found", "Event not found in this section");
@@ -55,7 +65,7 @@ export async function resolveEventAnnouncementAudience(sectionId: string, select
     getAnnouncementAudienceSection({ sectionId }),
     pages(async (offset) => (await getAnnouncementAttendeeBookings({ eventId, offset })).data.bookings),
     pages(async (offset) => (await getAnnouncementAttendeeOrders({ eventId, offset })).data.ticketOrders),
-    pages(async (offset) => (await listOrganiserGuests({ eventId, offset })).data.organiserGuests),
+    bookersOnly ? [] : pages(async (offset) => (await listOrganiserGuests({ eventId, offset })).data.organiserGuests),
   ]);
   const latest = new Map<string, typeof bookings[number]>();
   for (const booking of bookings) {
@@ -67,7 +77,9 @@ export async function resolveEventAnnouncementAudience(sectionId: string, select
     .map((line): Row => {
       const member = line.ticketType.audience === "MEMBER";
       const person = member ? booking.booker : line.guestUser;
-      const contact = person && usableEmail(person.email) ? person : booking.booker;
+      // Payment follow-ups go to the booking owner even when a matching guest
+      // has their own usable email. Attendee filters still match the ticket row.
+      const contact = bookersOnly ? booking.booker : person && usableEmail(person.email) ? person : booking.booker;
       const ticket = line.bookingPlace.attendanceTicketType ?? line.ticketType;
       const name = member ? `${booking.booker.firstName} ${booking.booker.lastName}`.trim()
         : line.guestDisplayName?.trim() || (person ? `${person.firstName} ${person.lastName}`.trim() : "Guest");
@@ -113,10 +125,22 @@ export async function resolveEventAnnouncementAudience(sectionId: string, select
   // Attendance messages reach every selected contact, independently of section announcement preferences.
   const deliverable = emails.map((email) => contacts.get(email)!);
   const skippedRecipients: Array<{ userId: string; firstName: string; lastName: string; email: string; reason: string }> = [];
-  for (const row of missing) skippedRecipients.push({ userId: `missing:${row.key}`, firstName: row.attendeeName, lastName: "", email: "", reason: "missing_contact" });
+  const skippedBookerIds = new Set<string>();
+  for (const row of missing) {
+    // A booking owner is one recipient even when several matching places lack
+    // their email. Legacy attendee snapshots retain their original per-place IDs.
+    if (bookersOnly) {
+      if (skippedBookerIds.has(row.contact.id)) continue;
+      skippedBookerIds.add(row.contact.id);
+    }
+    skippedRecipients.push({ userId: bookersOnly ? `missing:booker:${row.contact.id}` : `missing:${row.key}`,
+      firstName: bookersOnly ? `${row.contact.firstName} ${row.contact.lastName}`.trim() : row.attendeeName,
+      lastName: "", email: "", reason: "missing_contact" });
+  }
   skippedRecipients.sort((a, b) => a.userId.localeCompare(b.userId));
   const fingerprint = createHash("sha256").update(JSON.stringify({ selection, deliverable, skippedRecipients, matchedTicketCount: matching.length })).digest("hex");
   const preview: EventAnnouncementPreview = { eventTitle: event.title, fingerprint, matchedTicketCount: matching.length,
+    ...(selection.recipientTarget ? { recipientTarget: selection.recipientTarget } : {}),
     recipients: deliverable.map((r) => ({ name: `${r.firstName} ${r.lastName}`.trim(), email: r.email })),
     skipped: skippedRecipients.map((r) => ({ name: `${r.firstName} ${r.lastName}`.trim(), email: r.email, reason: r.reason })) };
   const labels: Record<keyof EventAttendeeTicketFilters, string> = {
@@ -127,5 +151,5 @@ export async function resolveEventAnnouncementAudience(sectionId: string, select
   const applied = (Object.keys(filters) as Array<keyof EventAttendeeTicketFilters>).filter((key) => filters[key])
     .map((key) => `${labels[key]}: ${filters[key].replace(/_/g, " ")}`).join(", ");
   return { deliverable, skippedRecipients, preview, sectionName: section.data.section?.name ?? sectionId,
-    audienceSummary: `${event.title} — current attendees${applied ? ` (${applied})` : " (all)"}` };
+    audienceSummary: `${event.title} — ${bookersOnly ? "booking owners for current attendees" : "current attendees"}${applied ? ` (${applied})` : " (all)"}` };
 }

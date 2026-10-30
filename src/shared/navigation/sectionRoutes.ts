@@ -3,13 +3,16 @@ import { toCanonicalUuid } from "../utils/uuid";
 export const memberEventTabs = ["about", "book", "attendees"] as const;
 export type MemberEventTab = (typeof memberEventTabs)[number];
 export const eventManagementTasks = [
+  "overview",
   "details",
   "tickets",
   "approvals",
   "attendees",
   "guests",
+  "removed",
   "activity",
   "payments",
+  "communications",
   "announcement",
 ] as const;
 export type EventManagementTask = (typeof eventManagementTasks)[number];
@@ -35,9 +38,9 @@ export const sectionManagementPath = (
 export const eventManagementPath = (
   sectionId: string,
   eventId: string,
-  task: EventManagementTask = "details",
+  task: EventManagementTask = "overview",
 ) =>
-  `${sectionManagementPath(sectionId, "events")}/${id(eventId)}${task === "details" ? "" : `?task=${task}`}`;
+  `${sectionManagementPath(sectionId, "events")}/${id(eventId)}${task === "overview" ? "" : `?task=${task}`}`;
 export const sectionConfigurationPath = (sectionId: string) =>
   `/admin/sections?section=${id(sectionId)}`;
 export function readMemberEventTab(search: string): MemberEventTab {
@@ -46,12 +49,12 @@ export function readMemberEventTab(search: string): MemberEventTab {
 }
 export function readEventManagementTask(search: string): EventManagementTask {
   const value = new URLSearchParams(search).get("task");
-  return eventManagementTasks.find((task) => task === value) ?? "details";
+  return eventManagementTasks.find((task) => task === value) ?? "overview";
 }
 
 export const eventEditorPath = (sectionId: string, eventId?: string) =>
   eventId
-    ? `${eventManagementPath(sectionId, eventId)}?edit=event`
+    ? `${eventManagementPath(sectionId, eventId, "details")}&edit=event`
     : `${sectionManagementPath(sectionId, "events")}?edit=new-event`;
 export const ticketEditorPath = (
   sectionId: string,

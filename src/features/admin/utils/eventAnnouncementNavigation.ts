@@ -21,13 +21,22 @@ export function eventAnnouncementPath(
   sectionId: string,
   eventId: string,
   filters: EventAttendeeTicketFilters,
+  recipientTarget?: "BOOKERS",
 ): string {
   const path = eventManagementPath(sectionId, eventId, "announcement");
   const params = new URLSearchParams(path.split("?")[1]);
+  if (recipientTarget) params.set("recipientTarget", recipientTarget);
   for (const key of Object.keys(emptyEventAttendeeTicketFilters) as Array<
     keyof EventAttendeeTicketFilters
   >) {
     if (filters[key]) params.set(`audience.${key}`, filters[key].slice(0, 200));
   }
   return `${path.split("?")[0]}?${params}`;
+}
+
+/** Invalid explicit targeting must not silently broaden into attendee contacts. */
+export function readEventAnnouncementTarget(search: string): "BOOKERS" | undefined | null {
+  const value = new URLSearchParams(search).get("recipientTarget");
+  if (value === null || value === "ATTENDEES") return undefined;
+  return value === "BOOKERS" ? "BOOKERS" : null;
 }

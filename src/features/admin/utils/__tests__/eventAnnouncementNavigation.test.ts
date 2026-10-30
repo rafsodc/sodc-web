@@ -3,6 +3,7 @@ import { emptyEventAttendeeTicketFilters } from "../bookingApprovalsAdmin";
 import {
   eventAnnouncementPath,
   readEventAnnouncementFilters,
+  readEventAnnouncementTarget,
 } from "../eventAnnouncementNavigation";
 describe("announcement audience URLs", () => {
   it("retains the same selected audience after copying/reloading the task", () => {
@@ -31,4 +32,16 @@ describe("announcement audience URLs", () => {
       Object.keys(emptyEventAttendeeTicketFilters),
     );
   });
+});
+
+it("preserves booker targeting on copied links without changing legacy audiences", () => {
+  const legacy = eventAnnouncementPath("section", "event", emptyEventAttendeeTicketFilters);
+  expect(legacy).not.toContain("recipientTarget");
+  expect(readEventAnnouncementTarget(new URL(legacy, "https://local.invalid").search)).toBeUndefined();
+  const link = eventAnnouncementPath("section", "event", { ...emptyEventAttendeeTicketFilters, paymentState: "UNPAID" }, "BOOKERS");
+  expect(readEventAnnouncementTarget(new URL(link, "https://local.invalid").search)).toBe("BOOKERS");
+  expect(readEventAnnouncementFilters(new URL(link, "https://local.invalid").search).paymentState).toBe("UNPAID");
+  expect(readEventAnnouncementTarget("?recipientTarget=ATTENDEES")).toBeUndefined();
+  expect(readEventAnnouncementTarget("?recipientTarget=everybody")).toBeNull();
+  expect(readEventAnnouncementTarget("?recipientTarget=")).toBeNull();
 });

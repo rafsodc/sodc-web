@@ -39,7 +39,9 @@ interface SendAnnouncementPageProps {
   sectionId: string;
   sectionName: string;
   onBack: () => void;
-  eventAudience?: { eventId: string; eventTitle?: string; filters: EventAttendeeTicketFilters };
+  /** Render within the event workspace without a second page header. */
+  embedded?: boolean;
+  eventAudience?: { eventId: string; eventTitle?: string; filters: EventAttendeeTicketFilters; recipientTarget?: "BOOKERS" };
 }
 
 function formatUpdatedAt(iso: string): string {
@@ -55,8 +57,10 @@ function AnnouncementComposer({
   sectionName,
   onBack,
   eventAudience,
+  embedded = false,
 }: SendAnnouncementPageProps) {
   const isEventAnnouncement = !!eventAudience;
+  const bookingOwners = eventAudience?.recipientTarget === "BOOKERS";
   const draftKey = announcementDraftKey({ sectionId, eventAudience });
   const [draft, setDraft, discardDraft] = useSessionDraft<{
     selectedId: string;
@@ -180,7 +184,7 @@ function AnnouncementComposer({
       setDraft(current => ({ ...current, sendRequestId: requestId, sendAudienceFingerprint: eventAudience ? audienceFingerprint ?? null : null }));
       const result = eventAudience && audienceFilters && audienceFingerprint
         ? await sendSectionAnnouncement(sectionId, selectedId, requestId, selectedTemplate?.name, deliveryMode, replyToAddressId || undefined,
-          { eventAudience: { eventId: eventAudience.eventId, filters: audienceFilters }, audienceFingerprint })
+          { eventAudience: { eventId: eventAudience.eventId, filters: audienceFilters, ...(eventAudience.recipientTarget ? { recipientTarget: eventAudience.recipientTarget } : {}) }, audienceFingerprint })
         : replyToAddressId
         ? await sendSectionAnnouncement(
           sectionId,
@@ -213,11 +217,32 @@ function AnnouncementComposer({
   };
 
   return (
-    <Box className="page-container">
-      <PageHeader
-        title={`Send announcement — ${audiencePreview?.eventTitle ?? eventAudience?.eventTitle ?? sectionName}`}
-        onBack={onBack}
-      />
+    <Box className={embedded ? undefined : "page-container"}>
+      {embedded ? (
+        <>
+          <Typography component="h2" variant="h5" gutterBottom>Communications</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {bookingOwners
+              ? "Send a manually reviewed message to the owners of matching bookings. Review the booking owners and email preview before sending."
+              : "Send an announcement to selected attendee contacts. Review the audience and email preview before sending."}
+          </Typography>
+          <Typography component="h3" variant="h6" sx={{ mb: 2 }}>
+            {sendResult ? "Announcement accepted" : selectedId ? "Draft announcement" : "New announcement"}
+          </Typography>
+          {selectedId && !sendResult && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {sendRequestId
+                ? "This announcement has an existing send request. Resume the announcement send below to check its outcome."
+                : "Your announcement draft is kept while you switch tabs in this signed-in session. Continue below, or discard it explicitly to start again."}
+            </Alert>
+          )}
+        </>
+      ) : (
+        <PageHeader
+          title={`Send announcement — ${audiencePreview?.eventTitle ?? eventAudience?.eventTitle ?? sectionName}`}
+          onBack={onBack}
+        />
+      )}
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Select a GOV Notify template named starting with <strong>BULK:</strong>. Review the preview
@@ -226,7 +251,7 @@ function AnnouncementComposer({
 
       {eventAudience && audienceFilters && <EventAnnouncementAudience sectionId={sectionId} eventId={eventAudience.eventId}
         filters={audienceFilters} onFilters={setAudienceFilters} preview={audiencePreview} onPreview={setAudiencePreview}
-        disabled={sending || !!sendRequestId} />}
+        recipientTarget={eventAudience.recipientTarget} disabled={sending || !!sendRequestId} />}
 
       {templatesError && (
         <Alert severity="error" sx={{ mb: 2 }}>{templatesError}</Alert>
@@ -394,11 +419,14 @@ function AnnouncementComposer({
                 {sending ? "Starting…"
                   : sendRequestId ? "Resume announcement send"
                   : eventAudience && !audiencePreview ? "Preview recipients before sending"
+                  : bookingOwners ? `Send to ${audiencePreview!.recipients.length} booking owner${audiencePreview!.recipients.length === 1 ? "" : "s"}`
                   : eventAudience ? `Send to ${audiencePreview!.recipients.length} attendee contacts`
                   : `Send to ${sectionName} members`}
               </Button>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                {eventAudience ? "Event messages go to all selected attendee contacts, regardless of announcement preferences." : "Contacts who have opted out of announcements will not receive this email."}
+                {bookingOwners
+                  ? "Messages go only to booking owners, regardless of announcement preferences. Guests and organiser guests are not emailed. This send is manual; no automatic payment reminder is scheduled."
+                  : eventAudience ? "Event messages go to all selected attendee contacts, regardless of announcement preferences." : "Contacts who have opted out of announcements will not receive this email."}
               </Typography>
             </>
           )}
@@ -411,7 +439,7 @@ function AnnouncementComposer({
 
       <TemplateEditor sectionName={sectionName} draftKey={draftKey} />
 
-      <AnnouncementSendHistory sectionId={sectionId} refreshTrigger={historyTrigger} />
+      <AnnouncementSendHistory sectionId={sectionId} refreshTrigger={historyTrigger} sectionScopeNotice={isEventAnnouncement} />
     </Box>
   );
 }
@@ -420,7 +448,7 @@ function announcementDraftKey({ sectionId, eventAudience }: Pick<SendAnnouncemen
   const audience = eventAudience
     ? JSON.stringify(Object.entries(eventAudience.filters).sort(([a], [b]) => a.localeCompare(b)))
     : "members";
-  return `announcement:${normalizedResourceId(sectionId)}:${eventAudience ? normalizedResourceId(eventAudience.eventId) : "section"}:${audience}`;
+  return `announcement:${normalizedResourceId(sectionId)}:${eventAudience ? normalizedResourceId(eventAudience.eventId) : "section"}:${audience}${eventAudience?.recipientTarget === "BOOKERS" ? ":BOOKERS" : ""}`;
 }
 
 export default function SendAnnouncementPage(props: SendAnnouncementPageProps) {

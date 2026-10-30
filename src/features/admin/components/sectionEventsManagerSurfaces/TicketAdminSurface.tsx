@@ -5,17 +5,26 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
   FormControl,
   IconButton,
   InputLabel,
   MenuItem,
   Select,
+  Stack,
+  Tab,
+  Tabs,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -24,7 +33,11 @@ import {
   Edit as EditIcon,
   ContentCopy as ContentCopyIcon,
 } from "@mui/icons-material";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import type { Guest } from "../../../guests/api";
+import { money } from "../../../guests/api";
+import { getEventWorkspaceSummary, getSettledEventPayments } from "../../utils/eventWorkspaceSummary";
+import { getBookingCheckoutEstimate } from "../../utils/bookingCheckoutEstimate";
 import { BookingApprovalStatus } from "@dataconnect/generated";
 import PageHeader from "../../../../shared/components/PageHeader";
 import { getTicketCategoryLabel, TICKET_CATEGORY_LABEL } from "../../../../shared/utils/ticketAudienceLabels";
@@ -41,6 +54,7 @@ import SafeMarkdown from "../../../../shared/components/SafeMarkdown";
 import type { EventAttendeeTicketRow, TicketOrdersById } from "../../utils/bookingApprovalsAdmin";
 import {
   attendeePaymentState,
+  currentActiveBookings,
   emptyEventAttendeeTicketFilters,
   eventTicketRowsCsv,
   filterEventAttendeeTicketRows,
@@ -60,7 +74,18 @@ import RemovedTicketsSection from "../RemovedTicketsSection";
 
 import type { EventManagementTask } from "../../../../shared/navigation/sectionRoutes";
 
+export type EventPaymentView = "required" | "all";
+
 interface TicketAdminSurfaceProps {
+  savedReviewDecisions?: Readonly<Record<string, number>>;
+  organiserGuests?: Guest[];
+  paymentDataUnavailable?: boolean;
+  settledPaymentsUnavailable?: boolean;
+  seatingPreferenceUserNamesById?: ReadonlyMap<string, string>;
+  taskHref?: (task: EventManagementTask) => string;
+  paymentView?: EventPaymentView;
+  onPaymentViewChange?: (view: EventPaymentView) => void;
+  onContactUnpaid?: () => void;
   selectedTask?: EventManagementTask;
   taskCollapsed?: boolean;
   onTaskSelect?: (task: EventManagementTask) => void;
@@ -105,6 +130,7 @@ interface TicketAdminSurfaceProps {
 }
 export function TicketAdminSurface({
   selectedTask, taskCollapsed, onTaskSelect, eventEditorHref, ticketEditorHref,
+  taskHref, paymentView, onPaymentViewChange, onContactUnpaid, organiserGuests = [], seatingPreferenceUserNamesById, paymentDataUnavailable = false, savedReviewDecisions, settledPaymentsUnavailable = false,
   event,
   eventTitle,
   error,
@@ -139,61 +165,75 @@ export function TicketAdminSurface({
   loadingPaymentAdjustments,
   bookingPaymentAdjustments,
 }: TicketAdminSurfaceProps) {
-  return (
-    <>
-      <PageHeader title={`Event admin: ${eventTitle}`} onBack={onBack} />
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={onDismissError}>
-          {error}
-        </Alert>
-      )}
-      <AdminAccordion title="Event details" expanded={selectedTask ? !taskCollapsed && selectedTask === "details" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("details") : undefined}>
-        <EventDetailsSection event={event} loading={loadingEventDetail} onEditEvent={onEditEvent} editorHref={eventEditorHref} />
-      </AdminAccordion>
-      <AdminAccordion title="Ticket types" expanded={selectedTask ? !taskCollapsed && selectedTask === "tickets" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("tickets") : undefined}>
-        <Button startIcon={<AddIcon />} variant="contained" {...(ticketEditorHref ? {component:RouterLink,to:ticketEditorHref()} : {onClick:onAddTicketType})} sx={{ mb: 2 }}>
-          Add ticket type
-        </Button>
-        <TicketTypesTable
-          editorHref={ticketEditorHref}
-          loading={loadingEventDetail}
-          ticketTypes={ticketTypes}
-          deletingTicketTypeId={deletingTicketTypeId}
-          onEdit={onEditTicketType}
-          onDelete={onDeleteTicketType}
-        />
-      </AdminAccordion>
-      <AdminAccordion title="Booking approvals" expanded={selectedTask ? !taskCollapsed && selectedTask === "approvals" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("approvals") : undefined}>
-        <BookingApprovalsSection
-          filter={approvalStatusFilter}
-          onFilterChange={onApprovalStatusFilterChange}
-          loading={loadingEventBookings}
-          bookings={approvalBookings}
-          allBookings={allEventBookings}
-          ticketOrdersById={ticketOrdersById}
-          moderatorNoteDraft={moderatorNoteDraft}
-          onModeratorNoteChange={onModeratorNoteChange}
-          reviewingBookingId={reviewingBookingId}
-          onReview={onReviewBooking}
-        />
-      </AdminAccordion>
-      <AdminAccordion title="Current attendee tickets" expanded={selectedTask ? !taskCollapsed && selectedTask === "attendees" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("attendees") : undefined}>
-        {onAddUserTicket && <Button startIcon={<AddIcon />} variant="contained" sx={{ mb: 2 }} onClick={onAddUserTicket}>Add ticket</Button>}
-        {attendeeGuestsUnavailable ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert> : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} onManageTicket={onManageTicket} onAnnounce={onAnnounce} />}
-        {!loadingEventBookings && onManageTicket && <RemovedTicketsSection rows={removedTickets} onRestore={(row) => onManageTicket(row, "restore")} />}
-      </AdminAccordion>
-      <AdminAccordion title="Booking audit activity" expanded={selectedTask ? !taskCollapsed && selectedTask === "activity" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("activity") : undefined}>
-        <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />
-      </AdminAccordion>
-      <AdminAccordion title="Payment status activity" expanded={selectedTask ? !taskCollapsed && selectedTask === "payments" : undefined} onToggle={onTaskSelect ? () => onTaskSelect("payments") : undefined}>
-        <PaymentActivitySection
-          loading={loadingTicketOrders || loadingPaymentAdjustments}
-          ticketOrders={ticketOrders}
-          bookingPaymentAdjustments={bookingPaymentAdjustments}
-        />
-      </AdminAccordion>
-    </>
-  );
+  const ticketTypesPanel = <>
+    <Button startIcon={<AddIcon />} variant="contained" {...(ticketEditorHref ? { component: RouterLink, to: ticketEditorHref() } : { onClick: onAddTicketType })} sx={{ mb: 2 }}>
+      Add ticket type
+    </Button>
+    <TicketTypesTable editorHref={ticketEditorHref} loading={loadingEventDetail} ticketTypes={ticketTypes}
+      deletingTicketTypeId={deletingTicketTypeId} onEdit={onEditTicketType} onDelete={onDeleteTicketType} />
+  </>;
+  const approvalsPanel = <BookingApprovalsSection filter={approvalStatusFilter} onFilterChange={onApprovalStatusFilterChange}
+    loading={loadingEventBookings} bookings={approvalBookings} allBookings={allEventBookings} ticketOrdersById={ticketOrdersById}
+    moderatorNoteDraft={moderatorNoteDraft} onModeratorNoteChange={onModeratorNoteChange} reviewingBookingId={reviewingBookingId}
+    onReview={onReviewBooking} reviewDialog={Boolean(selectedTask)} error={error} seatingPreferenceUserNamesById={seatingPreferenceUserNamesById} savedReviewDecisions={savedReviewDecisions} />;
+  const attendeesPanel = <>
+    {onAddUserTicket && <Button startIcon={<AddIcon />} variant="contained" sx={{ mb: 2 }} onClick={onAddUserTicket}>Add ticket</Button>}
+    {attendeeGuestsUnavailable
+      ? <Alert severity="info">Waiting for organiser guests. The complete ticket report will be available once their list loads.</Alert>
+      : <EventAttendeeTicketsSection eventTitle={eventTitle} loading={loadingEventBookings} rows={attendeeTickets} onManageTicket={onManageTicket} onAnnounce={onAnnounce} />}
+  </>;
+  const removedPanel = loadingEventBookings ? <CircularProgress size={22} /> : <>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Restore a ticket to return someone to the attendee list. Payment records stay unchanged.</Typography>
+    {removedTickets.length === 0 ? <Alert severity="info">No removed tickets for this event.</Alert> : <Stack spacing={2}>
+      {removedTickets.map((row) => <Box key={row.key} sx={recordCardSx}>
+        <Typography fontWeight={600}>{row.attendeeName}</Typography>
+        <Typography variant="body2" color="text.secondary">{row.ticketType}</Typography>
+        {onManageTicket && <Button sx={{ mt: 1 }} onClick={() => onManageTicket(row, "restore")} aria-label={`Restore ticket for ${row.attendeeName}`}>Restore ticket</Button>}
+      </Box>)}
+    </Stack>}
+  </>;
+  const paymentsPanel = <PaymentActivitySection loading={loadingTicketOrders || loadingPaymentAdjustments || loadingEventBookings}
+    ticketOrders={ticketOrders} bookingPaymentAdjustments={bookingPaymentAdjustments} bookings={allEventBookings}
+    ticketOrdersById={ticketOrdersById} organiserGuests={organiserGuests} dataUnavailable={paymentDataUnavailable} settledPaymentsUnavailable={settledPaymentsUnavailable} taskHref={taskHref} view={paymentView ?? (!selectedTask ? "all" : undefined)} onViewChange={onPaymentViewChange} onContactUnpaid={onContactUnpaid} />;
+  const detailsPanel = <EventDetailsSection event={event} loading={loadingEventDetail} onEditEvent={onEditEvent} editorHref={eventEditorHref} />;
+  const activityPanel = <BookingAuditSection loading={loadingEventBookings} bookings={eventBookings} />;
+
+  if (selectedTask) {
+    const ticketTask = selectedTask === "tickets" || selectedTask === "attendees" || selectedTask === "removed";
+    const panels = { details: detailsPanel, tickets: ticketTypesPanel, approvals: approvalsPanel, attendees: attendeesPanel,
+      removed: removedPanel, activity: activityPanel, payments: paymentsPanel };
+    const taskHeading = ticketTask ? "Tickets & attendees" : ({ details: "Details", approvals: "Approvals", payments: "Payments", activity: "Activity" } as const)[selectedTask as "details" | "approvals" | "payments" | "activity"];
+    return <Box sx={{ minWidth: 0 }}>
+      {taskHeading && <Typography component="h2" variant="h5" sx={{ mb: 2 }}>{taskHeading}</Typography>}
+      {ticketTask && <Box sx={{ mb: 3 }}>
+        <Tabs value={selectedTask} aria-label="Tickets and attendees" variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
+          {([{ value: "attendees", label: "Attendees" }, { value: "tickets", label: "Ticket types" }, { value: "removed", label: "Removed" }] as const).map(({ value, label }) =>
+            <Tab key={value} value={value} label={label} {...(taskHref ? { component: RouterLink, to: taskHref(value) } : { onClick: () => onTaskSelect?.(value) })} />)}
+        </Tabs>
+        {(taskHref || onTaskSelect) && <Button size="small" sx={{ mt: 1 }} {...(taskHref ? { component: RouterLink, to: taskHref("guests") } : { onClick: () => onTaskSelect?.("guests") })}>Manage organiser guests</Button>}
+      </Box>}
+      {selectedTask in panels ? panels[selectedTask as keyof typeof panels] : null}
+    </Box>;
+  }
+  return <>
+    <PageHeader title={`Event admin: ${eventTitle}`} onBack={onBack} />
+    {error && <Alert severity="error" sx={{ mb: 2 }} onClose={onDismissError}>{error}</Alert>}
+    <AdminAccordion title="Event details" expanded={taskCollapsed ? false : undefined} onToggle={onTaskSelect ? () => onTaskSelect("details") : undefined}>{detailsPanel}</AdminAccordion>
+    <AdminAccordion title="Ticket types" onToggle={onTaskSelect ? () => onTaskSelect("tickets") : undefined}>{ticketTypesPanel}</AdminAccordion>
+    <AdminAccordion title="Booking approvals" onToggle={onTaskSelect ? () => onTaskSelect("approvals") : undefined}>{approvalsPanel}</AdminAccordion>
+    <AdminAccordion title="Current attendee tickets" onToggle={onTaskSelect ? () => onTaskSelect("attendees") : undefined}>
+      {attendeesPanel}
+      {!loadingEventBookings && onManageTicket && <RemovedTicketsSection rows={removedTickets} onRestore={(row) => onManageTicket(row, "restore")} />}
+    </AdminAccordion>
+    <AdminAccordion title="Booking audit activity" onToggle={onTaskSelect ? () => onTaskSelect("activity") : undefined}>{activityPanel}</AdminAccordion>
+    <AdminAccordion title="Payment status activity" onToggle={onTaskSelect ? () => onTaskSelect("payments") : undefined}>{paymentsPanel}</AdminAccordion>
+  </>;
+}
+
+const recordCardSx = { p: 2, border: "1px solid", borderColor: "divider", borderRadius: 2, minWidth: 0, overflowWrap: "anywhere" } as const;
+
+function RecordField({ label, children }: { label: string; children: ReactNode }) {
+  return <Box sx={{ minWidth: 0 }}><Typography component="dt" variant="caption" color="text.secondary">{label}</Typography><Box component="dd" sx={{ m: 0, overflowWrap: "anywhere" }}>{children}</Box></Box>;
 }
 
 function EventDetailsSection({
@@ -223,54 +263,30 @@ function EventDetailsSection({
           Edit event details
         </Button>
       </Box>
-      <AdminTable minWidth={360}>
-          <TableBody>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600, width: 220 }}>Title</TableCell>
-              <TableCell>{event.title}</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Date / time</TableCell>
-              <TableCell>
-                {new Date(event.startDateTime).toLocaleString()} –{" "}
-                {new Date(event.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Location</TableCell>
-              <TableCell>{event.location ?? "—"}</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Guest of honour</TableCell>
-              <TableCell>{event.guestOfHonour ?? "—"}</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Sponsors</TableCell>
-              <TableCell sx={{ whiteSpace: "pre-line" }}>{event.sponsors?.trim() || "—"}</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Details</TableCell>
-              <TableCell>
-                {details ? <SafeMarkdown>{details}</SafeMarkdown> : "—"}
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Booking window</TableCell>
-              <TableCell>
-                {new Date(event.bookingStartDateTime).toLocaleString()} –{" "}
-                {new Date(event.bookingEndDateTime).toLocaleString()}
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Max guests without moderator approval</TableCell>
-              <TableCell>
-                {event.maxGuestsWithoutModeratorApproval != null
-                  ? String(event.maxGuestsWithoutModeratorApproval)
-                  : "—"}
-              </TableCell>
-            </TableRow>
-          </TableBody>
-      </AdminTable>
+      <Stack spacing={3}>
+        <Box sx={recordCardSx}>
+          <Typography variant="h6" component="h3" sx={{ mb: 2 }}>Event information</Typography>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, m: 0 }}>
+            <RecordField label="Title">{event.title}</RecordField>
+            <RecordField label="Location">{event.location || "—"}</RecordField>
+            <RecordField label="Date / time">{new Date(event.startDateTime).toLocaleString()} – {new Date(event.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</RecordField>
+            <RecordField label="Guest of honour">{event.guestOfHonour || "—"}</RecordField>
+            <RecordField label="Sponsors"><Box sx={{ whiteSpace: "pre-line" }}>{event.sponsors?.trim() || "—"}</Box></RecordField>
+          </Box>
+        </Box>
+        <Box sx={recordCardSx}>
+          <Typography variant="h6" component="h3" sx={{ mb: 2 }}>Booking settings</Typography>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, m: 0 }}>
+            <RecordField label="Booking opens">{new Date(event.bookingStartDateTime).toLocaleString()}</RecordField>
+            <RecordField label="Booking closes">{new Date(event.bookingEndDateTime).toLocaleString()}</RecordField>
+            <RecordField label="Max guests without moderator approval">{event.maxGuestsWithoutModeratorApproval ?? "—"}</RecordField>
+          </Box>
+        </Box>
+        <Box sx={recordCardSx}>
+          <Typography variant="h6" component="h3" sx={{ mb: 2 }}>Description</Typography>
+          {details ? <SafeMarkdown>{details}</SafeMarkdown> : <Typography color="text.secondary">No event description.</Typography>}
+        </Box>
+      </Stack>
     </Box>
   );
 }
@@ -290,9 +306,29 @@ export function TicketTypesTable({
   onEdit: (ticketType: TicketTypeRow) => void;
   onDelete: (id: string) => void;
 }) {
+  const compact = useMediaQuery("(max-width: 899px)");
   if (loading) {
     return <CircularProgress />;
   }
+
+  if (ticketTypes.length === 0) return <Alert severity="info">No ticket types yet. Add a ticket type to make it available for booking.</Alert>;
+  if (compact) return <Stack spacing={2}>
+    {ticketTypes.map((ticketType) => <Box key={ticketType.id} sx={recordCardSx}>
+      <Typography component="h3" fontWeight={700}>{ticketType.title}</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ my: 1 }}>{ticketType.description || "No description"}</Typography>
+      <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, m: 0 }}>
+        <RecordField label="Price">{money(Math.round(ticketType.price * 100))}</RecordField>
+        <RecordField label={TICKET_CATEGORY_LABEL}>{getTicketCategoryLabel(ticketType.audience)}</RecordField>
+        <RecordField label="Dinner">{ticketType.includesDinner ? "Yes" : "No"}</RecordField>
+        <RecordField label="Symposium">{ticketType.includesSymposium ? "Yes" : "No"}</RecordField>
+        <RecordField label="Access group">{ticketType.userGroup?.name || "—"}</RecordField>
+      </Box>
+      <Stack direction="row" spacing={1} sx={{ mt: 2 }} useFlexGap flexWrap="wrap">
+        <Button startIcon={<EditIcon />} aria-label={`Edit ${ticketType.title}`} {...(editorHref ? { component: RouterLink, to: editorHref(ticketType.id) } : { onClick: () => onEdit(ticketType) })}>Edit</Button>
+        <Button color="error" startIcon={deletingTicketTypeId === ticketType.id ? <CircularProgress size={16} /> : <DeleteIcon />} aria-label={`Delete ${ticketType.title}`} disabled={deletingTicketTypeId === ticketType.id} onClick={() => onDelete(ticketType.id)}>Delete</Button>
+      </Stack>
+    </Box>)}
+  </Stack>;
 
   return (
     <AdminTable>
@@ -356,7 +392,126 @@ const bookingApprovalActionsCellSx = {
   width: 168,
 } as const;
 
-function BookingApprovalsSection({
+interface BookingApprovalsProps {
+  filter: BookingApprovalStatusFilter;
+  onFilterChange: (value: BookingApprovalStatusFilter) => void;
+  loading: boolean;
+  bookings: EventBookingAdminRow[];
+  allBookings: EventBookingAdminRow[];
+  ticketOrdersById: TicketOrdersById;
+  moderatorNoteDraft: Record<string, string>;
+  onModeratorNoteChange: (bookingId: string, value: string) => void;
+  reviewingBookingId: string | null;
+  onReview: (booking: EventBookingAdminRow, decision: BookingApprovalStatus.APPROVED | BookingApprovalStatus.REJECTED) => void;
+  seatingPreferenceUserNamesById?: ReadonlyMap<string, string>;
+  savedReviewDecisions?: Readonly<Record<string, number>>;
+  reviewDialog?: boolean;
+  error?: string | null;
+}
+
+function BookingRevisionSnapshot({ booking, ticketOrdersById, seatingPreferenceUserNamesById }: { booking: EventBookingAdminRow; ticketOrdersById: TicketOrdersById; seatingPreferenceUserNamesById?: ReadonlyMap<string, string> }) {
+  return <Box sx={recordCardSx}>
+    <Typography fontWeight={700}>Revision {booking.revisionNumber}</Typography>
+    <Typography variant="body2" sx={{ mb: 1 }}>{booking.booker.firstName} {booking.booker.lastName} · {booking.booker.email}</Typography>
+    <Box component="ul" sx={{ pl: 2.5, my: 1 }}>
+      {[...booking.lines].sort((left, right) => left.sortOrder - right.sortOrder).map((line) => <Box component="li" key={line.id} sx={{ mb: 1.5 }}>
+        <Typography fontWeight={600}>{line.guestDisplayName || (line.guestUser ? `${line.guestUser.firstName} ${line.guestUser.lastName}` : line.ticketType.audience === "MEMBER" ? `${booking.booker.firstName} ${booking.booker.lastName}` : "Guest")}</Typography>
+        <Typography variant="body2">{line.ticketType.title} · {money(Math.round(line.ticketType.price * 100))}</Typography>
+        {line.bookingPlace?.attendanceRemoved && <Chip size="small" variant="outlined" label="Removed from attendance" sx={{ my: 0.5 }} />}
+        <Typography variant="body2">Dinner: {line.ticketType.includesDinner ? "Yes" : "No"} · Symposium: {line.ticketType.includesSymposium ? "Yes" : "No"}</Typography>
+        <Typography variant="body2">Dietary: {line.dietaryNote || "None recorded"}</Typography>
+        <Typography variant="body2" color="text.secondary">Payment: {titleCaseStatus(attendeePaymentState(line, ticketOrdersById))}</Typography>
+      </Box>)}
+    </Box>
+    <Typography variant="body2">Accommodation: {booking.accommodationRequested ? "Requested" : "Not requested"}{booking.accommodationNote ? ` · ${booking.accommodationNote}` : ""}</Typography>
+    <Typography variant="body2">Seating preferences: {booking.sitNextToUserIds?.length ? seatingPreferenceUserNamesById ? booking.sitNextToUserIds.map((id) => seatingPreferenceUserNamesById.get(id) ?? "Unavailable member").join(", ") : `${booking.sitNextToUserIds.length} member preference${booking.sitNextToUserIds.length === 1 ? "" : "s"} recorded` : "None recorded"}</Typography>
+  </Box>;
+}
+
+function RevisionFinancialPreview({ previous, proposed, ticketOrdersById }: { previous: EventBookingAdminRow | null; proposed: EventBookingAdminRow; ticketOrdersById: TicketOrdersById }) {
+  const total = (booking: EventBookingAdminRow | null) => (booking?.lines ?? []).reduce((amount, line) => amount + Math.round(line.ticketType.price * 100), 0);
+  const estimate = getBookingCheckoutEstimate(proposed, ticketOrdersById);
+  const includesRemovedPlaces = [...(previous?.lines ?? []), ...proposed.lines].some((line) => line.bookingPlace?.attendanceRemoved);
+  return <Box sx={recordCardSx}>
+    <Typography component="h3" variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Financial effect</Typography>
+    {estimate.unknownPaymentPlaceCount > 0 && <Alert severity="warning" sx={{ mb: 2 }}>Payment evidence is incomplete for one or more current places. Checkout estimates are unavailable until allocation and order records load.</Alert>}
+    <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, m: 0 }}>
+      <RecordField label="Previous ticket total">{previous ? money(total(previous)) : "No previous booking"}</RecordField>
+      <RecordField label="Proposed ticket total">{money(total(proposed))}</RecordField>
+      <RecordField label="Estimated refund due at checkout">{estimate.refundDueMinor == null ? "Unavailable until payment records load" : money(estimate.refundDueMinor)}</RecordField>
+      <RecordField label="Estimated to pay at checkout">{estimate.toPayMinor == null ? "Unavailable until payment records load" : money(estimate.toPayMinor)}</RecordField>
+    </Box>
+    {includesRemovedPlaces && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Removed attendance tickets are excluded from automatic refunds and checkout charges. Their financial records are kept for manual adjustment.</Typography>}
+    {estimate.hasPendingPayments && <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Payments in progress are not treated as settled until confirmed.</Typography>}
+    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Approving this revision does not move money. These estimates apply when the member next opens checkout. Each place is refunded or charged separately.</Typography>
+  </Box>;
+}
+
+function BookingApprovalsSection(props: BookingApprovalsProps) {
+  const { filter, onFilterChange, loading, bookings, allBookings, ticketOrdersById, moderatorNoteDraft, onModeratorNoteChange, reviewingBookingId, onReview, reviewDialog, error, seatingPreferenceUserNamesById, savedReviewDecisions } = props;
+  const compact = useMediaQuery("(max-width: 899px)");
+  const [reviewed, setReviewed] = useState<EventBookingAdminRow | null>(null);
+  if (!reviewDialog) return <LegacyBookingApprovalsSection {...props} />;
+  const current = reviewed ? allBookings.find((booking) => booking.id === reviewed.id) : undefined;
+  const completed = reviewed?.approvalStatus === BookingApprovalStatus.PENDING && current && current.approvalStatus !== BookingApprovalStatus.PENDING;
+  const currentPending = Boolean(reviewed && current && current.revisionNumber === reviewed.revisionNumber && current.approvalStatus === BookingApprovalStatus.PENDING && (current.status === "SUBMITTED" || current.status === "CONFIRMED") && current.supersededAt == null && !allBookings.some((booking) => booking.revisionGroupId === reviewed.revisionGroupId && booking.revisionNumber > reviewed.revisionNumber && booking.supersededAt == null));
+  const savedDecision = Boolean(reviewed && savedReviewDecisions?.[reviewed.id] === reviewed.revisionNumber);
+  const previous = reviewed ? previousActiveBooking(reviewed, allBookings) : null;
+  const filterControl = <FormControl size="small" sx={{ minWidth: 170 }}>
+    <InputLabel id="booking-approval-filter-label">Status filter</InputLabel>
+    <Select labelId="booking-approval-filter-label" label="Status filter" value={filter} onChange={(event) => onFilterChange(event.target.value as BookingApprovalStatusFilter)}>
+      <MenuItem value="PENDING">Pending</MenuItem><MenuItem value="APPROVED">Approved</MenuItem><MenuItem value="REJECTED">Rejected</MenuItem><MenuItem value="ALL">All</MenuItem>
+    </Select>
+  </FormControl>;
+  const reviewButton = (booking: EventBookingAdminRow) => <Button variant={booking.approvalStatus === BookingApprovalStatus.PENDING ? "contained" : "outlined"} size="small" disabled={Boolean(reviewingBookingId)} onClick={() => setReviewed(booking)}>{booking.approvalStatus === BookingApprovalStatus.PENDING ? "Review change" : "View revision"}</Button>;
+  return <Box>
+    <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="space-between" sx={{ mb: 2 }}>
+      <Typography variant="body2" color="text.secondary">Review the complete booking and its financial effect before deciding on the exact revision.</Typography>
+      {filterControl}
+    </Stack>
+    {loading ? <CircularProgress size={22} /> : bookings.length === 0 ? <Alert severity="info">No booking revisions for this filter.</Alert> : compact ? <Stack spacing={2}>
+      {bookings.map((booking) => <Box key={booking.id} sx={recordCardSx}>
+        <Typography component="h3" fontWeight={700}>{booking.booker.firstName} {booking.booker.lastName}</Typography>
+        <Typography variant="body2" color="text.secondary">{booking.booker.email}</Typography>
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ my: 1 }}><Chip size="small" label={`Revision ${booking.revisionNumber}`} /><Chip size="small" label={titleCaseStatus(booking.approvalStatus)} color={approvalStatusColor(booking.approvalStatus)} /></Stack>
+        <Typography variant="body2" sx={{ mb: 1 }}>{booking.lines.length} ticket{booking.lines.length === 1 ? "" : "s"} · Submitted {new Date(booking.createdAt).toLocaleString()}</Typography>
+        {reviewButton(booking)}
+      </Box>)}
+    </Stack> : <AdminTable minWidth={700}>
+      <TableHead><TableRow><TableCell>Booker</TableCell><TableCell>Revision</TableCell><TableCell>Approval</TableCell><TableCell>Tickets</TableCell><TableCell>Submitted</TableCell><TableCell>Review</TableCell></TableRow></TableHead>
+      <TableBody>{bookings.map((booking) => <TableRow key={booking.id}>
+        <TableCell><Typography variant="body2">{booking.booker.firstName} {booking.booker.lastName}</Typography><Typography variant="caption" color="text.secondary">{booking.booker.email}</Typography></TableCell>
+        <TableCell>Rev {booking.revisionNumber}</TableCell><TableCell><Chip size="small" label={titleCaseStatus(booking.approvalStatus)} color={approvalStatusColor(booking.approvalStatus)} /></TableCell>
+        <TableCell>{booking.lines.length}</TableCell><TableCell>{new Date(booking.createdAt).toLocaleString()}</TableCell><TableCell>{reviewButton(booking)}</TableCell>
+      </TableRow>)}</TableBody>
+    </AdminTable>}
+    <Dialog open={Boolean(reviewed) && !completed} onClose={() => { if (!reviewingBookingId || savedDecision) setReviewed(null); }} maxWidth="md" fullWidth fullScreen={compact} aria-labelledby="booking-revision-review-title">
+      {reviewed && <>
+        <DialogTitle id="booking-revision-review-title">{reviewed.approvalStatus === BookingApprovalStatus.PENDING ? "Review booking change" : "Booking revision"} · Revision {reviewed.revisionNumber}</DialogTitle>
+        <DialogContent dividers>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {savedDecision && <Alert severity="info" sx={{ mb: 2 }}>Decision saved. Close this review and use Retry refresh to load the updated list.</Alert>}
+          {reviewed.approvalStatus === BookingApprovalStatus.PENDING && !currentPending && <Alert severity="warning" sx={{ mb: 2 }}>This revision has changed or is no longer awaiting review. Close this review and reload the current list before deciding.</Alert>}
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 2 }}>
+            <Box><Typography component="h3" variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Previous active booking</Typography>{previous ? <BookingRevisionSnapshot booking={previous} ticketOrdersById={ticketOrdersById} seatingPreferenceUserNamesById={seatingPreferenceUserNamesById} /> : <Alert severity="info">No previous active booking.</Alert>}</Box>
+            <Box><Typography component="h3" variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Proposed booking</Typography><BookingRevisionSnapshot booking={reviewed} ticketOrdersById={ticketOrdersById} seatingPreferenceUserNamesById={seatingPreferenceUserNamesById} /></Box>
+          </Box>
+          <RevisionFinancialPreview previous={previous} proposed={reviewed} ticketOrdersById={ticketOrdersById} />
+          {reviewed.approvalStatus === BookingApprovalStatus.PENDING ? <TextField label="Moderator note" helperText="Include a reason when requesting changes. Your draft stays available while you move between event tasks." multiline minRows={3} fullWidth sx={{ mt: 2 }} value={moderatorNoteDraft[reviewed.id] ?? ""} onChange={(event) => onModeratorNoteChange(reviewed.id, event.target.value)} disabled={reviewingBookingId === reviewed.id || savedDecision} /> : <Box sx={{ mt: 2 }}><Typography fontWeight={700}>Moderator note</Typography><Typography>{reviewed.approvalNote || "No note recorded."}</Typography><Typography variant="caption">{reviewed.approvalReviewedAt ? `Reviewed ${new Date(reviewed.approvalReviewedAt).toLocaleString()}` : "Review date unavailable"}{reviewed.approvalReviewedBy ? ` by ${reviewed.approvalReviewedBy.firstName} ${reviewed.approvalReviewedBy.lastName}` : ""}</Typography></Box>}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, flexWrap: "wrap", gap: 1 }}>
+          <Button disabled={Boolean(reviewingBookingId) && !savedDecision} onClick={() => setReviewed(null)}>Close review</Button>
+          {reviewed.approvalStatus === BookingApprovalStatus.PENDING && <>
+            <Button color="error" variant="outlined" disabled={!currentPending || Boolean(reviewingBookingId) || savedDecision} onClick={() => onReview(reviewed, BookingApprovalStatus.REJECTED)}>Request changes</Button>
+            <Button color="success" variant="contained" disabled={!currentPending || Boolean(reviewingBookingId) || savedDecision} onClick={() => onReview(reviewed, BookingApprovalStatus.APPROVED)}>{reviewingBookingId === reviewed.id ? "Saving decision…" : "Approve revision"}</Button>
+          </>}
+        </DialogActions>
+      </>}
+    </Dialog>
+  </Box>;
+}
+
+function LegacyBookingApprovalsSection({
   filter,
   onFilterChange,
   loading,
@@ -518,8 +673,6 @@ function BookingApprovalsSection({
   );
 }
 
-const attendeeFilterCellSx = { minWidth: 140, verticalAlign: "top" } as const;
-
 export function EventAttendeeTicketsSection({
   eventTitle,
   loading,
@@ -533,8 +686,11 @@ export function EventAttendeeTicketsSection({
   onAnnounce?: (filters: EventAttendeeTicketFilters) => void;
   onManageTicket?: (row: EventAttendeeTicketRow, action: "edit" | "delete") => void;
 }) {
+  const compact = useMediaQuery("(max-width: 1199px)");
   const { decision: cookieDecision, acceptPreferenceCookies } = useCookiePreferences();
   const emailSeparatorLabelId = useId();
+  const filterControlsId = useId();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<EventAttendeeTicketFilters>(emptyEventAttendeeTicketFilters);
   const [emailSeparator, setEmailSeparator] = useState<AttendeeEmailSeparator>(() =>
     cookieDecision === "rejected"
@@ -544,7 +700,8 @@ export function EventAttendeeTicketsSection({
   const [copyMessage, setCopyMessage] = useState<{ severity: "success" | "error"; text: string } | null>(null);
   const filteredRows = useMemo(() => filterEventAttendeeTicketRows(rows, filters), [filters, rows]);
   const emails = useMemo(() => uniqueEventAttendeeEmails(filteredRows), [filteredRows]);
-  const hasActiveFilters = Object.values(filters).some(Boolean);
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
 
   useEffect(() => {
     if (cookieDecision === "rejected") {
@@ -629,13 +786,49 @@ export function EventAttendeeTicketsSection({
           >
             Copy email addresses ({emails.length})
           </Button>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
             <Typography variant="caption" color="text.secondary">CSV includes all attendees</Typography>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>Export full CSV</Button>
           </Box>
         </Box>
       </Box>
-      <AdminTable minWidth={1640}>
+      {compact && <Button sx={{ mb: 2 }} variant="outlined" aria-expanded={filtersOpen} aria-controls={filterControlsId} onClick={() => setFiltersOpen((current) => !current)}>{filtersOpen ? "Hide filters" : "Show filters"}{activeFilterCount ? ` (${activeFilterCount} active)` : ""}</Button>}
+      {(!compact || filtersOpen) &&       <Box id={filterControlsId} role="group" aria-label="Attendee filters" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 2, mb: 3 }}>
+        <TextField size="small" fullWidth label="Filter attendee" value={filters.attendeeName} onChange={(event) => setFilter("attendeeName", event.target.value)} />
+        <TextField size="small" fullWidth label="Filter rank" value={filters.rank} onChange={(event) => setFilter("rank", event.target.value)} />
+        <CompactFilterSelect label="Membership" value={filters.membershipStatus} onChange={(value) => setFilter("membershipStatus", value)} options={uniqueOptions(rows, (row) => row.membershipStatus, getMembershipStatusLabel)} />
+        <CompactFilterSelect label="Audience" value={filters.audience} onChange={(value) => setFilter("audience", value)} options={uniqueOptions(rows, (row) => row.audience, getTicketCategoryLabel)} />
+        <TextField size="small" fullWidth label="Filter ticket" value={filters.ticketType} onChange={(event) => setFilter("ticketType", event.target.value)} />
+        <YesNoFilter label="Dinner" value={filters.includesDinner} onChange={(value) => setFilter("includesDinner", value)} />
+        <YesNoFilter label="Symposium" value={filters.includesSymposium} onChange={(value) => setFilter("includesSymposium", value)} />
+        <YesNoFilter label="Accommodation" value={filters.accommodationRequested} onChange={(value) => setFilter("accommodationRequested", value)} />
+        <CompactFilterSelect label="Approval" value={filters.approvalStatus} onChange={(value) => setFilter("approvalStatus", value)} options={uniqueOptions(rows, (row) => row.approvalStatus, titleCaseStatus)} />
+        <CompactFilterSelect label="Payment" value={filters.paymentState} onChange={(value) => setFilter("paymentState", value)} options={uniqueOptions(rows, (row) => row.paymentState, titleCaseStatus)} />
+      </Box>}
+      {compact ? filteredRows.length === 0 ? <Alert severity="info">No attendees match the current filters.</Alert> : <Stack spacing={2}>
+        {filteredRows.map((row) => <Box key={row.key} sx={recordCardSx}>
+          <Typography component="h3" fontWeight={700} sx={{ mb: 2 }}>{row.attendeeName}</Typography>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, m: 0 }}>
+            <RecordField label="Attendee email">{row.email || "—"}</RecordField>
+            {row.bookingOwnerName && <RecordField label="Booked by">{row.bookingOwnerName}{row.bookingOwnerEmail && <Typography variant="caption" display="block">{row.bookingOwnerEmail}</Typography>}</RecordField>}
+            <RecordField label="Rank">{row.rank || "—"}</RecordField>
+            <RecordField label="Membership status">{row.membershipStatus ? getMembershipStatusLabel(row.membershipStatus) : "—"}</RecordField>
+            <RecordField label="Audience">{getTicketCategoryLabel(row.audience)}</RecordField>
+            <RecordField label="Ticket">{row.ticketType}</RecordField>
+            <RecordField label="Dinner">{row.includesDinner ? "Yes" : "No"}</RecordField>
+            <RecordField label="Symposium">{row.includesSymposium ? "Yes" : "No"}</RecordField>
+            <RecordField label="Accommodation">{row.accommodationRequested ? "Yes" : "No"}{row.accommodationNote && <Typography variant="caption" display="block">{row.accommodationNote}</Typography>}</RecordField>
+            <RecordField label="Seating preferences">{row.seatingPreferences.join(", ") || "—"}</RecordField>
+            <RecordField label="Dietary requirements">{row.dietaryNote || "—"}</RecordField>
+            <RecordField label="Approval"><Chip size="small" label={titleCaseStatus(row.approvalStatus)} color={approvalStatusColor(row.approvalStatus)} /></RecordField>
+            <RecordField label="Payment"><Chip size="small" variant="outlined" label={titleCaseStatus(row.paymentState)} /></RecordField>
+          </Box>
+          {onManageTicket && row.ticketId && <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 2 }}>
+            <Button variant="outlined" onClick={() => onManageTicket(row, "edit")} aria-label={`Edit ticket for ${row.attendeeName}`}>Edit ticket</Button>
+            <Button color="error" onClick={() => onManageTicket(row, "delete")} aria-label={`Delete ticket for ${row.attendeeName}`}>Delete ticket</Button>
+          </Stack>}
+        </Box>)}
+      </Stack> : (      <AdminTable minWidth={1640}>
         <TableHead>
           <TableRow>
             <TableCell>Attendee</TableCell>
@@ -653,43 +846,14 @@ export function EventAttendeeTicketsSection({
             <TableCell>Payment</TableCell>
             {onManageTicket && <TableCell>Actions</TableCell>}
           </TableRow>
-          <TableRow>
-            <TableCell component="td" sx={attendeeFilterCellSx}>
-              <TextField size="small" label="Filter attendee" value={filters.attendeeName} onChange={(event) => setFilter("attendeeName", event.target.value)} />
-            </TableCell>
-            <TableCell component="td" />
-            <TableCell component="td" sx={attendeeFilterCellSx}>
-              <TextField size="small" label="Filter rank" value={filters.rank} onChange={(event) => setFilter("rank", event.target.value)} />
-            </TableCell>
-            <TableCell component="td" sx={attendeeFilterCellSx}>
-              <CompactFilterSelect label="Membership" value={filters.membershipStatus} onChange={(value) => setFilter("membershipStatus", value)} options={uniqueOptions(rows, (row) => row.membershipStatus, getMembershipStatusLabel)} />
-            </TableCell>
-            <TableCell component="td" sx={attendeeFilterCellSx}>
-              <CompactFilterSelect label="Audience" value={filters.audience} onChange={(value) => setFilter("audience", value)} options={uniqueOptions(rows, (row) => row.audience, getTicketCategoryLabel)} />
-            </TableCell>
-            <TableCell component="td" sx={attendeeFilterCellSx}>
-              <TextField size="small" label="Filter ticket" value={filters.ticketType} onChange={(event) => setFilter("ticketType", event.target.value)} />
-            </TableCell>
-            <TableCell component="td" sx={attendeeFilterCellSx}><YesNoFilter label="Dinner" value={filters.includesDinner} onChange={(value) => setFilter("includesDinner", value)} /></TableCell>
-            <TableCell component="td" sx={attendeeFilterCellSx}><YesNoFilter label="Symposium" value={filters.includesSymposium} onChange={(value) => setFilter("includesSymposium", value)} /></TableCell>
-            <TableCell component="td" sx={attendeeFilterCellSx}><YesNoFilter label="Accommodation" value={filters.accommodationRequested} onChange={(value) => setFilter("accommodationRequested", value)} /></TableCell>
-            <TableCell component="td" />
-            <TableCell component="td" />
-            <TableCell component="td" sx={attendeeFilterCellSx}>
-              <CompactFilterSelect label="Approval" value={filters.approvalStatus} onChange={(value) => setFilter("approvalStatus", value)} options={uniqueOptions(rows, (row) => row.approvalStatus, titleCaseStatus)} />
-            </TableCell>
-            <TableCell component="td" sx={attendeeFilterCellSx}>
-              <CompactFilterSelect label="Payment" value={filters.paymentState} onChange={(value) => setFilter("paymentState", value)} options={uniqueOptions(rows, (row) => row.paymentState, titleCaseStatus)} />
-            </TableCell>
-            {onManageTicket && <TableCell component="td" />}
-          </TableRow>
+
         </TableHead>
         <TableBody>
           {filteredRows.length === 0 ? (
             <TableRow><TableCell colSpan={onManageTicket ? 14 : 13}><Alert severity="info">No attendees match the current filters.</Alert></TableCell></TableRow>
           ) : filteredRows.map((row) => (
             <TableRow key={row.key}>
-              <TableCell>{row.attendeeName}</TableCell>
+              <TableCell>{row.attendeeName}{row.bookingOwnerName && <Typography variant="caption" display="block" color="text.secondary">Booked by: {row.bookingOwnerName}{row.bookingOwnerEmail ? ` · ${row.bookingOwnerEmail}` : ""}</Typography>}</TableCell>
               <TableCell>{row.email ?? "—"}</TableCell>
               <TableCell>{row.rank || "—"}</TableCell>
               <TableCell>{row.membershipStatus ? getMembershipStatusLabel(row.membershipStatus) : "—"}</TableCell>
@@ -710,7 +874,7 @@ export function EventAttendeeTicketsSection({
             </TableRow>
           ))}
         </TableBody>
-      </AdminTable>
+      </AdminTable>)}
     </Box>
   );
 }
@@ -832,113 +996,117 @@ function PaymentActivitySection({
   loading,
   ticketOrders,
   bookingPaymentAdjustments,
+  bookings,
+  ticketOrdersById,
+  organiserGuests,
+  dataUnavailable = false,
+  settledPaymentsUnavailable = false,
+  taskHref,
+  view,
+  onViewChange,
+  onContactUnpaid,
 }: {
   loading: boolean;
   ticketOrders: TicketOrderAdminRow[];
   bookingPaymentAdjustments: BookingPaymentAdjustmentAdminRow[];
+  bookings: EventBookingAdminRow[];
+  ticketOrdersById: TicketOrdersById;
+  organiserGuests: Guest[];
+  dataUnavailable?: boolean;
+  settledPaymentsUnavailable?: boolean;
+  taskHref?: (task: EventManagementTask) => string;
+  view?: EventPaymentView;
+  onViewChange?: (view: EventPaymentView) => void;
+  onContactUnpaid?: () => void;
 }) {
-  return (
-    <Box>
-      {loading ? (
-        <CircularProgress size={22} />
-      ) : ticketOrders.length === 0 ? (
-        <Alert severity="info">No payment orders found for this event.</Alert>
-      ) : (
-        <AdminTable>
-            <TableHead>
-              <TableRow>
-                <TableCell>Status</TableCell>
-                <TableCell>Purchaser</TableCell>
-                <TableCell>Ticket</TableCell>
-                <TableCell align="right">Qty</TableCell>
-                <TableCell align="right">Amount</TableCell>
-                <TableCell>Refund</TableCell>
-                <TableCell>Dispute</TableCell>
-                <TableCell>Webhook Event ID</TableCell>
-                <TableCell>Updated</TableCell>
-                <TableCell>Updated by</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {ticketOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell>
-                    <Chip size="small" label={order.status} color={order.status === "PAID" ? "success" : "default"} />
-                  </TableCell>
-                  <TableCell>{order.user ? `${order.user.firstName} ${order.user.lastName}` : "—"}</TableCell>
-                  <TableCell>{order.ticketType?.title ?? "—"}</TableCell>
-                  <TableCell align="right">{order.quantity}</TableCell>
-                  <TableCell align="right">
-                    {(order.totalAmountMinor / 100).toFixed(2)} {order.currency.toUpperCase()}
-                  </TableCell>
-                  <TableCell>
-                    {order.refundedAmountMinor != null ? (
-                      <Box>
-                        <Box>
-                          {(order.refundedAmountMinor / 100).toFixed(2)} {order.currency.toUpperCase()}
-                        </Box>
-                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                          {order.refundedAt ? new Date(order.refundedAt).toLocaleString() : "time unknown"}
-                        </Box>
-                      </Box>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {order.stripeDisputeId ? (
-                      <Box>
-                        <Chip size="small" label={order.disputeStatus ?? "OPEN"} color="warning" />
-                        <Box sx={{ color: "text.secondary", fontSize: "0.75rem", mt: 0.5 }}>
-                          {order.disputeReason ?? "Reason not supplied"}
-                        </Box>
-                      </Box>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell sx={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {order.webhookEventId ?? "—"}
-                  </TableCell>
-                  <TableCell>{new Date(order.updatedAt).toLocaleString()}</TableCell>
-                  <TableCell>{order.updatedBy ?? "—"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-        </AdminTable>
-      )}
-      {bookingPaymentAdjustments.length > 0 ? (
-        <Box sx={{ mt: 2 }}>
-          <AdminTable>
-            <TableHead>
-              <TableRow>
-                <TableCell>Adjustment</TableCell>
-                <TableCell>Booker</TableCell>
-                <TableCell align="right">Delta</TableCell>
-                <TableCell>Revision</TableCell>
-                <TableCell>Updated</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {bookingPaymentAdjustments.flatMap((booking) =>
-                (booking.adjustments ?? []).map((adjustment) => (
-                  <TableRow key={adjustment.id}>
-                    <TableCell>
-                      <Chip size="small" color="warning" label={adjustment.status.replaceAll("_", " ")} />
-                    </TableCell>
-                    <TableCell>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "—"}</TableCell>
-                    <TableCell align="right">{(adjustment.deltaAmountMinor / 100).toFixed(2)} GBP</TableCell>
-                    <TableCell>Rev {booking.revisionNumber}</TableCell>
-                    <TableCell>{new Date(adjustment.updatedAt).toLocaleString()}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </AdminTable>
-        </Box>
-      ) : null}
+  const compact = useMediaQuery("(max-width: 899px)");
+  const [localView, setLocalView] = useState<EventPaymentView>("required");
+  const selectedView = view ?? localView;
+  const summary = getEventWorkspaceSummary(bookings, ticketOrdersById, organiserGuests);
+  const hasUnpaidBookers = currentActiveBookings(bookings).some((booking) => booking.lines.some((line) => !line.bookingPlace?.attendanceRemoved && attendeePaymentState(line, ticketOrdersById) === "UNPAID"));
+  const settled = getSettledEventPayments(ticketOrders, organiserGuests);
+  const adjustments = bookingPaymentAdjustments.flatMap((booking) => (booking.adjustments ?? []).map((adjustment) => ({ booking, adjustment })));
+  const orderAmount = (minor: number, currency: string) => `${(minor / 100).toFixed(2)} ${currency.toUpperCase()}`;
+  const refundLabel = (order: TicketOrderAdminRow) => order.refundedAmountMinor == null ? "No refund recorded" : `${orderAmount(order.refundedAmountMinor, order.currency)} · ${order.refundedAt ? new Date(order.refundedAt).toLocaleString() : "Time unknown"}`;
+  const disputeLabel = (order: TicketOrderAdminRow) => order.stripeDisputeId ? `${titleCaseStatus(order.disputeStatus ?? "OPEN")} · ${order.disputeReason ?? "Reason not supplied"}` : "No dispute recorded";
+  return <Box>
+    <Tabs value={selectedView} aria-label="Payment views" variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile sx={{ mb: 2 }} onChange={(_, next: EventPaymentView) => { setLocalView(next); onViewChange?.(next); }}>
+      <Tab value="required" label="Payment required" /><Tab value="all" label="All payment records" />
+    </Tabs>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Booking approval and payment are tracked separately. Payment records do not change when an attendee ticket is edited or removed.</Typography>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 3 }}>
+      <Box sx={recordCardSx}>
+        <Typography component="h3" variant="subtitle1" fontWeight={700}>Net settled booking orders</Typography>
+        {loading ? <Typography variant="body2">Loading settled booking payments…</Typography> : settledPaymentsUnavailable ? <Typography variant="body2" color="text.secondary">Unavailable until payment order records load.</Typography> : settled.bookingOrdersEvidenceIncomplete ? <Typography variant="body2" color="text.secondary">Unavailable until booking refund amounts are complete.</Typography> : settled.bookingOrdersByCurrency.length > 0 ? <Box component="dl" sx={{ display: "flex", flexWrap: "wrap", gap: 3, my: 1 }}>{settled.bookingOrdersByCurrency.map(({ currency, amountMinor }) => <RecordField key={currency} label={currency || "Currency unavailable"}>{(amountMinor / 100).toFixed(2)} {currency}</RecordField>)}</Box> : <Typography variant="body2">No settled booking order payments recorded.</Typography>}
+        <Typography variant="caption" color="text.secondary">Paid and refunded booking orders, less recorded refunds. Currencies are shown separately.</Typography>
+      </Box>
+      <Box sx={recordCardSx}>
+        <Typography component="h3" variant="subtitle1" fontWeight={700}>Net settled organiser guest payments (GBP)</Typography>
+        {loading ? <Typography variant="body2">Loading settled organiser guest payments…</Typography> : dataUnavailable || settled.organiserGuestAmountPence === null ? <Typography variant="body2" color="text.secondary">Unavailable until organiser guest payment evidence is complete.</Typography> : <Typography sx={{ my: 1 }}>{money(settled.organiserGuestAmountPence)}</Typography>}
+        <Typography variant="caption" color="text.secondary">Separate organiser guest payments, less completed refunds. Includes paid tickets that were later cancelled.</Typography>
+      </Box>
     </Box>
-  );
+    {loading ? <CircularProgress size={22} /> : selectedView === "required" ? dataUnavailable ? <Alert severity="warning">Payment summary unavailable. Current booking and organiser guest records are required to show an accurate balance. Reload the data before contacting anyone about payment.</Alert> : <>
+      {summary.unknownPaymentTicketCount > 0 && <Alert severity="warning" sx={{ mb: 2 }}>Payment records are incomplete for {summary.unknownPaymentTicketCount} ticket{summary.unknownPaymentTicketCount === 1 ? "" : "s"}. The known balance below excludes those tickets; reload before contacting anyone about payment.</Alert>}
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
+        <Box><Typography variant="h6" component="h3">{summary.unknownPaymentTicketCount ? "Known outstanding balance" : "Outstanding balance"}: {money(summary.outstandingAmountPence)}</Typography><Typography variant="body2" color="text.secondary">{summary.outstandingTicketCount} ticket{summary.outstandingTicketCount === 1 ? "" : "s"} across {summary.requiredPayments.length} booking{summary.requiredPayments.length === 1 ? "" : "s"} or organiser guests. Payments in progress are included until settled.</Typography></Box>
+        {onContactUnpaid && <Box><Button variant="outlined" disabled={!hasUnpaidBookers || summary.unknownPaymentTicketCount > 0} onClick={onContactUnpaid}>Contact unpaid bookers</Button><Typography variant="caption" display="block" color="text.secondary" sx={{ maxWidth: 360 }}>Booking owners of unpaid member or accompanying guest tickets only. Excludes organiser guests, partial payments and payments in progress. Review recipients before sending.</Typography></Box>}
+      </Stack>
+      {summary.requiredPayments.length === 0 ? <Alert severity="info">No outstanding payments in the current booking records.</Alert> : compact ? <Stack spacing={2}>
+        {summary.requiredPayments.map((payment) => <Box key={payment.key} sx={recordCardSx}>
+          <Typography component="h3" fontWeight={700}>{payment.ownerName}</Typography>
+          <Typography variant="body2" color="text.secondary">{payment.ownerEmail || "No email recorded"}</Typography>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, my: 2 }}>
+            <RecordField label="Outstanding">{money(payment.outstandingAmountPence)}</RecordField>
+            <RecordField label="Tickets">{payment.ticketCount}</RecordField>
+            <RecordField label="Payment">{payment.paymentPending ? "Payment in progress" : "Payment required"}</RecordField>
+            <RecordField label="Booking">{payment.kind === "organiser-guest" ? "Organiser guest" : `Revision ${payment.revisionNumber}`}</RecordField>
+          </Box>
+          {taskHref && <Button size="small" component={RouterLink} to={taskHref(payment.kind === "organiser-guest" ? "guests" : "activity")}>{payment.kind === "organiser-guest" ? "Manage guest" : "View booking activity"}</Button>}
+        </Box>)}
+      </Stack> : <AdminTable minWidth={650}>
+        <TableHead><TableRow><TableCell>Booker / payer</TableCell><TableCell>Booking</TableCell><TableCell>Tickets</TableCell><TableCell>Outstanding</TableCell><TableCell>Payment</TableCell>{taskHref && <TableCell>Actions</TableCell>}</TableRow></TableHead>
+        <TableBody>{summary.requiredPayments.map((payment) => <TableRow key={payment.key}>
+          <TableCell><Typography variant="body2">{payment.ownerName}</Typography><Typography variant="caption" color="text.secondary">{payment.ownerEmail || "No email recorded"}</Typography></TableCell>
+          <TableCell>{payment.kind === "organiser-guest" ? "Organiser guest" : `Revision ${payment.revisionNumber}`}</TableCell><TableCell>{payment.ticketCount}</TableCell><TableCell>{money(payment.outstandingAmountPence)}</TableCell><TableCell><Chip size="small" variant="outlined" label={payment.paymentPending ? "In progress" : "Required"} color={payment.paymentPending ? "default" : "warning"} /></TableCell>
+          {taskHref && <TableCell><Button size="small" component={RouterLink} to={taskHref(payment.kind === "organiser-guest" ? "guests" : "activity")}>{payment.kind === "organiser-guest" ? "Manage guest" : "View booking activity"}</Button></TableCell>}
+        </TableRow>)}</TableBody>
+      </AdminTable>}
+    </> : <>
+      {ticketOrders.length === 0 ? <Alert severity="info">No payment orders found for this event.</Alert> : compact ? <Stack spacing={2}>
+        {ticketOrders.map((order) => <Box key={order.id} sx={recordCardSx}>
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mb: 1 }}><Typography component="h3" fontWeight={700}>{order.user ? `${order.user.firstName} ${order.user.lastName}` : "Purchaser unavailable"}</Typography><Chip size="small" label={titleCaseStatus(order.status)} color={order.status === "PAID" ? "success" : "default"} /></Stack>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, m: 0 }}>
+            <RecordField label="Ticket">{order.ticketType?.title || "—"}</RecordField><RecordField label="Quantity">{order.quantity}</RecordField><RecordField label="Amount">{orderAmount(order.totalAmountMinor, order.currency)}</RecordField><RecordField label="Updated">{new Date(order.updatedAt).toLocaleString()}</RecordField><RecordField label="Refund">{refundLabel(order)}</RecordField><RecordField label="Dispute">{disputeLabel(order)}</RecordField><RecordField label="Webhook event ID">{order.webhookEventId || "—"}</RecordField><RecordField label="Updated by">{order.updatedBy || "—"}</RecordField>
+          </Box>
+        </Box>)}
+      </Stack> : <AdminTable minWidth={1000}>
+        <TableHead><TableRow><TableCell>Status</TableCell><TableCell>Purchaser</TableCell><TableCell>Ticket</TableCell><TableCell align="right">Qty</TableCell><TableCell align="right">Amount</TableCell><TableCell>Refund</TableCell><TableCell>Dispute</TableCell><TableCell>Webhook Event ID</TableCell><TableCell>Updated</TableCell><TableCell>Updated by</TableCell></TableRow></TableHead>
+        <TableBody>{ticketOrders.map((order) => <TableRow key={order.id}>
+          <TableCell><Chip size="small" label={order.status} color={order.status === "PAID" ? "success" : "default"} /></TableCell><TableCell>{order.user ? `${order.user.firstName} ${order.user.lastName}` : "—"}</TableCell><TableCell>{order.ticketType?.title || "—"}</TableCell><TableCell align="right">{order.quantity}</TableCell><TableCell align="right">{orderAmount(order.totalAmountMinor, order.currency)}</TableCell><TableCell>{refundLabel(order)}</TableCell><TableCell>{disputeLabel(order)}</TableCell><TableCell sx={{ maxWidth: 180, overflowWrap: "anywhere" }}>{order.webhookEventId || "—"}</TableCell><TableCell>{new Date(order.updatedAt).toLocaleString()}</TableCell><TableCell>{order.updatedBy || "—"}</TableCell>
+        </TableRow>)}</TableBody>
+      </AdminTable>}
+      {organiserGuests.length > 0 && <Box sx={{ mt: 3 }}>
+        <Divider sx={{ mb: 2 }} /><Typography variant="h6" component="h3" sx={{ mb: 2 }}>Organiser guest payment records</Typography>
+        {compact ? <Stack spacing={2}>{organiserGuests.map((guest) => <Box key={guest.id} sx={recordCardSx}>
+          <Typography component="h4" fontWeight={700}>{guest.firstName} {guest.lastName}</Typography>
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ my: 1 }}><Chip size="small" label={titleCaseStatus(guest.paymentStatus)} />{guest.cancelled && <Chip size="small" label="Cancelled ticket" variant="outlined" />}</Stack>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, m: 0 }}><RecordField label="Ticket">{guest.ticketTitle}</RecordField><RecordField label="Price">{money(guest.priceMinor)}</RecordField><RecordField label="Refunded">{money(guest.refundedAmountMinor)}</RecordField><RecordField label="Contact">{guest.email || "No email recorded"}</RecordField></Box>
+          {taskHref && <Button size="small" component={RouterLink} to={taskHref("guests")}>Manage guest</Button>}
+        </Box>)}</Stack> : <AdminTable minWidth={650}><TableHead><TableRow><TableCell>Organiser guest</TableCell><TableCell>Ticket</TableCell><TableCell>Payment</TableCell><TableCell>Price</TableCell><TableCell>Refunded</TableCell><TableCell>Ticket status</TableCell>{taskHref && <TableCell>Actions</TableCell>}</TableRow></TableHead><TableBody>{organiserGuests.map((guest) => <TableRow key={guest.id}><TableCell>{guest.firstName} {guest.lastName}</TableCell><TableCell>{guest.ticketTitle}</TableCell><TableCell><Chip size="small" label={titleCaseStatus(guest.paymentStatus)} /></TableCell><TableCell>{money(guest.priceMinor)}</TableCell><TableCell>{money(guest.refundedAmountMinor)}</TableCell><TableCell>{guest.cancelled ? "Cancelled" : "Current"}</TableCell>{taskHref && <TableCell><Button size="small" component={RouterLink} to={taskHref("guests")}>Manage guest</Button></TableCell>}</TableRow>)}</TableBody></AdminTable>}
+      </Box>}
+      {adjustments.length > 0 && <Box sx={{ mt: 3 }}>
+        <Divider sx={{ mb: 2 }} /><Typography variant="h6" component="h3" sx={{ mb: 2 }}>Booking payment adjustments</Typography>
+        {compact ? <Stack spacing={2}>{adjustments.map(({ booking, adjustment }) => <Box key={adjustment.id} sx={recordCardSx}>
+          <Typography fontWeight={700}>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "Booker unavailable"}</Typography><Chip size="small" color="warning" label={titleCaseStatus(adjustment.status)} sx={{ my: 1 }} />
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, m: 0 }}><RecordField label="Adjustment">{money(adjustment.deltaAmountMinor)}</RecordField><RecordField label="Revision">{booking.revisionNumber}</RecordField><RecordField label="Updated">{new Date(adjustment.updatedAt).toLocaleString()}</RecordField></Box>
+        </Box>)}</Stack> : <AdminTable minWidth={650}>
+          <TableHead><TableRow><TableCell>Adjustment</TableCell><TableCell>Booker</TableCell><TableCell align="right">Delta</TableCell><TableCell>Revision</TableCell><TableCell>Updated</TableCell></TableRow></TableHead>
+          <TableBody>{adjustments.map(({ booking, adjustment }) => <TableRow key={adjustment.id}><TableCell><Chip size="small" color="warning" label={adjustment.status.replaceAll("_", " ")} /></TableCell><TableCell>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "—"}</TableCell><TableCell align="right">{money(adjustment.deltaAmountMinor)}</TableCell><TableCell>Rev {booking.revisionNumber}</TableCell><TableCell>{new Date(adjustment.updatedAt).toLocaleString()}</TableCell></TableRow>)}</TableBody>
+        </AdminTable>}
+      </Box>}
+    </>}
+  </Box>;
 }
 
 function approvalStatusColor(status: string): "warning" | "success" | "error" | "default" {

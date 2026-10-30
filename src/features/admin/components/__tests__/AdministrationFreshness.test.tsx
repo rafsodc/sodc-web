@@ -314,6 +314,76 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     expect(screen.queryByRole("heading", { name: "Event admin: Annual Dinner" })).not.toBeInTheDocument();
   }, 30_000);
 
+  it.each(["none", "bookings", "guests"] as const)("refreshes dependent report metadata after editing a ticket type; failed dependency=%s", async (failedDependency) => {
+    bookings = [booking()];
+    const originalRead = read.getMockImplementation()!;
+    read.mockImplementation(async (name: string, variables: Record<string, unknown>) => {
+      if (name === failingRead) throw new Error("Dependent report unavailable");
+      if (name === "GetEventById") return { data: copy({ event: { ...event, section: { id: "section-1" }, ticketTypes } }), extensions: {} };
+      if (name === "ListEventBookingsForAdmin") return { data: copy({ event: {
+        id: event.id,
+        // Model the real query's ticketType join rather than holding a detached
+        // fixture snapshot: the catalogue edit affects existing report rows.
+        bookings: bookings.map((current) => ({ ...current, lines: current.lines.map((line) => ({ ...line,
+          ticketType: ticketTypes.find((type) => type.id === line.ticketType.id) ?? line.ticketType,
+        })) })), bookingTicketOrders: [],
+      } }), extensions: {} };
+      return originalRead(name, variables);
+    });
+    let guestReadFails = false;
+    vi.mocked(guestCall).mockImplementation(async () => {
+      if (guestReadFails && write.mock.calls.length > 0) throw new Error("Dependent guest list unavailable");
+      return { event: {}, guests: [], ticketTypes: [] } as never;
+    });
+    // Prime both cache layers with the old catalogue/report metadata and retain
+    // the application's 30-second freshness window during navigation.
+    await queryClient.fetchQuery(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })));
+    await queryClient.fetchQuery(dataConnectQueryOptions(listEventBookingsForAdminRef(context.dc, { eventId: event.id })));
+    await executeQuery(getEventsForSectionRef(context.dc, { sectionId: "section-1" }));
+    render(<QueryClientProvider client={queryClient}><MemoryRouter initialEntries={["/sections/section-1/manage/events/event-1"]}>
+      <SectionEventsManager sectionId="section-1" sectionName="Events" initialEventId="event-1" routeControlled onBack={vi.fn()} />
+    </MemoryRouter></QueryClientProvider>);
+    const user = userEvent.setup();
+    expect(await screen.findByText("£25.00")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Tickets & attendees" }));
+    await user.click(screen.getByRole("tab", { name: "Ticket types" }));
+    await user.click(await screen.findByRole("link", { name: "Edit Dinner" }));
+    fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Updated dinner" } });
+    fireEvent.change(screen.getByLabelText(/^price/i), { target: { value: "42" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeEnabled());
+    const bookingReadsBefore = read.mock.calls.filter(([name]) => name === "ListEventBookingsForAdmin").length;
+    const guestReadsBefore = vi.mocked(guestCall).mock.calls.length;
+    if (failedDependency === "bookings") failReadsAfterWrite = "ListEventBookingsForAdmin";
+    if (failedDependency === "guests") guestReadFails = true;
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    if (failedDependency !== "none") {
+      expect((await screen.findAllByText(/Ticket type updated.*already saved/)).length).toBeGreaterThan(0);
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateTicketType"]);
+      // A retry through the editor's successful-write receipt must retry the
+      // failed dependency as well, without acknowledging or replaying the write.
+      await user.click(screen.getByRole("button", { name: "Load saved change" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Load saved change" })).toBeEnabled());
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(screen.getByRole("dialog", { name: "Edit ticket type" })).toBeInTheDocument();
+      expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateTicketType"]);
+      failingRead = null; guestReadFails = false;
+      await user.click(screen.getByRole("button", { name: "Load saved change" }));
+    }
+    await waitForDialogToClose();
+    await user.click(screen.getByRole("tab", { name: "Overview" }));
+    expect(await screen.findByText("£42.00")).toBeInTheDocument();
+    expect(screen.queryByText("£25.00")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Tickets & attendees" }));
+    expect(await screen.findByRole("cell", { name: "Updated dinner" })).toBeInTheDocument();
+    expect(read.mock.calls.filter(([name]) => name === "ListEventBookingsForAdmin").length).toBeGreaterThan(bookingReadsBefore);
+    expect(vi.mocked(guestCall).mock.calls.length).toBeGreaterThan(guestReadsBefore);
+    expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateTicketType"]);
+    const sdkReport = (await executeQuery(listEventBookingsForAdminRef(context.dc, { eventId: event.id }))).data.event;
+    expect(sdkReport?.bookings[0].lines[0].ticketType.title).toBe("Updated dinner");
+    expect(sdkReport?.bookings[0].lines[0].ticketType.price).toBe(42);
+  }, 30_000);
+
   it.each([
     { kind: "event", screenName: "events" as const, trigger: "Delete Annual Dinner", dialogTitle: "Delete event?", writeName: "DeleteEvent", readName: "GetEventsForSection", warning: /Event.*deleted.*already saved/ },
     { kind: "ticket type", screenName: "event" as const, trigger: "Delete Dinner", dialogTitle: "Delete ticket type?", writeName: "DeleteTicketType", readName: "GetEventById", warning: /Ticket type deleted.*already saved/ },
