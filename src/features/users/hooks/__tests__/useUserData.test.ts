@@ -104,6 +104,7 @@ describe("useUserData", () => {
     expect(result.current.userData).toEqual(mockUserData);
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
+    expect(dataConnect.executeQuery).toHaveBeenCalledWith(mockRef, { fetchPolicy: "SERVER_ONLY" });
   });
 
   it("skips fetch and returns null when enabled claim is false", async () => {
@@ -283,6 +284,23 @@ describe("useUserData", () => {
     await waitFor(() => expect(dataConnect.executeQuery).toHaveBeenCalled());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.userData).toBeNull();
+    expect(result.current.error?.message).toMatch(/does not belong to the signed-in account/);
+  });
+
+  it("allows an explicit fresh retry after rejecting a profile from another account", async () => {
+    const user = enabledUser("B");
+    vi.mocked(dataConnect.executeQuery)
+      .mockResolvedValueOnce({ data: { user: { ...mockUserData, id: "A", firstName: "Alice" } } } as never)
+      .mockResolvedValueOnce({ data: { user: { ...mockUserData, id: "B", firstName: "Bob" } } } as never);
+    const { result } = renderHook(() => useUserData(user, true));
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+    expect(result.current.userData).toBeNull();
+    expect(dataConnect.executeQuery).toHaveBeenCalledOnce();
+    await act(async () => { await result.current.refetch(); });
+    expect(result.current.userData).toMatchObject({ id: "B", firstName: "Bob" });
+    expect(result.current.error).toBeNull();
+    expect(dataConnect.executeQuery).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(dataConnect.executeQuery).mock.calls.every(([, options]) => options?.fetchPolicy === "SERVER_ONLY")).toBe(true);
   });
 
   it("restarts a pending initial request when StrictMode replays effects", async () => {
