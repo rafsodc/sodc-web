@@ -8,6 +8,7 @@ import { idsEqual } from "../../../shared/utils/uuid";
 import {
   eventAnnouncementPath,
   readEventAnnouncementFilters,
+  readEventAnnouncementTarget,
 } from "../utils/eventAnnouncementNavigation";
 import {
   useSessionDraft,
@@ -225,6 +226,7 @@ export default function SectionEventsManager({
   useEffect(() => {
     if (task === "guests" && initialEventId) setOpenedGuestEventId(initialEventId);
   }, [task, initialEventId]);
+  const isCurrentEvent = useCurrentView(`${sectionId}:${initialEventId ?? "list"}`);
   const isCurrentView = useCurrentView(
     `${sectionId}:${initialEventId ?? "list"}:${routeLocation.pathname}${routeLocation.search}`,
   );
@@ -461,6 +463,11 @@ export default function SectionEventsManager({
   const [reviewingBookingId, setReviewingBookingId] = useState<string | null>(
     null,
   );
+  const bookingReviewRequest = useRef<object | null>(null);
+  useEffect(() => {
+    bookingReviewRequest.current = null;
+    setReviewingBookingId(null);
+  }, [isCurrentEvent]);
   const [savedReviewDecisions, setSavedReviewDecisions] = useSessionDraft<Record<string, number>>(
     `event-review-decisions:${normalizedResourceId(sectionId)}:${normalizedResourceId(ticketTypesEventId ?? "none")}`, {},
   );
@@ -469,6 +476,7 @@ export default function SectionEventsManager({
         eventId: string;
         eventTitle?: string;
         filters: EventAttendeeTicketFilters;
+        recipientTarget?: "BOOKERS";
       }
     | undefined
   >();
@@ -1332,7 +1340,9 @@ export default function SectionEventsManager({
     booking: EventBookingAdminRow,
     decision: BookingApprovalStatus.APPROVED | BookingApprovalStatus.REJECTED,
   ) => {
-    if (savedReviewDecisions[booking.id] === booking.revisionNumber) return;
+    if (bookingReviewRequest.current || savedReviewDecisions[booking.id] === booking.revisionNumber) return;
+    const request = {};
+    bookingReviewRequest.current = request;
     setReviewingBookingId(booking.id);
     setError(null);
     try {
@@ -1360,7 +1370,10 @@ export default function SectionEventsManager({
       });
       setError(toAdminUserFacingError(err, "booking-approval").message);
     } finally {
-      if (isCurrentView()) setReviewingBookingId(null);
+      if (bookingReviewRequest.current === request) {
+        bookingReviewRequest.current = null;
+        if (isCurrentEvent()) setReviewingBookingId((current) => current === booking.id ? null : current);
+      }
     }
   };
 
@@ -1404,6 +1417,7 @@ export default function SectionEventsManager({
   const announcing = routeControlled
     ? task === "announcement" || task === "communications"
     : sendingAnnouncement;
+  const announcementTarget = readEventAnnouncementTarget(routeLocation.search);
   if (announcing && (!routeControlled || !ticketTypesEventId)) {
     return (
       <SendAnnouncementPage
@@ -1506,9 +1520,10 @@ export default function SectionEventsManager({
               if (isCurrentView()) setError(toAdminUserFacingError(caught, "events").message);
             })}>Retry loading</Button>}>Event details are unavailable. Reload them before editing.</Alert>
         )}
-        {routeControlled && announcing && <SendAnnouncementPage
+        {routeControlled && announcing && announcementTarget === null && <Alert severity="error" action={<Button component={RouterLink} to={eventManagementPath(sectionId, ticketTypesEventId, "communications")}>Open Communications</Button>}>This announcement link has an invalid recipient target. Open Communications again to choose a valid audience.</Alert>}
+        {routeControlled && announcing && announcementTarget !== null && <SendAnnouncementPage
           embedded sectionId={sectionId} sectionName={sectionName}
-          eventAudience={{ eventId: ticketTypesEventId, eventTitle: eventForAdmin?.title, filters: readEventAnnouncementFilters(routeLocation.search) }}
+          eventAudience={{ eventId: ticketTypesEventId, eventTitle: eventForAdmin?.title, filters: readEventAnnouncementFilters(routeLocation.search), ...(announcementTarget ? { recipientTarget: announcementTarget } : {}) }}
           onBack={() => navigate(eventManagementPath(sectionId, ticketTypesEventId, "overview"))} />}
         {(!routeControlled || (task !== "details" && task !== "overview" && !announcing && task !== "guests")) && <TicketAdminSurface
           selectedTask={routeControlled ? task : undefined}
@@ -1526,9 +1541,9 @@ export default function SectionEventsManager({
           }}
           onContactUnpaid={() => {
             const filters = { ...emptyEventAttendeeTicketFilters, paymentState: "UNPAID" };
-            if (routeControlled) navigate(eventAnnouncementPath(sectionId, ticketTypesEventId, filters));
+            if (routeControlled) navigate(eventAnnouncementPath(sectionId, ticketTypesEventId, filters, "BOOKERS"));
             else {
-              setEventAnnouncement({ eventId: ticketTypesEventId, eventTitle: eventForAdmin?.title, filters });
+              setEventAnnouncement({ eventId: ticketTypesEventId, eventTitle: eventForAdmin?.title, filters, recipientTarget: "BOOKERS" });
               setSendingAnnouncement(true);
             }
           }}

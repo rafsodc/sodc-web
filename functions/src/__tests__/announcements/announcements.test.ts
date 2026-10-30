@@ -892,6 +892,32 @@ describe("attendee announcement preview and durable send", () => {
     await expect(call({ eventAudience: undefined })).rejects.toMatchObject({ code: "already-exists" });
     expect(mockCreateAnnouncementSend).toHaveBeenCalledOnce();
   });
+  it("persists the owner target and refuses to replay its request ID for attendee contacts", async () => {
+    const bookerAudience = { ...eventAudience, recipientTarget: "BOOKERS" };
+    await expect(call({ eventAudience: bookerAudience })).resolves.toMatchObject({ recipientCount: 1 });
+    const saved = mockCreateAnnouncementSend.mock.calls[0][0];
+    expect(JSON.parse(saved.recipientSnapshot!).eventAudience).toEqual(bookerAudience);
+    mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: saved } } as never);
+    vi.mocked(eventAudiences.resolveEventAnnouncementAudience).mockClear();
+    await expect(call({ eventAudience: bookerAudience })).resolves.toMatchObject({ recipientCount: 1, resumed: true });
+    expect(eventAudiences.resolveEventAnnouncementAudience).not.toHaveBeenCalled();
+    taskQueueMocks.enqueue.mockClear();
+    await expect(call()).rejects.toMatchObject({ code: "already-exists" });
+    await expect(call({ eventAudience: { ...eventAudience, recipientTarget: "ATTENDEES" } })).rejects.toMatchObject({ code: "already-exists" });
+    expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
+    expect(mockCreateAnnouncementSend).toHaveBeenCalledOnce();
+  });
+  it("refuses to replay a legacy attendee request ID as an owner-only send", async () => {
+    await call();
+    const saved = mockCreateAnnouncementSend.mock.calls[0][0];
+    expect(JSON.parse(saved.recipientSnapshot!).eventAudience).not.toHaveProperty("recipientTarget");
+    mockGetAnnouncementSendById.mockResolvedValue({ data: { announcementSend: saved } } as never);
+    taskQueueMocks.enqueue.mockClear();
+    await expect(call({ eventAudience: { ...eventAudience, recipientTarget: "BOOKERS" } })).rejects.toMatchObject({ code: "already-exists" });
+    expect(taskQueueMocks.enqueue).not.toHaveBeenCalled();
+    await expect(call({ eventAudience: { ...eventAudience, recipientTarget: "ATTENDEES" } })).resolves.toMatchObject({ resumed: true });
+    expect(mockCreateAnnouncementSend).toHaveBeenCalledOnce();
+  });
   it("rejects event templates containing an unsubscribe placeholder", async () => {
     vi.spyOn(NotifyClient.prototype, "getTemplateById").mockResolvedValue({ data: { body: "Unsubscribe: ((unsubscribeUrl))", subject: "Update" } } as never);
     await expect(call()).rejects.toMatchObject({ code: "failed-precondition" });

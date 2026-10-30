@@ -53,6 +53,7 @@ import SafeMarkdown from "../../../../shared/components/SafeMarkdown";
 import type { EventAttendeeTicketRow, TicketOrdersById } from "../../utils/bookingApprovalsAdmin";
 import {
   attendeePaymentState,
+  currentActiveBookings,
   emptyEventAttendeeTicketFilters,
   eventTicketRowsCsv,
   filterEventAttendeeTicketRows,
@@ -466,7 +467,7 @@ function BookingApprovalsSection(props: BookingApprovalsProps) {
       <MenuItem value="PENDING">Pending</MenuItem><MenuItem value="APPROVED">Approved</MenuItem><MenuItem value="REJECTED">Rejected</MenuItem><MenuItem value="ALL">All</MenuItem>
     </Select>
   </FormControl>;
-  const reviewButton = (booking: EventBookingAdminRow) => <Button variant={booking.approvalStatus === BookingApprovalStatus.PENDING ? "contained" : "outlined"} size="small" disabled={reviewingBookingId === booking.id} onClick={() => setReviewed(booking)}>{booking.approvalStatus === BookingApprovalStatus.PENDING ? "Review change" : "View revision"}</Button>;
+  const reviewButton = (booking: EventBookingAdminRow) => <Button variant={booking.approvalStatus === BookingApprovalStatus.PENDING ? "contained" : "outlined"} size="small" disabled={Boolean(reviewingBookingId)} onClick={() => setReviewed(booking)}>{booking.approvalStatus === BookingApprovalStatus.PENDING ? "Review change" : "View revision"}</Button>;
   return <Box>
     <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="space-between" sx={{ mb: 2 }}>
       <Typography variant="body2" color="text.secondary">Review the complete booking and its financial effect before deciding on the exact revision.</Typography>
@@ -1026,6 +1027,7 @@ function PaymentActivitySection({
   const [localView, setLocalView] = useState<EventPaymentView>("required");
   const selectedView = view ?? localView;
   const summary = getEventWorkspaceSummary(bookings, ticketOrdersById, organiserGuests);
+  const hasUnpaidBookers = currentActiveBookings(bookings).some((booking) => booking.lines.some((line) => !line.bookingPlace?.attendanceRemoved && attendeePaymentState(line, ticketOrdersById) === "UNPAID"));
   const settled = getSettledEventPayments(ticketOrders, organiserGuests);
   const adjustments = bookingPaymentAdjustments.flatMap((booking) => (booking.adjustments ?? []).map((adjustment) => ({ booking, adjustment })));
   const orderAmount = (minor: number, currency: string) => `${(minor / 100).toFixed(2)} ${currency.toUpperCase()}`;
@@ -1052,7 +1054,7 @@ function PaymentActivitySection({
       {summary.unknownPaymentTicketCount > 0 && <Alert severity="warning" sx={{ mb: 2 }}>Payment records are incomplete for {summary.unknownPaymentTicketCount} ticket{summary.unknownPaymentTicketCount === 1 ? "" : "s"}. The known balance below excludes those tickets; reload before contacting anyone about payment.</Alert>}
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
         <Box><Typography variant="h6" component="h3">{summary.unknownPaymentTicketCount ? "Known outstanding balance" : "Outstanding balance"}: {money(summary.outstandingAmountPence)}</Typography><Typography variant="body2" color="text.secondary">{summary.outstandingTicketCount} ticket{summary.outstandingTicketCount === 1 ? "" : "s"} across {summary.requiredPayments.length} booking{summary.requiredPayments.length === 1 ? "" : "s"} or organiser guests. Payments in progress are included until settled.</Typography></Box>
-        {onContactUnpaid && <Box><Button variant="outlined" disabled={summary.requiredPayments.length === 0 || summary.unknownPaymentTicketCount > 0} onClick={onContactUnpaid}>Contact unpaid attendee contacts</Button><Typography variant="caption" display="block" color="text.secondary" sx={{ maxWidth: 360 }}>Unpaid tickets only; excludes partial payments and payments in progress. Review recipients before sending.</Typography></Box>}
+        {onContactUnpaid && <Box><Button variant="outlined" disabled={!hasUnpaidBookers || summary.unknownPaymentTicketCount > 0} onClick={onContactUnpaid}>Contact unpaid bookers</Button><Typography variant="caption" display="block" color="text.secondary" sx={{ maxWidth: 360 }}>Booking owners of unpaid member or accompanying guest tickets only. Excludes organiser guests, partial payments and payments in progress. Review recipients before sending.</Typography></Box>}
       </Stack>
       {summary.requiredPayments.length === 0 ? <Alert severity="info">No outstanding payments in the current booking records.</Alert> : compact ? <Stack spacing={2}>
         {summary.requiredPayments.map((payment) => <Box key={payment.key} sx={recordCardSx}>

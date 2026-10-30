@@ -162,10 +162,43 @@ describe("event management task panels", () => {
     const user = userEvent.setup(); const props = panelProps(); const onContactUnpaid = vi.fn();
     render(<TicketAdminSurface {...props} selectedTask="payments" allEventBookings={[booking({ approvalStatus: BookingApprovalStatus.APPROVED })]} onContactUnpaid={onContactUnpaid} />);
     expect(screen.getByRole("heading", { name: "Outstanding balance: £75.00" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Contact unpaid attendee contacts" }));
+    await user.click(screen.getByRole("button", { name: "Contact unpaid bookers" }));
     expect(onContactUnpaid).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole("tab", { name: "All payment records" }));
     expect(screen.getByText("No payment orders found for this event.")).toBeInTheDocument();
+  });
+
+  it.each(["organiser guests only", "partial payment", "payment in progress", "refunded", "removed", "pending revision only"])("disables the booker shortcut for %s without an exact current unpaid booking line", (kind) => {
+    const active = booking({ approvalStatus: BookingApprovalStatus.APPROVED });
+    const ticketOrdersById = new Map([
+      ["paid", { id: "paid", status: TicketOrderStatus.PAID }],
+      ["pending", { id: "pending", status: TicketOrderStatus.PENDING }],
+      ["refunded", { id: "refunded", status: TicketOrderStatus.REFUNDED }],
+    ]);
+    if (kind === "partial payment") active.lines[0].bookingPlace.paymentAllocations = [{ id: "allocation", ticketOrderId: "paid", allocatedAmountMinor: 2500, refundedAmountMinor: 0 }];
+    if (kind === "payment in progress") active.lines[0].bookingPlace.paymentAllocations = [{ id: "allocation", ticketOrderId: "pending", allocatedAmountMinor: 7500, refundedAmountMinor: 0 }];
+    if (kind === "refunded") active.lines[0].bookingPlace.paymentAllocations = [{ id: "allocation", ticketOrderId: "refunded", allocatedAmountMinor: 7500, refundedAmountMinor: 7500 }];
+    if (kind === "removed") active.lines[0].bookingPlace.attendanceRemoved = true;
+    if (kind === "pending revision only") active.approvalStatus = BookingApprovalStatus.PENDING;
+    const guest = { id: "guest", firstName: "Robin", lastName: "Guest", email: "robin@example.com", dietaryRequirements: "", ticketTypeId: "guest-ticket", ticketTitle: "Guest dinner", priceMinor: 2500, includesDinner: true, includesSymposium: false, version: 1, cancelled: false, paymentStatus: "UNPAID", refundedAmountMinor: 0 };
+    const onContactUnpaid = vi.fn();
+    render(<TicketAdminSurface {...panelProps()} selectedTask="payments" allEventBookings={kind === "organiser guests only" ? [] : [active]} organiserGuests={[guest]} ticketOrdersById={ticketOrdersById} onContactUnpaid={onContactUnpaid} />);
+    const contact = screen.getByRole("button", { name: "Contact unpaid bookers" });
+    expect(contact).toBeDisabled();
+    fireEvent.click(contact);
+    expect(onContactUnpaid).not.toHaveBeenCalled();
+  });
+
+  it("enables the booker shortcut when any nonremoved active line is exactly unpaid alongside partial payments and a pending amendment", async () => {
+    const user = userEvent.setup(); const onContactUnpaid = vi.fn();
+    const active = booking({ id: "active", revisionNumber: 1, approvalStatus: BookingApprovalStatus.APPROVED });
+    active.lines[0].bookingPlace.paymentAllocations = [{ id: "allocation", ticketOrderId: "paid", allocatedAmountMinor: 2500, refundedAmountMinor: 0 }];
+    active.lines.push({ ...active.lines[0], id: "unpaid-line", guestDisplayName: "Unpaid accompanying guest", bookingPlace: { ...active.lines[0].bookingPlace, id: "unpaid-place", paymentAllocations: [] } });
+    render(<TicketAdminSurface {...panelProps()} selectedTask="payments" allEventBookings={[active, pending]} onContactUnpaid={onContactUnpaid} />);
+    expect(screen.getByRole("button", { name: "Contact unpaid bookers" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Contact unpaid bookers" }));
+    expect(onContactUnpaid).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Booking owners of unpaid member or accompanying guest tickets only. Excludes organiser guests, partial payments and payments in progress. Review recipients before sending.")).toBeInTheDocument();
   });
 
   it("uses labelled cards for approval and payment records on narrow screens", async () => {
@@ -208,7 +241,7 @@ describe("event management task panels", () => {
     render(<TicketAdminSurface {...panelProps()} selectedTask="payments" paymentDataUnavailable onContactUnpaid={vi.fn()} />);
     expect(screen.getByText(/Payment summary unavailable/)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /Outstanding balance/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Contact unpaid attendee contacts" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Contact unpaid bookers" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "All payment records" }));
     expect(screen.getByText("No payment orders found for this event.")).toBeInTheDocument();
   });
@@ -218,6 +251,6 @@ describe("event management task panels", () => {
     active.lines[0].bookingPlace.paymentAllocations = [{ id: "missing", ticketOrderId: "missing", allocatedAmountMinor: 7500, refundedAmountMinor: 0 }];
     render(<TicketAdminSurface {...panelProps()} selectedTask="payments" allEventBookings={[active]} onContactUnpaid={vi.fn()} />);
     expect(screen.getByText(/Payment records are incomplete/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Contact unpaid attendee contacts" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Contact unpaid bookers" })).toBeDisabled();
   });
 });

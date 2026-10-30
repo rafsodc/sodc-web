@@ -1128,6 +1128,124 @@ describe("SectionEventsManager", () => {
     } finally { view.unmount(); owner.retire(); uninstall(); }
   }, 20_000);
 
+  it.each(["success", "failure"] as const)("releases review controls when a %s settles after browser task navigation", async (outcome) => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    prepareRoutedEvent();
+    const first = routedBooking("PENDING");
+    const second = { ...routedBooking("PENDING"), id: "second-review", revisionGroupId: "20000000-0000-4000-8000-000000000002", booker: { ...first.booker, id: "second-member", firstName: "Blair" } };
+    mockEventBookings({ data: { event: { id: "ev-1", bookings: [first, second] } }, isLoading: false, isError: false });
+    let complete!: (value: unknown) => void;
+    let fail!: (error: Error) => void;
+    const pending = new Promise((resolve, reject) => { complete = resolve; fail = reject; });
+    vi.mocked(firebaseFunctions.reviewBookingRevision).mockReturnValueOnce(pending as never);
+    const view = canonicalManager("/sections/section-1/manage/events/ev-1");
+    try {
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("tab", { name: "Approvals (2)" }));
+      await user.click(within(screen.getByRole("row", { name: /Alex Member/ })).getByRole("button", { name: "Review change" }));
+      await user.click(within(screen.getByRole("dialog", { name: /Review booking change/ })).getByRole("button", { name: "Approve revision" }));
+      expect(firebaseFunctions.reviewBookingRevision).toHaveBeenCalledOnce();
+      await act(async () => managerNavigation(-1));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+      expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument();
+      await act(async () => {
+        if (outcome === "success") complete({ success: true, bookingId: first.id, revisionNumber: 1, approvalStatus: "APPROVED", paymentDelta: null });
+        else fail(new Error("Decision transport interrupted"));
+        await pending.catch(() => {});
+      });
+      await act(async () => managerNavigation(1));
+      const secondRow = screen.getByRole("row", { name: /Blair Member/ });
+      await waitFor(() => expect(within(secondRow).getByRole("button", { name: "Review change" })).toBeEnabled());
+      await user.click(within(secondRow).getByRole("button", { name: "Review change" }));
+      const review = screen.getByRole("dialog", { name: /Review booking change/ });
+      expect(within(review).getByRole("button", { name: "Close review" })).toBeEnabled();
+      expect(within(review).getByRole("button", { name: "Request changes" })).toBeEnabled();
+      expect(within(review).getByRole("button", { name: "Approve revision" })).toBeEnabled();
+      await user.click(within(review).getByRole("button", { name: "Close review" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+      expect(firebaseFunctions.reviewBookingRevision).toHaveBeenCalledOnce();
+      await user.click(within(screen.getByRole("row", { name: /Blair Member/ })).getByRole("button", { name: "Review change" }));
+      const reopened = screen.getByRole("dialog", { name: /Review booking change/ });
+      await user.click(within(reopened).getByRole("button", { name: "Approve revision" }));
+      await waitFor(() => expect(firebaseFunctions.reviewBookingRevision).toHaveBeenCalledTimes(2));
+      expect(firebaseFunctions.reviewBookingRevision).toHaveBeenLastCalledWith(expect.objectContaining({ bookingId: second.id, expectedRevisionNumber: 1, decision: "APPROVED" }));
+      await waitFor(() => expect(within(reopened).getByRole("button", { name: "Close review" })).toBeEnabled());
+      await user.click(within(reopened).getByRole("button", { name: "Close review" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+    } finally {
+      view.unmount(); owner.retire(); uninstall();
+      complete({ success: true });
+      await pending.catch(() => {});
+    }
+  }, 20_000);
+
+  it.each(["event", "session"] as const)("does not let an old decision clear a newer request after %s replacement", async (boundary) => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const replacementOwner = createSessionLifecycle();
+    let uninstallReplacement: (() => void) | undefined;
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const event = prepareRoutedEvent();
+    const first = routedBooking("PENDING");
+    const second = { ...routedBooking("PENDING"), id: "replacement-review", revisionGroupId: "30000000-0000-4000-8000-000000000003", booker: { ...first.booker, id: "replacement-member", firstName: "Blair" } };
+    mockEventBookings({ data: { event: { id: event.id, bookings: [first] } }, isLoading: false, isError: false });
+    let completeFirst!: (value: unknown) => void;
+    let completeSecond!: (value: unknown) => void;
+    const firstPending = new Promise(resolve => { completeFirst = resolve; });
+    const secondPending = new Promise(resolve => { completeSecond = resolve; });
+    vi.mocked(firebaseFunctions.reviewBookingRevision).mockReturnValueOnce(firstPending as never).mockReturnValueOnce(secondPending as never);
+    let view = canonicalManager("/sections/section-1/manage/events/ev-1?task=approvals");
+    try {
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Review change" }));
+      await user.click(within(screen.getByRole("dialog", { name: /Review booking change/ })).getByRole("button", { name: "Approve revision" }));
+      expect(firebaseFunctions.reviewBookingRevision).toHaveBeenCalledOnce();
+      await act(async () => managerNavigation("/sections/section-1/manage/events/ev-1"));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+      const replacementEvent = boundary === "event" ? { ...event, id: "ev-2", title: "Another Dinner" } : event;
+      mockGetEventsForSection({ data: { section: { id: sectionId, events: [event, ...(boundary === "event" ? [replacementEvent] : [])] } }, isLoading: false, isError: false });
+      mockGetEventById({ data: { event: replacementEvent }, isLoading: false, isError: false });
+      mockEventBookings({ data: { event: { id: replacementEvent.id, bookings: [second] } }, isLoading: false, isError: false });
+      if (boundary === "session") {
+        // Account replacement retires the private document and mounts a new tree.
+        view.unmount();
+        owner.retire();
+        replacementOwner.observe("replacement-admin");
+        uninstallReplacement = installSessionRuntime({ lifecycle: replacementOwner, retire: () => replacementOwner.retire(), signOut: async () => replacementOwner.retire() });
+        view = canonicalManager(`/sections/section-1/manage/events/${replacementEvent.id}?task=approvals`);
+      } else await act(async () => managerNavigation(`/sections/section-1/manage/events/${replacementEvent.id}?task=approvals`));
+      const replacementReviewButton = await screen.findByRole("button", { name: "Review change" });
+      await waitFor(() => expect(replacementReviewButton).toBeEnabled());
+      await user.click(replacementReviewButton);
+      let review = screen.getByRole("dialog", { name: /Review booking change/ });
+      await user.click(within(review).getByRole("button", { name: "Approve revision" }));
+      expect(firebaseFunctions.reviewBookingRevision).toHaveBeenCalledTimes(2);
+      await act(async () => {
+        completeFirst({ success: true, bookingId: first.id, revisionNumber: 1, approvalStatus: "APPROVED", paymentDelta: null });
+        await firstPending;
+      });
+      review = screen.getByRole("dialog", { name: /Review booking change/ });
+      expect(within(review).getByRole("button", { name: "Saving decision…" })).toBeDisabled();
+      expect(within(review).getByRole("button", { name: "Request changes" })).toBeDisabled();
+      expect(within(review).getByRole("button", { name: "Close review" })).toBeDisabled();
+      expect(within(review).queryByText(/Decision saved/)).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, hidden: true })).toHaveTextContent(replacementEvent.title);
+      await act(async () => {
+        completeSecond({ success: true, bookingId: second.id, revisionNumber: 1, approvalStatus: "APPROVED", paymentDelta: null });
+        await secondPending;
+      });
+      await waitFor(() => expect(within(review).getByRole("button", { name: "Close review" })).toBeEnabled());
+      expect(within(review).getByText(/Decision saved/)).toBeInTheDocument();
+      expect(firebaseFunctions.reviewBookingRevision).toHaveBeenCalledTimes(2);
+      await user.click(within(review).getByRole("button", { name: "Close review" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+    } finally {
+      view.unmount(); owner.retire(); replacementOwner.retire(); uninstallReplacement?.(); uninstall();
+      completeFirst({ success: true }); completeSecond({ success: true });
+      await Promise.all([firstPending, secondPending]);
+    }
+  }, 20_000);
+
   it("returns directly from organiser guests to attendees on a narrow screen", async () => {
     const previousMediaImplementation = vi.mocked(window.matchMedia).getMockImplementation()!;
     vi.mocked(window.matchMedia).mockImplementation((query: string) => ({

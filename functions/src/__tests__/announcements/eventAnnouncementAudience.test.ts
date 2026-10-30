@@ -18,6 +18,7 @@ const guests = vi.spyOn(admin, "listOrganiserGuests");
 const event = vi.spyOn(admin, "getOrganiserGuestEvent");
 const sectionOptOuts = vi.spyOn(admin, "getSectionAnnouncementOptOutsPaged");
 const resolve = (filters = {}) => resolveEventAnnouncementAudience(sectionId, { eventId, filters: { ...emptyEventAttendeeTicketFilters, ...filters } });
+const resolveBookers = (filters = {}) => resolveEventAnnouncementAudience(sectionId, { eventId, filters: { ...emptyEventAttendeeTicketFilters, ...filters }, recipientTarget: "BOOKERS" });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -119,6 +120,77 @@ describe("event announcement audience", () => {
   it("fails closed when audience data cannot be loaded", async () => {
     guests.mockRejectedValueOnce(new Error("unavailable"));
     await expect(resolve()).rejects.toThrow("unavailable");
+  });
+  it("keeps the legacy fingerprint and normalizes explicit ATTENDEES to the original snapshot shape", async () => {
+    bookings.mockResolvedValue({ data: { bookings: [booking("member")] } } as never);
+    expect((await resolve()).preview.fingerprint).toBe("9116fb05503714b3e4708a22670b871f0a1034a574199335a794019a4ac3b031");
+    const original = { eventId, filters: { ...emptyEventAttendeeTicketFilters } };
+    expect(JSON.stringify(parseEventAnnouncementSelection(original))).toBe(JSON.stringify(original));
+    expect(parseEventAnnouncementSelection({ ...original, recipientTarget: "ATTENDEES" })).toEqual(original);
+    expect(parseEventAnnouncementSelection({ ...original, recipientTarget: "ATTENDEES" })).not.toHaveProperty("recipientTarget");
+    expect(parseEventAnnouncementSelection({ ...original, recipientTarget: "BOOKERS" })).toEqual({ ...original, recipientTarget: "BOOKERS" });
+    for (const recipientTarget of ["GUESTS", "bookers", "", null, false, [], {}]) {
+      expect(() => parseEventAnnouncementSelection({ ...original, recipientTarget })).toThrow(expect.objectContaining({ code: "invalid-argument" }));
+    }
+  });
+  it("contacts the owner for an unpaid linked guest even when the member ticket is paid", async () => {
+    const b = { ...booking("owner"), lines: [
+      { ...line("member"), bookingPlace: { ...line("member").bookingPlace, paymentAllocations: [{ ticketOrderId: "paid", allocatedAmountMinor: 1000, refundedAmountMinor: 0 }] } },
+      line("linked", "GUEST", person("different-guest")),
+    ] };
+    bookings.mockResolvedValue({ data: { bookings: [b] } } as never);
+    vi.mocked(admin.getAnnouncementAttendeeOrders).mockResolvedValue({ data: { ticketOrders: [{ id: "paid", status: "PAID" }] } } as never);
+    expect((await resolve({ paymentState: "UNPAID" })).deliverable.map(r => r.email)).toEqual(["different-guest@example.com"]);
+    const result = await resolveBookers({ paymentState: "UNPAID" });
+    expect(result.preview.matchedTicketCount).toBe(1);
+    expect(result.deliverable.map(r => r.email)).toEqual(["owner@example.com"]);
+    expect(result.audienceSummary).toBe("Dinner 2026 — booking owners for current attendees (Payment: UNPAID)");
+  });
+  it("deduplicates owners across matching member and guest tickets and excludes organiser guests", async () => {
+    const b = booking("owner");
+    b.lines.push(line("guest-one", "GUEST", person("guest-one")), line("guest-two", "GUEST", person("guest-two")));
+    bookings.mockResolvedValue({ data: { bookings: [b, booking("second-booking", person("owner"))] } } as never);
+    guests.mockResolvedValue({ data: { organiserGuests: [{ ...guest("unpaid-organiser"), priceMinor: 1000 }] } } as never);
+    const result = await resolveBookers({ paymentState: "UNPAID" });
+    expect(result.preview.matchedTicketCount).toBe(4);
+    expect(result.deliverable.map(r => r.email)).toEqual(["owner@example.com"]);
+    expect(guests).not.toHaveBeenCalled();
+  });
+  it("does not substitute a guest address when the owner has no usable email", async () => {
+    const b = { ...booking("owner", person("owner", "invalid-address")), lines: [line("linked", "GUEST", person("usable-guest"))] };
+    bookings.mockResolvedValue({ data: { bookings: [b] } } as never);
+    const result = await resolveBookers({ paymentState: "UNPAID" });
+    expect(result.deliverable).toEqual([]);
+    expect(result.preview.skipped).toEqual([{ name: "owner Smith", email: "", reason: "missing_contact" }]);
+    expect(result.skippedRecipients[0].userId).toBe("missing:linked");
+  });
+  it("keeps latest revision, removed-place and exact payment filters for owners", async () => {
+    const previous = booking("stale-owner");
+    const latest = { ...previous, revisionNumber: 2, booker: person("current-owner"), lines: [
+      line("unpaid", "GUEST", person("guest")),
+      { ...line("partial"), bookingPlace: { ...line("partial").bookingPlace, paymentAllocations: [{ ticketOrderId: "paid", allocatedAmountMinor: 500, refundedAmountMinor: 0 }] } },
+      { ...line("pending"), bookingPlace: { ...line("pending").bookingPlace, paymentAllocations: [{ ticketOrderId: "pending", allocatedAmountMinor: 1000, refundedAmountMinor: 0 }] } },
+      { ...line("removed"), bookingPlace: { ...line("removed").bookingPlace, attendanceRemoved: true } },
+    ] };
+    bookings.mockResolvedValue({ data: { bookings: [previous, latest] } } as never);
+    vi.mocked(admin.getAnnouncementAttendeeOrders).mockResolvedValue({ data: { ticketOrders: [{ id: "paid", status: "PAID" }, { id: "pending", status: "PENDING" }] } } as never);
+    const result = await resolveBookers({ paymentState: "UNPAID" });
+    expect(result.preview.matchedTicketCount).toBe(1);
+    expect(result.deliverable.map(r => r.email)).toEqual(["current-owner@example.com"]);
+    expect((await resolveBookers({ paymentState: "PARTIALLY_PAID" })).preview.matchedTicketCount).toBe(1);
+    expect((await resolveBookers({ paymentState: "PAYMENT_PENDING" })).preview.matchedTicketCount).toBe(1);
+    expect((await resolveBookers()).preview.matchedTicketCount).toBe(3);
+  });
+  it("fingerprints the owner target even for identical contacts and retains section authority", async () => {
+    bookings.mockResolvedValue({ data: { bookings: [booking("member")] } } as never);
+    const attendeeResult = await resolve();
+    const bookerResult = await resolveBookers();
+    expect(bookerResult.preview.recipients).toEqual(attendeeResult.preview.recipients);
+    expect(bookerResult.preview.fingerprint).not.toBe(attendeeResult.preview.fingerprint);
+    event.mockResolvedValue({ data: { event: { section: { id: eventId } } } } as never);
+    bookings.mockClear();
+    await expect(resolveBookers()).rejects.toMatchObject({ code: "not-found" });
+    expect(bookings).not.toHaveBeenCalled();
   });
   it("normalizes selection and rejects malformed filters", () => {
     expect(parseEventAnnouncementSelection({ eventId: eventId.replaceAll("-", ""), filters: { rank: " Sqn Ldr " } })).toEqual({ eventId, filters: { ...emptyEventAttendeeTicketFilters, rank: "Sqn Ldr" } });

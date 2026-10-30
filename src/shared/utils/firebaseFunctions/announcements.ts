@@ -139,7 +139,7 @@ export async function sendSectionAnnouncement(
   templateName: string | undefined,
   deliveryMode: GovNotifyDeliveryMode,
   replyToAddressId?: string,
-  audience?: { eventAudience: { eventId: string; filters: EventAttendeeTicketFilters }; audienceFingerprint: string },
+  audience?: { eventAudience: { eventId: string; filters: EventAttendeeTicketFilters; recipientTarget?: "BOOKERS" }; audienceFingerprint: string },
 ): Promise<SendAnnouncementResult> {
   const callable = httpsCallable<
     {
@@ -149,7 +149,7 @@ export async function sendSectionAnnouncement(
       templateName?: string;
       deliveryMode: GovNotifyDeliveryMode;
       replyToAddressId?: string;
-      eventAudience?: { eventId: string; filters: EventAttendeeTicketFilters };
+      eventAudience?: { eventId: string; filters: EventAttendeeTicketFilters; recipientTarget?: "BOOKERS" };
       audienceFingerprint?: string;
     },
     SendAnnouncementResult
@@ -290,11 +290,11 @@ export async function getAnnouncementSendRecipients(
 }
 
 export interface EventAnnouncementPreview {
-  eventTitle: string; fingerprint: string; matchedTicketCount: number;
+  eventTitle: string; fingerprint: string; matchedTicketCount: number; recipientTarget?: "BOOKERS";
   recipients: Array<{ name: string; email: string }>;
   skipped: Array<{ name: string; email: string; reason: string }>;
 }
-export async function previewEventAnnouncementAudience(sectionId: string, eventId: string, filters: EventAttendeeTicketFilters): Promise<EventAnnouncementPreview> {
-  const callable = httpsCallable<{ sectionId: string; eventAudience: { eventId: string; filters: EventAttendeeTicketFilters } }, EventAnnouncementPreview>(functions, "previewEventAnnouncementAudience");
-  return (await callable({ sectionId, eventAudience: { eventId, filters } })).data;
+export async function previewEventAnnouncementAudience(sectionId: string, eventId: string, filters: EventAttendeeTicketFilters, recipientTarget?: "BOOKERS"): Promise<EventAnnouncementPreview> {
+  const callable = httpsCallable<{ sectionId: string; eventAudience: { eventId: string; filters: EventAttendeeTicketFilters; recipientTarget?: "BOOKERS" } }, EventAnnouncementPreview>(functions, "previewEventAnnouncementAudience");
+  return (await callable({ sectionId, eventAudience: { eventId, filters, ...(recipientTarget ? { recipientTarget } : {}) } })).data;
 }
