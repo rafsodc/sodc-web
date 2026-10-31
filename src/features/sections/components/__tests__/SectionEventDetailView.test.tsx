@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 const render = (ui: ReactElement) => baseRender(<MemoryRouter initialEntries={["/sections/section/events/event"]}>{ui}</MemoryRouter>);
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { render as baseRender, screen } from "../../../../test-utils";
+import { render as baseRender, screen, within } from "../../../../test-utils";
 import { SectionEventDetailView } from "../SectionDetailViews";
 import { getEventAttendees } from "../../../../shared/utils/firebaseFunctions/sectionAccess";
 vi.mock("../../../../shared/utils/firebaseFunctions/sectionAccess", () => ({ getEventAttendees: vi.fn() }));
@@ -28,7 +28,7 @@ describe("event detail tabs", () => {
     expect(screen.queryByText("Event programme")).not.toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "About" }));
     await user.click(screen.getByRole("link", { name: "Book this event" }));
-    expect(screen.getByRole("tabpanel", { name: "Book" })).toHaveTextContent("Booking form");
+    expect(await within(screen.getByRole("tabpanel", { name: "Book" })).findByText("Booking form")).toBeVisible();
   });
   it("supports keyboard tab navigation", async () => {
     const user = userEvent.setup();

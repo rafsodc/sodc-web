@@ -5,10 +5,6 @@ import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { connectorConfig } from "../dataconnect-generated";
 
-// Optional: only load Analytics in the browser and only if a measurementId is provided.
-// This avoids errors in dev/test environments and keeps the base setup simple.
-import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
-
 // IMPORTANT:
 // - For Vite, env vars must start with VITE_
 // - Put these in a .env file (do not commit it) or define them in your CI.
@@ -55,24 +51,4 @@ if (useLocalEmulators) {
   connectAuthEmulator(auth, "http://127.0.0.1:9099");
   connectFunctionsEmulator(functions, "127.0.0.1", 5001);
   connectDataConnectEmulator(dataConnect, "127.0.0.1", 9399);
-}
-
-// Lazily initialised Analytics (optional)
-let analyticsPromise: Promise<Analytics | null> | null = null;
-
-export function getFirebaseAnalytics(): Promise<Analytics | null> {
-  if (analyticsPromise) return analyticsPromise;
-
-  analyticsPromise = (async () => {
-    // Only attempt analytics in a browser context
-    if (typeof window === "undefined") return null;
-    if (!firebaseConfig.measurementId) return null;
-
-    const supported = await isSupported();
-    if (!supported) return null;
-
-    return getAnalytics(firebaseApp);
-  })();
-
-  return analyticsPromise;
 }

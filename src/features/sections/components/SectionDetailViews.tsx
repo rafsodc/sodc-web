@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { lazy, useId, useMemo, useState } from "react";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { memberEventPath, readMemberEventTab, sectionPath } from "../../../shared/navigation/sectionRoutes";
 import {
@@ -27,14 +27,17 @@ import type { SectionMember } from "../utils/sectionHelpers";
 import { partitionSectionEventsByTiming } from "../../../shared/utils/sectionEventDisplay";
 import { eventDetailTabLabel, type EventDetailTab } from "../utils/sectionDetailTabs";
 import ContactDetailsDialog from "./ContactDetailsDialog";
-import EventBookingWizard from "./EventBookingWizard";
 import EventDetailHero from "./EventDetailHero";
-import EventDetailsContent from "./EventDetailsContent";
-import EventAttendees from "./EventAttendees";
 import SectionEventCard from "./SectionEventCard";
 import SectionMemberCard from "./SectionMemberCard";
 import SectionMemberListItem from "./SectionMemberListItem";
 import FailureState from "../../../shared/components/FailureState";
+import DeferredPanel from "../../../shared/components/DeferredPanel";
+import { loadEventAttendees, loadEventBookingWizard, loadEventDetailsContent } from "./memberEventPanels";
+
+const EventBookingWizard = lazy(loadEventBookingWizard);
+const EventAttendees = lazy(loadEventAttendees);
+const EventDetailsContent = lazy(loadEventDetailsContent);
 
 type MemberViewMode = "card" | "list";
 
@@ -397,7 +400,11 @@ export function SectionEventDetailView({
           {activeTab === "about" || !hasCurrentUser ? (
             <Box role={hasCurrentUser ? "tabpanel" : undefined} id={`${tabId}-about-panel`} aria-labelledby={hasCurrentUser ? `${tabId}-about-tab` : undefined}>
               <EventDetailHero event={event} />
-              <EventDetailsContent details={event.details} />
+              {event.details?.trim() ? (
+                <DeferredPanel loadingLabel="Loading event details" errorTitle="Event description unavailable" resetKey={event.id}>
+                  <EventDetailsContent details={event.details} />
+                </DeferredPanel>
+              ) : null}
               {hasCurrentUser ? (
                 <Box sx={{ mt: 2 }}>
                   <Button
@@ -415,22 +422,26 @@ export function SectionEventDetailView({
 
           {activeTab === "attendees" && hasCurrentUser ? (
             <Box role="tabpanel" id={`${tabId}-attendees-panel`} aria-labelledby={`${tabId}-attendees-tab`}>
-              <EventAttendees key={event.id} eventId={event.id} ticketTypes={event.ticketTypes ?? []} />
+              <DeferredPanel loadingLabel="Loading attendees" errorTitle="Attendees unavailable" resetKey={event.id} onBack={() => setActiveTab("about")}>
+                <EventAttendees key={event.id} eventId={event.id} ticketTypes={event.ticketTypes ?? []} />
+              </DeferredPanel>
             </Box>
           ) : null}
 
           {hasCurrentUser && bookingVisited ? (
             <Box hidden={activeTab !== "book"} role="tabpanel" id={`${tabId}-book-panel`} aria-labelledby={`${tabId}-book-tab`}>
-              <EventBookingWizard
-                section={section}
-                event={event}
-                wizardOpen={!hasExistingBooking}
-                onWizardOpenChange={(open) => {
-                  if (!open) setActiveTab("about");
-                }}
-                onHasExistingBookingChange={setHasExistingBooking}
-                onBookingComplete={onBookingComplete}
-              />
+              <DeferredPanel loadingLabel="Loading booking" errorTitle="Booking unavailable" resetKey={event.id} onBack={() => setActiveTab("about")}>
+                <EventBookingWizard
+                  section={section}
+                  event={event}
+                  wizardOpen={!hasExistingBooking}
+                  onWizardOpenChange={(open) => {
+                    if (!open) setActiveTab("about");
+                  }}
+                  onHasExistingBookingChange={setHasExistingBooking}
+                  onBookingComplete={onBookingComplete}
+                />
+              </DeferredPanel>
             </Box>
           ) : null}
         </>

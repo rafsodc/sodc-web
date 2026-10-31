@@ -3,27 +3,33 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { act, render, screen, waitFor } from "../test-utils";
 import userEvent from "@testing-library/user-event";
 import type { User } from "firebase/auth";
+import { executeQuery, queryRef } from "firebase/data-connect";
 import type { GetSectionsForUserData } from "@dataconnect/generated";
 import { SectionType } from "@dataconnect/generated";
 import App from "../App";
 import { ROUTES } from "../constants";
 import { sectionDetailLocationState } from "../shared/navigation/sectionNavigationState";
 import { createMockUser } from "../test-utils/mocks/firebase";
+import { useUnenabledProfileCheck } from "../shared/appShell/useUnenabledProfileCheck";
 
 vi.mock("../features/guests/GuestTicketPage", () => ({ default: () => <div>Public guest ticket</div> }));
 
 const mockRefetchUserData = vi.hoisted(() => vi.fn());
 const mockRetrySession = vi.hoisted(() => vi.fn());
+const mockPreloadMemberEventPanel = vi.hoisted(() => vi.fn());
+vi.mock("../features/sections/components/memberEventPanels", () => ({ preloadMemberEventPanel: mockPreloadMemberEventPanel }));
 
 let currentUser: User | null = null;
 let deferAuthState = false;
 const authStateListeners = new Set<(user: User | null) => void>();
 let enabledClaim = false;
 let enabledClaimResolved = true;
+let userDataAvailable = true;
 let adminClaim = false;
 let profileReviewedAt: string | null = new Date().toISOString();
 let headerShouldThrow = false;
 let memberWelcomeShouldThrow = false;
+let sectionDetailLoading = false;
 let sessionRecoveryStatus: "idle" | "recovering" | "failed" = "idle";
 let sessionRecoveryFailure: "refresh-failed" | "request-timeout" | "authorization-pending" | "authorization-check-failed" | null = null;
 let sessionRecoveryOnRecovered: (() => void | Promise<void>) | undefined;
@@ -91,7 +97,7 @@ vi.mock("../config/firebase", () => ({
 
 vi.mock("../features/users/hooks/useUserData", () => ({
   useUserData: vi.fn((user: User | null) => ({
-    userData: user
+    userData: user && userDataAvailable
       ? {
           id: user.uid,
           firstName: "Test",
@@ -165,10 +171,10 @@ vi.mock("../shared/query/authoritativeHooks", () => ({
 let needsProfileCompletion = false;
 
 vi.mock("../shared/appShell/useUnenabledProfileCheck", () => ({
-  useUnenabledProfileCheck: () => ({
+  useUnenabledProfileCheck: vi.fn(() => ({
     membershipStatusForUnenabled: null,
     needsProfileCompletion,
-  }),
+  })),
 }));
 
 vi.mock("../shared/components/Header", () => ({
@@ -249,7 +255,7 @@ vi.mock("../features/sections/components/SectionsList", () => ({
 vi.mock("../features/sections/components/SectionDetail", () => ({
   default: ({ sectionId, onBack }: { sectionId: string; onBack: () => void }) => (
     <div>
-      <h1>Section Detail {sectionId}</h1>
+      {sectionDetailLoading ? <p>Loading section/event data</p> : <h1>Section Detail {sectionId}</h1>}
       <button onClick={onBack}>Back</button>
     </div>
   ),
@@ -350,17 +356,21 @@ describe("App routing", () => {
     authStateListeners.clear();
     enabledClaim = false;
     enabledClaimResolved = true;
+    userDataAvailable = true;
     adminClaim = false;
     profileReviewedAt = new Date().toISOString();
     headerShouldThrow = false;
     memberWelcomeShouldThrow = false;
+    sectionDetailLoading = false;
     sessionRecoveryStatus = "idle";
     sessionRecoveryFailure = null;
     sessionRecoveryOnRecovered = undefined;
     mockRefetchUserData.mockResolvedValue(undefined);
+    mockPreloadMemberEventPanel.mockReset().mockResolvedValue(undefined);
     needsProfileCompletion = false;
     mockSectionsData = sectionsData();
     vi.clearAllMocks();
+    vi.mocked(useUnenabledProfileCheck).mockImplementation(() => ({ membershipStatusForUnenabled: null, needsProfileCompletion }));
   });
 
   it("renders public home content when logged out at home", async () => {
@@ -368,6 +378,93 @@ describe("App routing", () => {
 
     expect(await screen.findByRole("heading", { name: "Public Home Page" })).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
+  });
+
+  it.each(["about", "book", "attendees"])("preloads only the direct member %s task while section/event data are pending", async tab => {
+    signInEnabledUser();
+    sectionDetailLoading = true;
+    renderApp([`/sections/section-1/events/event-1?tab=${tab}`]);
+
+    expect(await screen.findByText("Loading section/event data")).toBeInTheDocument();
+    await waitFor(() => expect(mockPreloadMemberEventPanel).toHaveBeenCalledExactlyOnceWith(tab));
+    expect(screen.queryByRole("heading", { name: "Section Detail section-1" })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    "/sections/section-1/events/event-1",
+    "/sections/section-1/events/event-1?tab=unknown",
+  ])("preloads the default About task while data are pending for %s", async path => {
+    signInEnabledUser();
+    sectionDetailLoading = true;
+    renderApp([path]);
+    expect(await screen.findByText("Loading section/event data")).toBeInTheDocument();
+    await waitFor(() => expect(mockPreloadMemberEventPanel).toHaveBeenCalledExactlyOnceWith("about"));
+  });
+
+  it.each([
+    "/sections/section-1",
+    "/sections/section-1?tab=book",
+  ])("does not preload member task code for %s", async path => {
+    signInEnabledUser();
+    renderApp([path]);
+    expect(await screen.findByRole("heading", { name: "Section Detail section-1" })).toBeInTheDocument();
+    expect(mockPreloadMemberEventPanel).not.toHaveBeenCalled();
+  });
+
+  it("does not retry or reload when a direct member task preload rejects", async () => {
+    signInEnabledUser();
+    sectionDetailLoading = true;
+    mockPreloadMemberEventPanel.mockRejectedValueOnce(new TypeError("Task module could not load"));
+    renderApp(["/sections/section-1/events/event-1?tab=book#unchanged"]);
+
+    expect(await screen.findByText("Loading section/event data")).toBeInTheDocument();
+    await waitFor(() => expect(mockPreloadMemberEventPanel).toHaveBeenCalledExactlyOnceWith("book"));
+    expect(screen.getByTestId("location")).toHaveTextContent("/sections/section-1/events/event-1?tab=book#unchanged");
+  });
+
+  it("does not issue an onboarding existence read while an ordinary member's enabled claim resolves", async () => {
+    const actual = await vi.importActual<typeof import("../shared/appShell/useUnenabledProfileCheck")>("../shared/appShell/useUnenabledProfileCheck");
+    vi.mocked(useUnenabledProfileCheck).mockImplementation(actual.useUnenabledProfileCheck);
+    currentUser = createMockUser();
+    userDataAvailable = false;
+    enabledClaimResolved = false;
+    vi.mocked(executeQuery).mockReset();
+    renderApp([ROUTES.HOME]);
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(executeQuery).not.toHaveBeenCalled();
+
+    enabledClaim = true;
+    enabledClaimResolved = true;
+    currentUser = createMockUser({ uid: currentUser.uid });
+    await act(async () => { authStateListeners.forEach(listener => listener(currentUser)); });
+
+    expect(await screen.findByRole("heading", { name: "Welcome Dashboard" })).toBeInTheDocument();
+    expect(executeQuery).not.toHaveBeenCalled();
+    expect(screen.getByTestId("location")).toHaveTextContent(ROUTES.HOME);
+  });
+
+  it.each([
+    [null, "Profile Completion Page"],
+    ["PENDING", "Account Status Page"],
+  ] as const)("keeps resolved-disabled onboarding for profile %s after waiting for claims", async (status, heading) => {
+    const actual = await vi.importActual<typeof import("../shared/appShell/useUnenabledProfileCheck")>("../shared/appShell/useUnenabledProfileCheck");
+    vi.mocked(useUnenabledProfileCheck).mockImplementation(actual.useUnenabledProfileCheck);
+    currentUser = createMockUser();
+    userDataAvailable = false;
+    enabledClaimResolved = false;
+    vi.mocked(queryRef).mockReturnValue({} as never);
+    vi.mocked(executeQuery).mockReset().mockResolvedValue({ data: { user: status ? { membershipStatus: status } : null } } as never);
+    renderApp([ROUTES.HOME]);
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    expect(executeQuery).not.toHaveBeenCalled();
+
+    enabledClaimResolved = true;
+    currentUser = createMockUser({ uid: currentUser.uid });
+    await act(async () => { authStateListeners.forEach(listener => listener(currentUser)); });
+
+    expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+    expect(executeQuery).toHaveBeenCalledOnce();
+    expect(queryRef).toHaveBeenCalledWith(expect.anything(), "CheckUserProfileExists", {});
   });
 
   it("preserves the protected destination while refreshing an idle session", async () => {

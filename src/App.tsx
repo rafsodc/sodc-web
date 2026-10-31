@@ -1,4 +1,5 @@
-import { memberEventPath, sectionManagementPath, eventManagementPath } from "./shared/navigation/sectionRoutes";
+import { memberEventPath, sectionManagementPath, eventManagementPath, readMemberEventTab } from "./shared/navigation/sectionRoutes";
+import { preloadMemberEventPanel } from "./features/sections/components/memberEventPanels";
 import { signOutPrivateSession } from "./shared/appShell/sessionLifecycle";
 import { useEffect, useState, useCallback, useMemo, lazy, Suspense, type ReactElement } from "react";
 import { Box, Button, Typography, Snackbar, Alert, CircularProgress } from "@mui/material";
@@ -76,6 +77,13 @@ function SectionDetailRoute() {
   const { sectionId, eventId } = useParams<{ sectionId: string; eventId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const requestedTab = readMemberEventTab(location.search);
+  useEffect(() => {
+    if (!sectionId || !eventId) return;
+    // Fetch only this URL's public task code alongside the section/event read.
+    // Rendering the panel owns any module error; preloading never retries it.
+    void preloadMemberEventPanel(requestedTab).catch(() => {});
+  }, [sectionId, eventId, requestedTab]);
   if (!sectionId) {
     return <Navigate to={ROUTES.SECTIONS} replace />;
   }
@@ -141,7 +149,8 @@ function AppContent() {
   } = useUnenabledProfileCheck(
     user,
     userData,
-    isEnabled
+    isEnabled,
+    isEnabledClaimResolved
   );
   const { data: userSectionsData } = useGetSectionsForUser(dataConnect, { enabled: !!user && isEnabled && sessionRecovery.status === "idle" });
 

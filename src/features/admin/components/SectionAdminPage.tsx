@@ -5,6 +5,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+import { lazy, useEffect } from "react";
 import {
   Alert,
   Box,
@@ -23,10 +24,13 @@ import {
   sectionManagementPath,
   sectionPath,
 } from "../../../shared/navigation/sectionRoutes";
-import SendAnnouncementPage from "./SendAnnouncementPage";
-import ManageSectionFiles from "./ManageSectionFiles";
-import SectionEventsManager from "./SectionEventsManager";
+import DeferredPanel from "../../../shared/components/DeferredPanel";
+import { loadSectionAnnouncementsPanel, loadSectionEventsPanel, loadSectionFilesPanel, preloadSectionAdminPanel } from "./sectionAdminPanels";
 import "../../../shared/components/PageContainer.css";
+
+const SendAnnouncementPage = lazy(loadSectionAnnouncementsPanel);
+const ManageSectionFiles = lazy(loadSectionFilesPanel);
+const SectionEventsManager = lazy(loadSectionEventsPanel);
 
 function ActionCard({
   icon,
@@ -67,6 +71,21 @@ export default function SectionAdminPage() {
   const navigate = useNavigate();
   const { isResolved, canModerateSection, section, failed } =
     useCanModerateSection(sectionId);
+  const parts = path.split("/").filter(Boolean);
+  const view = parts[0] ?? "";
+  const eventId = parts[1];
+  const sectionAvailable = Boolean(section);
+  const sectionType = section?.type;
+  const requestedPanel = (view === "events" && parts.length <= 2) ||
+    ((view === "files" || view === "announcements") && parts.length === 1) ? view : null;
+  useEffect(() => {
+    if (!sectionId || !requestedPanel ||
+      (isResolved && (failed || !sectionAvailable || !canModerateSection)) ||
+      (isResolved && requestedPanel === "events" && sectionType !== "EVENTS")) return;
+    // Fetch only the explicitly requested public code while authority resolves.
+    // The existing checks below still prevent mounting or private data reads.
+    void preloadSectionAdminPanel(requestedPanel).catch(() => {});
+  }, [sectionId, requestedPanel, isResolved, failed, canModerateSection, sectionAvailable, sectionType]);
   if (!sectionId) return null;
   if (!isResolved)
     return (
@@ -98,9 +117,6 @@ export default function SectionAdminPage() {
       </Box>
     );
   const home = sectionManagementPath(sectionId);
-  const parts = path.split("/").filter(Boolean);
-  const view = parts[0] ?? "";
-  const eventId = parts[1];
   if (
     (view === "events" && (parts.length > 2 || section.type !== "EVENTS")) ||
     !["", "files", "announcements", "events"].includes(view) ||
@@ -154,38 +170,44 @@ export default function SectionAdminPage() {
     return (
       <>
         {navigation}
-        <SectionEventsManager
-          key={`${sectionId}:${eventId ?? "list"}`}
-          sectionId={sectionId}
-          sectionName={section.name}
-          initialEventId={eventId ?? null}
-          routeControlled
-          onBack={() => navigate(home)}
-        />
+        <DeferredPanel loadingLabel="Loading event management" errorTitle="Event management unavailable" resetKey={`${sectionId}:events:${eventId ?? "list"}`} onBack={() => navigate(home)}>
+          <SectionEventsManager
+            key={`${sectionId}:${eventId ?? "list"}`}
+            sectionId={sectionId}
+            sectionName={section.name}
+            initialEventId={eventId ?? null}
+            routeControlled
+            onBack={() => navigate(home)}
+          />
+        </DeferredPanel>
       </>
     );
   if (view === "files")
     return (
       <>
         {navigation}
-        <ManageSectionFiles
-          key={sectionId}
-          sectionId={sectionId}
-          sectionName={section.name}
-          onBack={() => navigate(home)}
-        />
+        <DeferredPanel loadingLabel="Loading section files" errorTitle="Section files unavailable" resetKey={`${sectionId}:files`} onBack={() => navigate(home)}>
+          <ManageSectionFiles
+            key={sectionId}
+            sectionId={sectionId}
+            sectionName={section.name}
+            onBack={() => navigate(home)}
+          />
+        </DeferredPanel>
       </>
     );
   if (view === "announcements")
     return (
       <>
         {navigation}
-        <SendAnnouncementPage
-          key={sectionId}
-          sectionId={sectionId}
-          sectionName={section.name}
-          onBack={() => navigate(home)}
-        />
+        <DeferredPanel loadingLabel="Loading announcements" errorTitle="Announcements unavailable" resetKey={`${sectionId}:announcements`} onBack={() => navigate(home)}>
+          <SendAnnouncementPage
+            key={sectionId}
+            sectionId={sectionId}
+            sectionName={section.name}
+            onBack={() => navigate(home)}
+          />
+        </DeferredPanel>
       </>
     );
   // Older guests links converge on the existing event workspace, with a URL-owned event selection.

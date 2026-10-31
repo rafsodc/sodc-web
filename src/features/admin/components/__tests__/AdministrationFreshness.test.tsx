@@ -310,7 +310,10 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     });
     expect(queryClient.getQueryState(["GetEventById", { id: event.id }])?.isInvalidated).toBe(true);
     rendered.rerender(view("event", "revisit-deleted-event"));
-    expect(await screen.findByRole("heading", { name: "Event admin: Event" })).toBeInTheDocument();
+    // The invalidated entry is revalidated asynchronously by the installed SDK.
+    // Wait for that authoritative result before asserting the committed UI.
+    await waitFor(() => expect(queryClient.getQueryData(["GetEventById", { id: event.id }])).toEqual({ event: null }), { timeout: 5000 });
+    expect(await screen.findByRole("heading", { name: "Event admin: Event" }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Event admin: Annual Dinner" })).not.toBeInTheDocument();
   }, 30_000);
 
