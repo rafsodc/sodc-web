@@ -79,7 +79,7 @@ their hash. This is not a full-application, real-Firebase or browser-cache test.
 
 ## Results
 
-Validation: 151 frontend files / 1,497 tests pass with coverage thresholds met
+Validation: 151 frontend files / 1,499 tests pass with coverage thresholds met
 (85.19% statements, 81.36% branches, 81.40% functions, 86.84% lines). The Functions
 suite passes 133 files / 2,055 tests and its coverage thresholds. Both applications'
 lint and production builds pass, as do the dedicated probe TypeScript checks.

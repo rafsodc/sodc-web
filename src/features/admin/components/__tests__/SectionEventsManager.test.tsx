@@ -973,7 +973,11 @@ describe("SectionEventsManager", () => {
     expect(await screen.findByText("Updated Dinner")).toBeInTheDocument();
   }, 10_000);
 
-  it("shows empty-state alerts for moderation, booking audit, and payment activity", async () => {
+  it.each([
+    ["booking approvals", /no booking revisions for this filter/i],
+    ["booking audit activity", /no bookings found for this event/i],
+    ["payment status activity", /no payment orders found for this event/i],
+  ] as const)("shows the empty state for %s", async (panel, message) => {
     const user = userEvent.setup();
     mockGetEventsForSection({
       data: {
@@ -1015,15 +1019,11 @@ describe("SectionEventsManager", () => {
       isError: false,
     });
 
-    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
-    await user.click(screen.getByRole("button", { name: /event admin/i }));
-    await user.click(screen.getByRole("button", { name: /^booking approvals$/i }));
-    await user.click(screen.getByRole("button", { name: /^booking audit activity$/i }));
-    await user.click(screen.getByRole("button", { name: /^payment status activity$/i }));
-
-    expect(screen.getByText(/no booking revisions for this filter/i)).toBeInTheDocument();
-    expect(screen.getByText(/no bookings found for this event/i)).toBeInTheDocument();
-    expect(screen.getByText(/no payment orders found for this event/i)).toBeInTheDocument();
+    // Each panel has independent behavior. Open the requested event directly
+    // so this assertion does not spend its budget navigating unrelated panels.
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} initialEventId="ev-1" onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: new RegExp(`^${panel}$`, "i") }));
+    expect(await screen.findByText(message)).toBeInTheDocument();
   });
 
   it("shows only the current pending booking revision", async () => {
