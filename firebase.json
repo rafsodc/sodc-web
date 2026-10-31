@@ -77,6 +77,15 @@
             "value": "DENY"
           }
         ]
+      },
+      {
+        "source": "!/@(assets)/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       }
     ],
     "rewrites": [
@@ -86,7 +95,7 @@
         "region": "europe-west2"
       },
       {
-        "source": "**",
+        "source": "!/@(assets)/**",
         "destination": "/index.html"
       }
     ]

@@ -26,6 +26,7 @@
     "test:deploy-safety": "vitest run --config vitest.deploy-safety.config.ts",
     "test:coverage": "vitest run --coverage",
     "test:browser:session": "playwright test --config playwright.session.config.ts",
+    "test:browser:deployment": "tsc --project e2e/tsconfig.deployment.json && playwright test --config e2e/deployment-recovery.config.ts",
     "dev:session-e2e": "vite --mode session-e2e --host 127.0.0.1 --port 4173"
   },
   "dependencies": {

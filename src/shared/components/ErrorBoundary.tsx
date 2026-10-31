@@ -2,6 +2,7 @@ import { Component, type ReactNode, type ErrorInfo } from "react";
 import { Box } from "@mui/material";
 import { reportError } from "../errors";
 import FailureState from "./FailureState";
+import { isModuleLoadError } from "../appShell/moduleLoadRecovery";
 
 interface Props {
   children: ReactNode;
@@ -15,16 +16,17 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  moduleLoadError: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, moduleLoadError: false };
   }
 
-  static getDerivedStateFromError(): State {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown): State {
+    return { hasError: true, moduleLoadError: isModuleLoadError(error) };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -38,12 +40,12 @@ export class ErrorBoundary extends Component<Props, State> {
       this.state.hasError &&
       previousProps.resetKey !== this.props.resetKey
     ) {
-      this.setState({ hasError: false });
+      this.setState({ hasError: false, moduleLoadError: false });
     }
   }
 
   private reset = () => {
-    this.setState({ hasError: false });
+    this.setState({ hasError: false, moduleLoadError: false });
   };
 
   private reload = () => {
@@ -59,9 +61,12 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <Box sx={{ width: "100%" }}>
           <FailureState
-            title={this.props.title}
+            title={this.state.moduleLoadError ? "This page couldn’t load" : this.props.title}
+            message={this.state.moduleLoadError
+              ? "The site may have been updated, or your connection may have been interrupted. Reload to get the current page. Unsaved changes may be lost; check any recent save before trying it again."
+              : undefined}
             variant={this.props.variant}
-            onRetry={this.reset}
+            onRetry={this.state.moduleLoadError ? undefined : this.reset}
             onReload={this.reload}
             onBack={this.props.onBack}
             onHome={this.props.onHome}

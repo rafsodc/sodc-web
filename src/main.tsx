@@ -6,6 +6,11 @@ import { CookiePreferencesProvider } from './shared/cookies/CookiePreferencesPro
 import './index.css'
 import App from './App.tsx'
 import PrivateSessionBoundary from './shared/appShell/PrivateSessionBoundary'
+import { installModuleLoadRecovery } from './shared/appShell/moduleLoadRecovery'
+
+// Install eagerly, before any route can start a lazy import. Recovery is always
+// a user action; never reload automatically or replay a pending operation.
+installModuleLoadRecovery()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

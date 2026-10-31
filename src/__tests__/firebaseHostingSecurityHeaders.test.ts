@@ -34,8 +34,16 @@ describe("Firebase Hosting security headers", () => {
   it("applies the policy to static files and routes before rewrites", () => {
     expect(globalRule).toBeDefined();
     expect(config.hosting?.rewrites?.map(({ source }) => source)).toEqual(
-      expect.arrayContaining(["/unsubscribe", "**"])
+      expect.arrayContaining(["/unsubscribe", "!/@(assets)/**"])
     );
+  });
+
+  it("revalidates HTML at deep-link request paths while retaining global hardening", () => {
+    const htmlRule = config.hosting?.headers?.find(({ source }) => source === "!/@(assets)/**");
+    expect(htmlRule?.headers).toContainEqual({ key: "Cache-Control", value: "no-cache" });
+    // Do not apply an HTML-only no-cache rule solely to index.html: Hosting
+    // matches headers against the requested URL, before its SPA rewrite.
+    expect(globalRule).toBeDefined();
   });
 
   it("sets the browser hardening headers", () => {
