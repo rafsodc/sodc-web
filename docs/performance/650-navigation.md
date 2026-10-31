@@ -34,8 +34,8 @@ Home also hides old rows while the authority scope changes. Ordinary permission
 denials remove previously displayed cards and summaries.
 
 Access/section changes, booking refreshes and event/ticket edits invalidate these
-summaries. Event/ticket invalidation starts before a write attempt, so a committed
-write with a lost response cannot leave the old list fresh. Explicit retries
+summaries. Subscription and event/ticket invalidation starts before a write
+attempt, so a committed write with a lost response cannot leave the old list fresh. Explicit retries
 bypass the TTL and propagate refresh errors. Invalidation removes pending query
 entries and advances a per-client fence; late query results and page bundles
 cannot restore them. Bundle consumption checks the fence again and discards
@@ -79,8 +79,8 @@ their hash. This is not a full-application, real-Firebase or browser-cache test.
 
 ## Results
 
-Validation: 151 frontend files / 1,495 tests pass with coverage thresholds met
-(85.12% statements, 81.33% branches, 81.40% functions, 86.76% lines). The Functions
+Validation: 151 frontend files / 1,497 tests pass with coverage thresholds met
+(85.19% statements, 81.36% branches, 81.40% functions, 86.84% lines). The Functions
 suite passes 133 files / 2,055 tests and its coverage thresholds. Both applications'
 lint and production builds pass, as do the dedicated probe TypeScript checks.
 Focused regressions cover bundle selection/failures, old-backend fallback,
@@ -92,8 +92,8 @@ The [frozen-source comparison](650-navigation-results.json) completed on
 with no browser/read errors or unexpected requests. Browser encoded/decoded body
 totals matched server JSON totals in every sample. Executed-source hashes and
 the unexecuted backend-contract hash remained unchanged. Raw samples are retained
-locally at `.firebase/performance/650-navigation.samples.jsonl`, SHA-256
-`4cd0dc252325b4a8b7f41fddea9e897787e8094d916a78e759bfc08f7b65c722`.
+locally at `.firebase/performance/650-navigation-final.samples.jsonl`, SHA-256
+`5526117902535573be71849be37c05afed15276a4247fe1d1a879fbc178c0bdf`.
 
 | Journey | Tracked calls, baseline → candidate | JSON bytes, baseline → candidate |
 | --- | --- | --- |
@@ -107,13 +107,13 @@ Slow-profile correct-DOM readiness, milliseconds (median / p95):
 
 | View or phase | Baseline | Candidate |
 | --- | --- | --- |
-| Cold EVENTS list | 266.6 / 275.1 | 232.9 / 237.6 |
-| Cold direct event | 214.3 / 222.5 | 195.5 / 204.1 |
-| Cold MEMBERS directory | 1,119.1 / 1,130.6 | 1,083.1 / 1,098.2 |
-| Roundtrip Back | 14.0 / 16.1 | 17.4 / 20.2 |
-| Home journey: cold Home | 283.5 / 288.7 | 283.9 / 290.0 |
-| Home journey: section | 276.0 / 281.8 | 201.6 / 209.9 |
-| Home journey: return to Home | 315.2 / 320.8 | 16.8 / 18.3 |
+| Cold EVENTS list | 262.7 / 274.4 | 229.9 / 234.6 |
+| Cold direct event | 214.2 / 222.7 | 198.5 / 211.3 |
+| Cold MEMBERS directory | 1,119.5 / 1,135.2 | 1,083.3 / 1,095.0 |
+| Roundtrip Back | 14.2 / 16.1 | 17.1 / 18.9 |
+| Home journey: cold Home | 284.0 / 288.2 | 287.4 / 291.2 |
+| Home journey: section | 274.4 / 282.3 | 203.7 / 216.5 |
+| Home journey: return to Home | 315.5 / 321.6 | 16.4 / 20.0 |
 
 Back and the candidate Home return make no fresh request in these journeys.
 The largest measured benefit is warm Home reuse, while cold Home is unchanged.
@@ -122,12 +122,14 @@ These local results do not establish the deployed bundle's total latency:
 Functions database/Auth compute is not simulated, and a combined response can
 delay the first header until its content is ready.
 
-There are small costs rather than a universal improvement. Normal MEMBERS median
-readiness changes 45.2 → 45.7 ms, and cached Back adds a few milliseconds in the
-slow fixture. Slow MEMBERS median main-thread task time increases
-135.4 → 154.4 ms, despite its lower DOM-ready time. No long tasks were observed
-in the lightweight fixture. The aggregate retains every phase/profile and task
-metric so further render work can be based on full-UI profiling.
+There are costs rather than a universal improvement. Cold Home is slightly
+slower, and cached Back adds a few milliseconds in the slow fixture. Task-duration
+results are mixed: slow MEMBERS median main-thread task time increases
+138.9 → 155.9 ms, and the full Home journey 182.8 → 208.7 ms, despite lower
+navigation waits. Normal MEMBERS readiness improves 46.5 → 44.9 ms. No long tasks
+were observed in the lightweight fixture. The aggregate retains every
+phase/profile and task metric; these are not isolated React render timings, and
+OS/background load is not controlled. Further CPU work needs full-UI profiling.
 
 The earlier [unused-read-only experiment](650-unused-reads.md) and [its
 aggregates](650-unused-reads-results.json) remain as historical evidence: its

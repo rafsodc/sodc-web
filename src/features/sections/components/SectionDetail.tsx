@@ -508,6 +508,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     const requestToken = subscriptionRequestGuard.start();
     setSubscribing(true);
     try {
+      removeSectionEventSummaries(queryClient);
       await subscribeToUserGroup(subscribableGroup.id);
 
       if (!subscriptionRequestGuard.isCurrent(requestToken)) {
@@ -545,6 +546,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     setSubscribing(true);
     try {
       const { unsubscribeFromUserGroupRef } = await import("@dataconnect/generated");
+      removeSectionEventSummaries(queryClient);
       await executeDataConnectMutation(unsubscribeFromUserGroupRef(dataConnect, {
         userGroupId: userMemberGroup.id as UUIDString,
       }));

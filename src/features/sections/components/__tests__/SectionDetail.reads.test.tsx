@@ -12,8 +12,10 @@ import {
 import type { SectionForUserResponse, SectionEventsForUserResponse, EventForUserResponse } from '../../../../shared/utils/firebaseFunctions/sectionAccess';
 import type { SectionMember } from '../../utils/sectionHelpers';
 import { SectionType, SectionUserGroupPurpose } from '@dataconnect/generated';
+import * as generated from '@dataconnect/generated';
+import { executeMutation } from 'firebase/data-connect';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { getFreshSectionEventSummaries, removeSectionEventSummaries } from '../../../../shared/query/sectionEventSummaryCache';
+import { captureSectionEventSummaryRead, getFreshSectionEventSummaries, rememberSectionEventSummaries, removeSectionEventSummaries } from '../../../../shared/query/sectionEventSummaryCache';
 
 const transport = vi.hoisted(() => ({
   getSectionForUser: vi.fn(),
@@ -260,6 +262,44 @@ describe('SectionDetail authoritative read selection', () => {
     expect(transport.getSectionForUser).toHaveBeenCalledTimes(3);
     expect(transport.getSectionMembersMerged).toHaveBeenCalledTimes(2);
     expect(transport.subscribeToUserGroup).toHaveBeenCalledOnce();
+    expect(transport.getSectionEventsForUser).not.toHaveBeenCalled();
+    expect(transport.getEventForUser).not.toHaveBeenCalled();
+  });
+
+  it.each(['subscribe', 'unsubscribe'] as const)('retires related EVENTS summaries before a %s write whose response is lost, without replaying it', async operation => {
+    transport.getSectionForUser.mockResolvedValue(sdk(lookup(A, 'MEMBERS', true)));
+    if (operation === 'unsubscribe') access.userGroups.push({ userGroup: { id: MEMBER_GROUP } });
+    const view = mount();
+    await screen.findByText('Current Member');
+    const cached = { events: summaries('Related EVENTS summary') };
+    rememberSectionEventSummaries(view.queryClient, cached, captureSectionEventSummaryRead(view.queryClient, B));
+    expect(getFreshSectionEventSummaries(view.queryClient, B)).toEqual(cached);
+    const failLostResponse = async () => {
+      // This runs at the SDK transport boundary, before the mutation can settle.
+      // A server commit may already have happened even though its reply is lost.
+      expect(getFreshSectionEventSummaries(view.queryClient, B)).toBeUndefined();
+      throw new Error('Mutation response lost');
+    };
+    if (operation === 'subscribe') transport.subscribeToUserGroup.mockImplementationOnce(failLostResponse);
+    else {
+      vi.spyOn(generated, 'unsubscribeFromUserGroupRef').mockReturnValue({ name: 'UnsubscribeFromUserGroup', variables: { userGroupId: MEMBER_GROUP } } as never);
+      vi.mocked(executeMutation).mockImplementationOnce(failLostResponse);
+    }
+
+    await userEvent.click(screen.getByRole('button', { name: operation === 'subscribe' ? 'Subscribe' : 'Unsubscribe' }));
+    await screen.findByText(operation === 'subscribe' ? 'Failed to subscribe. Please try again.' : 'Failed to unsubscribe. Please try again.');
+    await settle();
+    expect(getFreshSectionEventSummaries(view.queryClient, B)).toBeUndefined();
+    if (operation === 'subscribe') {
+      expect(transport.subscribeToUserGroup).toHaveBeenCalledExactlyOnceWith({ userGroupId: MEMBER_GROUP });
+      expect(executeMutation).not.toHaveBeenCalled();
+    } else {
+      expect(executeMutation).toHaveBeenCalledOnce();
+      expect(transport.subscribeToUserGroup).not.toHaveBeenCalled();
+    }
+    expect(invalidation).not.toHaveBeenCalled();
+    expect(transport.getSectionForUser).toHaveBeenCalledOnce();
+    expect(transport.getSectionMembersMerged).toHaveBeenCalledOnce();
     expect(transport.getSectionEventsForUser).not.toHaveBeenCalled();
     expect(transport.getEventForUser).not.toHaveBeenCalled();
   });
