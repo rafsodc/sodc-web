@@ -803,12 +803,14 @@ export default function SectionEventsManager({
     const review = activeWriteReview;
     if (!review?.isCurrent() || refreshing) return;
     const { kind, receipt } = review;
-    if (found && kind === "ticket") {
+    if (found) {
       setRefreshing(true);
       try {
-        await refreshEventAdministration();
+        // The reviewed event list does not refresh the separate detail cache
+        // used by the workspace header and the next editor initialization.
+        await (kind === "event" ? refetchEventDetail() : refreshEventAdministration());
       } catch (caught) {
-        if (review.isCurrent()) setError(toAdminUserFacingError(caught, "tickets").message);
+        if (review.isCurrent()) setError(toAdminUserFacingError(caught, kind === "event" ? "events" : "tickets").message);
         return;
       } finally {
         if (review.isCurrent()) setRefreshing(false);
