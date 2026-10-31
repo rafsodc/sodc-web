@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { initializeApp, deleteApp, type FirebaseApp } from "firebase/app";
 import { executeQuery, getDataConnect, type DataConnect } from "firebase/data-connect";
 import { BookingApprovalStatus, BookingStatus, MembershipStatus, TicketAudience, getMyBookingsRef, getEventByIdRef, getEventsForSectionRef, getUserGroupByIdRef, listUserGroupsRef, listEventBookingsForAdminRef } from "@dataconnect/generated";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { act, fireEvent, render, screen, waitFor, within } from "../../../../test-utils";
 import UserGroups from "../UserGroups";
@@ -13,6 +13,7 @@ import { reviewBookingRevision, submitEventBooking } from "../../../../shared/ut
 import { dataConnectQueryOptions } from "../../../../shared/query/authoritativeDataConnect";
 import { useGetMyBookings } from "../../../../shared/query/authoritativeHooks";
 import { guestCall } from "../../../guests/api";
+import { createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
 
 // Real installed SDK cache, real query refs, real app hooks and rendered MUI
 // controls. Only the network transport/callables are replaced with memory state.
@@ -67,6 +68,17 @@ function view(screenName: "groups" | "event" | "events", key: string = screenNam
   return <QueryClientProvider client={queryClient}><MemoryRouter>
     {screenName === "groups" ? <UserGroups key={key} onBack={vi.fn()} /> : <SectionEventsManager key={key}
       sectionId="section-1" sectionName="Events" initialEventId={screenName === "event" ? "event-1" : undefined} onBack={vi.fn()} />}
+  </MemoryRouter></QueryClientProvider>;
+}
+
+function RoutedEventManager() {
+  const { eventId } = useParams();
+  return <SectionEventsManager sectionId="section-1" sectionName="Events" initialEventId={eventId} routeControlled onBack={vi.fn()} />;
+}
+
+function routedEventView() {
+  return <QueryClientProvider client={queryClient}><MemoryRouter initialEntries={["/sections/section-1/manage/events/event-1?task=details"]}>
+    <Routes><Route path="/sections/:sectionId/manage/events/:eventId" element={<RoutedEventManager />} /></Routes>
   </MemoryRouter></QueryClientProvider>;
 }
 
@@ -144,6 +156,66 @@ async function openCreateTicket() {
 }
 
 describe("rendered administration freshness with the installed SDK cache", () => {
+  it.each([false, true])("refreshes a found uncertain event update before reopening saved details, retry=%s", async (retry) => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    let serverEvent = copy(event);
+    const originalRead = read.getMockImplementation()!;
+    read.mockImplementation(async (name: string, variables: Record<string, unknown>) => {
+      if (name === "GetEventsForSection") return { data: { section: { id: "section-1", events: [copy(serverEvent)] } }, extensions: {} };
+      if (name === "GetEventById") {
+        if (failingRead === name) throw new Error("Saved event detail unavailable");
+        return { data: { event: { ...copy(serverEvent), section: { id: "section-1" }, ticketTypes: copy(ticketTypes) } }, extensions: {} };
+      }
+      return originalRead(name, variables);
+    });
+    // Both app and installed SDK caches contain the previous saved title.
+    await queryClient.fetchQuery(dataConnectQueryOptions(getEventsForSectionRef(context.dc, { sectionId: "section-1" })));
+    await queryClient.fetchQuery(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })));
+    const savedTitle = "Updated event with a lost response";
+    write.mockImplementationOnce(async (name: string, variables: Record<string, unknown>) => {
+      expect(name).toBe("UpdateEvent");
+      serverEvent = { ...serverEvent, title: String(variables.title) };
+      throw new Error("Response lost after server commit");
+    });
+    const rendered = render(routedEventView());
+    try {
+      const user = userEvent.setup();
+      expect(await screen.findByRole("heading", { level: 1, name: event.title })).toBeInTheDocument();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: savedTitle } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await screen.findByText(/The previous save could not be confirmed/);
+      expect(serverEvent.title).toBe(savedTitle);
+      expect((await executeQuery(getEventByIdRef(context.dc, { id: event.id }))).data.event?.title).toBe(event.title);
+      await user.click(screen.getByRole("button", { name: "Check latest list" }));
+      let review = await screen.findByRole("dialog", { name: "Start a new save request?" });
+      expect(within(review).getByText(savedTitle)).toBeInTheDocument();
+      if (retry) {
+        failingRead = "GetEventById";
+        await user.click(within(review).getByRole("button", { name: "I found the saved change — close this draft" }));
+        await waitFor(() => expect(read.mock.calls.filter(([name]) => name === "GetEventById").length).toBeGreaterThan(1));
+        review = screen.getByRole("dialog", { name: "Start a new save request?" });
+        expect(within(review).getByRole("alert")).toBeInTheDocument();
+        const unload = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(unload);
+        expect(unload.defaultPrevented).toBe(true);
+        expect(write).toHaveBeenCalledOnce();
+        failingRead = null;
+      }
+      await user.click(within(review).getByRole("button", { name: "I found the saved change — close this draft" }));
+      await waitForDialogToClose();
+      expect(await screen.findByRole("heading", { level: 1, name: savedTitle })).toBeInTheDocument();
+      await user.click(screen.getByRole("tab", { name: "Event details" }));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue(savedTitle);
+      expect(screen.getByText("Saved", { exact: true })).toBeInTheDocument();
+      expect((await executeQuery(getEventByIdRef(context.dc, { id: event.id }))).data.event?.title).toBe(savedTitle);
+      expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateEvent"]);
+      const unload = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(unload);
+      expect(unload.defaultPrevented).toBe(false);
+    } finally { rendered.unmount(); owner.retire(); uninstall(); }
+  }, 30_000);
+
   it("creates, selects and edits a group immediately, and reads server state on a later visit", async () => {
     await executeQuery(listUserGroupsRef(context.dc));
     await executeQuery(getUserGroupByIdRef(context.dc, { id: "created-group" }));
