@@ -6,7 +6,7 @@ import type { UserData } from "../../types";
 import { executeDataConnectQuery } from "../query/dataConnectExecution";
 import { captureSession, isSessionCurrent } from "./sessionLifecycle";
 
-export function useUnenabledProfileCheck(user: User | null, userData: UserData | null, isEnabled: boolean) {
+export function useUnenabledProfileCheck(user: User | null, userData: UserData | null, isEnabled: boolean, isEnabledClaimResolved: boolean) {
   const uid = user?.uid ?? null;
   const owner = useRef(uid);
   owner.current = uid;
@@ -15,7 +15,9 @@ export function useUnenabledProfileCheck(user: User | null, userData: UserData |
     const token = captureSession(uid);
     let active = true;
     const current = () => active && owner.current === uid && isSessionCurrent(token);
-    if (!user || !user.emailVerified || isEnabled || userData !== null) return;
+    // False is also the initial claim value. Wait until it describes this
+    // account before deciding that an onboarding-only read is necessary.
+    if (!user || !user.emailVerified || !isEnabledClaimResolved || isEnabled || userData !== null) return;
     void executeDataConnectQuery(queryRef(dataConnect, "CheckUserProfileExists", {})).then((result) => {
       if (!current()) return;
       const profile = (result.data as { user?: { membershipStatus?: string } | null })?.user;
@@ -24,8 +26,8 @@ export function useUnenabledProfileCheck(user: User | null, userData: UserData |
       if (current()) setState({ uid, exists: false, status: null });
     });
     return () => { active = false; };
-  }, [user, uid, userData, isEnabled]);
-  const visible = state.uid === uid && isSessionCurrent(captureSession(uid));
+  }, [user, uid, userData, isEnabled, isEnabledClaimResolved]);
+  const visible = isEnabledClaimResolved && state.uid === uid && isSessionCurrent(captureSession(uid));
   return {
     membershipStatusForUnenabled: visible && !isEnabled ? state.status : null,
     needsProfileCompletion: Boolean(user?.emailVerified && !isEnabled && !userData && visible && state.exists === false),

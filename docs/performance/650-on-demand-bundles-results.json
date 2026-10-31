@@ -1,0 +1,559 @@
+{
+  "schemaVersion": "sodc-bundle-comparison-summary/v1",
+  "measuredAt": "2026-10-31T13:01:45.579Z",
+  "node": "24.22.0",
+  "vite": "7.3.6",
+  "runnerSha256": "2a45b4ea63c969f9108aaaf9a5f0c47586576eb6d10e2f23bd6f31ca5dc60f6e",
+  "fullReportSha256": "76e2659a4da1d8bf11c884f91db2224f8256a255cfe0238569e4f4b0c7c931dc",
+  "baseline": {
+    "commit": "77acae6cc3daba8660b8c9e85bedca7ec8bd7bc2",
+    "commitRole": "Exact archived source commit",
+    "workingTreeDirty": false,
+    "sourceSha256": "c2b4ccb7a2d22d250a035c27ae9cf425805d142e8ac5a4a617365bbb46c92298",
+    "lockSha256": "81f1bc9c5a8daa45b613bbb594a1971409979247837447f76a93fbe09eb248ed",
+    "viteConfigSha256": "18227e65172901e90baf1f90b244cda1fb700e7931a1f3a18fd3481331c8ec7c",
+    "graphSha256": "f2e1e9269465c6a3988e9c0f5b63c688b844125ef8afc059c94c65c2ca4c2d54"
+  },
+  "candidate": {
+    "commit": "77acae6cc3daba8660b8c9e85bedca7ec8bd7bc2",
+    "commitRole": "Checkout HEAD only; sourceSha256 identifies the measured working tree",
+    "workingTreeDirty": true,
+    "sourceSha256": "ea90b7437aa7f15fe49715523ebde71c1b6c81b14a413af8e9eedd2fe74fa22a",
+    "lockSha256": "81f1bc9c5a8daa45b613bbb594a1971409979247837447f76a93fbe09eb248ed",
+    "viteConfigSha256": "18227e65172901e90baf1f90b244cda1fb700e7931a1f3a18fd3481331c8ec7c",
+    "graphSha256": "d9a87bec94053a50866661d9a6ffc86e2ab29099e8622168a0444f1cbaea020e"
+  },
+  "method": "Actual application production builds; Rollup static import closure; dynamic imports only added for requested scenarios; emitted assets deduplicated; gzip level 9 per asset.",
+  "limits": "Inert public build configuration; no real SDK execution, authentication, data reads, transfer measurements, latency or browser timings. Conditional route scenarios are source-derived, not observed requests. JS files referenced only by Vite preload-map strings are not eager imports. Counts exclude the HTML document. gzip estimates exclude headers and deployed compression differences.",
+  "metricColumns": [
+    "JS assets",
+    "raw JS bytes",
+    "gzip9 JS bytes"
+  ],
+  "scenarios": {
+    "startup": {
+      "baseline": [
+        5,
+        1074070,
+        313273
+      ],
+      "candidate": [
+        5,
+        1056933,
+        308180
+      ],
+      "gzipDelta": -5093,
+      "beyondStartup": {
+        "baseline": [
+          0,
+          0,
+          0
+        ],
+        "candidate": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "public-home": {
+      "baseline": [
+        6,
+        1075465,
+        313986
+      ],
+      "candidate": [
+        6,
+        1058328,
+        308891
+      ],
+      "gzipDelta": -5095,
+      "beyondStartup": {
+        "baseline": [
+          1,
+          1395,
+          713
+        ],
+        "candidate": [
+          1,
+          1395,
+          711
+        ]
+      }
+    },
+    "member-home": {
+      "baseline": [
+        9,
+        1081705,
+        316572
+      ],
+      "candidate": [
+        10,
+        1064611,
+        311558
+      ],
+      "gzipDelta": -5014,
+      "beyondStartup": {
+        "baseline": [
+          4,
+          7635,
+          3299
+        ],
+        "candidate": [
+          5,
+          7678,
+          3378
+        ]
+      }
+    },
+    "members-directory": {
+      "baseline": [
+        17,
+        1270390,
+        375592
+      ],
+      "candidate": [
+        15,
+        1088379,
+        319519
+      ],
+      "gzipDelta": -56073,
+      "beyondStartup": {
+        "baseline": [
+          12,
+          196320,
+          62319
+        ],
+        "candidate": [
+          10,
+          31446,
+          11339
+        ]
+      }
+    },
+    "events-list": {
+      "baseline": [
+        17,
+        1270390,
+        375592
+      ],
+      "candidate": [
+        15,
+        1088379,
+        319519
+      ],
+      "gzipDelta": -56073,
+      "beyondStartup": {
+        "baseline": [
+          12,
+          196320,
+          62319
+        ],
+        "candidate": [
+          10,
+          31446,
+          11339
+        ]
+      }
+    },
+    "event-about-empty": {
+      "baseline": [
+        17,
+        1270390,
+        375592
+      ],
+      "candidate": [
+        17,
+        1208314,
+        356610
+      ],
+      "gzipDelta": -18982,
+      "beyondStartup": {
+        "baseline": [
+          12,
+          196320,
+          62319
+        ],
+        "candidate": [
+          12,
+          151381,
+          48430
+        ]
+      }
+    },
+    "event-about-markdown": {
+      "baseline": [
+        17,
+        1270390,
+        375592
+      ],
+      "candidate": [
+        17,
+        1208314,
+        356610
+      ],
+      "gzipDelta": -18982,
+      "beyondStartup": {
+        "baseline": [
+          12,
+          196320,
+          62319
+        ],
+        "candidate": [
+          12,
+          151381,
+          48430
+        ]
+      }
+    },
+    "event-book": {
+      "baseline": [
+        17,
+        1270390,
+        375592
+      ],
+      "candidate": [
+        21,
+        1132981,
+        334746
+      ],
+      "gzipDelta": -40846,
+      "beyondStartup": {
+        "baseline": [
+          12,
+          196320,
+          62319
+        ],
+        "candidate": [
+          16,
+          76048,
+          26566
+        ]
+      }
+    },
+    "event-attendees": {
+      "baseline": [
+        17,
+        1270390,
+        375592
+      ],
+      "candidate": [
+        16,
+        1090954,
+        320749
+      ],
+      "gzipDelta": -54843,
+      "beyondStartup": {
+        "baseline": [
+          12,
+          196320,
+          62319
+        ],
+        "candidate": [
+          11,
+          34021,
+          12569
+        ]
+      }
+    },
+    "member-contact": {
+      "baseline": [
+        17,
+        1270390,
+        375592
+      ],
+      "candidate": [
+        15,
+        1088379,
+        319519
+      ],
+      "gzipDelta": -56073,
+      "beyondStartup": {
+        "baseline": [
+          12,
+          196320,
+          62319
+        ],
+        "candidate": [
+          10,
+          31446,
+          11339
+        ]
+      }
+    },
+    "my-bookings": {
+      "baseline": [
+        10,
+        1082858,
+        317296
+      ],
+      "candidate": [
+        10,
+        1065712,
+        312191
+      ],
+      "gzipDelta": -5105,
+      "beyondStartup": {
+        "baseline": [
+          5,
+          8788,
+          4023
+        ],
+        "candidate": [
+          5,
+          8779,
+          4011
+        ]
+      }
+    },
+    "section-admin-hub": {
+      "baseline": [
+        20,
+        1383074,
+        406118
+      ],
+      "candidate": [
+        9,
+        1065561,
+        311886
+      ],
+      "gzipDelta": -94232,
+      "beyondStartup": {
+        "baseline": [
+          15,
+          309004,
+          92845
+        ],
+        "candidate": [
+          4,
+          8628,
+          3706
+        ]
+      }
+    },
+    "section-admin-events": {
+      "baseline": [
+        20,
+        1383074,
+        406118
+      ],
+      "candidate": [
+        24,
+        1362541,
+        402106
+      ],
+      "gzipDelta": -4012,
+      "beyondStartup": {
+        "baseline": [
+          15,
+          309004,
+          92845
+        ],
+        "candidate": [
+          19,
+          305608,
+          93926
+        ]
+      }
+    },
+    "section-admin-files": {
+      "baseline": [
+        20,
+        1383074,
+        406118
+      ],
+      "candidate": [
+        12,
+        1075708,
+        315803
+      ],
+      "gzipDelta": -90315,
+      "beyondStartup": {
+        "baseline": [
+          15,
+          309004,
+          92845
+        ],
+        "candidate": [
+          7,
+          18775,
+          7623
+        ]
+      }
+    },
+    "section-admin-announcements": {
+      "baseline": [
+        20,
+        1383074,
+        406118
+      ],
+      "candidate": [
+        14,
+        1116099,
+        328911
+      ],
+      "gzipDelta": -77207,
+      "beyondStartup": {
+        "baseline": [
+          15,
+          309004,
+          92845
+        ],
+        "candidate": [
+          9,
+          59166,
+          20731
+        ]
+      }
+    }
+  },
+  "css": {
+    "startup": [
+      1,
+      342,
+      234
+    ],
+    "membersAndEvents": [
+      4,
+      810,
+      633
+    ],
+    "adminTasksAndHub": [
+      3,
+      652,
+      498
+    ],
+    "myBookings": [
+      3,
+      652,
+      498
+    ],
+    "unchanged": true
+  },
+  "warmJourney": {
+    "baseline": [
+      {
+        "name": "member-home",
+        "additionalJs": [
+          4,
+          7635,
+          3299
+        ]
+      },
+      {
+        "name": "events-list",
+        "additionalJs": [
+          10,
+          193939,
+          61333
+        ]
+      },
+      {
+        "name": "event-about-empty",
+        "additionalJs": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "event-book",
+        "additionalJs": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "event-attendees",
+        "additionalJs": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "events-list",
+        "additionalJs": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "member-home",
+        "additionalJs": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "candidate": [
+      {
+        "name": "member-home",
+        "additionalJs": [
+          5,
+          7678,
+          3378
+        ]
+      },
+      {
+        "name": "events-list",
+        "additionalJs": [
+          7,
+          29061,
+          10291
+        ]
+      },
+      {
+        "name": "event-about-empty",
+        "additionalJs": [
+          2,
+          119935,
+          37091
+        ]
+      },
+      {
+        "name": "event-book",
+        "additionalJs": [
+          6,
+          44602,
+          15227
+        ]
+      },
+      {
+        "name": "event-attendees",
+        "additionalJs": [
+          1,
+          2575,
+          1230
+        ]
+      },
+      {
+        "name": "events-list",
+        "additionalJs": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "member-home",
+        "additionalJs": [
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "analyticsModules": {
+    "baselineRenderedLength": 43245,
+    "candidateAbsent": true
+  },
+  "evidence": {
+    "fullReport": ".firebase/performance/650-on-demand-bundles.json",
+    "graphsAndAssets": ".firebase/performance/650-on-demand-bundles-assets/"
+  }
+}
