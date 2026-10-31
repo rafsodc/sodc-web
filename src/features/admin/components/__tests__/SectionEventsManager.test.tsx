@@ -1,7 +1,9 @@
 import { MemoryRouter, Routes, Route, useParams, useNavigate, useLocation } from "react-router-dom";
 import { createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
 import { useEffect, type ReactElement } from "react";
-const render = (ui: ReactElement) => baseRender(<MemoryRouter>{ui}</MemoryRouter>);
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { captureSectionEventSummaryRead, rememberSectionEventSummaries } from "../../../../shared/query/sectionEventSummaryCache";
+const render = (ui: ReactElement) => baseRender(<MemoryRouter><SummaryCacheProbe />{ui}</MemoryRouter>);
 import { guestCall } from "../../../guests/api";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, fireEvent, render as baseRender, screen, waitFor, within } from "../../../../test-utils";
@@ -108,6 +110,12 @@ function CanonicalManagerRoute() {
   const {sectionId = "section-1",eventId} = useParams();
   return <SectionEventsManager key={`${sectionId}:${eventId ?? "list"}`} sectionId={sectionId} sectionName="Events Section" initialEventId={eventId} routeControlled onBack={() => {}} />;
 }
+let managerQueryClient: QueryClient;
+function SummaryCacheProbe() {
+  const queryClient = useQueryClient();
+  useEffect(() => { managerQueryClient = queryClient; }, [queryClient]);
+  return null;
+}
 let managerNavigation: ReturnType<typeof useNavigate>;
 function ManagerHistory() {
   const navigate = useNavigate(); const location = useLocation();
@@ -115,7 +123,7 @@ function ManagerHistory() {
   return <><output>{location.pathname+location.search}</output><button onClick={() => navigate("/elsewhere")}>Leave task</button><button onClick={() => navigate(-1)}>History back</button><button onClick={() => navigate(1)}>History forward</button></>;
 }
 function canonicalManagerElement(path: string) {
-  return <MemoryRouter initialEntries={[path]}><ManagerHistory/><Routes><Route path="/sections/:sectionId/manage/events" element={<CanonicalManagerRoute/>}/><Route path="/sections/:sectionId/manage/events/:eventId" element={<CanonicalManagerRoute/>}/><Route path="/elsewhere" element={<div>Elsewhere</div>}/></Routes></MemoryRouter>;
+  return <MemoryRouter initialEntries={[path]}><SummaryCacheProbe/><ManagerHistory/><Routes><Route path="/sections/:sectionId/manage/events" element={<CanonicalManagerRoute/>}/><Route path="/sections/:sectionId/manage/events/:eventId" element={<CanonicalManagerRoute/>}/><Route path="/elsewhere" element={<div>Elsewhere</div>}/></Routes></MemoryRouter>;
 }
 function canonicalManager(path: string) {
   return baseRender(canonicalManagerElement(path));
@@ -292,6 +300,65 @@ describe("SectionEventsManager", () => {
     await user.click(screen.getByRole("button", { name: kind === "event" ? "Delete Annual Dinner" : "Delete Dinner" }));
     return { user, dialog: screen.getByRole("dialog", { name: `Delete ${kind}?` }) };
   }
+
+  it.each(["event", "ticket type"] as const)("retires summaries before an ambiguous %s deletion without replay or a server refresh", async kind => {
+    const { user, dialog } = await openDeletion(kind);
+    const scope = captureSectionEventSummaryRead(managerQueryClient, sectionId);
+    managerQueryClient.setQueryData(scope.queryKey, { events: [] });
+    vi.mocked(firebaseDataConnect.executeMutation).mockImplementationOnce(async () => {
+      expect(managerQueryClient.getQueryData(scope.queryKey)).toBeUndefined();
+      throw new Error("Response lost after deletion may have committed");
+    });
+
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    rememberSectionEventSummaries(managerQueryClient, { events: [] }, scope);
+    expect(managerQueryClient.getQueryData(scope.queryKey)).toBeUndefined();
+    expect(firebaseDataConnect.executeQuery).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["event", "create"], ["event", "update"], ["ticket", "create"], ["ticket", "update"],
+  ] as const)("retires summaries before an ambiguous %s %s without replaying the write", async (kind, action) => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const event = { ...deletionEvent, section: { id: sectionId }, ticketTypes: [{
+      id: "type-1", title: "Dinner", description: "Dinner", price: 25, sortOrder: 0,
+      audience: generated.TicketAudience.MEMBER, userGroup: { id: "members", name: "Members", membershipStatuses: [] },
+      includesDinner: true, includesSymposium: false,
+    }] };
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [event] } }, isLoading: false, isError: false });
+    mockGetEventById({ data: { event }, isLoading: false, isError: false });
+    vi.mocked(firebaseDataConnect.executeQuery).mockResolvedValue({ data: { userGroups: [{ id: "members", name: "Members" }] } } as never);
+    const route = kind === "event"
+      ? action === "create" ? "/sections/section-1/manage/events?edit=new-event" : "/sections/section-1/manage/events/ev-1?edit=event"
+      : `/sections/section-1/manage/events/ev-1?task=tickets&ticket=${action === "create" ? "new" : "type-1"}`;
+    const view = canonicalManager(route);
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: `Uncertain ${kind} ${action}` } });
+      if (kind === "ticket") {
+        await user.click(screen.getByRole("combobox", { name: /access group/i }));
+        await user.click(await screen.findByRole("option", { name: "Members" }));
+      }
+      const scope = captureSectionEventSummaryRead(managerQueryClient, sectionId);
+      managerQueryClient.setQueryData(scope.queryKey, { events: [] });
+      vi.mocked(firebaseDataConnect.executeMutation).mockImplementationOnce(async () => {
+        expect(managerQueryClient.getQueryData(scope.queryKey)).toBeUndefined();
+        throw new Error("Response lost after save may have committed");
+      });
+      const readsBeforeSave = vi.mocked(firebaseDataConnect.executeQuery).mock.calls.length;
+
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      await screen.findByText(/The previous save could not be confirmed/);
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+      expect(firebaseDataConnect.executeQuery).toHaveBeenCalledTimes(readsBeforeSave);
+      rememberSectionEventSummaries(managerQueryClient, { events: [] }, scope);
+      expect(managerQueryClient.getQueryData(scope.queryKey)).toBeUndefined();
+    } finally { view.unmount(); owner.retire(); uninstall(); }
+  }, 20_000);
 
   it.each(["event", "ticket type"] as const)("names the %s and cancels without a mutation or native prompt", async (kind) => {
     const nativeConfirm = vi.spyOn(window, "confirm");
@@ -906,7 +973,11 @@ describe("SectionEventsManager", () => {
     expect(await screen.findByText("Updated Dinner")).toBeInTheDocument();
   }, 10_000);
 
-  it("shows empty-state alerts for moderation, booking audit, and payment activity", async () => {
+  it.each([
+    ["booking approvals", /no booking revisions for this filter/i],
+    ["booking audit activity", /no bookings found for this event/i],
+    ["payment status activity", /no payment orders found for this event/i],
+  ] as const)("shows the empty state for %s", async (panel, message) => {
     const user = userEvent.setup();
     mockGetEventsForSection({
       data: {
@@ -948,15 +1019,11 @@ describe("SectionEventsManager", () => {
       isError: false,
     });
 
-    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
-    await user.click(screen.getByRole("button", { name: /event admin/i }));
-    await user.click(screen.getByRole("button", { name: /^booking approvals$/i }));
-    await user.click(screen.getByRole("button", { name: /^booking audit activity$/i }));
-    await user.click(screen.getByRole("button", { name: /^payment status activity$/i }));
-
-    expect(screen.getByText(/no booking revisions for this filter/i)).toBeInTheDocument();
-    expect(screen.getByText(/no bookings found for this event/i)).toBeInTheDocument();
-    expect(screen.getByText(/no payment orders found for this event/i)).toBeInTheDocument();
+    // Each panel has independent behavior. Open the requested event directly
+    // so this assertion does not spend its budget navigating unrelated panels.
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} initialEventId="ev-1" onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: new RegExp(`^${panel}$`, "i") }));
+    expect(await screen.findByText(message)).toBeInTheDocument();
   });
 
   it("shows only the current pending booking revision", async () => {

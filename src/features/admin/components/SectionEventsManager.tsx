@@ -48,6 +48,7 @@ import {
 } from "react";
 import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
 import { invalidateMyBookings } from "../../../shared/query/invalidation";
+import { removeSectionEventSummaries } from "../../../shared/query/sectionEventSummaryCache";
 import {
   refreshDataConnectQuery,
   SERVER_ONLY_QUERY_OPTIONS,
@@ -960,6 +961,9 @@ export default function SectionEventsManager({
     const maxGuestsWithoutModeratorApproval = n;
     try {
       await eventWrite.runOnce(async () => {
+        // A lost response may conceal a committed write. Retire summaries before
+        // sending it, rather than waiting for the success-only refresh path.
+        removeSectionEventSummaries(queryClient);
         if (editingEvent) {
           await executeDataConnectMutation(
             updateEventRef(dataConnect, {
@@ -1024,6 +1028,7 @@ export default function SectionEventsManager({
     setDeletingEventId(event.id);
     setError(null);
     try {
+      removeSectionEventSummaries(queryClient);
       await executeDataConnectMutation(
         deleteEventRef(dataConnect, { id: event.id }),
       );
@@ -1128,6 +1133,7 @@ export default function SectionEventsManager({
     setError(null);
     try {
       await ticketWrite.runOnce(async () => {
+        removeSectionEventSummaries(queryClient);
         if (editingTicketType) {
           await executeDataConnectMutation(
             updateTicketTypeRef(dataConnect, {
@@ -1182,6 +1188,7 @@ export default function SectionEventsManager({
     setDeletingTicketTypeId(id);
     setError(null);
     try {
+      removeSectionEventSummaries(queryClient);
       await executeDataConnectMutation(
         deleteTicketTypeRef(dataConnect, { id }),
       );

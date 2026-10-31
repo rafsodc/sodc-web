@@ -15,6 +15,7 @@ vi.mock("firebase/data-connect", () => ({
 }));
 
 import { executeQuery } from "firebase/data-connect";
+import { SECTION_EVENT_SUMMARIES_KEY, captureSectionEventSummaryRead, rememberSectionEventSummaries } from "../sectionEventSummaryCache";
 
 import {
   invalidateAnnouncementPreferences,
@@ -27,7 +28,7 @@ import {
 function queryClientWithInvalidateSpy() {
   const invalidateQueries = vi.fn().mockResolvedValue(undefined);
   return {
-    queryClient: { invalidateQueries, cancelQueries: vi.fn().mockResolvedValue(undefined) } as unknown as QueryClient,
+    queryClient: { invalidateQueries, cancelQueries: vi.fn().mockResolvedValue(undefined), removeQueries: vi.fn() } as unknown as QueryClient,
     invalidateQueries,
   };
 }
@@ -65,6 +66,54 @@ describe("cross-view query invalidation", () => {
       expect(invalidateQueries).toHaveBeenCalledWith({queryKey: [name], refetchType: "all"}, {throwOnError: true});
     }
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetSectionsForUser"], refetchType: "all" }, {throwOnError: true});
+  });
+
+  it.each([
+    ["access changes", invalidateUserSectionAccess],
+    ["section changes", invalidateSectionsForUser],
+    ["booking changes", invalidateMyBookings],
+  ] as const)("retires summaries before %s revalidation, even when that refresh fails", async (_label, invalidate) => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const summaryKey = [...SECTION_EVENT_SUMMARIES_KEY, "member-a", 1, 0, "section-a"];
+    const otherOwnerKey = [...SECTION_EVENT_SUMMARIES_KEY, "member-b", 2, 1, "section-b"];
+    queryClient.setQueryData(summaryKey, { events: [{ title: "Before change" }] });
+    queryClient.setQueryData(otherOwnerKey, { events: [] });
+    queryClient.setQueryData(["unrelated"], "preserved");
+    const pendingBundle = captureSectionEventSummaryRead(queryClient, "section-a");
+    const failure = new Error("Generated refresh unavailable");
+    vi.spyOn(queryClient, "invalidateQueries").mockImplementation(async () => {
+      expect(queryClient.getQueryCache().findAll({ queryKey: SECTION_EVENT_SUMMARIES_KEY })).toHaveLength(0);
+      throw failure;
+    });
+
+    const refresh = invalidate(queryClient);
+    expect(queryClient.getQueryData(summaryKey)).toBeUndefined();
+    await expect(refresh).rejects.toBe(failure);
+    rememberSectionEventSummaries(queryClient, { events: [] }, pendingBundle);
+    expect(queryClient.getQueryCache().findAll({ queryKey: SECTION_EVENT_SUMMARIES_KEY })).toHaveLength(0);
+    expect(queryClient.getQueryData(["unrelated"])).toBe("preserved");
+    queryClient.clear();
+  });
+
+  it.each([true, false])("a late summary cannot restore removed access data (transport observes cancellation=%s)", async observesCancellation => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const summaryKey = [...SECTION_EVENT_SUMMARIES_KEY, "member-a", 1, 0, "section-a"];
+    let complete!: (result: { events: string[] }) => void;
+    let signal: AbortSignal | undefined;
+    const read = vi.fn((context: { signal: AbortSignal }) => {
+      if (observesCancellation) signal = context.signal;
+      return new Promise<{ events: string[] }>(resolve => { complete = resolve; });
+    });
+    const pending = queryClient.fetchQuery({ queryKey: summaryKey, queryFn: read }).catch(error => error);
+    await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
+
+    await invalidateUserSectionAccess(queryClient);
+
+    if (observesCancellation) expect(signal?.aborted).toBe(true);
+    complete({ events: ["Obsolete event"] });
+    await pending;
+    expect(queryClient.getQueryData(summaryKey)).toBeUndefined();
+    queryClient.clear();
   });
 
   it("refetches an active generated-query key and exposes the updated navigation data", async () => {
@@ -120,6 +169,22 @@ describe("cross-view query invalidation", () => {
     expect(queryClient.getQueryData(["GetMyBookings", null])).toEqual(allBookings);
     expect(queryClient.getQueryData(["GetMyTicketOrders", null])).toEqual(ticketOrders);
     expect(queryClient.getQueryData(["GetMyBookingPaymentAdjustments", null])).toEqual(paymentAdjustments);
+    queryClient.clear();
+  });
+
+  it("retires summaries before a booking refresh that fails on its first server read", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const summaryKey = [...SECTION_EVENT_SUMMARIES_KEY, "member-a", 1, 0, "section-a"];
+    queryClient.setQueryData(summaryKey, { events: [{ title: "Before booking" }] });
+    const pendingBundle = captureSectionEventSummaryRead(queryClient, "section-a");
+    const failure = new Error("Booking refresh unavailable");
+    vi.mocked(executeQuery).mockRejectedValueOnce(failure);
+
+    const refresh = refreshMyBookingsFromServer(queryClient, "event-1");
+    expect(queryClient.getQueryData(summaryKey)).toBeUndefined();
+    await expect(refresh).rejects.toBe(failure);
+    rememberSectionEventSummaries(queryClient, { events: [] }, pendingBundle);
+    expect(queryClient.getQueryCache().findAll({ queryKey: SECTION_EVENT_SUMMARIES_KEY })).toHaveLength(0);
     queryClient.clear();
   });
 });

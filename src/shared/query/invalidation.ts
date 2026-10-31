@@ -8,6 +8,7 @@ import {
   getMyTicketOrdersRef,
 } from "./sessionDataConnect";
 import { refreshDataConnectQuery } from "./authoritativeDataConnect";
+import { removeSectionEventSummaries } from "./sectionEventSummaryCache";
 import { dataConnect } from "../../config/firebase";
 
 /**
@@ -32,13 +33,18 @@ export function invalidateAnnouncementPreferences(queryClient: QueryClient) {
 }
 // Group membership/purpose links also determine the aggregate preference section list.
 export function invalidateUserSectionAccess(queryClient: QueryClient) {
+  // Access changes retire summaries before any fallible server revalidation.
+  // A failed navigation refresh must not leave a previously allowed list fresh.
+  removeSectionEventSummaries(queryClient);
   return invalidateDataConnectQueries(queryClient, [["GetUserAccessGroups"], ["GetSectionsForUser"], ["GetMyAnnouncementPreferences"]]);
 }
 // Section metadata is repeated in navigation, admin lists, details and preference links.
 export function invalidateSectionsForUser(queryClient: QueryClient) {
+  removeSectionEventSummaries(queryClient);
   return invalidateDataConnectQueries(queryClient, [["GetSectionsForUser"], ["ListSections"], ["GetMyAnnouncementPreferences"], ["GetSectionById"], ["GetUserAccessGroups"]]);
 }
 export function invalidateMyBookings(queryClient: QueryClient) {
+  removeSectionEventSummaries(queryClient);
   return invalidateDataConnectQueries(queryClient, [["GetMyBookings"], ["GetMyBookingsForEvent"], ["GetMyTicketOrders"], ["GetMyBookingPaymentAdjustments"]]);
 }
 
@@ -51,6 +57,8 @@ export async function refreshMyBookingsFromServer(
   queryClient: QueryClient,
   eventId: UUIDString
 ) {
+  // Retire list/bundle seeds even when the first booking refresh fails.
+  removeSectionEventSummaries(queryClient);
   const session = captureSession();
   return runSessionRead(async () => {
     const eventBookings = await refreshDataConnectQuery(queryClient, getMyBookingsForEventRef(dataConnect, { eventId }));

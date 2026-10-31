@@ -3,7 +3,7 @@ import * as firebaseAdmin from "firebase-admin";
 import { hasCurrentProfileReview } from "./memberReviewRules";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import { requireEnabled, requireString, handleFunctionError } from "./helpers";
+import { requireEnabled, requireString, handleFunctionError, validateUUID } from "./helpers";
 import { enforceRateLimit } from "./rateLimiter";
 import {
   serviceGetSectionById as getSectionById,
@@ -131,7 +131,14 @@ async function loadSectionMemberPopulation(
     throw new HttpsError("permission-denied", "You do not have permission to view this section");
   }
 
-  const sectionData = membersResult.data?.section;
+  return mergeVerifiedSectionPopulation(membersResult.data?.section, requestedIds);
+}
+
+/** Reused only after the caller's current section access has been verified. */
+async function mergeVerifiedSectionPopulation(
+  sectionData: Awaited<ReturnType<typeof getSectionMembers>>["data"]["section"],
+  requestedIds?: ReadonlySet<string>
+): Promise<SectionMemberResponse[]> {
   if (!sectionData) {
     return [];
   }
@@ -386,7 +393,15 @@ export interface SectionForUserResponse {
   section: NonNullable<GetSectionByIdData["section"]> | null;
   hasAccess: boolean;
   canModerate: boolean;
+  /** Present only when requested and applicable to the server-verified section type. */
+  content?: SectionInitialContent;
 }
+
+export type SectionInitialContent =
+  | { kind: "MEMBERS"; status: "ready"; members: SectionMemberResponse[] }
+  | { kind: "EVENTS"; status: "ready"; events: SectionEventsForUserResponse["events"] }
+  | { kind: "EVENT"; status: "ready"; event: EventForUserResponse["event"] }
+  | { kind: "MEMBERS" | "EVENTS" | "EVENT"; status: "error" };
 
 /**
  * Section lookup for a regular member (or admin). GetSectionById itself is admin-only in
@@ -400,6 +415,14 @@ export const getSectionForUser = onCall(
   async (request): Promise<SectionForUserResponse> => {
     await requireEnabled(request);
     const sectionId = requireString(request.data?.sectionId, "sectionId");
+    const content = request.data?.content;
+    if (content !== undefined && content !== "SECTION" && content !== "EVENT") {
+      throw new HttpsError("invalid-argument", "content must be SECTION or EVENT");
+    }
+    const eventId = content === "EVENT" ? requireString(request.data?.eventId, "eventId") : undefined;
+    if (content !== "EVENT" && request.data?.eventId !== undefined) {
+      throw new HttpsError("invalid-argument", "eventId requires EVENT content");
+    }
     const callerUid = request.auth!.uid;
     const callerIsAdmin = currentAuthorization(request).isAdmin;
 
@@ -408,7 +431,38 @@ export const getSectionForUser = onCall(
       if (!callerIsAdmin && !hasAccess) {
         return { section: null, hasAccess: false, canModerate: false };
       }
-      return { section, hasAccess: true, canModerate: callerIsAdmin || canModerate };
+      const response: SectionForUserResponse = { section, hasAccess: true, canModerate: callerIsAdmin || canModerate };
+      // The request selects a surface, never its section type or authority. All
+      // metadata-only callers retain the existing cheap, backwards-compatible path.
+      const kind = content === "EVENT"
+        ? section.type === SectionType.EVENTS ? "EVENT" : undefined
+        : content === "SECTION" && section.type === SectionType.MEMBERS ? "MEMBERS"
+          : content === "SECTION" && section.type === SectionType.EVENTS ? "EVENTS" : undefined;
+      if (!kind) return response;
+      try {
+        if (kind === "MEMBERS") {
+          await enforceRateLimit("getSectionMembersMerged", callerUid);
+          const result = await getSectionMembers({ sectionId });
+          response.content = { kind, status: "ready", members: await mergeVerifiedSectionPopulation(result.data?.section) };
+        } else if (kind === "EVENTS") {
+          const result = await getEventsForSection({ sectionId });
+          response.content = { kind, status: "ready", events: result.data?.section?.events ?? [] };
+        } else {
+          const result = await getEventById({ id: eventId! });
+          const event = result.data?.event;
+          if (!event || validateUUID(event.section.id) !== validateUUID(sectionId)) {
+            throw new HttpsError("not-found", "Event not found in this section");
+          }
+          response.content = { kind, status: "ready", event: visibleMemberEvent(event) };
+        }
+      } catch (error: unknown) {
+        // A content outage must not discard verified metadata or tempt callers
+        // into repeating a saved write. Targeted read-only retries remain valid.
+        if (error instanceof HttpsError) logger.warn("getSectionForUser content unavailable", { kind, code: error.code });
+        else logger.error("getSectionForUser content read failed", { kind, error });
+        response.content = { kind, status: "error" };
+      }
+      return response;
     } catch (e: unknown) {
       if (e instanceof HttpsError) throw e;
       handleFunctionError(e as Error, "getSectionForUser");
@@ -447,6 +501,15 @@ export interface EventForUserResponse {
   event: NonNullable<Awaited<ReturnType<typeof getEventById>>["data"]["event"]> | null;
 }
 
+function visibleMemberEvent(event: NonNullable<EventForUserResponse["event"]>): NonNullable<EventForUserResponse["event"]> {
+  return {
+    ...event,
+    ticketTypes: (event.ticketTypes ?? []).filter(
+      (ticketType) => ticketType.audience !== TicketAudience.ORGANISER_GUEST,
+    ),
+  };
+}
+
 /** Single event lookup, gated on access to the event's own section. */
 export const getEventForUser = onCall(
   { region: FUNCTIONS_REGION },
@@ -466,14 +529,7 @@ export const getEventForUser = onCall(
       if (!callerIsAdmin && !hasAccess) {
         throw new HttpsError("permission-denied", "You do not have permission to view this event");
       }
-      return {
-        event: {
-          ...event,
-          ticketTypes: (event.ticketTypes ?? []).filter(
-            (ticketType) => ticketType.audience !== TicketAudience.ORGANISER_GUEST,
-          ),
-        },
-      };
+      return { event: visibleMemberEvent(event) };
     } catch (e: unknown) {
       if (e instanceof HttpsError) throw e;
       handleFunctionError(e as Error, "getEventForUser");

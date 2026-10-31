@@ -1005,6 +1005,8 @@ describe('SectionDetail', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /cancel editing/i })).toBeInTheDocument();
     });
+    expect(getSectionMembersMerged).not.toHaveBeenCalled();
+    expect(getSectionEventsForUser).toHaveBeenCalledOnce();
 
     // Cancel editing → onWizardOpenChange(false) → setActiveTab("about") → covers open=false branch
     await user.click(screen.getByRole('button', { name: /cancel editing/i }));
@@ -1589,6 +1591,9 @@ describe('SectionDetail', () => {
     });
     expect(invalidateUserSectionAccess).toHaveBeenCalledOnce();
     expect(await screen.findByRole('button', { name: /^subscribe$/i })).toBeInTheDocument();
+    expect(getSectionMembersMerged).toHaveBeenCalledTimes(2);
+    expect(getSectionEventsForUser).not.toHaveBeenCalled();
+    expect(getEventForUser).not.toHaveBeenCalled();
   });
 
   it('shows announcement toggle for user with MODERATOR access (tests || branch in grantsAccess)', async () => {

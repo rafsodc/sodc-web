@@ -6,6 +6,7 @@ import { dataConnectQueryKey, dataConnectQueryOptions, DataConnectReadSuperseded
 import { invalidateDataConnectQueries } from "../invalidation";
 import { captureSession, createSessionLifecycle, installSessionRuntime, SessionChangedError } from "../../appShell/sessionLifecycle";
 import { beginAuthorizationUpdate, resumeAuthorizationReads } from "../../auth/authorizationUpdate";
+import { SECTION_EVENT_SUMMARIES_KEY, captureSectionEventSummaryRead, rememberSectionEventSummaries } from "../sectionEventSummaryCache";
 
 // Exercise the installed SDK's real cache and real TanStack scheduling. Only
 // the underlying transport is replaced; no generated hook/refetch is mocked.
@@ -152,6 +153,34 @@ describe("authoritative Data Connect reads", () => {
     await expect(refreshDataConnectQuery(queryClient, ref)).rejects.toBe(failure);
     expect(queryClient.getQueryData(dataConnectQueryKey(ref))).toEqual({ value: "old" });
     expect(transport).toHaveBeenCalledOnce();
+  });
+
+  it.each(["GetEventsForSection", "GetEventById"])("retires summaries before a failed %s administration refresh", async name => {
+    const failure = new Error("Saved event refresh unavailable");
+    const transport = vi.fn().mockRejectedValue(failure);
+    const { dc } = context(transport), queryClient = client();
+    const ref = queryRef<Result, { id: string }>(dc, name, { id: "resource-a" });
+    const summaryKey = [...SECTION_EVENT_SUMMARIES_KEY, "member-a", 1, 0, "section-a"];
+    queryClient.setQueryData(summaryKey, { events: [{ title: "Before edit" }] });
+    queryClient.setQueryData(["unrelated"], "preserved");
+    const pendingBundle = captureSectionEventSummaryRead(queryClient, "section-a");
+
+    const refresh = refreshDataConnectQuery(queryClient, ref);
+    expect(queryClient.getQueryData(summaryKey)).toBeUndefined();
+    await expect(refresh).rejects.toBe(failure);
+    rememberSectionEventSummaries(queryClient, { events: [] }, pendingBundle);
+    expect(queryClient.getQueryCache().findAll({ queryKey: SECTION_EVENT_SUMMARIES_KEY })).toHaveLength(0);
+    expect(queryClient.getQueryData(["unrelated"])).toBe("preserved");
+  });
+
+  it("does not retire event summaries for an unrelated authoritative refresh", async () => {
+    const { ref } = context(async () => response("fresh")), queryClient = client();
+    const summaryKey = [...SECTION_EVENT_SUMMARIES_KEY, "member-a", 1, 0, "section-a"];
+    queryClient.setQueryData(summaryKey, { events: [] });
+
+    await refreshDataConnectQuery(queryClient, ref);
+
+    expect(queryClient.getQueryData(summaryKey)).toEqual({ events: [] });
   });
   it("keeps a failed explicit refresh stale so a revisit cannot report the cached old value as success", async () => {
     const transport = vi.fn().mockResolvedValueOnce(response("old")).mockRejectedValueOnce(new Error("offline")).mockResolvedValue(response("confirmed"));

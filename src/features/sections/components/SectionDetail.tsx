@@ -1,5 +1,5 @@
 import { idsEqual } from "../../../shared/utils/uuid";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Alert,
@@ -30,7 +30,6 @@ import {
   getSectionMembersMerged,
   subscribeToUserGroup,
   getSectionForUser,
-  getSectionEventsForUser,
   getEventForUser,
 } from "../../../shared/utils/firebaseFunctions";
 import type {
@@ -52,12 +51,19 @@ import {
 } from "./SectionDetailViews";
 import { invalidateUserSectionAccess } from "../../../shared/query/invalidation";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
+import { loadSectionEventSummaries } from "../../../shared/query/sectionEventSummaries";
+import {
+  captureSectionEventSummaryRead, getFreshSectionEventSummaries, hasPendingSectionEventSummaries,
+  rememberSectionEventSummaries, removeSectionEventSummaries,
+} from "../../../shared/query/sectionEventSummaryCache";
 
 interface SectionDetailProps {
   sectionId: string;
   onBack: () => void;
   eventId?: string;
 }
+
+type SectionContentScope = Pick<NonNullable<SectionForUserResponse["section"]>, "id" | "type">;
 
 export default function SectionDetail({ sectionId, eventId, onBack }: SectionDetailProps) {
   const queryClient = useQueryClient();
@@ -85,6 +91,27 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [errorMembers, setErrorMembers] = useState(false);
   const selectedEventId = eventId ?? location.pathname.match(/\/events\/([^/]+)$/)?.[1] ?? null;
+  // Keep the last verified descriptor through same-section revalidation. Clearing
+  // rendered metadata must not retire a required post-save directory refresh.
+  const [contentScope, setContentScope] = useState<SectionContentScope | null>(null);
+  const verifiedContentScope = useRef<SectionContentScope | null>(null);
+  const currentRoute = useRef({ sectionId, selectedEventId });
+  currentRoute.current = { sectionId, selectedEventId };
+  const bundledContent = useRef<{
+    sectionId: string; eventId: string | null; content: SectionForUserResponse["content"];
+    isCurrent: () => boolean;
+  } | null>(null);
+  const takeBundledContent = useCallback((kind: "MEMBERS" | "EVENTS" | "EVENT") => {
+    const bundle = bundledContent.current;
+    if (!bundle) return undefined;
+    bundledContent.current = null;
+    if (!bundle.isCurrent() || !idsEqual(bundle.sectionId, sectionId) || bundle.eventId !== currentRoute.current.selectedEventId || bundle.content?.kind !== kind) return undefined;
+    return bundle.content;
+  }, [sectionId]);
+  const matchingScope = contentScope && idsEqual(contentScope.id, sectionId) ? contentScope : null;
+  const needsMembers = matchingScope?.type === "MEMBERS" && !selectedEventId;
+  const needsEvents = matchingScope?.type === "EVENTS" && !selectedEventId;
+  const needsEventDetail = matchingScope?.type === "EVENTS" && Boolean(selectedEventId);
 
   const currentUser = auth.currentUser;
 
@@ -102,78 +129,130 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
   // its own result arrives.
   const sectionRequestGuard = useLatestRequestGuard();
   const refetchSection = useCallback(async () => {
-    if (!sectionId) return false;
+    if (!sectionId) return null;
     const requestToken = sectionRequestGuard.start();
     setLoadingSection(true);
     setSectionData(undefined);
     setServerCanModerate(false);
     setErrorSection(false);
     try {
-      const result = await getSectionForUser(sectionId);
-      if (!sectionRequestGuard.isCurrent(requestToken)) return false;
-      setSectionData({ section: result.section });
-      setServerCanModerate(result.canModerate);
-      return true;
+      const summaryRead = captureSectionEventSummaryRead(queryClient, sectionId);
+      const requestedEventId = currentRoute.current.selectedEventId;
+      const options = requestedEventId ? { content: "EVENT" as const, eventId: requestedEventId }
+        : getFreshSectionEventSummaries(queryClient, sectionId) || hasPendingSectionEventSummaries(queryClient, sectionId)
+          ? undefined : { content: "SECTION" as const };
+      const result = await getSectionForUser(sectionId, options);
+      if (!sectionRequestGuard.isCurrent(requestToken)) return null;
+      if (result.section && !idsEqual(result.section.id, sectionId)) {
+        throw new Error("Section metadata does not match the requested section");
+      }
+      const section = result.hasAccess ? result.section : null;
+      const scope = section ? { id: section.id, type: section.type } : null;
+      // A late page bundle must not bypass the same save/access fence that
+      // protects shared summaries. Fall back to a current targeted read.
+      bundledContent.current = { sectionId, eventId: requestedEventId, content: section && summaryRead.isCurrent() ? result.content : undefined, isCurrent: summaryRead.isCurrent };
+      if (!section) removeSectionEventSummaries(queryClient);
+      else if (result.content?.kind === "EVENTS" && result.content.status === "ready") {
+        rememberSectionEventSummaries(queryClient, { events: result.content.events }, summaryRead);
+      }
+      verifiedContentScope.current = scope;
+      setContentScope(scope);
+      setSectionData({ section });
+      setServerCanModerate(Boolean(section && result.canModerate));
+      return section;
     } catch (error) {
-      if (!sectionRequestGuard.isCurrent(requestToken)) return false;
+      if (!sectionRequestGuard.isCurrent(requestToken)) return null;
       reportError("sections.detail", error);
+      bundledContent.current = null;
+      verifiedContentScope.current = null;
+      setContentScope(null);
       setSectionData(undefined);
       setErrorSection(true);
-      return false;
+      return null;
     } finally {
       if (sectionRequestGuard.isCurrent(requestToken)) {
         setLoadingSection(false);
       }
     }
-  }, [sectionId, sectionRequestGuard]);
+  }, [sectionId, sectionRequestGuard, queryClient]);
 
   useEffect(() => {
     void refetchSection();
-  }, [refetchSection]);
+    return () => sectionRequestGuard.invalidate();
+  }, [refetchSection, sectionRequestGuard]);
 
   const membersRequestGuard = useLatestRequestGuard();
-  const fetchMembers = useCallback(async () => {
+  // Share the completion outcome between the automatic load and a post-save
+  // refresh waiting for it. This holds no roster payload; explicit refreshes
+  // always replace it, and leaving the directory clears it.
+  const membersRead = useRef<Promise<boolean> | null>(null);
+  const fetchMembers = useCallback((force = false): Promise<boolean> => {
+    const ownsDirectory = () => idsEqual(currentRoute.current.sectionId, sectionId) &&
+      !currentRoute.current.selectedEventId &&
+      idsEqual(verifiedContentScope.current?.id, sectionId) &&
+      verifiedContentScope.current?.type === "MEMBERS";
+    if (!ownsDirectory()) return Promise.resolve(true);
+    if (!force && membersRead.current) return membersRead.current;
     const requestToken = membersRequestGuard.start();
     setLoadingMembers(true);
     setErrorMembers(false);
-    try {
-      const res = await getSectionMembersMerged(sectionId);
-      if (!membersRequestGuard.isCurrent(requestToken)) return false;
-      const members: SectionMember[] = (res.members || []).map((m) => ({
-        userId: m.id,
-        firstName: m.firstName,
-        lastName: m.lastName,
-        email: m.email,
-        mobileNumber: m.mobileNumber,
-        rank: m.rank,
-        sharesContactInfo: m.sharesContactInfo,
-        membershipStatus: m.membershipStatus as SectionMember["membershipStatus"],
-      }));
-      setSectionMembers(members);
-      return true;
-    } catch (err: unknown) {
-      if (!membersRequestGuard.isCurrent(requestToken)) return false;
-      reportError("sections.members", err);
-      setErrorMembers(true);
-      setSectionMembers([]);
-      return false;
-    } finally {
-      if (membersRequestGuard.isCurrent(requestToken)) {
-        setLoadingMembers(false);
+    const pending = Promise.resolve().then(async () => {
+      if (!membersRequestGuard.isCurrent(requestToken) || !ownsDirectory()) return false;
+      try {
+        const bundle = !force ? takeBundledContent("MEMBERS") : undefined;
+        if (bundle?.status === "error") throw new Error("The member directory could not be loaded");
+        const res = bundle?.kind === "MEMBERS" && bundle.status === "ready" ? bundle : await getSectionMembersMerged(sectionId);
+        if (!membersRequestGuard.isCurrent(requestToken) || !ownsDirectory()) return false;
+        const members: SectionMember[] = (res.members || []).map((m) => ({
+          userId: m.id,
+          firstName: m.firstName,
+          lastName: m.lastName,
+          email: m.email,
+          mobileNumber: m.mobileNumber,
+          rank: m.rank,
+          sharesContactInfo: m.sharesContactInfo,
+          membershipStatus: m.membershipStatus as SectionMember["membershipStatus"],
+        }));
+        setSectionMembers(members);
+        return true;
+      } catch (err: unknown) {
+        if (!membersRequestGuard.isCurrent(requestToken) || !ownsDirectory()) return false;
+        reportError("sections.members", err);
+        setErrorMembers(true);
+        setSectionMembers([]);
+        return false;
+      } finally {
+        if (membersRequestGuard.isCurrent(requestToken) && ownsDirectory()) {
+          setLoadingMembers(false);
+        }
       }
+    });
+    membersRead.current = pending;
+    return pending;
+  }, [sectionId, membersRequestGuard, takeBundledContent]);
+
+  useEffect(() => {
+    if (!needsMembers) {
+      membersRequestGuard.invalidate();
+      membersRead.current = null;
+      setSectionMembers([]);
+      setErrorMembers(false);
+      setLoadingMembers(false);
+      return;
     }
-  }, [sectionId, membersRequestGuard]);
+    void fetchMembers();
+    return () => {
+      membersRequestGuard.invalidate();
+      membersRead.current = null;
+    };
+  }, [needsMembers, fetchMembers, membersRequestGuard]);
 
   useEffect(() => {
-    if (!sectionId) return;
-    fetchMembers();
-  }, [sectionId, fetchMembers]);
-
-  useEffect(() => {
-    const refreshDirectory = () => { void fetchMembers(); };
+    if (!needsMembers) return;
+    const refreshDirectory = () => { void fetchMembers(true); };
     window.addEventListener("member-profile-reviewed", refreshDirectory);
     return () => window.removeEventListener("member-profile-reviewed", refreshDirectory);
-  }, [fetchMembers]);
+  }, [needsMembers, fetchMembers]);
 
   // Get current user's user groups to check subscription status
   const {
@@ -190,73 +269,97 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
   const [eventsData, setEventsData] = useState<{ section: { events: SectionEventsForUserResponse["events"] } } | undefined>(undefined);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [errorEvents, setErrorEvents] = useState(false);
+  const [eventsReadFor, setEventsReadFor] = useState<string | null>(null);
+  const eventsRequestMatches = idsEqual(eventsReadFor, sectionId);
 
   const eventsRequestGuard = useLatestRequestGuard();
-  const refetchEvents = useCallback(async () => {
-    if (!sectionId) return;
+  const refetchEvents = useCallback(async (force = false) => {
+    const ownsEvents = () => idsEqual(currentRoute.current.sectionId, sectionId) &&
+      !currentRoute.current.selectedEventId &&
+      idsEqual(verifiedContentScope.current?.id, sectionId) &&
+      verifiedContentScope.current?.type === "EVENTS";
+    if (!ownsEvents()) return;
     const requestToken = eventsRequestGuard.start();
+    setEventsReadFor(sectionId);
     setLoadingEvents(true);
     setErrorEvents(false);
     try {
-      const result = await getSectionEventsForUser(sectionId);
-      if (!eventsRequestGuard.isCurrent(requestToken)) return;
+      const bundle = !force ? takeBundledContent("EVENTS") : undefined;
+      if (bundle?.status === "error") throw new Error("The events could not be loaded");
+      const result = bundle?.kind === "EVENTS" && bundle.status === "ready" ? bundle : await loadSectionEventSummaries(queryClient, sectionId, { force });
+      if (!eventsRequestGuard.isCurrent(requestToken) || !ownsEvents()) return;
       setEventsData({ section: { events: result.events } });
     } catch (error) {
-      if (!eventsRequestGuard.isCurrent(requestToken)) return;
+      if (!eventsRequestGuard.isCurrent(requestToken) || !ownsEvents()) return;
       reportError("sections.events", error);
       setEventsData(undefined);
       setErrorEvents(true);
     } finally {
-      if (eventsRequestGuard.isCurrent(requestToken)) {
+      if (eventsRequestGuard.isCurrent(requestToken) && ownsEvents()) {
         setLoadingEvents(false);
       }
     }
-  }, [sectionId, eventsRequestGuard]);
+  }, [sectionId, eventsRequestGuard, takeBundledContent, queryClient]);
 
   useEffect(() => {
-    void refetchEvents();
-  }, [refetchEvents]);
+    setEventsData(undefined);
+    setErrorEvents(false);
+    setLoadingEvents(needsEvents);
+    if (!needsEvents) setEventsReadFor(null);
+    if (needsEvents) void refetchEvents();
+    return () => eventsRequestGuard.invalidate();
+  }, [needsEvents, refetchEvents, eventsRequestGuard]);
 
   // Get single event for detail view (only runs when selectedEventId is set). GetEventById is
   // admin-only in Data Connect (see #328); this callable checks access to the event's section.
   const [eventDetailData, setEventDetailData] = useState<{ event: EventForUserResponse["event"] } | undefined>(undefined);
   const [loadingEventDetail, setLoadingEventDetail] = useState(false);
   const [errorEventDetail, setErrorEventDetail] = useState(false);
+  const [eventDetailReadFor, setEventDetailReadFor] = useState<{ sectionId: string; eventId: string } | null>(null);
+  const eventDetailRequestMatches = idsEqual(eventDetailReadFor?.sectionId, sectionId) &&
+    idsEqual(eventDetailReadFor?.eventId, selectedEventId);
 
   const eventDetailRequestGuard = useLatestRequestGuard();
-  const refetchEventDetail = useCallback(async () => {
-    if (!selectedEventId) return;
+  const refetchEventDetail = useCallback(async (force = false) => {
+    const ownsEvent = () => idsEqual(currentRoute.current.sectionId, sectionId) &&
+      idsEqual(currentRoute.current.selectedEventId, selectedEventId) &&
+      idsEqual(verifiedContentScope.current?.id, sectionId) &&
+      verifiedContentScope.current?.type === "EVENTS";
+    if (!selectedEventId || !ownsEvent()) return;
     const requestToken = eventDetailRequestGuard.start();
+    setEventDetailReadFor({ sectionId, eventId: selectedEventId });
     setLoadingEventDetail(true);
     setEventDetailData(undefined);
     setErrorEventDetail(false);
     try {
-      const result = await getEventForUser(selectedEventId);
-      if (!eventDetailRequestGuard.isCurrent(requestToken)) return;
+      const bundle = !force ? takeBundledContent("EVENT") : undefined;
+      if (bundle?.status === "error") throw new Error("The event could not be loaded");
+      const result = bundle?.kind === "EVENT" && bundle.status === "ready" ? bundle : await getEventForUser(selectedEventId);
+      if (!eventDetailRequestGuard.isCurrent(requestToken) || !ownsEvent()) return;
       if (result.event && !idsEqual(result.event.section?.id,sectionId)) {
         setEventDetailData(undefined); setErrorEventDetail(true); return;
       }
       setEventDetailData({ event: result.event });
     } catch (error) {
-      if (!eventDetailRequestGuard.isCurrent(requestToken)) return;
+      if (!eventDetailRequestGuard.isCurrent(requestToken) || !ownsEvent()) return;
       reportError("sections.event-detail", error);
       setEventDetailData(undefined);
       setErrorEventDetail(true);
     } finally {
-      if (eventDetailRequestGuard.isCurrent(requestToken)) {
+      if (eventDetailRequestGuard.isCurrent(requestToken) && ownsEvent()) {
         setLoadingEventDetail(false);
       }
     }
-  }, [selectedEventId, sectionId, eventDetailRequestGuard]);
+  }, [selectedEventId, sectionId, eventDetailRequestGuard, takeBundledContent]);
 
   useEffect(() => {
-    if (!selectedEventId) {
-      eventDetailRequestGuard.invalidate();
-      setEventDetailData(undefined);
-      return;
-    }
-    void refetchEventDetail();
-  }, [selectedEventId, refetchEventDetail, eventDetailRequestGuard]);
+    setEventDetailData(undefined);
+    setErrorEventDetail(false);
+    setLoadingEventDetail(needsEventDetail);
+    if (!needsEventDetail) setEventDetailReadFor(null);
+    if (needsEventDetail) void refetchEventDetail();
+    return () => eventDetailRequestGuard.invalidate();
+  }, [needsEventDetail, refetchEventDetail, eventDetailRequestGuard]);
 
   // Extract user's user group IDs
   const userUserGroupIds = useMemo(() => {
@@ -321,7 +424,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
   const canModerateSection = serverCanModerate;
 
   const allMembers = sectionMembers;
-  const refetchMembers = fetchMembers;
+  const refetchMembers = () => fetchMembers(true);
 
   // Filter members by search term, then sort by surname
   const filteredMembers = useMemo(() => {
@@ -354,12 +457,22 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
   const refreshSubscriptionViews = async (successMessage: string, requestToken = subscriptionRequestGuard.start()) => {
     if (!subscriptionRequestGuard.isCurrent(requestToken)) return;
     setRefreshingSubscription(true);
+    // A pre-write directory request cannot satisfy this refresh. The automatic
+    // load and explicit wait below share only a read started after this fence.
+    membersRequestGuard.invalidate();
+    membersRead.current = null;
+    if (verifiedContentScope.current?.type === "MEMBERS") setLoadingMembers(true);
     try {
-      const [sectionLoaded, membersLoaded] = await Promise.all([
-        refetchSection(), refetchMembers(), invalidateUserSectionAccess(queryClient),
+      const [, sectionLoaded] = await Promise.all([
+        invalidateUserSectionAccess(queryClient), refetchSection(),
       ]);
       if (!subscriptionRequestGuard.isCurrent(requestToken)) return;
-      if (!sectionLoaded || !membersLoaded) throw new Error("Subscription view refresh incomplete");
+      if (!sectionLoaded) throw new Error("Subscription view refresh incomplete");
+      if (sectionLoaded.type === "MEMBERS" && !currentRoute.current.selectedEventId) {
+        const membersLoaded = await fetchMembers();
+        if (!subscriptionRequestGuard.isCurrent(requestToken)) return;
+        if (!membersLoaded) throw new Error("Subscription view refresh incomplete");
+      }
       setSubscriptionRefreshFailure(null);
       setSnackbar({ open: true, message: successMessage, severity: "success" });
     } catch (caught) {
@@ -395,6 +508,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     const requestToken = subscriptionRequestGuard.start();
     setSubscribing(true);
     try {
+      removeSectionEventSummaries(queryClient);
       await subscribeToUserGroup(subscribableGroup.id);
 
       if (!subscriptionRequestGuard.isCurrent(requestToken)) {
@@ -432,6 +546,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     setSubscribing(true);
     try {
       const { unsubscribeFromUserGroupRef } = await import("@dataconnect/generated");
+      removeSectionEventSummaries(queryClient);
       await executeDataConnectMutation(unsubscribeFromUserGroupRef(dataConnect, {
         userGroupId: userMemberGroup.id as UUIDString,
       }));
@@ -516,7 +631,6 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
             message="We could not load this section. Please try again."
             onRetry={() => {
               void refetchSection();
-              void refetchMembers();
             }}
           />
         </Box>
@@ -572,8 +686,8 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
           searchTerm={searchTerm}
           page={currentPage}
           totalPages={totalPages}
-          loading={loadingMembers}
-          isError={errorMembers}
+          loading={needsMembers && (loadingMembers || membersRead.current === null)}
+          isError={membersRead.current !== null && errorMembers}
           onSearchTermChange={setSearchTerm}
           onRefresh={() => void refetchMembers()}
           onPageChange={setPage}
@@ -583,22 +697,23 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
           key={selectedEventId}
           section={section}
           event={idsEqual(eventDetailData?.event?.id,selectedEventId) && idsEqual(eventDetailData?.event?.section?.id,sectionId) ? eventDetailData?.event ?? null : null}
-          loading={loadingEventDetail}
-          isError={errorEventDetail}
+          loading={needsEventDetail && (!eventDetailRequestMatches || loadingEventDetail)}
+          isError={eventDetailRequestMatches && errorEventDetail}
           hasCurrentUser={Boolean(currentUser)}
           onBackToEvents={handleBackToEvents}
-          onRetry={() => refetchEventDetail()}
+          onRetry={() => refetchEventDetail(true)}
           onBookingComplete={() => {
-            void refetchEventDetail();
+            removeSectionEventSummaries(queryClient);
+            void refetchEventDetail(true);
             void queryClient.invalidateQueries({ queryKey: ["eventAttendees", selectedEventId] });
           }}
         />
       ) : (
         <SectionEventsListView
           events={eventRows}
-          loading={loadingEvents}
-          isError={errorEvents}
-          onRetry={() => refetchEvents()}
+          loading={needsEvents && (!eventsRequestMatches || loadingEvents)}
+          isError={eventsRequestMatches && errorEvents}
+          onRetry={() => refetchEvents(true)}
           onSelectEvent={handleSelectEvent}
           eventHref={(id) => memberEventPath(sectionId,id)}
         />

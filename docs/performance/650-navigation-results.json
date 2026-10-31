@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "sodc-section-navigation-component-probe/v2",
+  "createdAt": "2026-10-31T12:05:13.714Z",
+  "baselineRef": "77acae6cc3daba8660b8c9e85bedca7ec8bd7bc2",
+  "sourceSha256": {
+    "baseline": "a8aa4fe92ac4d74d3086c38c7a69b98c7a61dab38eb0b2eb0f40f280401bb200",
+    "candidate": "9f4f9bcd7166cfb016aedc40d229490b9d05bee90548e1b59c5bd368787015ab",
+    "homeBaseline": "3ba9ad0921b2adbd5bb20c1f5bb73cd6a471054ec8235ac97425ad8645cdd2a9",
+    "homeCandidate": "54f238a56fa362ddd71861871948098eb8ecfd8dbb2943fbb1cf64de6a35db7c",
+    "shared": {
+      "src/shared/query/sectionEventSummaries.ts": "baa0dc93a146a9493192457d263bc7fac9ee61a5870b68602c33ba5365681784",
+      "src/shared/query/sectionEventSummaryCache.ts": "cb686dc55949b768bae0547eb7e068089a02e6e14faf8c2529b7074b72f656d8"
+    }
+  },
+  "provenance": {
+    "executedSourceSha256": {
+      "src/features/sections/components/SectionDetail.tsx": "9f4f9bcd7166cfb016aedc40d229490b9d05bee90548e1b59c5bd368787015ab",
+      "src/features/welcome/hooks/useUpcomingEventsForUser.ts": "54f238a56fa362ddd71861871948098eb8ecfd8dbb2943fbb1cf64de6a35db7c",
+      "src/shared/query/sectionEventSummaries.ts": "baa0dc93a146a9493192457d263bc7fac9ee61a5870b68602c33ba5365681784",
+      "src/shared/query/sectionEventSummaryCache.ts": "cb686dc55949b768bae0547eb7e068089a02e6e14faf8c2529b7074b72f656d8",
+      "src/shared/appShell/sessionLifecycle.ts": "8bed8f388d0630ff00e3411cc9d8c091cb578f4e1a29e110ac591e2a85aa34ab",
+      "src/shared/auth/authorizationUpdate.ts": "7b34df04036979157e0cf801f02962646768b0c55961a1fa9c02989a6f72b72c",
+      "e2e/performance/unused-reads/adapters.ts": "65bde1d860606b6b6e058e6c5d2c158fc6d9c2ad20c7787938e9a3daaaacb2a4",
+      "e2e/performance/unused-reads/entry.tsx": "935b51eef7e169e34ccfe943556226eac26b21af7398e17e0c90e0a4bc9340b7",
+      "e2e/performance/unused-reads/views.tsx": "c5aabe092e7b0c6f1d60142864dfbe24d26f236dc52fceb6c0744476084fd8cd",
+      "scripts/performance/unused-reads.mjs": "7abb9773c47a237330c469b011e41ca3759375915e335948eb81ca961177e2d6"
+    },
+    "backendContract": {
+      "path": "functions/src/sections.ts",
+      "sha256": "5e962d6b48d600282d3be72c35c548fbd32ad1a6b9943e9da6b92b073b6e54a1",
+      "executed": false,
+      "role": "Optional bundled-response shape provenance only; local fixture models the response, not backend compute/auth latency"
+    }
+  },
+  "candidateSourceUnchangedAtCompletion": true,
+  "versions": {
+    "node": "v24.22.0",
+    "browser": "156.0.8078.4"
+  },
+  "fixture": {
+    "members": 1000,
+    "eventsPerSection": 25,
+    "homeEventSections": 3,
+    "syntheticOnly": true
+  },
+  "profiles": {
+    "normal": {
+      "latency": 0,
+      "downloadThroughput": -1,
+      "uploadThroughput": -1,
+      "cpu": 1
+    },
+    "slow": {
+      "latency": 150,
+      "downloadThroughput": 200000,
+      "uploadThroughput": 93750,
+      "cpu": 4
+    }
+  },
+  "runsPerVariantProfileScenario": 10,
+  "samplesArtifact": {
+    "file": "650-navigation-final.samples.jsonl",
+    "rows": 200,
+    "sha256": "5526117902535573be71849be37c05afed15276a4247fe1d1a879fbc178c0bdf"
+  },
+  "unexpectedRequests": 0,
+  "productionBuild": true,
+  "limits": [
+    "Actual SectionDetail, Home hook and shared-summary helpers; inert query/auth adapters and lightweight child views. Not the full application or real Firebase latency.",
+    "Assets loaded before throttling/timing. JSON payload bytes exclude HTTP/TLS/compression; read-only GET transport replaces Firebase callable protocol and optional content bundling.",
+    "Main-thread task/script/layout metrics and long tasks are not isolated React render duration. No React profiling build used.",
+    "Home uses synthetic preloaded navigation. Full startup/admin/bundle and permission-change acceptance remain outside this measurement."
+  ],
+  "summaries": [
+    {"profile":"normal","scenario":"events","variant":"baseline","runs":10,"operationCounts":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]}},"jsonBytes":[181152],"browserTransferBytes":[182052],"timings":{"initial":{"medianMs":46.200000047683716,"p95Ms":49.40000009536743}},"taskMedianMs":46.286,"longTaskCount":0},
+    {"profile":"normal","scenario":"events","variant":"candidate","runs":10,"operationCounts":{"getSectionForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1]}},"jsonBytes":[6510],"browserTransferBytes":[6810],"timings":{"initial":{"medianMs":41.5,"p95Ms":45.299999952316284}},"taskMedianMs":42.431999999999995,"longTaskCount":0},
+    {"profile":"normal","scenario":"direct","variant":"baseline","runs":10,"operationCounts":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1],"getEventForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1],"getEventForUser":[1]}},"jsonBytes":[181503],"browserTransferBytes":[182703],"timings":{"initial":{"medianMs":43.60000014305115,"p95Ms":50.40000009536743}},"taskMedianMs":42.939,"longTaskCount":0},
+    {"profile":"normal","scenario":"direct","variant":"candidate","runs":10,"operationCounts":{"getSectionForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1]}},"jsonBytes":[549],"browserTransferBytes":[849],"timings":{"initial":{"medianMs":41.5,"p95Ms":44.39999985694885}},"taskMedianMs":42.431000000000004,"longTaskCount":0},
+    {"profile":"normal","scenario":"members","variant":"baseline","runs":10,"operationCounts":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]}},"jsonBytes":[181209],"browserTransferBytes":[182109],"timings":{"initial":{"medianMs":46.5,"p95Ms":48.89999985694885}},"taskMedianMs":46.983999999999995,"longTaskCount":0},
+    {"profile":"normal","scenario":"members","variant":"candidate","runs":10,"operationCounts":{"getSectionForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1]}},"jsonBytes":[174887],"browserTransferBytes":[175187],"timings":{"initial":{"medianMs":44.90000009536743,"p95Ms":49.5}},"taskMedianMs":43.419999999999995,"longTaskCount":0},
+    {"profile":"normal","scenario":"roundtrip","variant":"baseline","runs":10,"operationCounts":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1],"getEventForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]},"detail":{"getEventForUser":[1]},"back":{}},"jsonBytes":[181503],"browserTransferBytes":[182703],"timings":{"initial":{"medianMs":45.80000019073486,"p95Ms":48.799999952316284},"detail":{"medianMs":18.799999952316284,"p95Ms":21},"back":{"medianMs":15.399999856948853,"p95Ms":17.40000009536743}},"taskMedianMs":57.637,"longTaskCount":0},
+    {"profile":"normal","scenario":"roundtrip","variant":"candidate","runs":10,"operationCounts":{"getSectionForUser":[1],"getEventForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1]},"detail":{"getEventForUser":[1]},"back":{}},"jsonBytes":[6861],"browserTransferBytes":[7461],"timings":{"initial":{"medianMs":42.5,"p95Ms":45.59999990463257},"detail":{"medianMs":18.200000047683716,"p95Ms":20.299999952316284},"back":{"medianMs":16.09999990463257,"p95Ms":18.09999990463257}},"taskMedianMs":54.858000000000004,"longTaskCount":0},
+    {"profile":"normal","scenario":"home","variant":"baseline","runs":10,"operationCounts":{"getSectionEventsForUser":[7],"getSectionForUser":[1],"getSectionMembersMerged":[1],"getEventForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionEventsForUser":[3]},"section":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]},"detail":{"getEventForUser":[1]},"back":{},"homeBack":{"getSectionEventsForUser":[3]}},"jsonBytes":[219593],"browserTransferBytes":[222593],"timings":{"initial":{"medianMs":39,"p95Ms":41.39999985694885},"section":{"medianMs":27.299999952316284,"p95Ms":28.700000047683716},"detail":{"medianMs":18.40000009536743,"p95Ms":21.5},"back":{"medianMs":14.800000190734863,"p95Ms":16.5},"homeBack":{"medianMs":18.799999952316284,"p95Ms":21.299999952316284}},"taskMedianMs":68.774,"longTaskCount":0},
+    {"profile":"normal","scenario":"home","variant":"candidate","runs":10,"operationCounts":{"getSectionEventsForUser":[3],"getSectionForUser":[1],"getEventForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionEventsForUser":[3]},"section":{"getSectionForUser":[1]},"detail":{"getEventForUser":[1]},"back":{},"homeBack":{}},"jsonBytes":[19551],"browserTransferBytes":[21051],"timings":{"initial":{"medianMs":40.39999985694885,"p95Ms":43.5},"section":{"medianMs":23.09999990463257,"p95Ms":24.59999990463257},"detail":{"medianMs":18.799999952316284,"p95Ms":20.799999952316284},"back":{"medianMs":15.700000047683716,"p95Ms":17.899999856948853},"homeBack":{"medianMs":16.200000047683716,"p95Ms":18.200000047683716}},"taskMedianMs":65.088,"longTaskCount":0},
+    {"profile":"slow","scenario":"events","variant":"baseline","runs":10,"operationCounts":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]}},"jsonBytes":[181152],"browserTransferBytes":[182052],"timings":{"initial":{"medianMs":262.7000000476837,"p95Ms":274.39999985694885}},"taskMedianMs":134.16799999999998,"longTaskCount":0},
+    {"profile":"slow","scenario":"events","variant":"candidate","runs":10,"operationCounts":{"getSectionForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1]}},"jsonBytes":[6510],"browserTransferBytes":[6810],"timings":{"initial":{"medianMs":229.89999985694885,"p95Ms":234.59999990463257}},"taskMedianMs":121.797,"longTaskCount":0},
+    {"profile":"slow","scenario":"direct","variant":"baseline","runs":10,"operationCounts":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1],"getEventForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1],"getEventForUser":[1]}},"jsonBytes":[181503],"browserTransferBytes":[182703],"timings":{"initial":{"medianMs":214.20000004768372,"p95Ms":222.70000004768372}},"taskMedianMs":147.121,"longTaskCount":0},
+    {"profile":"slow","scenario":"direct","variant":"candidate","runs":10,"operationCounts":{"getSectionForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1]}},"jsonBytes":[549],"browserTransferBytes":[849],"timings":{"initial":{"medianMs":198.5,"p95Ms":211.30000019073486}},"taskMedianMs":117.257,"longTaskCount":0},
+    {"profile":"slow","scenario":"members","variant":"baseline","runs":10,"operationCounts":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]}},"jsonBytes":[181209],"browserTransferBytes":[182109],"timings":{"initial":{"medianMs":1119.5,"p95Ms":1135.2000000476837}},"taskMedianMs":138.931,"longTaskCount":0},
+    {"profile":"slow","scenario":"members","variant":"candidate","runs":10,"operationCounts":{"getSectionForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1]}},"jsonBytes":[174887],"browserTransferBytes":[175187],"timings":{"initial":{"medianMs":1083.2999999523163,"p95Ms":1095}},"taskMedianMs":155.86899999999997,"longTaskCount":0},
+    {"profile":"slow","scenario":"roundtrip","variant":"baseline","runs":10,"operationCounts":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1],"getEventForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]},"detail":{"getEventForUser":[1]},"back":{}},"jsonBytes":[181503],"browserTransferBytes":[182703],"timings":{"initial":{"medianMs":268.2999999523163,"p95Ms":273.2999999523163},"detail":{"medianMs":181.70000004768372,"p95Ms":187.39999985694885},"back":{"medianMs":14.200000047683716,"p95Ms":16.09999990463257}},"taskMedianMs":182.98,"longTaskCount":0},
+    {"profile":"slow","scenario":"roundtrip","variant":"candidate","runs":10,"operationCounts":{"getSectionForUser":[1],"getEventForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionForUser":[1]},"detail":{"getEventForUser":[1]},"back":{}},"jsonBytes":[6861],"browserTransferBytes":[7461],"timings":{"initial":{"medianMs":233,"p95Ms":241.79999995231628},"detail":{"medianMs":181.40000009536743,"p95Ms":187.69999980926514},"back":{"medianMs":17.100000143051147,"p95Ms":18.90000009536743}},"taskMedianMs":170.932,"longTaskCount":0},
+    {"profile":"slow","scenario":"home","variant":"baseline","runs":10,"operationCounts":{"getSectionEventsForUser":[7],"getSectionForUser":[1],"getSectionMembersMerged":[1],"getEventForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionEventsForUser":[3]},"section":{"getSectionForUser":[1],"getSectionMembersMerged":[1],"getSectionEventsForUser":[1]},"detail":{"getEventForUser":[1]},"back":{},"homeBack":{"getSectionEventsForUser":[3]}},"jsonBytes":[219593],"browserTransferBytes":[222593],"timings":{"initial":{"medianMs":284,"p95Ms":288.2000000476837},"section":{"medianMs":274.40000009536743,"p95Ms":282.2999999523163},"detail":{"medianMs":182.70000004768372,"p95Ms":185.20000004768372},"back":{"medianMs":14.5,"p95Ms":16.5},"homeBack":{"medianMs":315.5,"p95Ms":321.59999990463257}},"taskMedianMs":182.794,"longTaskCount":0},
+    {"profile":"slow","scenario":"home","variant":"candidate","runs":10,"operationCounts":{"getSectionEventsForUser":[3],"getSectionForUser":[1],"getEventForUser":[1]},"phaseOperationCounts":{"initial":{"getSectionEventsForUser":[3]},"section":{"getSectionForUser":[1]},"detail":{"getEventForUser":[1]},"back":{},"homeBack":{}},"jsonBytes":[19551],"browserTransferBytes":[21051],"timings":{"initial":{"medianMs":287.39999985694885,"p95Ms":291.2000000476837},"section":{"medianMs":203.70000004768372,"p95Ms":216.5},"detail":{"medianMs":184.89999985694885,"p95Ms":191},"back":{"medianMs":15.700000047683716,"p95Ms":20.199999809265137},"homeBack":{"medianMs":16.40000009536743,"p95Ms":20}},"taskMedianMs":208.72899999999998,"longTaskCount":0}
+  ]
+}
