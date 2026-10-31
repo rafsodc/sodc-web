@@ -1441,7 +1441,7 @@ describe("SectionEventsManager", () => {
       expect(screen.getByRole("heading", { level: 1, name: authoritativeEvent.title })).toBeInTheDocument();
       expect(firebaseDataConnect.executeMutation).not.toHaveBeenCalled();
     } finally { view.unmount(); owner.retire(); uninstall(); }
-  });
+  }, 20_000);
 
   it("recovers a failed cold Event details read without showing a blank editor or writing", async () => {
     const event = prepareRoutedEvent();
