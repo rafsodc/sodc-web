@@ -4,6 +4,11 @@ import { SectionType } from "@dataconnect/generated";
 import { getSectionEventsForUser } from "../../../../shared/utils/firebaseFunctions";
 import { sectionsFingerprint, useUpcomingEventsForUser } from "../useUpcomingEventsForUser";
 import type { AccessibleSection } from "../../../../shared/navigation/extractAccessibleSections";
+import { createElement, type ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+let client: QueryClient;
+const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client }, children);
 
 vi.mock("../../../../shared/utils/firebaseFunctions", () => {
   return {
@@ -28,6 +33,7 @@ describe("sectionsFingerprint", () => {
 
 describe("useUpcomingEventsForUser", () => {
   beforeEach(() => {
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     vi.mocked(getSectionEventsForUser).mockReset();
     vi.mocked(getSectionEventsForUser).mockResolvedValue({
       events: [
@@ -47,13 +53,14 @@ describe("useUpcomingEventsForUser", () => {
   });
 
   afterEach(() => {
+    client.clear();
     vi.restoreAllMocks();
   });
 
   it("loads events through the member-safe callable without refetching unchanged sections", async () => {
     const { result, rerender } = renderHook(
       ({ sections }) => useUpcomingEventsForUser(sections),
-      { initialProps: { sections: [eventSection] } }
+      { initialProps: { sections: [eventSection] }, wrapper }
     );
 
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -75,7 +82,7 @@ describe("useUpcomingEventsForUser", () => {
         events: [],
       } as Awaited<ReturnType<typeof getSectionEventsForUser>>);
 
-    const { result } = renderHook(() => useUpcomingEventsForUser([eventSection]));
+    const { result } = renderHook(() => useUpcomingEventsForUser([eventSection]), { wrapper });
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     act(() => result.current.retry());
@@ -84,5 +91,49 @@ describe("useUpcomingEventsForUser", () => {
     expect(getSectionEventsForUser).toHaveBeenCalledTimes(2);
     expect(consoleError).toHaveBeenCalledWith("[welcome.upcoming-events]", failure, {});
     consoleError.mockRestore();
+  });
+
+  it("reuses a fresh summary when Home mounts again in the same document", async () => {
+    const first = renderHook(() => useUpcomingEventsForUser([eventSection]), { wrapper });
+    await waitFor(() => expect(first.result.current.events).toHaveLength(1));
+    first.unmount();
+    const next = renderHook(() => useUpcomingEventsForUser([eventSection]), { wrapper });
+    await waitFor(() => expect(next.result.current.events).toHaveLength(1));
+    expect(getSectionEventsForUser).toHaveBeenCalledOnce();
+  });
+
+  it("refreshes all sections on retry without one section cancelling another", async () => {
+    const sections = [eventSection, { ...eventSection, id: "section-2" }];
+    const { result } = renderHook(() => useUpcomingEventsForUser(sections), { wrapper });
+    await waitFor(() => expect(result.current.events).toHaveLength(2));
+    act(() => result.current.retry());
+    await waitFor(() => expect(getSectionEventsForUser).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.isError).toBe(false);
+    expect(result.current.events).toHaveLength(2);
+  });
+
+  it("does not keep a previous section's events after its replacement fails", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { result, rerender } = renderHook(({ sections }) => useUpcomingEventsForUser(sections), {
+      initialProps: { sections: [eventSection] }, wrapper,
+    });
+    await waitFor(() => expect(result.current.events).toHaveLength(1));
+    vi.mocked(getSectionEventsForUser).mockRejectedValueOnce(new Error("new section unavailable"));
+    rerender({ sections: [{ ...eventSection, id: "other-section" }] });
+    expect(result.current.events).toEqual([]);
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.events).toEqual([]);
+    consoleError.mockRestore();
+  });
+
+  it.each(["functions/permission-denied", "ACCESS_REVOKED"])("clears previously loaded cards when retry reports %s", async code => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { result } = renderHook(() => useUpcomingEventsForUser([eventSection]), { wrapper });
+    await waitFor(() => expect(result.current.events).toHaveLength(1));
+    vi.mocked(getSectionEventsForUser).mockRejectedValueOnce({ code });
+    act(() => result.current.retry());
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.events).toEqual([]);
   });
 });

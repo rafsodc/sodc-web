@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '../../../../te
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
+import { useEffect } from 'react';
 import SectionDetail from '../SectionDetail';
 import {
   createSessionLifecycle,
@@ -11,6 +12,8 @@ import {
 import type { SectionForUserResponse, SectionEventsForUserResponse, EventForUserResponse } from '../../../../shared/utils/firebaseFunctions/sectionAccess';
 import type { SectionMember } from '../../utils/sectionHelpers';
 import { SectionType, SectionUserGroupPurpose } from '@dataconnect/generated';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { getFreshSectionEventSummaries, removeSectionEventSummaries } from '../../../../shared/query/sectionEventSummaryCache';
 
 const transport = vi.hoisted(() => ({
   getSectionForUser: vi.fn(),
@@ -53,7 +56,7 @@ vi.mock('../SectionDetailViews', () => ({
   SectionEventsListView: ({ events, loading, isError, onRetry }: {
     events: SectionEventsForUserResponse['events']; loading: boolean; isError: boolean; onRetry: () => void;
   }) => {
-    viewRenders.events({ loading, isError });
+    viewRenders.events({ loading, isError, titles: events.map(event => event.title) });
     return <section aria-label="Events list"><p>{loading ? 'Events loading' : 'Events ready'}</p>{isError && <p>Events read failed</p>}{events.map(event => <p key={event.id}>{event.title}</p>)}<button onClick={onRetry} disabled={loading}>Retry events read</button></section>;
   },
   SectionEventDetailView: ({ event, loading, isError, onRetry, onBookingComplete }: {
@@ -79,6 +82,9 @@ function lookup(id = A, type: string | null = 'MEMBERS', subscribable = false): 
 function eventResult(id = EVENT_1, sectionId = A, title = 'Selected event'): EventForUserResponse {
   return { event: { id, title, section: { id: sectionId }, ticketTypes: [], startDateTime: '2030-03-01T18:00:00Z', endDateTime: '2030-03-01T22:00:00Z', bookingStartDateTime: '2030-02-01T00:00:00Z', bookingEndDateTime: '2030-02-28T23:59:59Z', maxGuestsWithoutModeratorApproval: 3 } };
 }
+function summaries(title: string): SectionEventsForUserResponse['events'] {
+  return [{ ...eventResult().event!, title }];
+}
 const directory = (name: string) => ({ members: [{ id: name, firstName: name, lastName: 'Member', email: null, mobileNumber: null, rank: null, membershipStatus: 'REGULAR', sharesContactInfo: false }] });
 const sdk = <T,>(data: T) => ({ data });
 function deferred<T>() {
@@ -88,9 +94,15 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 function mount(sectionId = A, eventId?: string) {
-  const component = (nextSectionId: string, nextEventId?: string) => <MemoryRouter><SectionDetail sectionId={nextSectionId} eventId={nextEventId} onBack={() => {}} /></MemoryRouter>;
+  let queryClient: QueryClient;
+  function ObserveQueryClient() {
+    const currentClient = useQueryClient();
+    useEffect(() => { queryClient = currentClient; }, [currentClient]);
+    return null;
+  }
+  const component = (nextSectionId: string, nextEventId?: string) => <MemoryRouter><ObserveQueryClient /><SectionDetail sectionId={nextSectionId} eventId={nextEventId} onBack={() => {}} /></MemoryRouter>;
   const result = render(component(sectionId, eventId));
-  return { ...result, change(nextSectionId: string, nextEventId?: string) { result.rerender(component(nextSectionId, nextEventId)); } };
+  return { ...result, get queryClient() { return queryClient; }, change(nextSectionId: string, nextEventId?: string) { result.rerender(component(nextSectionId, nextEventId)); } };
 }
 async function settle() { await act(async () => { await Promise.resolve(); await Promise.resolve(); }); }
 function expectNoContentRequests() {
@@ -375,7 +387,7 @@ describe('SectionDetail authoritative read selection', () => {
     expect(transport.getSectionMembersMerged).not.toHaveBeenCalled();
   });
 
-  it('invalidates a pending event-list result when switching to a direct event in the same section', async () => {
+  it('keeps a pending list result out of the selected event, then reuses that valid snapshot on Back', async () => {
     const old = deferred<ReturnType<typeof sdk<SectionEventsForUserResponse>>>();
     transport.getSectionForUser.mockResolvedValue(sdk(lookup(A, 'EVENTS')));
     transport.getSectionEventsForUser.mockReturnValueOnce(old.promise);
@@ -383,12 +395,13 @@ describe('SectionDetail authoritative read selection', () => {
     await waitFor(() => expect(transport.getSectionEventsForUser).toHaveBeenCalledOnce());
     view.change(A, EVENT_1);
     await screen.findByRole('heading', { name: 'Selected event', level: 4 });
-    await act(async () => old.resolve(sdk({ events: [{ id: EVENT_2, title: 'Obsolete list row' }] as SectionEventsForUserResponse['events'] })));
-    expect(screen.queryByText('Obsolete list row')).not.toBeInTheDocument();
+    await act(async () => old.resolve(sdk({ events: [{ id: EVENT_2, title: 'Pending list row' }] as SectionEventsForUserResponse['events'] })));
+    expect(screen.queryByText('Pending list row')).not.toBeInTheDocument();
     expect(transport.getSectionEventsForUser).toHaveBeenCalledOnce();
     expect(transport.getSectionMembersMerged).not.toHaveBeenCalled();
     view.change(A);
-    await waitFor(() => expect(transport.getSectionEventsForUser).toHaveBeenCalledTimes(2));
+    await screen.findByText('Pending list row');
+    expect(transport.getSectionEventsForUser).toHaveBeenCalledOnce();
     expect(transport.getEventForUser).toHaveBeenCalledOnce();
     expect(transport.getSectionForUser).toHaveBeenCalledOnce();
   });
@@ -419,5 +432,138 @@ describe('SectionDetail authoritative read selection', () => {
     expect(transport.getSectionMembersMerged).toHaveBeenCalledOnce();
     expect(transport.getSectionEventsForUser).not.toHaveBeenCalled();
     expect(transport.getEventForUser).not.toHaveBeenCalled();
+  });
+});
+
+describe('SectionDetail bundled initial content', () => {
+  it.each(['MEMBERS', 'EVENTS', 'EVENT'] as const)('renders bundled %s content from one callable without a fallback request', async kind => {
+    const content: NonNullable<SectionForUserResponse['content']> = kind === 'MEMBERS'
+      ? { kind, status: 'ready', ...directory('Bundled') }
+      : kind === 'EVENTS' ? { kind, status: 'ready', events: summaries('Bundled list row') }
+        : { kind, status: 'ready', ...eventResult(EVENT_1, A, 'Bundled event') };
+    transport.getSectionForUser.mockResolvedValue(sdk({ ...lookup(A, kind === 'MEMBERS' ? 'MEMBERS' : 'EVENTS'), content }));
+    mount(A, kind === 'EVENT' ? EVENT_1 : undefined);
+    if (kind === 'EVENT') await screen.findByRole('heading', { name: 'Bundled event', level: 4 });
+    else await screen.findByText(kind === 'MEMBERS' ? 'Bundled Member' : 'Bundled list row');
+    expect(transport.getSectionForUser).toHaveBeenCalledExactlyOnceWith({ sectionId: A, content: kind === 'EVENT' ? 'EVENT' : 'SECTION', ...(kind === 'EVENT' ? { eventId: EVENT_1 } : {}) });
+    expectNoContentRequests();
+  });
+
+  it.each(['MEMBERS', 'EVENTS', 'EVENT'] as const)('keeps metadata for a failed bundled %s read and waits for its explicit targeted retry', async kind => {
+    transport.getSectionForUser.mockResolvedValue(sdk({
+      ...lookup(A, kind === 'MEMBERS' ? 'MEMBERS' : 'EVENTS'), content: { kind, status: 'error' },
+    }));
+    mount(A, kind === 'EVENT' ? EVENT_1 : undefined);
+    const failure = kind === 'MEMBERS' ? 'Directory read failed' : kind === 'EVENTS' ? 'Events read failed' : 'Event read failed';
+    await screen.findByText(failure);
+    expect(screen.getAllByText('Section A').length).toBeGreaterThan(0);
+    expectNoContentRequests();
+    await userEvent.click(screen.getByRole('button', { name: kind === 'MEMBERS' ? 'Retry directory read' : kind === 'EVENTS' ? 'Retry events read' : 'Retry event read' }));
+    await screen.findByText(kind === 'MEMBERS' ? 'Directory ready' : kind === 'EVENTS' ? 'Events ready' : 'Event detail ready');
+    expect(screen.queryByText(failure)).not.toBeInTheDocument();
+    const callable = kind === 'MEMBERS' ? transport.getSectionMembersMerged : kind === 'EVENTS' ? transport.getSectionEventsForUser : transport.getEventForUser;
+    expect(callable).toHaveBeenCalledOnce();
+    expect(transport.getSectionForUser).toHaveBeenCalledOnce();
+    for (const other of [transport.getSectionMembersMerged, transport.getSectionEventsForUser, transport.getEventForUser]) if (other !== callable) expect(other).not.toHaveBeenCalled();
+  });
+
+  it('uses exactly one type-appropriate fallback when an older backend omits optional content', async () => {
+    transport.getSectionForUser.mockResolvedValue(sdk(lookup(A, 'EVENTS')));
+    transport.getSectionEventsForUser.mockResolvedValue(sdk({ events: summaries('Legacy backend row') }));
+    mount();
+    await screen.findByText('Legacy backend row');
+    expect(transport.getSectionForUser).toHaveBeenCalledExactlyOnceWith({ sectionId: A, content: 'SECTION' });
+    expect(transport.getSectionEventsForUser).toHaveBeenCalledExactlyOnceWith({ sectionId: A });
+    expect(transport.getSectionMembersMerged).not.toHaveBeenCalled();
+    expect(transport.getEventForUser).not.toHaveBeenCalled();
+  });
+
+  it('does not expose supplied content when metadata denies access', async () => {
+    transport.getSectionForUser.mockResolvedValue(sdk({ section: null, hasAccess: false, canModerate: false,
+      content: { kind: 'MEMBERS', status: 'ready', ...directory('Denied private') },
+    }));
+    mount();
+    await screen.findByRole('heading', { name: 'Section unavailable' });
+    expect(screen.queryByText('Denied private Member')).not.toBeInTheDocument();
+    expectNoContentRequests();
+  });
+
+  it('rejects a bundled event from a different parent without a speculative retry', async () => {
+    transport.getSectionForUser.mockResolvedValue(sdk({ ...lookup(A, 'EVENTS'),
+      content: { kind: 'EVENT', status: 'ready', ...eventResult(EVENT_1, B, 'Other section private event') },
+    }));
+    mount(A, EVENT_1);
+    await screen.findByText('Event read failed');
+    expect(screen.queryByText('Other section private event')).not.toBeInTheDocument();
+    expectNoContentRequests();
+  });
+
+  it('reuses the list bundle on detail → Back, then clears it after booking completion', async () => {
+    transport.getSectionForUser.mockResolvedValue(sdk({ ...lookup(A, 'EVENTS'),
+      content: { kind: 'EVENTS', status: 'ready', events: summaries('Initial summary row') },
+    }));
+    transport.getSectionEventsForUser.mockResolvedValue(sdk({ events: summaries('Post-booking summary row') }));
+    const view = mount();
+    await screen.findByText('Initial summary row');
+    view.change(A, EVENT_1);
+    await screen.findByRole('heading', { name: 'Selected event', level: 4 });
+    view.change(A);
+    await screen.findByText('Initial summary row');
+    expect(transport.getSectionEventsForUser).not.toHaveBeenCalled();
+    expect(transport.getSectionForUser).toHaveBeenCalledOnce();
+
+    view.change(A, EVENT_1);
+    await screen.findByRole('heading', { name: 'Selected event', level: 4 });
+    await userEvent.click(screen.getByRole('button', { name: 'Booking completed' }));
+    await waitFor(() => expect(transport.getEventForUser).toHaveBeenCalledTimes(3));
+    await screen.findByText('Event detail ready');
+    view.change(A);
+    await screen.findByText('Post-booking summary row');
+    expect(screen.queryByText('Initial summary row')).not.toBeInTheDocument();
+    expect(transport.getSectionEventsForUser).toHaveBeenCalledExactlyOnceWith({ sectionId: A });
+    expect(transport.getSectionForUser).toHaveBeenCalledOnce();
+    expect(transport.getSectionMembersMerged).not.toHaveBeenCalled();
+  });
+
+  it('discards an invalidated pending page bundle before rendering or seeding and reads current summaries instead', async () => {
+    const pending = deferred<ReturnType<typeof sdk<SectionForUserResponse>>>();
+    transport.getSectionForUser.mockReturnValueOnce(pending.promise);
+    const fresh = { events: summaries('Fresh post-write summary') };
+    transport.getSectionEventsForUser.mockResolvedValueOnce(sdk(fresh));
+    const view = mount();
+    await waitFor(() => expect(transport.getSectionForUser).toHaveBeenCalledOnce());
+    act(() => removeSectionEventSummaries(view.queryClient));
+    await act(async () => pending.resolve(sdk({ ...lookup(A, 'EVENTS'),
+      content: { kind: 'EVENTS', status: 'ready', events: summaries('Stale pre-write summary') },
+    })));
+    await screen.findByText('Fresh post-write summary');
+    expect(transport.getSectionEventsForUser).toHaveBeenCalledExactlyOnceWith({ sectionId: A });
+    expect(viewRenders.events.mock.calls.every(([props]) => !props.titles.includes('Stale pre-write summary'))).toBe(true);
+    expect(screen.queryByText('Stale pre-write summary')).not.toBeInTheDocument();
+    expect(getFreshSectionEventSummaries(view.queryClient, A)).toEqual(fresh);
+    expect(transport.getSectionMembersMerged).not.toHaveBeenCalled();
+    expect(transport.getEventForUser).not.toHaveBeenCalled();
+  });
+
+  it('cannot consume a deferred list bundle after navigating to an event and invalidating it with a booking', async () => {
+    const pending = deferred<ReturnType<typeof sdk<SectionForUserResponse>>>();
+    transport.getSectionForUser.mockReturnValueOnce(pending.promise);
+    transport.getSectionEventsForUser.mockResolvedValueOnce(sdk({ events: summaries('Current after-booking summary') }));
+    const view = mount();
+    await waitFor(() => expect(transport.getSectionForUser).toHaveBeenCalledOnce());
+    view.change(A, EVENT_1);
+    await act(async () => pending.resolve(sdk({ ...lookup(A, 'EVENTS'),
+      content: { kind: 'EVENTS', status: 'ready', events: summaries('Unused pre-booking bundle') },
+    })));
+    await screen.findByRole('heading', { name: 'Selected event', level: 4 });
+    await userEvent.click(screen.getByRole('button', { name: 'Booking completed' }));
+    await waitFor(() => expect(transport.getEventForUser).toHaveBeenCalledTimes(2));
+    await screen.findByText('Event detail ready');
+    view.change(A);
+    await screen.findByText('Current after-booking summary');
+    expect(transport.getSectionEventsForUser).toHaveBeenCalledExactlyOnceWith({ sectionId: A });
+    expect(viewRenders.events.mock.calls.every(([props]) => !props.titles.includes('Unused pre-booking bundle'))).toBe(true);
+    expect(transport.getSectionForUser).toHaveBeenCalledOnce();
+    expect(transport.getSectionMembersMerged).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 import { useLayoutEffect } from "react";
 
-function Ready({ kind, children }: { kind: string; children: React.ReactNode }) {
+export function Ready({ kind, children }: { kind: string; children: React.ReactNode }) {
   useLayoutEffect(() => { globalThis.probe.ready(kind); });
   return <section data-ready={kind}>{children}</section>;
 }

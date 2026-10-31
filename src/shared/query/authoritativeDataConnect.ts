@@ -3,6 +3,7 @@ import { executeQuery, type DataConnect, type QueryRef } from "firebase/data-con
 import { assertSessionCurrent, captureSession, runSessionRead, SessionChangedError } from "../appShell/sessionLifecycle";
 import { authorizationReadEpoch, privateReadsBlocked } from "../auth/authorizationUpdate";
 import { withTimeout } from "../utils/withTimeout";
+import { removeSectionEventSummaries } from "./sectionEventSummaryCache";
 
 // SERVER_ONLY refreshes the SDK cache too. TanStack still supplies the ordinary
 // bounded staleTime cache; a real refetch must never fall back to SDK cache.
@@ -55,6 +56,11 @@ export function dataConnectQueryOptions<Data, Variables>(ref: QueryRef<Data, Var
 /** Explicit Refresh/post-write read: cancel older work, refresh both caches, and
  * reject failures or superseded results instead of reporting stale success. */
 export async function refreshDataConnectQuery<Data, Variables>(client: QueryClient, ref: QueryRef<Data, Variables>): Promise<Data> {
+  // Admin event/ticket writes converge on these explicit server refreshes.
+  // Retire member summaries first, including when the subsequent read fails.
+  if (ref.name === "GetEventsForSection" || ref.name === "GetEventById") {
+    removeSectionEventSummaries(client);
+  }
   const session = captureSession();
   let fence: ReadFence | undefined;
   let data: Data;

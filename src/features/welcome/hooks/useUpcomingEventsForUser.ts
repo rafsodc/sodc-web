@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { SectionType } from "@dataconnect/generated";
 import type { AccessibleSection } from "../../../shared/navigation/extractAccessibleSections";
 import { reportError } from "../../../shared/errors";
-import { getSectionEventsForUser } from "../../../shared/utils/firebaseFunctions";
+import { useQueryClient } from "@tanstack/react-query";
+import { loadSectionEventSummaries } from "../../../shared/query/sectionEventSummaries";
+import { removeSectionEventSummaries } from "../../../shared/query/sectionEventSummaryCache";
+import { authorizationReadEpoch, subscribeAuthorizationUpdates } from "../../../shared/auth/authorizationUpdate";
+import { isAuthenticationFailure } from "../../../shared/auth/isAuthenticationFailure";
+import { classifyAuthorizationFailure } from "../../../shared/auth/authorizationFailure";
+import { SessionChangedError } from "../../../shared/appShell/sessionLifecycle";
 import {
   isUpcomingSectionEvent,
   sortUpcomingSectionEvents,
@@ -29,6 +35,8 @@ export function sectionsFingerprint(sections: AccessibleSection[]): string {
 }
 
 export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
+  const queryClient = useQueryClient();
+  const authorityEpoch = useSyncExternalStore(subscribeAuthorizationUpdates, authorizationReadEpoch);
   const fingerprint = sectionsFingerprint(sections);
 
   const { eventSectionIds, sectionNameById } = useMemo(() => {
@@ -45,12 +53,14 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
   }, [fingerprint]);
 
   const eventSectionIdsKey = eventSectionIds.join(",");
+  const readOwner = `${authorityEpoch}:${eventSectionIdsKey}`;
 
   const [events, setEvents] = useState<UpcomingEventRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const lastFetchedKeyRef = useRef<string | null>(null);
+  const lastRetryRef = useRef(0);
   const requestGuard = useLatestRequestGuard();
 
   useEffect(() => {
@@ -62,15 +72,20 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
       setEvents([]);
       setIsError(false);
       setLoading(false);
-      lastFetchedKeyRef.current = "";
+      lastFetchedKeyRef.current = readOwner;
       return;
     }
 
     const requestToken = requestGuard.start();
-    const isNewFetch = lastFetchedKeyRef.current !== eventSectionIdsKey;
-    lastFetchedKeyRef.current = eventSectionIdsKey;
+    if (lastRetryRef.current !== retryAttempt) {
+      removeSectionEventSummaries(queryClient);
+      lastRetryRef.current = retryAttempt;
+    }
+    const isNewFetch = lastFetchedKeyRef.current !== readOwner;
+    lastFetchedKeyRef.current = readOwner;
 
     if (isNewFetch) {
+      setEvents([]);
       setLoading(true);
       setIsError(false);
     }
@@ -79,7 +94,7 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
       try {
         const results = await Promise.all(
           ids.map(async (sectionId) => {
-            const result = await getSectionEventsForUser(sectionId);
+            const result = await loadSectionEventSummaries(queryClient, sectionId);
             return result.events.map((event) => ({
               id: event.id,
               title: event.title,
@@ -106,7 +121,11 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
         if (requestGuard.isCurrent(requestToken)) {
           reportError("welcome.upcoming-events", error);
           setIsError(true);
-          // Keep any previously loaded events visible while the retry option is shown.
+          if (isAuthenticationFailure(error) || classifyAuthorizationFailure(error) || error instanceof SessionChangedError) {
+            removeSectionEventSummaries(queryClient);
+            setEvents([]);
+          }
+          // A transport failure may retain this same owner's already-loaded rows.
         }
       } finally {
         if (requestGuard.isCurrent(requestToken)) {
@@ -118,12 +137,12 @@ export function useUpcomingEventsForUser(sections: AccessibleSection[]) {
     return () => {
       if (requestGuard.isCurrent(requestToken)) requestGuard.invalidate();
     };
-  }, [eventSectionIdsKey, sectionNameById, retryAttempt, requestGuard]);
+  }, [eventSectionIdsKey, sectionNameById, retryAttempt, requestGuard, queryClient, readOwner]);
 
   return {
-    events,
-    loading,
-    isError,
+    events: lastFetchedKeyRef.current === readOwner ? events : [],
+    loading: lastFetchedKeyRef.current === readOwner ? loading : eventSectionIds.length > 0,
+    isError: lastFetchedKeyRef.current === readOwner && isError,
     retry: () => setRetryAttempt((attempt) => attempt + 1),
   };
 }

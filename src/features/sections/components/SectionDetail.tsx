@@ -30,7 +30,6 @@ import {
   getSectionMembersMerged,
   subscribeToUserGroup,
   getSectionForUser,
-  getSectionEventsForUser,
   getEventForUser,
 } from "../../../shared/utils/firebaseFunctions";
 import type {
@@ -52,6 +51,11 @@ import {
 } from "./SectionDetailViews";
 import { invalidateUserSectionAccess } from "../../../shared/query/invalidation";
 import { useLatestRequestGuard } from "../../../shared/hooks/useLatestRequestGuard";
+import { loadSectionEventSummaries } from "../../../shared/query/sectionEventSummaries";
+import {
+  captureSectionEventSummaryRead, getFreshSectionEventSummaries, hasPendingSectionEventSummaries,
+  rememberSectionEventSummaries, removeSectionEventSummaries,
+} from "../../../shared/query/sectionEventSummaryCache";
 
 interface SectionDetailProps {
   sectionId: string;
@@ -93,6 +97,17 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
   const verifiedContentScope = useRef<SectionContentScope | null>(null);
   const currentRoute = useRef({ sectionId, selectedEventId });
   currentRoute.current = { sectionId, selectedEventId };
+  const bundledContent = useRef<{
+    sectionId: string; eventId: string | null; content: SectionForUserResponse["content"];
+    isCurrent: () => boolean;
+  } | null>(null);
+  const takeBundledContent = useCallback((kind: "MEMBERS" | "EVENTS" | "EVENT") => {
+    const bundle = bundledContent.current;
+    if (!bundle) return undefined;
+    bundledContent.current = null;
+    if (!bundle.isCurrent() || !idsEqual(bundle.sectionId, sectionId) || bundle.eventId !== currentRoute.current.selectedEventId || bundle.content?.kind !== kind) return undefined;
+    return bundle.content;
+  }, [sectionId]);
   const matchingScope = contentScope && idsEqual(contentScope.id, sectionId) ? contentScope : null;
   const needsMembers = matchingScope?.type === "MEMBERS" && !selectedEventId;
   const needsEvents = matchingScope?.type === "EVENTS" && !selectedEventId;
@@ -121,20 +136,34 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     setServerCanModerate(false);
     setErrorSection(false);
     try {
-      const result = await getSectionForUser(sectionId);
+      const summaryRead = captureSectionEventSummaryRead(queryClient, sectionId);
+      const requestedEventId = currentRoute.current.selectedEventId;
+      const options = requestedEventId ? { content: "EVENT" as const, eventId: requestedEventId }
+        : getFreshSectionEventSummaries(queryClient, sectionId) || hasPendingSectionEventSummaries(queryClient, sectionId)
+          ? undefined : { content: "SECTION" as const };
+      const result = await getSectionForUser(sectionId, options);
       if (!sectionRequestGuard.isCurrent(requestToken)) return null;
       if (result.section && !idsEqual(result.section.id, sectionId)) {
         throw new Error("Section metadata does not match the requested section");
       }
-      const scope = result.section ? { id: result.section.id, type: result.section.type } : null;
+      const section = result.hasAccess ? result.section : null;
+      const scope = section ? { id: section.id, type: section.type } : null;
+      // A late page bundle must not bypass the same save/access fence that
+      // protects shared summaries. Fall back to a current targeted read.
+      bundledContent.current = { sectionId, eventId: requestedEventId, content: section && summaryRead.isCurrent() ? result.content : undefined, isCurrent: summaryRead.isCurrent };
+      if (!section) removeSectionEventSummaries(queryClient);
+      else if (result.content?.kind === "EVENTS" && result.content.status === "ready") {
+        rememberSectionEventSummaries(queryClient, { events: result.content.events }, summaryRead);
+      }
       verifiedContentScope.current = scope;
       setContentScope(scope);
-      setSectionData({ section: result.section });
-      setServerCanModerate(result.canModerate);
-      return result.section;
+      setSectionData({ section });
+      setServerCanModerate(Boolean(section && result.canModerate));
+      return section;
     } catch (error) {
       if (!sectionRequestGuard.isCurrent(requestToken)) return null;
       reportError("sections.detail", error);
+      bundledContent.current = null;
       verifiedContentScope.current = null;
       setContentScope(null);
       setSectionData(undefined);
@@ -145,7 +174,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
         setLoadingSection(false);
       }
     }
-  }, [sectionId, sectionRequestGuard]);
+  }, [sectionId, sectionRequestGuard, queryClient]);
 
   useEffect(() => {
     void refetchSection();
@@ -170,7 +199,9 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     const pending = Promise.resolve().then(async () => {
       if (!membersRequestGuard.isCurrent(requestToken) || !ownsDirectory()) return false;
       try {
-        const res = await getSectionMembersMerged(sectionId);
+        const bundle = !force ? takeBundledContent("MEMBERS") : undefined;
+        if (bundle?.status === "error") throw new Error("The member directory could not be loaded");
+        const res = bundle?.kind === "MEMBERS" && bundle.status === "ready" ? bundle : await getSectionMembersMerged(sectionId);
         if (!membersRequestGuard.isCurrent(requestToken) || !ownsDirectory()) return false;
         const members: SectionMember[] = (res.members || []).map((m) => ({
           userId: m.id,
@@ -198,7 +229,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     });
     membersRead.current = pending;
     return pending;
-  }, [sectionId, membersRequestGuard]);
+  }, [sectionId, membersRequestGuard, takeBundledContent]);
 
   useEffect(() => {
     if (!needsMembers) {
@@ -242,7 +273,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
   const eventsRequestMatches = idsEqual(eventsReadFor, sectionId);
 
   const eventsRequestGuard = useLatestRequestGuard();
-  const refetchEvents = useCallback(async () => {
+  const refetchEvents = useCallback(async (force = false) => {
     const ownsEvents = () => idsEqual(currentRoute.current.sectionId, sectionId) &&
       !currentRoute.current.selectedEventId &&
       idsEqual(verifiedContentScope.current?.id, sectionId) &&
@@ -253,7 +284,9 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     setLoadingEvents(true);
     setErrorEvents(false);
     try {
-      const result = await getSectionEventsForUser(sectionId);
+      const bundle = !force ? takeBundledContent("EVENTS") : undefined;
+      if (bundle?.status === "error") throw new Error("The events could not be loaded");
+      const result = bundle?.kind === "EVENTS" && bundle.status === "ready" ? bundle : await loadSectionEventSummaries(queryClient, sectionId, { force });
       if (!eventsRequestGuard.isCurrent(requestToken) || !ownsEvents()) return;
       setEventsData({ section: { events: result.events } });
     } catch (error) {
@@ -266,7 +299,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
         setLoadingEvents(false);
       }
     }
-  }, [sectionId, eventsRequestGuard]);
+  }, [sectionId, eventsRequestGuard, takeBundledContent, queryClient]);
 
   useEffect(() => {
     setEventsData(undefined);
@@ -287,7 +320,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     idsEqual(eventDetailReadFor?.eventId, selectedEventId);
 
   const eventDetailRequestGuard = useLatestRequestGuard();
-  const refetchEventDetail = useCallback(async () => {
+  const refetchEventDetail = useCallback(async (force = false) => {
     const ownsEvent = () => idsEqual(currentRoute.current.sectionId, sectionId) &&
       idsEqual(currentRoute.current.selectedEventId, selectedEventId) &&
       idsEqual(verifiedContentScope.current?.id, sectionId) &&
@@ -299,7 +332,9 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     setEventDetailData(undefined);
     setErrorEventDetail(false);
     try {
-      const result = await getEventForUser(selectedEventId);
+      const bundle = !force ? takeBundledContent("EVENT") : undefined;
+      if (bundle?.status === "error") throw new Error("The event could not be loaded");
+      const result = bundle?.kind === "EVENT" && bundle.status === "ready" ? bundle : await getEventForUser(selectedEventId);
       if (!eventDetailRequestGuard.isCurrent(requestToken) || !ownsEvent()) return;
       if (result.event && !idsEqual(result.event.section?.id,sectionId)) {
         setEventDetailData(undefined); setErrorEventDetail(true); return;
@@ -315,7 +350,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
         setLoadingEventDetail(false);
       }
     }
-  }, [selectedEventId, sectionId, eventDetailRequestGuard]);
+  }, [selectedEventId, sectionId, eventDetailRequestGuard, takeBundledContent]);
 
   useEffect(() => {
     setEventDetailData(undefined);
@@ -428,8 +463,8 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
     membersRead.current = null;
     if (verifiedContentScope.current?.type === "MEMBERS") setLoadingMembers(true);
     try {
-      const [sectionLoaded] = await Promise.all([
-        refetchSection(), invalidateUserSectionAccess(queryClient),
+      const [, sectionLoaded] = await Promise.all([
+        invalidateUserSectionAccess(queryClient), refetchSection(),
       ]);
       if (!subscriptionRequestGuard.isCurrent(requestToken)) return;
       if (!sectionLoaded) throw new Error("Subscription view refresh incomplete");
@@ -664,9 +699,10 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
           isError={eventDetailRequestMatches && errorEventDetail}
           hasCurrentUser={Boolean(currentUser)}
           onBackToEvents={handleBackToEvents}
-          onRetry={() => refetchEventDetail()}
+          onRetry={() => refetchEventDetail(true)}
           onBookingComplete={() => {
-            void refetchEventDetail();
+            removeSectionEventSummaries(queryClient);
+            void refetchEventDetail(true);
             void queryClient.invalidateQueries({ queryKey: ["eventAttendees", selectedEventId] });
           }}
         />
@@ -675,7 +711,7 @@ export default function SectionDetail({ sectionId, eventId, onBack }: SectionDet
           events={eventRows}
           loading={needsEvents && (!eventsRequestMatches || loadingEvents)}
           isError={eventsRequestMatches && errorEvents}
-          onRetry={() => refetchEvents()}
+          onRetry={() => refetchEvents(true)}
           onSelectEvent={handleSelectEvent}
           eventHref={(id) => memberEventPath(sectionId,id)}
         />

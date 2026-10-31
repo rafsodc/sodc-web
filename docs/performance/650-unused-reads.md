@@ -1,5 +1,8 @@
 # #650 first slice: unused-read component measurement
 
+Historical first experiment. The [revised navigation design](650-navigation.md)
+addresses the measured cold-load and Back regressions before release.
+
 This slice removes unused section reads; it does not implement the complete #650
 cache or profiling backlog. The benchmark runs locally with synthetic fixtures,
 without Firebase configuration, credentials, emulators, cloud calls or writes.

@@ -105,14 +105,19 @@ export interface SectionForUserResponse {
   section: NonNullable<GetSectionByIdData["section"]> | null;
   hasAccess: boolean;
   canModerate: boolean;
+  content?:
+    | ({ kind: "MEMBERS"; status: "ready" } & GetSectionMembersMergedResponse)
+    | ({ kind: "EVENTS"; status: "ready" } & SectionEventsForUserResponse)
+    | ({ kind: "EVENT"; status: "ready" } & EventForUserResponse)
+    | { kind: "MEMBERS" | "EVENTS" | "EVENT"; status: "error" };
 }
 
-export async function getSectionForUser(sectionId: string): Promise<SectionForUserResponse> {
-  const callable = httpsCallable<{ sectionId: string }, SectionForUserResponse>(
+export async function getSectionForUser(sectionId: string, options?: { content: "SECTION" | "EVENT"; eventId?: string }): Promise<SectionForUserResponse> {
+  const callable = httpsCallable<{ sectionId: string; content?: "SECTION" | "EVENT"; eventId?: string }, SectionForUserResponse>(
     functions,
     "getSectionForUser"
   );
-  const result = await callable({ sectionId });
+  const result = await callable({ sectionId, ...options });
   return result.data;
 }
 
