@@ -43,7 +43,8 @@ function bookingStatusCard(
   booking: TerminalBooking,
   paymentSummary: EventBookingPaymentSummary,
   hasSeparatePaymentBooking: boolean,
-  canEdit: boolean
+  canEdit: boolean,
+  allTicketsRemoved: boolean
 ) {
   if (booking.approvalStatus === "PENDING") {
     return {
@@ -68,6 +69,13 @@ function bookingStatusCard(
       message: paymentSummary.kind === "adjustment_refund"
         ? "Your booking change is saved and the refund is being processed."
         : "Your payment is being processed. This page will update when it completes.",
+    };
+  }
+  if (allTicketsRemoved) {
+    return {
+      heading: "No active tickets",
+      severity: "info" as const,
+      message: "All tickets in this booking have been removed. Contact an organiser if you expected to attend or need help with payment.",
     };
   }
   if (isBookingPaymentComplete(paymentSummary) || booking.status === "CONFIRMED") {
@@ -123,7 +131,11 @@ export default function EventBookingStatusSummary({
     eventId,
     ticketOrders,
   });
-  const statusCard = bookingStatusCard(booking, paymentSummary, hasSeparatePaymentBooking, Boolean(onEditBooking));
+  const allTicketsRemoved = (paymentDisplayBooking.lines?.length ?? 0) > 0 &&
+    paymentDisplayBooking.lines.every((line) => line.bookingPlace?.attendanceRemoved === true);
+  const statusCard = bookingStatusCard(
+    booking, paymentSummary, hasSeparatePaymentBooking, Boolean(onEditBooking), allTicketsRemoved
+  );
   const showPayNow =
     Boolean(onPayNow) &&
     effectivePaymentBooking != null &&
