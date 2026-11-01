@@ -14,6 +14,7 @@ import { dataConnectQueryOptions, refreshDataConnectQuery } from "../../../../sh
 import { useGetMyBookings } from "../../../../shared/query/authoritativeHooks";
 import { guestCall } from "../../../guests/api";
 import { createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
+import { idsEqual } from "../../../../shared/utils/uuid";
 
 // Real installed SDK cache, real query refs, real app hooks and rendered MUI
 // controls. Only the network transport/callables are replaced with memory state.
@@ -157,13 +158,13 @@ async function openCreateTicket() {
 
 // Event-save tests retain the actual SDK, query observers and canonical cache
 // helper. The fake transport models committed rows, not client-submitted drafts.
-function eventServer(initiallyPresent = true) {
-  let saved = initiallyPresent ? { ...copy(event), section: { id: "section-1" }, ticketTypes: copy(ticketTypes), updatedAt: "2026-11-01T12:00:00Z" } : null;
+function eventServer(initiallyPresent = true, serverEventId = event.id) {
+  let saved = initiallyPresent ? { ...copy(event), id: serverEventId, section: { id: "section-1" }, ticketTypes: copy(ticketTypes), updatedAt: "2026-11-01T12:00:00Z" } : null;
   const originalRead = read.getMockImplementation()!;
   read.mockImplementation(async (name: string, variables: Record<string, unknown>) => {
     if (name === failingRead) throw new Error("Event recovery read unavailable");
     if (name === "GetEventsForSection") return { data: { section: { id: "section-1", events: saved ? [copy(saved)] : [] } }, extensions: {} };
-    if (name === "GetEventById") return { data: { event: saved && saved.id === variables.id ? copy(saved) : null }, extensions: {} };
+    if (name === "GetEventById") return { data: { event: saved && idsEqual(saved.id, String(variables.id)) ? copy(saved) : null }, extensions: {} };
     return originalRead(name, variables);
   });
   const commit = (name: string, variables: Record<string, unknown>) => {
@@ -404,6 +405,98 @@ describe("canonical committed event saves", () => {
 });
 
 describe("rendered administration freshness with the installed SDK cache", () => {
+  it.each([
+    { mode: "uncertain", spelling: "dashed", routeId: "182a30a9-7cb1-46eb-a5dc-83a54d6dc503" },
+    { mode: "uncertain", spelling: "uppercase", routeId: "182A30A9-7CB1-46EB-A5DC-83A54D6DC503" },
+    { mode: "retained", spelling: "dashed", routeId: "182a30a9-7cb1-46eb-a5dc-83a54d6dc503" },
+    { mode: "retained", spelling: "uppercase", routeId: "182A30A9-7CB1-46EB-A5DC-83A54D6DC503" },
+  ] as const)("refreshes the observed event key for $mode recovery from a $spelling URL and compact server IDs", async ({ mode, routeId }) => {
+    const endSession = eventSession();
+    const compactId = "182a30a97cb146eba5dc83a54d6dc503";
+    const canonicalId = "182a30a9-7cb1-46eb-a5dc-83a54d6dc503";
+    const server = eventServer(true, compactId);
+    const path = `/sections/section-1/manage/events/${routeId}?task=details`;
+    // Real generated refs retain spelling in their variables and query keys.
+    // Prime every relevant key in both TanStack and the installed SDK so a
+    // successful read of only the compact key cannot mask a stale URL observer.
+    for (const id of new Set([routeId, canonicalId, compactId])) {
+      await queryClient.fetchQuery(dataConnectQueryOptions(getEventByIdRef(context.dc, { id })));
+    }
+    let complete!: () => void;
+    write.mockImplementationOnce((name: string, variables: Record<string, unknown>) => {
+      const response = server.commit(name, variables);
+      if (mode === "uncertain") return Promise.reject(new Error("Response lost after the event committed"));
+      return new Promise(resolve => { complete = () => resolve(response); });
+    });
+    let rendered = render(routedEventView(path));
+    try {
+      const user = userEvent.setup();
+      expect(await screen.findByRole("heading", { level: 1, name: event.title })).toBeInTheDocument();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "Committed event before recovery" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(write).toHaveBeenCalledOnce());
+      if (mode === "retained") {
+        rendered.unmount();
+        await act(async () => { complete(); });
+        rendered = render(routedEventView(path));
+        await screen.findByText(/The previous save completed/);
+      } else {
+        await screen.findByText(/The previous save could not be confirmed/);
+      }
+      // Reconciliation must read the latest full detail, not reinstall the
+      // mutation receipt or patch a title into an incomplete/stale projection.
+      const latestTitle = `Latest ${mode} event from server`;
+      server.current()!.title = latestTitle;
+      server.current()!.ticketTypes[0].title = "Ticket changed before reconciliation";
+      const before = read.mock.calls.length;
+      if (mode === "retained") {
+        await user.click(screen.getByRole("button", { name: "Load saved change" }));
+      } else {
+        await user.click(screen.getByRole("button", { name: "Check latest list" }));
+        const review = await screen.findByRole("dialog", { name: "Start a new save request?" });
+        expect(within(review).getByText(latestTitle)).toBeInTheDocument();
+        await user.click(within(review).getByRole("button", { name: "I found the saved change — close this draft" }));
+        await waitForDialogToClose();
+      }
+      const canonicalRef = getEventByIdRef(context.dc, { id: canonicalId });
+      await waitFor(() => expect(queryClient.getQueryData(dataConnectQueryOptions(canonicalRef).queryKey)).toEqual({ event: server.current() }));
+      expect(await screen.findByRole("heading", { level: 1, name: latestTitle })).toBeInTheDocument();
+      const recoveryDetailReads = read.mock.calls.slice(before).filter(([name]) => name === "GetEventById");
+      expect(recoveryDetailReads.map(([, variables]) => variables.id)).toEqual([canonicalId]);
+      expect((await executeQuery(canonicalRef)).data.event).toEqual(server.current());
+      await user.click(screen.getByRole("tab", { name: "Event details" }));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue(latestTitle);
+      expect(screen.getByText("Saved", { exact: true })).toBeInTheDocument();
+      expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateEvent"]);
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it("refreshes the observed ticket detail after saving from an uppercase event URL", async () => {
+    const endSession = eventSession();
+    const canonicalId = "182a30a9-7cb1-46eb-a5dc-83a54d6dc503";
+    const server = eventServer(true, canonicalId.replaceAll("-", ""));
+    for (const id of [canonicalId, canonicalId.toUpperCase()]) {
+      await queryClient.fetchQuery(dataConnectQueryOptions(getEventByIdRef(context.dc, { id })));
+    }
+    write.mockImplementationOnce(async (name: string, variables: Record<string, unknown>) => {
+      expect(name).toBe("UpdateTicketType");
+      server.current()!.ticketTypes[0].title = String(variables.title);
+      return { data: { ticketType_update: { id: "type-1" } }, extensions: {} };
+    });
+    const rendered = render(routedEventView(`/sections/section-1/manage/events/${canonicalId.toUpperCase()}?task=tickets&ticket=type-1`));
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "Updated ticket through canonical detail" } });
+      const before = read.mock.calls.length;
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitForDialogToClose();
+      expect(await screen.findByText("Updated ticket through canonical detail", { exact: true })).toBeInTheDocument();
+      expect(queryClient.getQueryData(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: canonicalId })).queryKey)).toEqual({ event: server.current() });
+      expect(read.mock.calls.slice(before).filter(([name]) => name === "GetEventById").map(([, variables]) => variables.id)).toEqual([canonicalId]);
+      expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateTicketType"]);
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
   it.each([false, true])("refreshes a found uncertain event update before reopening saved details, retry=%s", async (retry) => {
     const owner = createSessionLifecycle(); owner.observe("admin");
     const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
