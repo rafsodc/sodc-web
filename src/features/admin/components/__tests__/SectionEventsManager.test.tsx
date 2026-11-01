@@ -28,7 +28,7 @@ vi.mock("../../../../shared/query/authoritativeHooks", () => ({
 
 vi.mock("firebase/data-connect", () => ({
   executeQuery: vi.fn().mockResolvedValue({ data: null }),
-  queryRef: vi.fn(() => ({type:"query"})),
+  queryRef: vi.fn((dataConnect, name, variables) => ({type:"query", dataConnect, name, variables})),
   executeMutation: vi.fn().mockResolvedValue({}),
   validateArgs: vi.fn((_config: unknown, dcOrVars: unknown, vars: unknown) => {
     if (vars !== undefined) return { dc: dcOrVars, vars };
@@ -92,8 +92,8 @@ vi.mock("@dataconnect/generated", async () => {
   const actual = await vi.importActual("@dataconnect/generated");
   return {
     ...actual,
-    createEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
-    updateEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
+    createEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", name: "CreateEvent", vars })),
+    updateEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", name: "UpdateEvent", vars })),
     deleteEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     createTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     updateTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
@@ -105,6 +105,15 @@ vi.mock("@dataconnect/generated", async () => {
     ].map(([key, name]) => [key, vi.fn((dataConnect: unknown, variables: unknown) => ({ name, dataConnect, variables }))])),
   };
 });
+
+function eventSaveResponse(variables: Record<string, unknown>, created = false) {
+  const saved = { location: null, guestOfHonour: null, sponsors: null, details: null,
+    ...variables, section: { id: "section-1" }, ticketTypes: [], updatedAt: "2026-11-01T12:00:00Z" };
+  return { data: { [created ? "event_insert" : "event_update"]: { id: variables.id }, saved: { event: saved } } };
+}
+function latestCreateVariables() {
+  return vi.mocked(generated.createEventRef).mock.calls.at(-1)![1] as unknown as Record<string, unknown>;
+}
 
 function CanonicalManagerRoute() {
   const {sectionId = "section-1",eventId} = useParams();
@@ -143,7 +152,11 @@ describe("SectionEventsManager", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(firebaseDataConnect.executeQuery).mockReset().mockResolvedValue({ data: null } as never);
-    vi.mocked(firebaseDataConnect.executeMutation).mockReset().mockResolvedValue({} as never);
+    vi.mocked(firebaseDataConnect.executeMutation).mockReset().mockImplementation(async ref => {
+      const mutation = ref as unknown as { name?: string; vars: Record<string, unknown> };
+      return (mutation.name === "CreateEvent" || mutation.name === "UpdateEvent"
+        ? eventSaveResponse(mutation.vars, mutation.name === "CreateEvent") : {}) as never;
+    });
     vi.mocked(guestCall).mockResolvedValue({ event: {}, guests: [], ticketTypes: [] });
     vi.mocked(firebaseFunctions.reviewBookingRevision).mockResolvedValue({
       success: true,
@@ -902,75 +915,23 @@ describe("SectionEventsManager", () => {
     );
   }, 10_000);
 
-  it("renders refreshed selected-event details after editing", async () => {
+  it("installs the committed event detail without refetching after editing", async () => {
     const user = userEvent.setup();
-    const event = {
-      id: "ev-1",
-      title: "Annual Dinner",
-      startDateTime: "2025-03-01T18:00:00Z",
-      endDateTime: "2025-03-01T22:00:00Z",
-      bookingStartDateTime: "2025-02-01T00:00:00Z",
-      bookingEndDateTime: "2025-02-28T23:59:59Z",
-      location: "Main Hall",
-      guestOfHonour: "Jane Doe",
-      maxGuestsWithoutModeratorApproval: 2,
-    };
-    const updatedEvent = { ...event, title: "Updated Dinner" };
-    const refetchEvents = vi.fn().mockImplementation(async () => {
-      mockGetEventsForSection({
-        data: { section: { id: sectionId, events: [updatedEvent] } },
-        isLoading: false,
-        isError: false,
-        refetch: refetchEvents,
-      });
-      return {};
-    });
-    const refetchEventDetail = vi.fn().mockImplementation(async () => {
-      mockGetEventById({
-        data: { event: { ...updatedEvent, ticketTypes: [] } },
-        isLoading: false,
-        isError: false,
-        refetch: refetchEventDetail,
-      });
-      return {};
-    });
-    mockGetEventsForSection({
-      data: { section: { id: sectionId, events: [event] } },
-      isLoading: false,
-      isError: false,
-      refetch: refetchEvents,
-    });
-    mockGetEventById({
-      data: { event: { ...event, ticketTypes: [] } },
-      isLoading: false,
-      isError: false,
-      refetch: refetchEventDetail,
-    });
-
-    vi.mocked(firebaseDataConnect.executeQuery).mockImplementation(async (ref) => {
-      if (ref.name === "GetEventsForSection") {
-        await refetchEvents();
-        return { data: { section: { id: sectionId, events: [updatedEvent] } } } as never;
-      }
-      if (ref.name === "GetEventById") {
-        await refetchEventDetail();
-        return { data: { event: { ...updatedEvent, ticketTypes: [] } } } as never;
-      }
-      return { data: null } as never;
-    });
-
+    const event = { id: "ev-1", section: { id: sectionId }, title: "Annual Dinner", location: "Main Hall", guestOfHonour: null,
+      sponsors: null, details: null, startDateTime: "2030-03-01T18:00:00Z", endDateTime: "2030-03-01T22:00:00Z",
+      bookingStartDateTime: "2030-02-01T00:00:00Z", bookingEndDateTime: "2030-02-28T23:59:59Z", maxGuestsWithoutModeratorApproval: 2, ticketTypes: [] };
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [event] } }, isLoading: false, isError: false });
+    mockGetEventById({ data: { event }, isLoading: false, isError: false });
     render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /event admin/i }));
     await user.click(screen.getByRole("button", { name: /^event details$/i }));
     await user.click(screen.getByRole("button", { name: /edit event details/i }));
     fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "Updated Dinner" } });
     await user.click(screen.getByRole("button", { name: "Save" }));
-
-    await waitFor(() => {
-      expect(refetchEvents).toHaveBeenCalledOnce();
-      expect(refetchEventDetail).toHaveBeenCalledOnce();
-    });
-    expect(await screen.findByText("Updated Dinner")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+    expect(managerQueryClient.getQueryData<{event:{title:string}}>(["GetEventById",{id:event.id}])?.event.title).toBe("Updated Dinner");
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    expect(firebaseDataConnect.executeQuery).not.toHaveBeenCalled();
   }, 10_000);
 
   it.each([
@@ -1501,37 +1462,18 @@ describe("SectionEventsManager", () => {
     } finally { view.unmount(); owner.retire(); uninstall(); }
   }, 20_000);
 
-  it("saves inline details once and updates the event header only after the authoritative detail read", async () => {
-    const event = prepareRoutedEvent();
-    const updated = { ...event, title: "Server-confirmed dinner" };
-    let finishDetail!: (value: unknown) => void;
-    const detailRead = new Promise(resolve => { finishDetail = resolve; });
-    vi.mocked(firebaseDataConnect.executeQuery).mockImplementation(async (ref) => {
-      if (ref.name === "GetEventsForSection") {
-        mockGetEventsForSection({ data: { section: { id: sectionId, events: [updated] } }, isLoading: false, isError: false });
-        return { data: { section: { id: sectionId, events: [updated] } } } as never;
-      }
-      if (ref.name === "GetEventById") {
-        const result = await detailRead;
-        mockGetEventById({ data: { event: updated }, isLoading: false, isError: false });
-        return result as never;
-      }
-      return { data: null } as never;
-    });
+  it("saves inline details once without a post-save detail read", async () => {
+    prepareRoutedEvent();
     canonicalManager("/sections/section-1/manage/events/ev-1?task=details");
     const user = userEvent.setup();
-    fireEvent.change(await screen.findByRole("textbox", { name: "Title" }), { target: { value: updated.title } });
-    expect(screen.getByRole("heading", { level: 1, name: event.title })).toBeInTheDocument();
+    fireEvent.change(await screen.findByRole("textbox", { name: "Title" }), { target: { value: "Server-confirmed dinner" } });
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(generated.getEventByIdRef).toHaveBeenCalledWith(expect.anything(), { id: "ev-1" }));
-    expect(generated.updateEventRef).toHaveBeenCalledOnce();
-    expect(screen.getByRole("heading", { level: 1, name: event.title })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 1, name: updated.title })).not.toBeInTheDocument();
-    await act(async () => { finishDetail({ data: { event: updated } }); await detailRead; });
-    expect(await screen.findByRole("heading", { level: 1, name: updated.title })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("form")).not.toBeInTheDocument());
     expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByRole("form")).not.toBeInTheDocument();
+    expect(managerQueryClient.getQueryData<{event:{title:string}}>(["GetEventById",{id:"ev-1"}])?.event.title).toBe("Server-confirmed dinner");
+    expect(generated.updateEventRef).toHaveBeenCalledOnce();
     expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    expect(firebaseDataConnect.executeQuery).not.toHaveBeenCalled();
   }, 20_000);
 
   it("refuses an event absent from the authoritative section list before enabling private management reads", () => {
@@ -1610,17 +1552,52 @@ describe("SectionEventsManager", () => {
       expect(screen.getByText(/This save is still being confirmed/)).toBeInTheDocument();
       expect(generated.createEventRef).toHaveBeenCalledOnce();
       await act(async()=>managerNavigation(1));
-      await act(async()=>{complete({data:{event_insert:{id:"created-event"}}});await pending;});
+      await act(async()=>{complete(eventSaveResponse(latestCreateVariables(), true));await pending;});
       expect(screen.getByText("Elsewhere")).toBeInTheDocument();
       await act(async()=>managerNavigation(-1));
       expect(await screen.findByText(/The previous save completed/)).toBeInTheDocument();
       expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
+      vi.mocked(firebaseDataConnect.executeQuery).mockImplementation(async ref => ({data: ref.name === "GetEventsForSection"
+        ? {section:{id:sectionId,events:[eventSaveResponse(latestCreateVariables(),true).data.saved.event]}}
+        : {event:eventSaveResponse(latestCreateVariables(),true).data.saved.event}}) as never);
       await user.click(screen.getByRole("button",{name:"Load saved change"}));
       expect(await screen.findByRole("link",{name:"Add event"})).toBeInTheDocument();
       expect(generated.createEventRef).toHaveBeenCalledOnce();
       expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
     } finally {view.unmount();uninstall();}
   },20_000);
+
+  it("does not acknowledge or close a changed URL while a retained success is refreshing", async () => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({lifecycle:owner,retire:()=>owner.retire(),signOut:async()=>owner.retire()});
+    prepareRoutedEvent();
+    let completeWrite!: (value: unknown) => void;
+    const pending = new Promise(resolve => { completeWrite = resolve; });
+    vi.mocked(firebaseDataConnect.executeMutation).mockReturnValueOnce(pending as never);
+    const view = canonicalManager("/sections/section-1/manage/events/ev-1?task=details");
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i), {target:{value:"Submitted edit"}});
+      await user.click(screen.getByRole("button", {name:"Save"}));
+      await act(async () => managerNavigation("?task=details&review=1"));
+      const response = eventSaveResponse(vi.mocked(generated.updateEventRef).mock.calls.at(-1)![1] as unknown as Record<string, unknown>);
+      await act(async () => { completeWrite(response); await pending; });
+      await screen.findByText(/The previous save completed/);
+      let completeRead!: (value: unknown) => void;
+      const detail = new Promise(resolve => { completeRead = resolve; });
+      vi.mocked(firebaseDataConnect.executeQuery).mockImplementation(ref => (ref.name === "GetEventById" ? detail
+        : Promise.resolve({data:{section:{id:sectionId,events:[response.data.saved.event]}}})) as never);
+      await user.click(screen.getByRole("button", {name:"Load saved change"}));
+      await waitFor(() => expect(generated.getEventByIdRef).toHaveBeenCalled());
+      await act(async () => managerNavigation("?task=details&review=2"));
+      fireEvent.change(screen.getByLabelText(/^title/i), {target:{value:"New URL draft"}});
+      await act(async () => { completeRead({data:{event:response.data.saved.event}}); await detail; });
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("New URL draft");
+      expect(screen.getByText(/The previous save completed/)).toBeInTheDocument();
+      expect(screen.getByRole("button", {name:"Save"})).toBeDisabled();
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    } finally { view.unmount(); owner.retire(); uninstall(); }
+  }, 20_000);
 
   it("does not close a different editor when an old update completes", async () => {
     const event={id:"ev-1",section:{id:sectionId},title:"Original event",startDateTime:"2030-03-01T18:00:00Z",endDateTime:"2030-03-01T22:00:00Z",bookingStartDateTime:"2030-01-01T00:00:00Z",bookingEndDateTime:"2030-02-28T00:00:00Z",maxGuestsWithoutModeratorApproval:0,ticketTypes:[]};
@@ -1635,7 +1612,7 @@ describe("SectionEventsManager", () => {
     await user.click(screen.getByRole("button",{name:"Save"}));
     await act(async()=>managerNavigation("/sections/section-1/manage/events?edit=new-event"));
     fireEvent.change(await screen.findByLabelText(/^title/i),{target:{value:"Newer unsaved event"}});
-    await act(async()=>{complete({});await pending;});
+    await act(async()=>{complete(eventSaveResponse(vi.mocked(generated.updateEventRef).mock.calls.at(-1)![1] as unknown as Record<string, unknown>));await pending;});
     expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer unsaved event");
     expect(screen.getByText("/sections/section-1/manage/events?edit=new-event")).toBeInTheDocument();
     expect(screen.queryByText(/The previous save completed/)).not.toBeInTheDocument();
@@ -1658,16 +1635,23 @@ describe("SectionEventsManager", () => {
       expect(await screen.findByText(/The previous save could not be confirmed/)).toBeInTheDocument();
       expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
       expect(generated.createEventRef).toHaveBeenCalledOnce();
-      vi.mocked(firebaseDataConnect.executeQuery).mockResolvedValue({ data: { section: { id: sectionId, events: [] } } } as never);
+      vi.mocked(firebaseDataConnect.executeQuery).mockResolvedValue({ data: { section: { id: sectionId, events: [{id:"unrelated-event",title:"Unconfirmed create"}] } } } as never);
       await user.click(screen.getByRole("button",{name:"Check latest list"}));
       const review = await screen.findByRole("dialog",{name:"Start a new save request?"});
       expect(generated.createEventRef).toHaveBeenCalledOnce();
+      expect(within(review).getByText(/Your event is absent/)).toBeInTheDocument();
+      expect(within(review).getByRole("button", { name: "I found the saved change — close this draft" })).toBeDisabled();
+      const originalId = latestCreateVariables().id;
       await user.click(within(review).getByRole("button", { name: "I checked — start a new request" }));
       await waitFor(() => expect(screen.queryByRole("dialog", { name: "Start a new save request?", hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
       expect(screen.getByLabelText(/^title/i)).toHaveValue("Unconfirmed create");
       expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
       expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
       expect(unloadBlocked()).toBe(true);
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument());
+      expect(generated.createEventRef).toHaveBeenCalledTimes(2);
+      expect(latestCreateVariables().id).toBe(originalId);
     } finally {view.unmount();uninstall();}
   },20_000);
 
@@ -1724,8 +1708,9 @@ describe("SectionEventsManager", () => {
         if (reviewFailure === "error") throw new Error("Latest list unavailable");
         if (reviewFailure === "missing") return { data: null } as never;
       }
-      return { data: name === "GetEventsForSection" ? { section: { id: sectionId, events: [event] } }
-        : name === "GetEventById" ? { event: { ...event, ticketTypes: [{ id: "saved-ticket", title: savedTitle }] } }
+      const savedEvent = kind === "event" ? { ...event, ...latestCreateVariables(), id: latestCreateVariables().id } : event;
+      return { data: name === "GetEventsForSection" ? { section: { id: sectionId, events: [savedEvent] } }
+        : name === "GetEventById" ? { event: { ...savedEvent, ticketTypes: [{ id: "saved-ticket", title: savedTitle }] } }
         : { userGroups: [{ id: "group-1", name: "Members" }] } } as never;
     });
     vi.mocked(firebaseDataConnect.executeMutation).mockRejectedValueOnce(new Error("Response lost after server commit"));

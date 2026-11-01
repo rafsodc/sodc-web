@@ -6,6 +6,7 @@ export interface ConfirmationDialogProps {
   title: string;
   children: ReactNode;
   confirmLabel?: string;
+  confirmDisabled?: boolean;
   pending?: boolean;
   pendingLabel?: string;
   error?: string | null;
@@ -18,6 +19,7 @@ export default function ConfirmationDialog({
   title,
   children,
   confirmLabel = "Delete",
+  confirmDisabled = false,
   pending = false,
   pendingLabel = "Deleting…",
   error,
@@ -47,7 +49,7 @@ export default function ConfirmationDialog({
         <Button autoFocus color="inherit" disabled={pending} onClick={onCancel}>
           Cancel
         </Button>
-        <Button variant="contained" color="error" disabled={pending} onClick={onConfirm}>
+        <Button variant="contained" color="error" disabled={pending || confirmDisabled} onClick={onConfirm}>
           {pending ? pendingLabel : confirmLabel}
         </Button>
       </DialogActions>

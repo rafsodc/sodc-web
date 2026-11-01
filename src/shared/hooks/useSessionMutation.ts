@@ -132,7 +132,7 @@ export function useSessionMutation<T>(resourceKey: string) {
   }, [session, resourceKey, isolated]);
   const state = useSyncExternalStore(subscribe, snapshot, snapshot);
 
-  const runOnce = useCallback((operation: () => Promise<T>): Promise<T> => {
+  const runOnce = useCallback((operation: (receipt: object) => Promise<T>): Promise<T> => {
     if (active.current !== resource || !available(session)) return Promise.reject(new SessionChangedError());
     const journal = ensureJournal(session, isolated);
     if (!journal) return Promise.reject(new SessionChangedError());
@@ -156,7 +156,7 @@ export function useSessionMutation<T>(resourceKey: string) {
       reject(error);
     };
     try {
-      void Promise.resolve(operation()).then(result => {
+      void Promise.resolve(operation(entry.snapshot.receipt!)).then(result => {
         if (!current()) { clearUnavailableJournal(session, isolated); reject(new SessionChangedError()); return; }
         entry.snapshot = { receipt: entry.snapshot.receipt, status: "success", result, error: null };
         syncUnload(journal, session);

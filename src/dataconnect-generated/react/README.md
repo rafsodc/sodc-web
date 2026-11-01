@@ -22613,6 +22613,7 @@ The `CreateEvent` Mutation requires an argument of type `CreateEventVariables`, 
 
 ```javascript
 export interface CreateEventVariables {
+  id?: UUIDString | null;
   sectionId: UUIDString;
   title: string;
   location?: string | null;
@@ -22637,6 +22638,40 @@ To access the data returned by a Mutation, use the `UseMutationResult.data` fiel
 ```javascript
 export interface CreateEventData {
   event_insert: Event_Key;
+  saved?: {
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 ```
 
@@ -22673,6 +22708,7 @@ export default function CreateEventComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateEvent` Mutation requires an argument of type `CreateEventVariables`:
   const createEventVars: CreateEventVariables = {
+    id: ..., // optional
     sectionId: ..., 
     title: ..., 
     location: ..., // optional
@@ -22687,7 +22723,7 @@ export default function CreateEventComponent() {
   };
   mutation.mutate(createEventVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
+  mutation.mutate({ id: ..., sectionId: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -22707,6 +22743,7 @@ export default function CreateEventComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.event_insert);
+    console.log(mutation.data.saved);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -22751,6 +22788,40 @@ To access the data returned by a Mutation, use the `UseMutationResult.data` fiel
 ```javascript
 export interface UpdateEventData {
   event_update?: Event_Key | null;
+  saved?: {
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 ```
 
@@ -22821,6 +22892,7 @@ export default function UpdateEventComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.event_update);
+    console.log(mutation.data.saved);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

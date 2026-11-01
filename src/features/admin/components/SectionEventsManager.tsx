@@ -50,6 +50,12 @@ import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material"
 import { invalidateMyBookings } from "../../../shared/query/invalidation";
 import { removeSectionEventSummaries } from "../../../shared/query/sectionEventSummaryCache";
 import {
+  applyCommittedEventSave,
+  assertCanonicalCommittedEvent,
+  captureEventSaveCacheWrite,
+  type CanonicalCommittedEvent,
+} from "../../../shared/query/eventSaveCache";
+import {
   refreshDataConnectQuery,
   SERVER_ONLY_QUERY_OPTIONS,
 } from "../../../shared/query/authoritativeDataConnect";
@@ -135,8 +141,15 @@ function useCurrentView(scope: string) {
 }
 
 type FieldSetters<T> = { [K in keyof T]: Dispatch<SetStateAction<T[K]>> };
-function useFormDraft<T extends object>(key: string, initial: T) {
-  const [value, update, discard] = useSessionDraft(key, initial);
+function useFormDraft<T extends object>(key: string, initial: T, edited?: (previous: T, next: T) => T) {
+  const [value, updateStored, discard] = useSessionDraft(key, initial);
+  const latest = useRef(value);
+  latest.current = value;
+  const update = useCallback((action: SetStateAction<T>) => updateStored(previous => {
+    const next = typeof action === "function" ? (action as (value: T) => T)(previous) : action;
+    latest.current = next;
+    return next;
+  }), [updateStored]);
   const setters = useMemo(
     () =>
       Object.fromEntries(
@@ -145,23 +158,29 @@ function useFormDraft<T extends object>(key: string, initial: T) {
           (action: SetStateAction<unknown>) =>
             update((previous) => {
               const k = field as keyof T;
-              return {
+              const next = {
                 ...previous,
                 [k]:
                   typeof action === "function"
                     ? (action as (value: T[keyof T]) => T[keyof T])(previous[k])
                     : action,
               };
+              return edited ? edited(previous, next) : next;
             }),
         ]),
       ) as FieldSetters<T>,
-    [initial, update],
+    [initial, update, edited],
   );
-  return [value, setters, update, discard] as const;
+  return [value, setters, update, discard, latest] as const;
 }
 const INITIAL_EVENT_FORM = {
   initialized: false,
   baseline: "",
+  revision: 0,
+  createId: null as string | null,
+  committedEvent: null as EventRow | null,
+  lastSavedRevision: null as number | null,
+  submission: null as { revision: number; snapshot: string; eventId: string; created: boolean } | null,
   title: "",
   location: "",
   guestOfHonour: "",
@@ -173,6 +192,30 @@ const INITIAL_EVENT_FORM = {
   bookingEndDateTime: "",
   maxGuestsStr: "",
 };
+type EventForm = typeof INITIAL_EVENT_FORM;
+interface EventSaveReceipt {
+  receipt: object;
+  cacheWrite: ReturnType<typeof captureEventSaveCacheWrite>;
+  event: CanonicalCommittedEvent;
+  submittedRevision: number;
+  submittedSnapshot: string;
+  created: boolean;
+}
+const editedEventForm = (previous: EventForm, next: EventForm): EventForm => ({ ...next, revision: previous.revision + 1 });
+function eventFields(event: EventRow) {
+  return {
+    title: event.title,
+    location: event.location ?? "",
+    guestOfHonour: event.guestOfHonour ?? "",
+    sponsors: event.sponsors ?? "",
+    details: event.details ?? "",
+    startDateTime: toDatetimeLocal(event.startDateTime),
+    endDateTime: toDatetimeLocal(event.endDateTime),
+    bookingStartDateTime: toDatetimeLocal(event.bookingStartDateTime),
+    bookingEndDateTime: toDatetimeLocal(event.bookingEndDateTime),
+    maxGuestsStr: String(event.maxGuestsWithoutModeratorApproval ?? ""),
+  };
+}
 const INITIAL_TICKET_FORM = {
   initialized: false,
   baseline: "",
@@ -189,10 +232,20 @@ function formSnapshot(form: object) {
   const {
     initialized: _initialized,
     baseline: _baseline,
+    revision: _revision,
+    createId: _createId,
+    committedEvent: _committedEvent,
+    lastSavedRevision: _lastSavedRevision,
+    submission: _submission,
     ...fields
   } = form as Record<string, unknown>;
   void _initialized;
   void _baseline;
+  void _revision;
+  void _createId;
+  void _committedEvent;
+  void _lastSavedRevision;
+  void _submission;
   return JSON.stringify(fields);
 }
 
@@ -235,6 +288,7 @@ export default function SectionEventsManager({
   const [refreshFailure, setRefreshFailure] = useState<{
     message: string;
     savedMessage: string;
+    confirmedMessage?: string;
     retry: () => Promise<unknown>;
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -356,14 +410,18 @@ export default function SectionEventsManager({
           open ? (editingTicketType?.id ?? "new") : undefined,
         )
       : setLocalTicketTypeDialogOpen(open);
-  const [eventForm, eventSetters, updateEventForm, discardEventDraft] =
+  const [eventForm, eventSetters, updateEventForm, discardEventDraft, latestEventForm] =
     useFormDraft(
       `section-event:${normalizedResourceId(sectionId)}:${normalizedResourceId(editingEvent?.id ?? initialEventId ?? "new")}`,
       INITIAL_EVENT_FORM,
+      editedEventForm,
     );
-  const eventWrite = useSessionMutation<unknown>(
+  const eventWrite = useSessionMutation<EventSaveReceipt>(
     `event-write:${normalizedResourceId(sectionId)}:${normalizedResourceId(editingEvent?.id ?? initialEventId ?? "new")}`,
   );
+  const submittedDraftIsConfirmed = eventWrite.status === "success" && !!eventWrite.result &&
+    formSnapshot(eventForm) === eventWrite.result.submittedSnapshot;
+  const eventDraftDirty = eventForm.initialized && formSnapshot(eventForm) !== eventForm.baseline && !submittedDraftIsConfirmed;
   const ticketWrite = useSessionMutation<unknown>(
     `ticket-write:${normalizedResourceId(sectionId)}:${normalizedResourceId(ticketTypesEventId ?? "none")}:${normalizedResourceId(routeControlled ? (ticketSelector ?? "new") : (editingTicketType?.id ?? "new"))}`,
   );
@@ -372,6 +430,9 @@ export default function SectionEventsManager({
     titles: string[];
     receipt: object;
     isCurrent: () => boolean;
+    eventId?: string;
+    eventFound?: boolean;
+    created?: boolean;
   } | null>(null);
   const activeWriteReview = writeReview?.isCurrent === isCurrentView && writeReview.isCurrent() &&
     (writeReview.kind === "event" ? eventWrite : ticketWrite).receipt === writeReview.receipt
@@ -426,9 +487,7 @@ export default function SectionEventsManager({
     ttIncludesSymposium: setTtIncludesSymposium,
   } = ticketSetters;
   useDraftUnloadWarning(
-    (eventDialogOpen &&
-      eventForm.initialized &&
-      formSnapshot(eventForm) !== eventForm.baseline) ||
+    (eventDialogOpen && eventDraftDirty) ||
       (ticketTypeDialogOpen &&
         ticketForm.initialized &&
         formSnapshot(ticketForm) !== ticketForm.baseline),
@@ -634,6 +693,7 @@ export default function SectionEventsManager({
   const refreshSavedChange = async (
     message: string,
     read: () => Promise<unknown>,
+    confirmedMessage = message,
   ) => {
     if (isCurrentView()) setRefreshing(true);
     try {
@@ -649,8 +709,9 @@ export default function SectionEventsManager({
         eventId: ticketTypesEventId,
       });
       setRefreshFailure({
-        message: `${message}. The latest event data could not be loaded. Retry the refresh; the change is already saved.`,
+        message: `${confirmedMessage}. The latest event data could not be loaded. Retry the refresh; the change is already saved.`,
         savedMessage: message,
+        confirmedMessage,
         retry: read,
       });
       return false;
@@ -668,6 +729,7 @@ export default function SectionEventsManager({
             void refreshSavedChange(
               refreshFailure.savedMessage,
               refreshFailure.retry,
+              refreshFailure.confirmedMessage,
             )
           }
         >
@@ -762,23 +824,50 @@ export default function SectionEventsManager({
     }
   }, [sectionId, isCurrentView]);
 
-  const reconcileWrite = async (kind: "event" | "ticket") => {
-    const receipt = kind === "event" ? eventWrite : ticketWrite;
-    if (receipt.status !== "success") return;
-    const refreshed = await refreshSavedChange("Saved change loaded", () =>
-      kind === "event"
-        ? Promise.all([refetchEvents(), refetchEventDetail()])
-        : refreshEventAdministration(),
-    );
-    if (!refreshed || !isCurrentView()) return;
-    receipt.acknowledge();
-    if (kind === "event") {
+  const finishEventSave = (saved: EventRow, submittedRevision: number, submittedSnapshot: string) => {
+    setError(null);
+    setRefreshFailure(null);
+    const latest = latestEventForm.current;
+    if (latest.revision === submittedRevision && formSnapshot(latest) === submittedSnapshot) {
       discardEventDraft();
       setEventDialogOpen(false);
     } else {
-      discardTicketDraft();
-      setTicketTypeDialogOpen(false);
+      // Inputs remain editable during a save. Only the submitted revision was
+      // committed; preserve newer fields, including edits on a newly created event.
+      updateEventForm(previous => ({ ...previous, baseline: formSnapshot(eventFields(saved)),
+        committedEvent: saved, lastSavedRevision: submittedRevision, submission: null }));
     }
+  };
+  const refetchSavedEvent = async (eventId: string): Promise<EventRow> => {
+    const data = await refreshDataConnectQuery(queryClient, getEventByIdRef(dataConnect, { id: eventId }));
+    const saved = data.event;
+    if (!saved || !idsEqual(saved.id, eventId) || !idsEqual(saved.section.id, sectionId)) {
+      throw new Error("The saved event could not be verified in this section.");
+    }
+    return saved;
+  };
+  const reconcileWrite = async (kind: "event" | "ticket") => {
+    if (kind === "event") {
+      const result = eventWrite.result;
+      if (eventWrite.status !== "success" || !result) return;
+      let saved: EventRow | undefined;
+      // A receipt retained across navigation may predate newer remote changes.
+      // Reconcile it with fresh server reads instead of reinstalling its snapshot.
+      const refreshed = await refreshSavedChange("Saved change loaded", async () => {
+        const [, detail] = await Promise.all([refetchEvents(), refetchSavedEvent(result.event.id)]);
+        saved = detail;
+        if (isCurrentView()) setError(null);
+      }, "The event is already saved");
+      if (!refreshed || !isCurrentView() || !saved || !eventWrite.acknowledgeIfCurrent(result.receipt)) return;
+      finishEventSave(saved, result.submittedRevision, result.submittedSnapshot);
+      return;
+    }
+    if (ticketWrite.status !== "success") return;
+    const refreshed = await refreshSavedChange("Saved change loaded", refreshEventAdministration);
+    if (!refreshed || !isCurrentView()) return;
+    ticketWrite.acknowledge();
+    discardTicketDraft();
+    setTicketTypeDialogOpen(false);
   };
   const reviewUnconfirmedWrite = async (kind: "event" | "ticket") => {
     const receipt = kind === "event" ? eventWrite : ticketWrite;
@@ -788,10 +877,15 @@ export default function SectionEventsManager({
       const data = kind === "event" ? await refetchEvents() : await refetchEventDetail();
       if (!isCurrentView()) return;
       const rows = kind === "event"
-        ? (data as { section?: { events?: Array<{ title: string }> } })?.section?.events
+        ? (data as { section?: { events?: Array<{ id: string; title: string }> } })?.section?.events
         : (data as { event?: { ticketTypes?: Array<{ title: string }> } })?.event?.ticketTypes;
       if (!Array.isArray(rows)) throw new Error("The latest list could not be verified.");
-      setWriteReview({ kind, titles: rows.map(row => row.title), receipt: receipt.receipt, isCurrent: isCurrentView });
+      const submission = latestEventForm.current.submission;
+      const eventId = submission?.eventId ?? editingEvent?.id ?? latestEventForm.current.createId ?? undefined;
+      if (kind === "event" && !eventId) throw new Error("The event identity could not be verified.");
+      setWriteReview({ kind, titles: rows.map(row => row.title), receipt: receipt.receipt, isCurrent: isCurrentView,
+        ...(kind === "event" ? { eventId, created: submission?.created ?? !editingEvent,
+          eventFound: rows.some(row => "id" in row && idsEqual(String(row.id), eventId)) } : {}) });
     } catch (caught) {
       if (isCurrentView()) {
         setWriteReview(null);
@@ -803,12 +897,13 @@ export default function SectionEventsManager({
     const review = activeWriteReview;
     if (!review?.isCurrent() || refreshing) return;
     const { kind, receipt } = review;
+    if (kind === "event" && ((!found && review.created && review.eventFound) || (found && !review.eventFound))) return;
+    let saved: EventRow | undefined;
     if (found) {
       setRefreshing(true);
       try {
-        // The reviewed event list does not refresh the separate detail cache
-        // used by the workspace header and the next editor initialization.
-        await (kind === "event" ? refetchEventDetail() : refreshEventAdministration());
+        if (kind === "event") saved = await refetchSavedEvent(review.eventId!);
+        else await refreshEventAdministration();
       } catch (caught) {
         if (review.isCurrent()) setError(toAdminUserFacingError(caught, kind === "event" ? "events" : "tickets").message);
         return;
@@ -820,9 +915,10 @@ export default function SectionEventsManager({
     setWriteReview(null);
     setError(null);
     if (!found) return;
-    if (kind === "event") {
-      discardEventDraft();
-      setEventDialogOpen(false);
+    if (kind === "event" && saved) {
+      const submission = latestEventForm.current.submission;
+      finishEventSave(saved, submission?.revision ?? latestEventForm.current.revision,
+        submission?.snapshot ?? formSnapshot(latestEventForm.current));
     } else {
       discardTicketDraft();
       setTicketTypeDialogOpen(false);
@@ -830,7 +926,9 @@ export default function SectionEventsManager({
   };
   const writeNotice = (kind: "event" | "ticket") => {
     const receipt = kind === "event" ? eventWrite : ticketWrite;
-    if (receipt.status === "idle") return null;
+    if (receipt.status === "idle") return kind === "event" && eventForm.lastSavedRevision !== null && eventDraftDirty
+      ? <Alert severity="info" sx={{ mb: 2 }}>Your previous changes were saved. These newer edits have not been saved.</Alert>
+      : null;
     return (
       <Alert
         severity={
@@ -870,6 +968,7 @@ export default function SectionEventsManager({
       open={!!activeWriteReview}
       title="Start a new save request?"
       confirmLabel="I checked — start a new request"
+      confirmDisabled={activeWriteReview?.kind === "event" && activeWriteReview.created && activeWriteReview.eventFound}
       pending={refreshing}
       pendingLabel="Loading…"
       error={error}
@@ -879,13 +978,18 @@ export default function SectionEventsManager({
       If you found the intended change in the latest list below, close this
       draft without submitting it again. Start a new request only if the change
       is absent.
+      {activeWriteReview?.kind === "event" && <Box sx={{ mt: 1 }}>
+        {activeWriteReview.eventFound
+          ? "Your event is present in the latest list. Review its saved details before continuing."
+          : "Your event is absent from the latest list."}
+      </Box>}
       <Box component="ul">
         {(activeWriteReview?.titles ?? []).map((title, index) => (
           <li key={`${index}:${title}`}>{title}</li>
         ))}
       </Box>
       {activeWriteReview?.titles.length === 0 && <Box>The latest list is empty.</Box>}
-      <Button disabled={refreshing} onClick={() => void acknowledgeReviewedWrite(true)} sx={{ mt: 2 }}>
+      <Button disabled={refreshing || (activeWriteReview?.kind === "event" && !activeWriteReview.eventFound)} onClick={() => void acknowledgeReviewedWrite(true)} sx={{ mt: 2 }}>
         I found the saved change — close this draft
       </Button>
     </ConfirmationDialog>
@@ -905,22 +1009,7 @@ export default function SectionEventsManager({
       return;
     const now = toDatetimeLocal(new Date().toISOString());
     const fields = editingEvent
-      ? {
-          title: editingEvent.title,
-          location: editingEvent.location ?? "",
-          guestOfHonour: editingEvent.guestOfHonour ?? "",
-          sponsors: editingEvent.sponsors ?? "",
-          details: editingEvent.details ?? "",
-          startDateTime: toDatetimeLocal(editingEvent.startDateTime),
-          endDateTime: toDatetimeLocal(editingEvent.endDateTime),
-          bookingStartDateTime: toDatetimeLocal(
-            editingEvent.bookingStartDateTime,
-          ),
-          bookingEndDateTime: toDatetimeLocal(editingEvent.bookingEndDateTime),
-          maxGuestsStr: String(
-            editingEvent.maxGuestsWithoutModeratorApproval ?? "",
-          ),
-        }
+      ? eventFields(editingEvent)
       : {
           ...INITIAL_EVENT_FORM,
           startDateTime: now,
@@ -930,6 +1019,7 @@ export default function SectionEventsManager({
           maxGuestsStr: "0",
         };
     updateEventForm({
+      ...INITIAL_EVENT_FORM,
       ...fields,
       initialized: true,
       baseline: formSnapshot(fields),
@@ -945,82 +1035,72 @@ export default function SectionEventsManager({
   ]);
 
   const handleEventSubmit = async () => {
+    if (eventWrite.status !== "idle") return;
     if (!title.trim()) {
       setError("Title is required");
       return;
     }
-    setSubmitting(true);
-    setError(null);
     const mg = maxGuestsStr.trim();
     const n = Number(mg);
     if (mg === "" || !Number.isInteger(n) || n < 0) {
-      setError(
-        "Max guests without moderator approval is required and must be a non-negative integer",
-      );
-      if (isCurrentView()) setSubmitting(false);
+      setError("Max guests without moderator approval is required and must be a non-negative integer");
       return;
     }
-    const maxGuestsWithoutModeratorApproval = n;
+    setSubmitting(true);
+    setError(null);
+    const existingEvent = editingEvent ?? eventForm.committedEvent;
+    const eventId = existingEvent?.id ?? eventForm.createId ?? crypto.randomUUID();
+    const submittedRevision = eventForm.revision;
+    const submittedSnapshot = formSnapshot(eventForm);
+    const created = !existingEvent;
+    // Persist one identity per create intent, including an uncertain response.
+    // A deliberate retry uses the same key, so an already committed insert
+    // cannot create another event even if a later list review races a commit.
+    updateEventForm(previous => ({ ...previous, createId: previous.createId ?? eventId,
+      submission: { revision: submittedRevision, snapshot: submittedSnapshot, eventId, created } }));
     try {
-      await eventWrite.runOnce(async () => {
-        // A lost response may conceal a committed write. Retire summaries before
-        // sending it, rather than waiting for the success-only refresh path.
+      const result = await eventWrite.runOnce(async receipt => {
+        const cacheWrite = captureEventSaveCacheWrite(queryClient, dataConnect, { sectionId, eventId });
         removeSectionEventSummaries(queryClient);
-        if (editingEvent) {
-          await executeDataConnectMutation(
-            updateEventRef(dataConnect, {
-              id: editingEvent.id,
-              title: title.trim(),
-              location: location.trim() || null,
-              guestOfHonour: guestOfHonour.trim() || null,
-              sponsors: sponsors.trim() || null,
-              details: details.trim() || null,
-              startDateTime: fromDatetimeLocal(startDateTime),
-              endDateTime: fromDatetimeLocal(endDateTime),
-              bookingStartDateTime: fromDatetimeLocal(bookingStartDateTime),
-              bookingEndDateTime: fromDatetimeLocal(bookingEndDateTime),
-              maxGuestsWithoutModeratorApproval,
-            }),
-          );
-        } else {
-          await executeDataConnectMutation(
-            createEventRef(dataConnect, {
-              sectionId: sectionId as UUIDString,
-              title: title.trim(),
-              location: location.trim() || null,
-              guestOfHonour: guestOfHonour.trim() || null,
-              sponsors: sponsors.trim() || null,
-              details: details.trim() || null,
-              startDateTime: fromDatetimeLocal(startDateTime),
-              endDateTime: fromDatetimeLocal(endDateTime),
-              bookingStartDateTime: fromDatetimeLocal(bookingStartDateTime),
-              bookingEndDateTime: fromDatetimeLocal(bookingEndDateTime),
-              maxGuestsWithoutModeratorApproval,
-            }),
-          );
+        const fields = {
+          title: title.trim(), location: location.trim() || null,
+          guestOfHonour: guestOfHonour.trim() || null, sponsors: sponsors.trim() || null,
+          details: details.trim() || null, startDateTime: fromDatetimeLocal(startDateTime),
+          endDateTime: fromDatetimeLocal(endDateTime), bookingStartDateTime: fromDatetimeLocal(bookingStartDateTime),
+          bookingEndDateTime: fromDatetimeLocal(bookingEndDateTime), maxGuestsWithoutModeratorApproval: n,
+        };
+        const response = existingEvent
+          ? await executeDataConnectMutation(updateEventRef(dataConnect, { id: eventId, ...fields }))
+          : await executeDataConnectMutation(createEventRef(dataConnect, { id: eventId, sectionId, ...fields }));
+        const saved = response.data.saved?.event;
+        // A 200 response without a complete, matching committed record is not
+        // enough to release an uncertain write or overwrite a full detail cache.
+        assertCanonicalCommittedEvent(saved, { sectionId, eventId });
+        const written = existingEvent
+          ? ("event_update" in response.data ? response.data.event_update : null)
+          : ("event_insert" in response.data ? response.data.event_insert : null);
+        if (!written || !idsEqual(written.id, saved.id)) {
+          throw new Error("The event save could not be confirmed. Check the latest list before continuing.");
         }
+        return { receipt, cacheWrite, event: saved, submittedRevision, submittedSnapshot, created };
       });
-      const refreshed = await refreshSavedChange(
-        `Event ${editingEvent ? "updated" : "created"}`,
-        () =>
-          Promise.all([
-            refetchEvents(),
-            editingEvent && idsEqual(ticketTypesEventId, editingEvent.id)
-              ? refetchEventDetail()
-              : Promise.resolve(),
-          ]),
-      );
-      if (!isCurrentView() || !refreshed) return;
-      eventWrite.acknowledge();
-      discardEventDraft();
-      setEventDialogOpen(false);
-    } catch (err: unknown) {
       if (!isCurrentView()) return;
-      reportError("admin.events.save", err, {
-        sectionId,
-        editing: Boolean(editingEvent),
-      });
-      setError(toAdminUserFacingError(err, "events").message);
+      try {
+        await applyCommittedEventSave(result.cacheWrite, result.event);
+      } catch (caught) {
+        if (!isCurrentView()) return;
+        reportError("admin.events.saved-cache", caught, { sectionId, eventId });
+        // The successful receipt already explains that the save completed and
+        // offers read-only recovery. Do not pair it with a write-failure error.
+        return;
+      }
+      if (!isCurrentView() || !eventWrite.acknowledgeIfCurrent(result.receipt)) return;
+      finishEventSave(result.event, result.submittedRevision, result.submittedSnapshot);
+      showSuccess(`Event ${result.created ? "created" : "updated"}`);
+    } catch (caught) {
+      if (!isCurrentView()) return;
+      reportError("admin.events.save", caught, { sectionId, editing: Boolean(existingEvent) });
+      setError(toAdminUserFacingError(caught, "events").message);
     } finally {
       if (isCurrentView()) setSubmitting(false);
     }
@@ -1713,9 +1793,9 @@ export default function SectionEventsManager({
 
         <EventDialogSurface
           embedded={routeControlled && task === "details"}
-          dirty={eventForm.initialized && formSnapshot(eventForm) !== eventForm.baseline}
+          dirty={eventDraftDirty}
           open={eventDialogOpen && (!routeControlled || task !== "details" || (!!eventDetailData?.event && eventForm.initialized && !eventDetailFailed))}
-          editingEvent={editingEvent}
+          editingEvent={editingEvent ?? eventForm.committedEvent}
           title={title}
           location={location}
           guestOfHonour={guestOfHonour}
@@ -1790,7 +1870,7 @@ export default function SectionEventsManager({
 
       <EventDialogSurface
         open={eventDialogOpen}
-        editingEvent={editingEvent}
+        editingEvent={editingEvent ?? eventForm.committedEvent}
         title={title}
         location={location}
         guestOfHonour={guestOfHonour}
