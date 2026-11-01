@@ -352,7 +352,9 @@ export default function SectionEventsManager({
   } = useGetEventById(
     dataConnect,
     {
-      id: (ticketTypesEventId ??
+      // Compact API UUIDs and differently cased URLs must share the same
+      // detail key, including explicit event and ticket recovery reads below.
+      id: normalizedResourceId(ticketTypesEventId ??
         "00000000-0000-0000-0000-000000000000") as UUIDString,
     },
     {
@@ -646,7 +648,7 @@ export default function SectionEventsManager({
     ticketTypesEventId
       ? refreshDataConnectQuery(
           queryClient,
-          getEventByIdRef(dataConnect, { id: ticketTypesEventId }),
+          getEventByIdRef(dataConnect, { id: normalizedResourceId(ticketTypesEventId) }),
         )
       : Promise.resolve();
   const refetchEventBookings = () =>
@@ -839,7 +841,7 @@ export default function SectionEventsManager({
     }
   };
   const refetchSavedEvent = async (eventId: string): Promise<EventRow> => {
-    const data = await refreshDataConnectQuery(queryClient, getEventByIdRef(dataConnect, { id: eventId }));
+    const data = await refreshDataConnectQuery(queryClient, getEventByIdRef(dataConnect, { id: normalizedResourceId(eventId) }));
     const saved = data.event;
     if (!saved || !idsEqual(saved.id, eventId) || !idsEqual(saved.section.id, sectionId)) {
       throw new Error("The saved event could not be verified in this section.");

@@ -1530,7 +1530,7 @@ describe("SectionEventsManager", () => {
     canonicalManager(`/sections/${sid}/manage/events/${eid}?task=tickets`);
     expect(screen.getByRole("heading",{level:1,name:"Mixed format event"})).toBeInTheDocument();
     expect(screen.getByRole("link",{name:"Add ticket type"})).toHaveAttribute("href",`/sections/${sid.toLowerCase()}/manage/events/${eid.toLowerCase()}?task=tickets&ticket=new`);
-    expect(reactGenerated.useGetEventById).toHaveBeenCalledWith(expect.anything(),{id:eid},{enabled:true});
+    expect(reactGenerated.useGetEventById).toHaveBeenCalledWith(expect.anything(),{id:eid.toLowerCase()},{enabled:true});
   });
 
   it("keeps exactly one event create while leaving, returning pending, then completing away", async () => {
