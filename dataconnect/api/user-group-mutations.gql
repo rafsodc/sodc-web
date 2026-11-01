@@ -270,6 +270,7 @@ mutation DeleteSection(
 # --- Event mutations (current section moderator or global administrator) ---
 
 mutation CreateEvent(
+  $id: UUID
   $sectionId: UUID!
   $title: String!
   $location: String
@@ -307,6 +308,7 @@ mutation CreateEvent(
 
   event_insert(
     data: {
+      id_expr: "has(vars.id) && vars.id != null ? vars.id : uuidV4()"
       sectionId: $sectionId
       title: $title
       location: $location
@@ -320,6 +322,37 @@ mutation CreateEvent(
       maxGuestsWithoutModeratorApproval: $maxGuestsWithoutModeratorApproval
     }
   )
+
+  # Read the canonical detail only after this transaction's authorized write.
+  # Resolve the inserted key, whether generated here or supplied for recovery.
+  saved: query {
+    event(key: { id_expr: "response.event_insert.id" }) @check(expr: "this != null", message: "EVENT_SAVE_NOT_FOUND") {
+      id
+      section { id }
+      title
+      location
+      guestOfHonour
+      sponsors
+      details
+      startDateTime
+      endDateTime
+      bookingStartDateTime
+      bookingEndDateTime
+      maxGuestsWithoutModeratorApproval
+      updatedAt
+      ticketTypes: ticketTypes_on_event(orderBy: { sortOrder: ASC }) {
+        id
+        title
+        description
+        audience
+        price
+        includesDinner
+        includesSymposium
+        sortOrder
+        userGroup { id name membershipStatuses }
+      }
+    }
+  }
 }
 
 mutation UpdateEvent(
@@ -374,7 +407,38 @@ mutation UpdateEvent(
       updatedAt_expr: "request.time"
       updatedBy_expr: "auth.uid"
     }
-  )
+  ) @check(expr: "this != null", message: "EVENT_SAVE_NOT_FOUND")
+
+  # Read the canonical detail only after this transaction's authorized write.
+  # A missing write key or canonical row rejects the whole save transaction.
+  saved: query {
+    event(id: $id) @check(expr: "this != null", message: "EVENT_SAVE_NOT_FOUND") {
+      id
+      section { id }
+      title
+      location
+      guestOfHonour
+      sponsors
+      details
+      startDateTime
+      endDateTime
+      bookingStartDateTime
+      bookingEndDateTime
+      maxGuestsWithoutModeratorApproval
+      updatedAt
+      ticketTypes: ticketTypes_on_event(orderBy: { sortOrder: ASC }) {
+        id
+        title
+        description
+        audience
+        price
+        includesDinner
+        includesSymposium
+        sortOrder
+        userGroup { id name membershipStatuses }
+      }
+    }
+  }
 }
 
 mutation DeleteEvent(

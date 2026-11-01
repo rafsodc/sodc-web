@@ -27863,6 +27863,7 @@ The `CreateEvent` mutation requires an argument of type `CreateEventVariables`, 
 
 ```typescript
 export interface CreateEventVariables {
+  id?: UUIDString | null;
   sectionId: UUIDString;
   title: string;
   location?: string | null;
@@ -27883,6 +27884,40 @@ The `data` property is an object of type `CreateEventData`, which is defined in 
 ```typescript
 export interface CreateEventData {
   event_insert: Event_Key;
+  saved?: {
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 ```
 ### Using `CreateEvent`'s action shortcut function
@@ -27893,6 +27928,7 @@ import { connectorConfig, createEvent, CreateEventVariables } from '@dataconnect
 
 // The `CreateEvent` mutation requires an argument of type `CreateEventVariables`:
 const createEventVars: CreateEventVariables = {
+  id: ..., // optional
   sectionId: ..., 
   title: ..., 
   location: ..., // optional
@@ -27910,18 +27946,20 @@ const createEventVars: CreateEventVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createEvent(createEventVars);
 // Variables can be defined inline as well.
-const { data } = await createEvent({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
+const { data } = await createEvent({ id: ..., sectionId: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await createEvent(dataConnect, createEventVars);
 
 console.log(data.event_insert);
+console.log(data.saved);
 
 // Or, you can use the `Promise` API.
 createEvent(createEventVars).then((response) => {
   const data = response.data;
   console.log(data.event_insert);
+  console.log(data.saved);
 });
 ```
 
@@ -27933,6 +27971,7 @@ import { connectorConfig, createEventRef, CreateEventVariables } from '@dataconn
 
 // The `CreateEvent` mutation requires an argument of type `CreateEventVariables`:
 const createEventVars: CreateEventVariables = {
+  id: ..., // optional
   sectionId: ..., 
   title: ..., 
   location: ..., // optional
@@ -27949,7 +27988,7 @@ const createEventVars: CreateEventVariables = {
 // Call the `createEventRef()` function to get a reference to the mutation.
 const ref = createEventRef(createEventVars);
 // Variables can be defined inline as well.
-const ref = createEventRef({ sectionId: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
+const ref = createEventRef({ id: ..., sectionId: ..., title: ..., location: ..., guestOfHonour: ..., sponsors: ..., details: ..., startDateTime: ..., endDateTime: ..., bookingStartDateTime: ..., bookingEndDateTime: ..., maxGuestsWithoutModeratorApproval: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -27960,11 +27999,13 @@ const ref = createEventRef(dataConnect, createEventVars);
 const { data } = await executeMutation(ref);
 
 console.log(data.event_insert);
+console.log(data.saved);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.event_insert);
+  console.log(data.saved);
 });
 ```
 
@@ -28022,6 +28063,40 @@ The `data` property is an object of type `UpdateEventData`, which is defined in 
 ```typescript
 export interface UpdateEventData {
   event_update?: Event_Key | null;
+  saved?: {
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 ```
 ### Using `UpdateEvent`'s action shortcut function
@@ -28056,11 +28131,13 @@ const dataConnect = getDataConnect(connectorConfig);
 const { data } = await updateEvent(dataConnect, updateEventVars);
 
 console.log(data.event_update);
+console.log(data.saved);
 
 // Or, you can use the `Promise` API.
 updateEvent(updateEventVars).then((response) => {
   const data = response.data;
   console.log(data.event_update);
+  console.log(data.saved);
 });
 ```
 
@@ -28099,11 +28176,13 @@ const ref = updateEventRef(dataConnect, updateEventVars);
 const { data } = await executeMutation(ref);
 
 console.log(data.event_update);
+console.log(data.saved);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.event_update);
+  console.log(data.saved);
 });
 ```
 

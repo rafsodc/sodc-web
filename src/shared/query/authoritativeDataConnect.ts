@@ -19,6 +19,18 @@ export class DataConnectReadSupersededError extends Error {
 const generations = new WeakMap<DataConnect, Map<string, number>>();
 export const dataConnectQueryKey = <Data, Variables>(ref: QueryRef<Data, Variables>) =>
   [ref.name, ref.variables ?? null] as const;
+/** A committed-result writer must not replace a read started after its write. */
+export function captureDataConnectReadGeneration<Data, Variables>(ref: QueryRef<Data, Variables>) {
+  const key = hashKey(dataConnectQueryKey(ref));
+  const generation = generations.get(ref.dataConnect)?.get(key) ?? 0;
+  return () => {
+    if ((generations.get(ref.dataConnect)?.get(key) ?? 0) !== generation) throw new DataConnectReadSupersededError();
+  };
+}
+/** Fence SDK work even when its underlying transport ignores cancellation. */
+export function supersedeDataConnectQueryReads<Data, Variables>(ref: QueryRef<Data, Variables>) {
+  return nextRead(ref);
+}
 function nextRead<Data, Variables>(ref: QueryRef<Data, Variables>) {
   let scope = generations.get(ref.dataConnect);
   if (!scope) { scope = new Map(); generations.set(ref.dataConnect, scope); }

@@ -538,9 +538,44 @@ export interface CreateAnnouncementSendWithDeliveryModeVariables {
 
 export interface CreateEventData {
   event_insert: Event_Key;
+  saved?: {
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 
 export interface CreateEventVariables {
+  id?: UUIDString | null;
   sectionId: UUIDString;
   title: string;
   location?: string | null;
@@ -4614,6 +4649,40 @@ export interface UpdateBookingStatusFromCallableVariables {
 
 export interface UpdateEventData {
   event_update?: Event_Key | null;
+  saved?: {
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 
 export interface UpdateEventVariables {

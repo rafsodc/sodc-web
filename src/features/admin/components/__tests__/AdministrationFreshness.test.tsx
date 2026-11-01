@@ -10,7 +10,7 @@ import UserGroups from "../UserGroups";
 import SectionEventsManager from "../SectionEventsManager";
 import type { EventBookingAdminRow, TicketTypeRow } from "../sectionEventsManagerTypes";
 import { reviewBookingRevision, submitEventBooking } from "../../../../shared/utils/firebaseFunctions";
-import { dataConnectQueryOptions } from "../../../../shared/query/authoritativeDataConnect";
+import { dataConnectQueryOptions, refreshDataConnectQuery } from "../../../../shared/query/authoritativeDataConnect";
 import { useGetMyBookings } from "../../../../shared/query/authoritativeHooks";
 import { guestCall } from "../../../guests/api";
 import { createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
@@ -76,9 +76,9 @@ function RoutedEventManager() {
   return <SectionEventsManager sectionId="section-1" sectionName="Events" initialEventId={eventId} routeControlled onBack={vi.fn()} />;
 }
 
-function routedEventView() {
-  return <QueryClientProvider client={queryClient}><MemoryRouter initialEntries={["/sections/section-1/manage/events/event-1?task=details"]}>
-    <Routes><Route path="/sections/:sectionId/manage/events/:eventId" element={<RoutedEventManager />} /></Routes>
+function routedEventView(path = "/sections/section-1/manage/events/event-1?task=details") {
+  return <QueryClientProvider client={queryClient}><MemoryRouter initialEntries={[path]}>
+    <Routes><Route path="/sections/:sectionId/manage/events/:eventId" element={<RoutedEventManager />} /><Route path="/sections/:sectionId/manage/events" element={<RoutedEventManager />} /></Routes>
   </MemoryRouter></QueryClientProvider>;
 }
 
@@ -104,7 +104,7 @@ beforeEach(() => {
       case "GetUserGroupById": data = { userGroup: groups.some((row) => row.id === variables.id)
         ? { ...groups.find((row) => row.id === variables.id), users: [], purposeLinks: [] } : null }; break;
       case "GetEventsForSection": data = { section: { id: "section-1", events: eventExists ? [event] : [] } }; break;
-      case "GetEventById": data = { event: eventExists ? { ...event, ticketTypes } : null }; break;
+      case "GetEventById": data = { event: eventExists ? { ...event, section: { id: "section-1" }, ticketTypes } : null }; break;
       case "ListEventBookingsForAdmin": data = { event: { id: event.id, bookings, bookingTicketOrders: [] } }; break;
       case "ListTicketOrdersForAdmin": data = { event: { id: event.id, ticketOrders: [] } }; break;
       case "ListBookingPaymentAdjustmentsForAdmin": data = { event: { id: event.id, bookings: [] } }; break;
@@ -154,6 +154,254 @@ async function openCreateTicket() {
   fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "New ticket" } });
   return user;
 }
+
+// Event-save tests retain the actual SDK, query observers and canonical cache
+// helper. The fake transport models committed rows, not client-submitted drafts.
+function eventServer(initiallyPresent = true) {
+  let saved = initiallyPresent ? { ...copy(event), section: { id: "section-1" }, ticketTypes: copy(ticketTypes), updatedAt: "2026-11-01T12:00:00Z" } : null;
+  const originalRead = read.getMockImplementation()!;
+  read.mockImplementation(async (name: string, variables: Record<string, unknown>) => {
+    if (name === failingRead) throw new Error("Event recovery read unavailable");
+    if (name === "GetEventsForSection") return { data: { section: { id: "section-1", events: saved ? [copy(saved)] : [] } }, extensions: {} };
+    if (name === "GetEventById") return { data: { event: saved && saved.id === variables.id ? copy(saved) : null }, extensions: {} };
+    return originalRead(name, variables);
+  });
+  const commit = (name: string, variables: Record<string, unknown>) => {
+    const prior = saved ?? { ...copy(event), section: { id: "section-1" }, ticketTypes: [], updatedAt: "2026-11-01T12:00:00Z" };
+    saved = { ...prior, ...variables, id: String(variables.id), title: String(variables.title).trim(), updatedAt: "2026-11-01T12:01:00Z" } as typeof prior;
+    return { data: { [name === "CreateEvent" ? "event_insert" : "event_update"]: { id: saved.id }, saved: { event: copy(saved) } }, extensions: {} };
+  };
+  write.mockImplementation(async (name: string, variables: Record<string, unknown>) => commit(name, variables));
+  return { commit, current: () => saved };
+}
+function eventSession() {
+  const owner = createSessionLifecycle(); owner.observe("admin");
+  const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+  return () => { owner.retire(); uninstall(); };
+}
+
+const eventReadCount = () => read.mock.calls.filter(([name]) => name === "GetEventsForSection" || name === "GetEventById").length;
+
+describe("canonical committed event saves", () => {
+  it.each(["create", "update"] as const)("renders the committed %s result without post-save event reads", async kind => {
+    const endSession = eventSession();
+    const server = eventServer(kind === "update");
+    const rendered = render(routedEventView(kind === "create" ? "/sections/section-1/manage/events?edit=new-event" : undefined));
+    try {
+      const user = userEvent.setup();
+      const input = await screen.findByLabelText(/^title/i);
+      fireEvent.change(input, { target: { value: "  Canonical saved title  " } });
+      const before = eventReadCount();
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(screen.queryByLabelText(/^title/i)).not.toBeInTheDocument());
+      expect(write.mock.calls.map(([name]) => name)).toEqual([kind === "create" ? "CreateEvent" : "UpdateEvent"]);
+      expect(eventReadCount()).toBe(before);
+      const committed = server.current()!;
+      expect(queryClient.getQueryData(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: committed.id })).queryKey)).toEqual({ event: committed });
+      const list = queryClient.getQueryData<{ section: { events: Array<{ title: string }> } }>(dataConnectQueryOptions(getEventsForSectionRef(context.dc, { sectionId: "section-1" })).queryKey);
+      expect(list?.section.events.map(row => row.title)).toEqual(["Canonical saved title"]);
+      if (kind === "update") {
+        expect(screen.getByRole("heading", { level: 1, name: "Canonical saved title" })).toBeInTheDocument();
+        await user.click(screen.getByRole("tab", { name: "Event details" }));
+        expect(await screen.findByLabelText(/^title/i)).toHaveValue("Canonical saved title");
+        expect(screen.getByText("Saved", { exact: true })).toBeInTheDocument();
+        expect(eventReadCount()).toBe(before);
+      }
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it.each(["create", "update"] as const)("preserves newer input during a pending %s and the next save updates the same event", async kind => {
+    const endSession = eventSession();
+    const server = eventServer(kind === "update");
+    let complete!: () => void;
+    write.mockImplementationOnce((name: string, variables: Record<string, unknown>) => new Promise(resolve => {
+      const result = server.commit(name, variables);
+      complete = () => resolve(result);
+    }));
+    const rendered = render(routedEventView(kind === "create" ? "/sections/section-1/manage/events?edit=new-event" : undefined));
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "Submitted title" } });
+      const before = eventReadCount();
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(write).toHaveBeenCalledOnce());
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Newer unsaved title" } });
+      await act(async () => { complete(); });
+      expect(await screen.findByText(/These newer edits have not been saved/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer unsaved title");
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      expect(eventReadCount()).toBe(before);
+      const firstId = server.current()!.id;
+      expect(queryClient.getQueryData<{ event: { title: string } }>(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: firstId })).queryKey)?.event.title).toBe("Submitted title");
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(screen.queryByLabelText(/^title/i)).not.toBeInTheDocument());
+      expect(write.mock.calls.map(([name]) => name)).toEqual([kind === "create" ? "CreateEvent" : "UpdateEvent", "UpdateEvent"]);
+      expect(write.mock.calls[1][1].id).toBe(firstId);
+      expect(server.current()!.title).toBe("Newer unsaved title");
+      expect(eventReadCount()).toBe(before);
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it("preserves a newer revision restored to the submitted values without claiming it is unsaved", async () => {
+    const endSession = eventSession();
+    const server = eventServer();
+    let complete!: () => void;
+    write.mockImplementationOnce((name: string, variables: Record<string, unknown>) => new Promise(resolve => {
+      const result = server.commit(name, variables); complete = () => resolve(result);
+    }));
+    const rendered = render(routedEventView());
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "Submitted title" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(write).toHaveBeenCalledOnce());
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Temporary newer edit" } });
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Submitted title" } });
+      await act(async () => { complete(); });
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Submitted title");
+      expect(screen.getByText("Saved", { exact: true })).toBeInTheDocument();
+      expect(screen.queryByText("Unsaved changes", { exact: true })).not.toBeInTheDocument();
+      expect(screen.queryByText(/These newer edits have not been saved/)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      expect(write).toHaveBeenCalledOnce();
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it.each(["null saved event", "null write key", "wrong write key"])("retains the draft and uncertain receipt for a 200 response with %s", async variant => {
+    const endSession = eventSession();
+    const server = eventServer();
+    write.mockImplementationOnce(async (name: string, variables: Record<string, unknown>) => {
+      const result = server.commit(name, variables);
+      if (variant === "null saved event") result.data.saved.event = null as never;
+      else result.data.event_update = variant === "null write key" ? null as never : { id: "different-event" };
+      return result;
+    });
+    const rendered = render(routedEventView());
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "Unconfirmed result" } });
+      const before = eventReadCount();
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(await screen.findByText(/The previous save could not be confirmed/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Unconfirmed result");
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(screen.getByRole("heading", { level: 1, name: event.title })).toBeInTheDocument();
+      expect(write).toHaveBeenCalledOnce();
+      expect(eventReadCount()).toBe(before);
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it("labels a confirmed save awaiting a newer read truthfully and recovers read-only after a failed detail refresh", async () => {
+    const endSession = eventSession();
+    const server = eventServer();
+    let complete!: () => void;
+    write.mockImplementationOnce((name: string, variables: Record<string, unknown>) => new Promise(resolve => {
+      const result = server.commit(name, variables); complete = () => resolve(result);
+    }));
+    const rendered = render(routedEventView());
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "Confirmed saved title" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(write).toHaveBeenCalledOnce());
+      // A newer full read may include child/remote edits, so an older response
+      // must not replace it even though that response confirms our commit.
+      server.current()!.title = "Newer remote title";
+      await act(async () => { await refreshDataConnectQuery(queryClient, getEventByIdRef(context.dc, { id: event.id })); });
+      const before = eventReadCount();
+      await act(async () => { complete(); });
+      expect(await screen.findByText(/The previous save completed/)).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Newer remote title" })).toBeInTheDocument();
+      expect(screen.getByText("Saved", { exact: true })).toBeInTheDocument();
+      expect(screen.queryByText("Unsaved changes", { exact: true })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(eventReadCount()).toBe(before);
+      failingRead = "GetEventById";
+      await user.click(screen.getByRole("button", { name: "Load saved change" }));
+      expect((await screen.findAllByText(/The event is already saved.*latest event data could not be loaded/) ).length).toBeGreaterThan(0);
+      // The existing failed-detail boundary hides the editor until a verified
+      // read succeeds; its session draft and successful receipt are retained.
+      expect(screen.queryByLabelText(/^title/i)).not.toBeInTheDocument();
+      expect(write).toHaveBeenCalledOnce();
+      failingRead = null;
+      await user.click(screen.getByRole("button", { name: "Retry refresh" }));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("Confirmed saved title");
+      expect(screen.getByText("Saved", { exact: true })).toBeInTheDocument();
+      expect(screen.queryByText(/We could not complete the event operation/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/The event was saved. Load the saved change/)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(screen.getByText(/The previous save completed/)).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Load saved change" }));
+      await waitFor(() => expect(screen.queryByLabelText(/^title/i)).not.toBeInTheDocument());
+      expect(screen.getByRole("heading", { level: 1, name: "Newer remote title" })).toBeInTheDocument();
+      await user.click(screen.getByRole("tab", { name: "Event details" }));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("Newer remote title");
+      expect(screen.queryByText(/The event was saved. Load the saved change/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/already saved/)).not.toBeInTheDocument();
+      expect(write).toHaveBeenCalledOnce();
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it("recovers a lost create response by its stable identity, preserves newer edits and never inserts it twice", async () => {
+    const endSession = eventSession();
+    const server = eventServer(false);
+    write.mockImplementationOnce(async (name: string, variables: Record<string, unknown>) => {
+      server.commit(name, variables); throw new Error("Response lost after insert committed");
+    });
+    const rendered = render(routedEventView("/sections/section-1/manage/events?edit=new-event"));
+    try {
+      const user = userEvent.setup();
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "Created before lost response" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await screen.findByText(/The previous save could not be confirmed/);
+      const createdId = server.current()!.id;
+      expect(write.mock.calls[0][1].id).toBe(createdId);
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Newer edits after uncertain save" } });
+      await user.click(screen.getByRole("button", { name: "Check latest list" }));
+      const review = await screen.findByRole("dialog", { name: "Start a new save request?" });
+      expect(within(review).getByText(/Your event is present/)).toBeInTheDocument();
+      expect(within(review).getByRole("button", { name: "I checked — start a new request" })).toBeDisabled();
+      expect(write).toHaveBeenCalledOnce();
+      await user.click(within(review).getByRole("button", { name: "I found the saved change — close this draft" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Start a new save request?", hidden: true })).not.toBeInTheDocument());
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer edits after uncertain save");
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      expect(screen.getByText(/These newer edits have not been saved/)).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(screen.queryByLabelText(/^title/i)).not.toBeInTheDocument());
+      expect(write.mock.calls.map(([name]) => name)).toEqual(["CreateEvent", "UpdateEvent"]);
+      expect(write.mock.calls[1][1].id).toBe(createdId);
+      expect(server.current()!.title).toBe("Newer edits after uncertain save");
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it("keeps a confirmed title after a pre-save detail read completes late", async () => {
+    const endSession = eventSession();
+    eventServer();
+    const rendered = render(routedEventView());
+    try {
+      const user = userEvent.setup();
+      await screen.findByLabelText(/^title/i);
+      const originalRead = read.getMockImplementation()!;
+      let complete!: () => void;
+      read.mockImplementation((name: string, variables: Record<string, unknown>) => name === "GetEventById"
+        ? new Promise(resolve => { complete = () => resolve({ data: { event: { ...copy(event), section: { id: "section-1" }, ticketTypes: copy(ticketTypes) } }, extensions: {} }); })
+        : originalRead(name, variables));
+      let oldRead!: Promise<unknown>;
+      act(() => { oldRead = queryClient.fetchQuery({ ...dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })), staleTime: 0 }); });
+      await waitFor(() => expect(complete).toBeTypeOf("function"));
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Committed newer title" } });
+      const before = eventReadCount();
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(await screen.findByRole("heading", { level: 1, name: "Committed newer title" })).toBeInTheDocument();
+      await act(async () => { complete(); await oldRead.catch(() => {}); });
+      expect(screen.getByRole("heading", { level: 1, name: "Committed newer title" })).toBeInTheDocument();
+      expect(queryClient.getQueryData<{ event: { title: string } }>(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey)?.event.title).toBe("Committed newer title");
+      expect(eventReadCount()).toBe(before);
+      expect(write).toHaveBeenCalledOnce();
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+});
 
 describe("rendered administration freshness with the installed SDK cache", () => {
   it.each([false, true])("refreshes a found uncertain event update before reopening saved details, retry=%s", async (retry) => {

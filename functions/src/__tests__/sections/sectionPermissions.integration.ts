@@ -69,6 +69,118 @@ function variables(operation: string): Record<string, unknown> {
   if (operation.includes("TicketType")) return {...(operation === "CreateTicketType" ? {eventId:f.event} : {id:f.ticket}),userGroupId:f.group,audience:"MEMBER",title:"Changed ticket",price:0,includesDinner:false,includesSymposium:true,sortOrder:0};
   return {...(operation === "CreateEvent" ? {sectionId:f.section} : {id:f.event}),title:"Changed event",startDateTime:stamp,endDateTime:stamp,bookingStartDateTime:stamp,bookingEndDateTime:stamp,maxGuestsWithoutModeratorApproval:0};
 }
+
+const normalizedId = (value: string) => value.replace(/-/g, "").toLowerCase();
+const canonicalEventInput = {
+  title: "Canonical saved event",
+  location: null,
+  guestOfHonour: "Local guest",
+  sponsors: null,
+  details: "The committed event detail",
+  startDateTime: "2030-01-01T12:00:00+01:00",
+  endDateTime: "2030-01-01T15:00:00+01:00",
+  bookingStartDateTime: "2029-12-01T00:00:00Z",
+  bookingEndDateTime: "2029-12-31T00:00:00Z",
+  maxGuestsWithoutModeratorApproval: 2,
+} satisfies Omit<AdminSdk.CreateEventVariables, "sectionId">;
+
+for (const kind of ["admin", "explicit-moderator", "status-moderator"]) {
+  it(kind + " creates and returns the canonical event from the authorized transaction", async () => {
+    const a = await actor(kind);
+    const result = await dc.executeMutation<AdminSdk.CreateEventData, AdminSdk.CreateEventVariables>(
+      "CreateEvent", { sectionId: f.section, ...canonicalEventInput }, a.options,
+    );
+    const saved = result.data.saved?.event;
+    expect(saved).toBeDefined();
+    if (!saved) throw new Error("CreateEvent omitted its committed event");
+    expect(normalizedId(saved.id)).toBe(normalizedId(result.data.event_insert.id));
+    expect(normalizedId(saved.section.id)).toBe(normalizedId(f.section));
+    expect(saved).toMatchObject({ title: canonicalEventInput.title, location: null,
+      guestOfHonour: canonicalEventInput.guestOfHonour, sponsors: null,
+      details: canonicalEventInput.details, maxGuestsWithoutModeratorApproval: 2, ticketTypes: [] });
+    expect(Date.parse(saved.startDateTime)).toBe(Date.parse(canonicalEventInput.startDateTime));
+    expect(Number.isFinite(Date.parse(saved.updatedAt))).toBe(true);
+    const audit = (await raw("query CreatedAudit($id:UUID!){event(id:$id){createdAt updatedAt createdBy updatedBy}}", { id: saved.id })).data as {
+      event: { createdAt: string; updatedAt: string; createdBy: string; updatedBy: string };
+    };
+    expect(saved.updatedAt).toBe(audit.event.updatedAt);
+    expect(audit.event.createdAt).toBe(audit.event.updatedAt);
+    expect(audit.event.createdBy).toBe(a.uid);
+    expect(audit.event.updatedBy).toBe(a.uid);
+    const detail = await dc.executeQuery<AdminSdk.GetEventByIdData>("GetEventById", { id: saved.id }, a.options);
+    expect(saved).toEqual({ ...detail.data.event, updatedAt: saved.updatedAt });
+    expect(Object.keys(result.data).sort()).toEqual(["event_insert", "saved"]);
+  });
+
+  it(kind + " updates and returns the full committed event including existing tickets and timestamp", async () => {
+    const a = await actor(kind);
+    const oldTimestamp = "2000-01-01T00:00:00Z";
+    await raw("mutation OldTimestamp($id:UUID!,$time:Timestamp!){event_update(id:$id,data:{updatedAt:$time})}", { id: f.event, time: oldTimestamp });
+    const result = await dc.executeMutation<AdminSdk.UpdateEventData, AdminSdk.UpdateEventVariables>(
+      "UpdateEvent", { id: f.event, ...canonicalEventInput }, a.options,
+    );
+    const saved = result.data.saved?.event;
+    expect(saved).toBeDefined();
+    if (!saved) throw new Error("UpdateEvent omitted its committed event");
+    expect(normalizedId(saved.id)).toBe(normalizedId(f.event));
+    expect(normalizedId(saved.id)).toBe(normalizedId(result.data.event_update!.id));
+    expect(normalizedId(saved.section.id)).toBe(normalizedId(f.section));
+    expect(saved).toMatchObject({ title: canonicalEventInput.title, location: null,
+      guestOfHonour: canonicalEventInput.guestOfHonour, sponsors: null,
+      details: canonicalEventInput.details, maxGuestsWithoutModeratorApproval: 2 });
+    expect(Date.parse(saved.startDateTime)).toBe(Date.parse(canonicalEventInput.startDateTime));
+    expect(Date.parse(saved.updatedAt)).toBeGreaterThan(Date.parse(oldTimestamp));
+    expect(saved.ticketTypes).toHaveLength(1);
+    expect(normalizedId(saved.ticketTypes[0].id)).toBe(normalizedId(f.ticket));
+    expect(saved.ticketTypes[0]).toMatchObject({ title: "Local ticket", price: 0, audience: "MEMBER",
+      userGroup: { name: "Section member catalogue", membershipStatuses: ["REGULAR"] } });
+    const detail = await dc.executeQuery<AdminSdk.GetEventByIdData>("GetEventById", { id: f.event }, a.options);
+    const list = await dc.executeQuery<AdminSdk.GetEventsForSectionData>("GetEventsForSection", { sectionId: f.section }, a.options);
+    expect(saved).toEqual({ ...detail.data.event, updatedAt: saved.updatedAt });
+    expect(list.data.section?.events.find(event => normalizedId(event.id) === normalizedId(saved.id)))
+      .toMatchObject({ title: saved.title, startDateTime: saved.startDateTime });
+    const audit = (await raw("query UpdatedAudit($id:UUID!){event(id:$id){updatedAt updatedBy}}", { id: f.event })).data as {
+      event: { updatedAt: string; updatedBy: string };
+    };
+    expect(saved.updatedAt).toBe(audit.event.updatedAt);
+    expect(audit.event.updatedBy).toBe(a.uid);
+    expect(Object.keys(result.data).sort()).toEqual(["event_update", "saved"]);
+  });
+}
+
+for (const identity of ["explicit", "null"] as const) {
+  it("creates with an " + identity + " optional identity while returning the inserted canonical key", async () => {
+    const a = await actor("explicit-moderator");
+    const id = identity === "explicit" ? randomUUID() : null;
+    const result = await dc.executeMutation<AdminSdk.CreateEventData, AdminSdk.CreateEventVariables>(
+      "CreateEvent", { id, sectionId: f.section, ...canonicalEventInput }, a.options,
+    );
+    const saved = result.data.saved?.event;
+    expect(saved).toBeDefined();
+    if (!saved) throw new Error("CreateEvent omitted its committed event");
+    expect(normalizedId(saved.id)).toBe(normalizedId(result.data.event_insert.id));
+    expect(normalizedId(saved.section.id)).toBe(normalizedId(f.section));
+    if (id) expect(normalizedId(saved.id)).toBe(normalizedId(id));
+    else expect(saved.id).toMatch(/^[0-9a-f-]{32,36}$/i);
+  });
+}
+
+it("rejects duplicate create identities without replacing an existing own- or other-section event", async () => {
+  const a = await actor("explicit-moderator"), before = await snapshot();
+  for (const id of [f.event, f.otherEvent]) {
+    await expect(dc.executeMutation("CreateEvent", { id, sectionId: f.section, ...canonicalEventInput }, a.options))
+      .rejects.toThrow();
+    expect(await snapshot()).toEqual(before);
+  }
+});
+
+it("rejects a missing event update instead of returning a null-key successful save", async () => {
+  const a = await actor("admin"), before = await snapshot();
+  await expect(dc.executeMutation("UpdateEvent", { id: randomUUID(), ...canonicalEventInput }, a.options))
+    .rejects.toThrow(/SECTION_MODERATOR_REQUIRED|EVENT_SAVE_NOT_FOUND/);
+  expect(await snapshot()).toEqual(before);
+});
+
 for (const kind of ["admin", "explicit-moderator", "status-moderator"]) describe(kind + " actual allowed section operations", () => {
   for (const name of [...queryNames,...mutationNames]) it(name, async () => {
     const a = await actor(kind);

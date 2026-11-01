@@ -156,6 +156,23 @@ function unloadBlocked() {
 }
 
 describe("exact receipt acknowledgement", () => {
+  it("passes the exact journal receipt into a new operation and retains it without invoking a replacement", async () => {
+    session();
+    const hook = renderHook(() => useSessionMutation<{ receipt: object }>("event"));
+    const operation = vi.fn(async (receipt: object) => ({ receipt }));
+    let result!: { receipt: object };
+    await act(async () => { result = await hook.result.current.runOnce(operation); });
+    expect(result.receipt).toBe(hook.result.current.receipt);
+    expect(Object.isFrozen(result.receipt)).toBe(true);
+    const replacement = vi.fn(async (receipt: object) => ({ receipt }));
+    await expect(hook.result.current.runOnce(replacement)).resolves.toBe(result);
+    expect(replacement).not.toHaveBeenCalled();
+    act(() => { expect(hook.result.current.acknowledgeIfCurrent(result.receipt)).toBe(true); });
+    await act(async () => { await hook.result.current.runOnce(replacement); });
+    expect(replacement).toHaveBeenCalledOnce();
+    expect(replacement.mock.calls[0][0]).not.toBe(result.receipt);
+  });
+
   it("cannot acknowledge a replacement request even when it reuses the same error", async () => {
     session();
     const failure = new Error("Uncertain response");
