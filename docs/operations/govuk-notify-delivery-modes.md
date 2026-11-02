@@ -22,13 +22,25 @@ restrictive of all three values. There is no secret fallback.
 
 ## Configure an environment
 
-Set the three secrets independently:
+Run commands from the repository root of a clean, reviewed release checkout using
+Node 24, Firebase CLI **15.22.3** and both installed lockfiles (`npm ci` and
+`npm --prefix functions ci`). Choose the Firebase alias `dev`, `beta` or `prod`
+and verify its `.firebaserc` project mapping; `PROJECT_ID` below means that alias's
+literal project ID.
+
+For initial provisioning or an explicitly approved rotation, set the three secrets
+independently. Do not create new versions as a routine release step:
 
 ```sh
 firebase functions:secrets:set GOV_NOTIFY_LIVE_API_KEY --project PROJECT_ID
 firebase functions:secrets:set GOV_NOTIFY_TEST_API_KEY --project PROJECT_ID
 firebase functions:secrets:set GOV_NOTIFY_TEAM_API_KEY --project PROJECT_ID
 ```
+
+The ordinary deployment guard requires deployed bindings to match the literal
+enabled latest versions. A new/mismatched version needs its separately reviewed
+provisioning/rotation workflow; do not bypass that block with a raw Functions
+deployment.
 
 Set the deployment ceiling in the ignored project-specific Functions environment
 file, for example `functions/.env.PROJECT_ID`:
@@ -42,16 +54,33 @@ select team-test or live mode without a deployment, set the ceiling to `LIVE`
 only after the environment has passed its delivery checks. The runtime setting
 will remain in `SIMULATION`.
 
-Deploy Data Connect before Functions because the runtime setting and audit
-tables are schema changes:
+For an existing environment with the authorization migration and secret bindings
+complete, follow the [Functions configuration review](./functions-runtime-config-guard.md#prepare-and-review).
+A deployment-ceiling change is an intentional environment delta: review the exact
+proposal and retain its `SODC_FUNCTIONS_CONFIG_REVIEW` for the full preflight and
+deployment. Stage the matching Vite file too; the full preflight remains required
+for a Functions-only release.
 
 ```sh
-npx firebase deploy --only dataconnect --project PROJECT_ID
-npx firebase deploy --only functions --project PROJECT_ID
-# Choose the Hosting command matching the target alias; it rebuilds first.
-npm run deploy:hosting:dev
-# npm run deploy:hosting:beta
-# npm run deploy:hosting:prod
+export FIREBASE_ENV=dev # Use beta or prod only for that approved target.
+npm run deployment:preflight -- --env "$FIREBASE_ENV"
+```
+
+If installing changed runtime-setting/audit schema or connector operations, deploy
+and validate Data Connect before Functions. A ceiling-only change to an already
+compatible backend does not require a Data Connect deployment:
+
+```sh
+npm run deployment:functions-config -- --env "$FIREBASE_ENV" --verify
+firebase deploy --only dataconnect --project "$FIREBASE_ENV"
+```
+
+Then deploy Functions through the guarded path, which rechecks fresh metadata:
+
+```sh
+npm run deploy:functions -- --env "$FIREBASE_ENV"
+# Deploy Hosting only if this release also changes the frontend; choose its target.
+npm run "deploy:hosting:$FIREBASE_ENV"
 ```
 
 ## Change the runtime mode

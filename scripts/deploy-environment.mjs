@@ -17,6 +17,8 @@ import {
   writePreflightAttestation,
 } from "./deploy-environment-lib.mjs";
 import { parseJsonOutput } from "./deployment-check-lib.mjs";
+import { runFunctionsConfigGuard } from "./functions-config-guard.mjs";
+import { deployGuardedFunctions } from "./functions-deploy.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -56,6 +58,14 @@ async function main() {
   );
   await runDeploymentPlan(plan, async (step) => {
     console.log(`\n==> ${step.label}`);
+    if (step.kind === "functions-config-record" || step.kind === "functions-config-verify") {
+      await runFunctionsConfigGuard(repositoryRoot, environment, { verify: step.kind === "functions-config-verify" });
+      return { stdout: "" };
+    }
+    if (step.kind === "guarded-functions-deploy") {
+      await deployGuardedFunctions(repositoryRoot, environment);
+      return { stdout: "" };
+    }
     if (step.kind === "environment-config") {
       await checkEnvironmentConfig(repositoryRoot, viteMode);
       return { stdout: "" };

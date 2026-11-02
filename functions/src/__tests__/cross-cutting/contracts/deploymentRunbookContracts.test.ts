@@ -25,21 +25,28 @@ describe("deployment runbook contracts", () => {
       "## Partial failure and rollback checkpoints"
     );
 
-    const generate = rollout.indexOf("dataconnect:sdk:generate");
-    const generatedDiff = rollout.indexOf("git diff --exit-code");
-    const generatedStatus = rollout.indexOf("git status --short --");
-    const dataConnect = rollout.indexOf("firebase deploy --only dataconnect");
-    const functions = rollout.indexOf("firebase deploy --only functions");
-    const hosting = rollout.indexOf("npm run deploy:hosting:dev");
+    const commands = [...rollout.matchAll(/```sh\n([\s\S]*?)```/g)]
+      .map(([, script]) => script).join("\n");
+    const generate = commands.indexOf("dataconnect:sdk:generate");
+    const generatedDiff = commands.indexOf("git diff --exit-code");
+    const generatedStatus = commands.indexOf("git status --short --");
+    const preflight = commands.indexOf("npm run deployment:preflight -- --env \"$FIREBASE_PROJECT\"");
+    const guard = commands.indexOf("npm run deployment:functions-config -- --env \"$FIREBASE_PROJECT\" --verify");
+    const dataConnect = commands.indexOf("firebase deploy --only dataconnect");
+    const functions = commands.indexOf("npm run deploy:functions -- --env \"$FIREBASE_PROJECT\"");
+    const hosting = commands.indexOf("npm run deploy:hosting:dev");
 
     expect(generate).toBeGreaterThanOrEqual(0);
     expect(generatedDiff).toBeGreaterThan(generate);
     expect(generatedStatus).toBeGreaterThan(generatedDiff);
-    expect(dataConnect).toBeGreaterThan(generatedStatus);
+    expect(preflight).toBeGreaterThan(generatedStatus);
+    expect(guard).toBeGreaterThan(preflight);
+    expect(dataConnect).toBeGreaterThan(guard);
     expect(functions).toBeGreaterThan(dataConnect);
     expect(hosting).toBeGreaterThan(functions);
     expect(rollout).toContain("**Dev**, then **Prod**");
     expect(rollout).not.toContain("firebase deploy --project");
+    expect(rollout).not.toContain("firebase deploy --only functions");
   });
 
   it("documents smoke and rollback stops between remote deployment stages", () => {
@@ -49,9 +56,16 @@ describe("deployment runbook contracts", () => {
       "## Partial failure and rollback checkpoints",
       "## Promotion flow"
     );
+    const functions = section(
+      runbook,
+      "### 5. Deploy and validate Functions",
+      "### 6. Build and deploy Hosting"
+    );
 
     expect(runbook).toContain("Before continuing:");
-    expect(runbook).toContain("Only after the Data Connect and Storage checkpoints pass:");
+    expect(functions).toContain("full preflight");
+    expect(functions).toContain("Data Connect/Storage checkpoints");
+    expect(functions).toContain("checks fresh target metadata");
     expect(rollback).toContain("Do not deploy Functions or Hosting");
     expect(rollback).toContain("Do not deploy Hosting");
     expect(rollback).toContain("destructive migration");

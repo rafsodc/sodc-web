@@ -68,6 +68,10 @@ Defined via `.env*` files and read from `import.meta.env`:
   `functions/.env.<project-id>` (for example,
   `functions/.env.sodc-web-production`). Firebase selects it by project ID at
   deploy time; verify the CLI reports the intended file before continuing.
+- Use the [Functions runtime configuration guard](./functions-runtime-config-guard.md)
+  to compare actual dotenv resolution with each deployed endpoint before deployment.
+  Existing empty values and per-endpoint absence are significant; preserving a
+  reviewed baseline is separate from reconciling configuration drift.
 - Rotate Stripe secrets if compromised and update Firebase secrets before redeploy.
 - Rotate the affected mode-specific Notify key if compromised and update Firebase secrets before redeploy.
 - Follow [GOV.UK Notify delivery modes](./govuk-notify-delivery-modes.md) for safe mode changes and verification.

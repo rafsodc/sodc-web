@@ -15,6 +15,7 @@ import {
   writePreflightAttestation,
 } from "./deploy-environment-lib.mjs";
 import { parseJsonOutput } from "./deployment-check-lib.mjs";
+import { runFunctionsConfigGuard } from "./functions-config-guard.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -53,6 +54,10 @@ async function main() {
   console.log(`Running deployment preflight for ${environment} (${projectId}). No remote resource will change.`);
   await runDeploymentPlan(plan, async (step) => {
     console.log(`\n==> ${step.label}`);
+    if (step.kind === "functions-config-record") {
+      await runFunctionsConfigGuard(repositoryRoot, environment);
+      return { stdout: "" };
+    }
     if (step.kind === "environment-config") {
       await checkEnvironmentConfig(repositoryRoot, viteMode);
       return { stdout: "" };
