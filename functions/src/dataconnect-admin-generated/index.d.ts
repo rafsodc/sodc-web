@@ -756,9 +756,66 @@ export interface CreateTicketOrderForCheckoutVariables {
 
 export interface CreateTicketTypeData {
   ticketType_insert: TicketType_Key;
+  saved?: {
+    ticketType?: {
+      id: UUIDString;
+      title: string;
+      description?: string | null;
+      price: number;
+      sortOrder: number;
+      audience: TicketAudience;
+      includesDinner: boolean;
+      includesSymposium: boolean;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+      updatedAt: TimestampString;
+      event: {
+        id: UUIDString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+    } & TicketType_Key;
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 
 export interface CreateTicketTypeVariables {
+  id?: UUIDString | null;
   eventId: UUIDString;
   userGroupId: UUIDString;
   audience: TicketAudience;
@@ -4794,6 +4851,62 @@ export interface UpdateTicketAttendanceVariables {
 
 export interface UpdateTicketTypeData {
   ticketType_update?: TicketType_Key | null;
+  saved?: {
+    ticketType?: {
+      id: UUIDString;
+      title: string;
+      description?: string | null;
+      price: number;
+      sortOrder: number;
+      audience: TicketAudience;
+      includesDinner: boolean;
+      includesSymposium: boolean;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+      updatedAt: TimestampString;
+      event: {
+        id: UUIDString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+    } & TicketType_Key;
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 
 export interface UpdateTicketTypeVariables {

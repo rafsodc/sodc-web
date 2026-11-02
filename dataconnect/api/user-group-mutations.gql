@@ -480,6 +480,7 @@ mutation DeleteEvent(
 # --- TicketType mutations (current section moderator or global administrator) ---
 
 mutation CreateTicketType(
+  $id: UUID
   $eventId: UUID!
   $userGroupId: UUID!
   $audience: TicketAudience!
@@ -521,6 +522,7 @@ mutation CreateTicketType(
 
   ticketType_insert(
     data: {
+      id_expr: "has(vars.id) && vars.id != null ? vars.id : uuidV4()"
       eventId: $eventId
       userGroupId: $userGroupId
       audience: $audience
@@ -532,6 +534,52 @@ mutation CreateTicketType(
       sortOrder: $sortOrder
     }
   )
+
+  # Return the written catalog row and complete parent detail from this same
+  # authorized transaction. A child edit does not alter the event's audit time.
+  saved: query {
+    ticketType(key: { id_expr: "response.ticketType_insert.id" })
+      @check(expr: "this != null && this.id == response.ticketType_insert.id && this.event.id == vars.eventId && this.event.section.id == response.query.managementScope.section.id", message: "TICKET_TYPE_SAVE_NOT_FOUND") {
+      id
+      title
+      description
+      price
+      sortOrder
+      audience
+      includesDinner
+      includesSymposium
+      userGroup { id name membershipStatuses }
+      updatedAt
+      event { id section { id } }
+    }
+    event(id: $eventId)
+      @check(expr: "this != null && this.id == response.query.managementScope.id && this.section.id == response.query.managementScope.section.id", message: "TICKET_TYPE_SAVE_NOT_FOUND") {
+      id
+      section { id }
+      title
+      location
+      guestOfHonour
+      sponsors
+      details
+      startDateTime
+      endDateTime
+      bookingStartDateTime
+      bookingEndDateTime
+      maxGuestsWithoutModeratorApproval
+      updatedAt
+      ticketTypes: ticketTypes_on_event(orderBy: { sortOrder: ASC }) {
+        id
+        title
+        description
+        audience
+        price
+        includesDinner
+        includesSymposium
+        sortOrder
+        userGroup { id name membershipStatuses }
+      }
+    }
+  }
 }
 
 mutation UpdateTicketType(
@@ -588,7 +636,51 @@ mutation UpdateTicketType(
       updatedAt_expr: "request.time"
       updatedBy_expr: "auth.uid"
     }
-  )
+  ) @check(expr: "this != null", message: "TICKET_TYPE_SAVE_NOT_FOUND")
+
+  saved: query {
+    ticketType(id: $id)
+      @check(expr: "this != null && this.id == response.ticketType_update.id && this.event.id == response.query.managementScope.event.id && this.event.section.id == response.query.managementScope.event.section.id", message: "TICKET_TYPE_SAVE_NOT_FOUND") {
+      id
+      title
+      description
+      price
+      sortOrder
+      audience
+      includesDinner
+      includesSymposium
+      userGroup { id name membershipStatuses }
+      updatedAt
+      event { id section { id } }
+    }
+    event(key: { id_expr: "response.query.managementScope.event.id" })
+      @check(expr: "this != null && this.id == response.query.managementScope.event.id && this.section.id == response.query.managementScope.event.section.id", message: "TICKET_TYPE_SAVE_NOT_FOUND") {
+      id
+      section { id }
+      title
+      location
+      guestOfHonour
+      sponsors
+      details
+      startDateTime
+      endDateTime
+      bookingStartDateTime
+      bookingEndDateTime
+      maxGuestsWithoutModeratorApproval
+      updatedAt
+      ticketTypes: ticketTypes_on_event(orderBy: { sortOrder: ASC }) {
+        id
+        title
+        description
+        audience
+        price
+        includesDinner
+        includesSymposium
+        sortOrder
+        userGroup { id name membershipStatuses }
+      }
+    }
+  }
 }
 
 mutation DeleteTicketType(

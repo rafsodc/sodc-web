@@ -56,6 +56,14 @@ import {
   type CanonicalCommittedEvent,
 } from "../../../shared/query/eventSaveCache";
 import {
+  applyCommittedTicketSave,
+  assertCanonicalCommittedTicket,
+  assertCanonicalCommittedTicketResponse,
+  captureTicketSaveCacheWrite,
+  retireTicketSaveDependencies,
+  type CanonicalCommittedTicket,
+} from "../../../shared/query/ticketSaveCache";
+import {
   refreshDataConnectQuery,
   SERVER_ONLY_QUERY_OPTIONS,
 } from "../../../shared/query/authoritativeDataConnect";
@@ -219,6 +227,11 @@ function eventFields(event: EventRow) {
 const INITIAL_TICKET_FORM = {
   initialized: false,
   baseline: "",
+  revision: 0,
+  createId: null as string | null,
+  committedTicket: null as TicketTypeRow | null,
+  lastSavedRevision: null as number | null,
+  submission: null as { revision: number; snapshot: string; ticketTypeId: string; created: boolean } | null,
   ttTitle: "",
   ttDescription: "",
   ttPrice: "0",
@@ -228,6 +241,29 @@ const INITIAL_TICKET_FORM = {
   ttIncludesDinner: false,
   ttIncludesSymposium: false,
 };
+type TicketForm = typeof INITIAL_TICKET_FORM;
+interface TicketSaveReceipt {
+  receipt: object;
+  cacheWrite: ReturnType<typeof captureTicketSaveCacheWrite>;
+  ticket: CanonicalCommittedTicket;
+  event: CanonicalCommittedEvent;
+  submittedRevision: number;
+  submittedSnapshot: string;
+  created: boolean;
+}
+const editedTicketForm = (previous: TicketForm, next: TicketForm): TicketForm => ({ ...next, revision: previous.revision + 1 });
+function ticketFields(ticket: TicketTypeRow) {
+  return {
+    ttTitle: ticket.title,
+    ttDescription: ticket.description ?? "",
+    ttPrice: String(ticket.price),
+    ttSortOrder: String(ticket.sortOrder),
+    ttAccessGroup: { id: ticket.userGroup.id, name: ticket.userGroup.name },
+    ttAudience: ticket.audience,
+    ttIncludesDinner: ticket.includesDinner,
+    ttIncludesSymposium: ticket.includesSymposium,
+  };
+}
 function formSnapshot(form: object) {
   const {
     initialized: _initialized,
@@ -235,6 +271,7 @@ function formSnapshot(form: object) {
     revision: _revision,
     createId: _createId,
     committedEvent: _committedEvent,
+    committedTicket: _committedTicket,
     lastSavedRevision: _lastSavedRevision,
     submission: _submission,
     ...fields
@@ -244,6 +281,7 @@ function formSnapshot(form: object) {
   void _revision;
   void _createId;
   void _committedEvent;
+  void _committedTicket;
   void _lastSavedRevision;
   void _submission;
   return JSON.stringify(fields);
@@ -424,7 +462,7 @@ export default function SectionEventsManager({
   const submittedDraftIsConfirmed = eventWrite.status === "success" && !!eventWrite.result &&
     formSnapshot(eventForm) === eventWrite.result.submittedSnapshot;
   const eventDraftDirty = eventForm.initialized && formSnapshot(eventForm) !== eventForm.baseline && !submittedDraftIsConfirmed;
-  const ticketWrite = useSessionMutation<unknown>(
+  const ticketWrite = useSessionMutation<TicketSaveReceipt>(
     `ticket-write:${normalizedResourceId(sectionId)}:${normalizedResourceId(ticketTypesEventId ?? "none")}:${normalizedResourceId(routeControlled ? (ticketSelector ?? "new") : (editingTicketType?.id ?? "new"))}`,
   );
   const [writeReview, setWriteReview] = useState<{
@@ -434,6 +472,9 @@ export default function SectionEventsManager({
     isCurrent: () => boolean;
     eventId?: string;
     eventFound?: boolean;
+    ticketTypeId?: string;
+    ticketFound?: boolean;
+    ticketRecord?: TicketTypeRow;
     created?: boolean;
   } | null>(null);
   const activeWriteReview = writeReview?.isCurrent === isCurrentView && writeReview.isCurrent() &&
@@ -463,11 +504,15 @@ export default function SectionEventsManager({
     bookingEndDateTime: setBookingEndDateTime,
     maxGuestsStr: setMaxGuestsStr,
   } = eventSetters;
-  const [ticketForm, ticketSetters, updateTicketForm, discardTicketDraft] =
+  const [ticketForm, ticketSetters, updateTicketForm, discardTicketDraft, latestTicketForm] =
     useFormDraft(
       `section-ticket:${normalizedResourceId(sectionId)}:${normalizedResourceId(ticketTypesEventId ?? "none")}:${normalizedResourceId(routeControlled ? (ticketSelector ?? "new") : (editingTicketType?.id ?? "new"))}`,
       INITIAL_TICKET_FORM,
+      editedTicketForm,
     );
+  const submittedTicketDraftIsConfirmed = ticketWrite.status === "success" && !!ticketWrite.result &&
+    formSnapshot(ticketForm) === ticketWrite.result.submittedSnapshot;
+  const ticketDraftDirty = ticketForm.initialized && formSnapshot(ticketForm) !== ticketForm.baseline && !submittedTicketDraftIsConfirmed;
   const {
     ttTitle,
     ttDescription,
@@ -490,9 +535,7 @@ export default function SectionEventsManager({
   } = ticketSetters;
   useDraftUnloadWarning(
     (eventDialogOpen && eventDraftDirty) ||
-      (ticketTypeDialogOpen &&
-        ticketForm.initialized &&
-        formSnapshot(ticketForm) !== ticketForm.baseline),
+      (ticketTypeDialogOpen && ticketDraftDirty),
   );
   const [allUserGroups, setAllUserGroups] = useState<
     Array<{ id: string; name: string }>
@@ -840,11 +883,33 @@ export default function SectionEventsManager({
         committedEvent: saved, lastSavedRevision: submittedRevision, submission: null }));
     }
   };
+  const finishTicketSave = (saved: TicketTypeRow, submittedRevision: number, submittedSnapshot: string) => {
+    setError(null);
+    setRefreshFailure(null);
+    const latest = latestTicketForm.current;
+    if (latest.revision === submittedRevision && formSnapshot(latest) === submittedSnapshot) {
+      discardTicketDraft();
+      setTicketTypeDialogOpen(false);
+    } else {
+      updateTicketForm(previous => ({ ...previous, baseline: formSnapshot(ticketFields(saved)),
+        committedTicket: saved, lastSavedRevision: submittedRevision, submission: null }));
+    }
+  };
   const refetchSavedEvent = async (eventId: string): Promise<EventRow> => {
     const data = await refreshDataConnectQuery(queryClient, getEventByIdRef(dataConnect, { id: normalizedResourceId(eventId) }));
     const saved = data.event;
     if (!saved || !idsEqual(saved.id, eventId) || !idsEqual(saved.section.id, sectionId)) {
       throw new Error("The saved event could not be verified in this section.");
+    }
+    return saved;
+  };
+  const refetchSavedTicket = async (ticketTypeId: string): Promise<TicketTypeRow> => {
+    const data = await refetchEventDetail();
+    const event = data?.event;
+    const saved = event?.ticketTypes.find(ticket => idsEqual(ticket.id, ticketTypeId));
+    if (!event || !ticketTypesEventId || !idsEqual(event.id, ticketTypesEventId) ||
+      !idsEqual(event.section.id, sectionId) || !saved) {
+      throw new Error("The saved ticket type could not be verified in this event.");
     }
     return saved;
   };
@@ -864,12 +929,17 @@ export default function SectionEventsManager({
       finishEventSave(saved, result.submittedRevision, result.submittedSnapshot);
       return;
     }
-    if (ticketWrite.status !== "success") return;
-    const refreshed = await refreshSavedChange("Saved change loaded", refreshEventAdministration);
-    if (!refreshed || !isCurrentView()) return;
-    ticketWrite.acknowledge();
-    discardTicketDraft();
-    setTicketTypeDialogOpen(false);
+    const result = ticketWrite.result;
+    if (ticketWrite.status !== "success" || !result || !ticketTypesEventId) return;
+    let saved: TicketTypeRow | undefined;
+    const refreshed = await refreshSavedChange("Saved change loaded", async () => {
+      saved = await refetchSavedTicket(result.ticket.id);
+      if (!isCurrentView()) return;
+      await retireTicketSaveDependencies(queryClient, dataConnect, { sectionId, eventId: ticketTypesEventId });
+      if (isCurrentView()) setError(null);
+    }, "The ticket type is already saved");
+    if (!refreshed || !isCurrentView() || !saved || !ticketWrite.acknowledgeIfCurrent(result.receipt)) return;
+    finishTicketSave(saved, result.submittedRevision, result.submittedSnapshot);
   };
   const reviewUnconfirmedWrite = async (kind: "event" | "ticket") => {
     const receipt = kind === "event" ? eventWrite : ticketWrite;
@@ -880,14 +950,27 @@ export default function SectionEventsManager({
       if (!isCurrentView()) return;
       const rows = kind === "event"
         ? (data as { section?: { events?: Array<{ id: string; title: string }> } })?.section?.events
-        : (data as { event?: { ticketTypes?: Array<{ title: string }> } })?.event?.ticketTypes;
+        : (data as { event?: { ticketTypes?: TicketTypeRow[] } })?.event?.ticketTypes;
       if (!Array.isArray(rows)) throw new Error("The latest list could not be verified.");
       const submission = latestEventForm.current.submission;
       const eventId = submission?.eventId ?? editingEvent?.id ?? latestEventForm.current.createId ?? undefined;
       if (kind === "event" && !eventId) throw new Error("The event identity could not be verified.");
+      const ticketSubmission = latestTicketForm.current.submission;
+      const ticketTypeId = ticketSubmission?.ticketTypeId ?? editingTicketType?.id ??
+        latestTicketForm.current.committedTicket?.id ?? latestTicketForm.current.createId ?? undefined;
+      if (kind === "ticket" && !ticketTypeId) throw new Error("The ticket type identity could not be verified.");
+      const ticketRecord = kind === "ticket" ? (rows as TicketTypeRow[]).find(row => idsEqual(row.id, ticketTypeId)) : undefined;
+      if (kind === "ticket") {
+        const event = (data as { event?: { id: string; section: { id: string } } })?.event;
+        if (!event || !ticketTypesEventId || !idsEqual(event.id, ticketTypesEventId) || !idsEqual(event.section.id, sectionId)) {
+          throw new Error("The latest ticket catalogue could not be verified in this section.");
+        }
+      }
       setWriteReview({ kind, titles: rows.map(row => row.title), receipt: receipt.receipt, isCurrent: isCurrentView,
         ...(kind === "event" ? { eventId, created: submission?.created ?? !editingEvent,
-          eventFound: rows.some(row => "id" in row && idsEqual(String(row.id), eventId)) } : {}) });
+          eventFound: rows.some(row => "id" in row && idsEqual(String(row.id), eventId)) }
+          : { ticketTypeId, ticketFound: !!ticketRecord, ticketRecord,
+            created: ticketSubmission?.created ?? !(editingTicketType ?? latestTicketForm.current.committedTicket) }) });
     } catch (caught) {
       if (isCurrentView()) {
         setWriteReview(null);
@@ -899,13 +982,19 @@ export default function SectionEventsManager({
     const review = activeWriteReview;
     if (!review?.isCurrent() || refreshing) return;
     const { kind, receipt } = review;
-    if (kind === "event" && ((!found && review.created && review.eventFound) || (found && !review.eventFound))) return;
+    const recordFound = kind === "event" ? review.eventFound : review.ticketFound;
+    if ((!found && review.created && recordFound) || (found && !recordFound)) return;
     let saved: EventRow | undefined;
+    let savedTicket: TicketTypeRow | undefined;
     if (found) {
       setRefreshing(true);
       try {
         if (kind === "event") saved = await refetchSavedEvent(review.eventId!);
-        else await refreshEventAdministration();
+        else {
+          savedTicket = await refetchSavedTicket(review.ticketTypeId!);
+          if (!review.isCurrent() || !ticketTypesEventId) return;
+          await retireTicketSaveDependencies(queryClient, dataConnect, { sectionId, eventId: ticketTypesEventId });
+        }
       } catch (caught) {
         if (review.isCurrent()) setError(toAdminUserFacingError(caught, kind === "event" ? "events" : "tickets").message);
         return;
@@ -921,14 +1010,18 @@ export default function SectionEventsManager({
       const submission = latestEventForm.current.submission;
       finishEventSave(saved, submission?.revision ?? latestEventForm.current.revision,
         submission?.snapshot ?? formSnapshot(latestEventForm.current));
-    } else {
-      discardTicketDraft();
-      setTicketTypeDialogOpen(false);
+    } else if (savedTicket) {
+      const submission = latestTicketForm.current.submission;
+      finishTicketSave(savedTicket, submission?.revision ?? latestTicketForm.current.revision,
+        submission?.snapshot ?? formSnapshot(latestTicketForm.current));
     }
   };
   const writeNotice = (kind: "event" | "ticket") => {
     const receipt = kind === "event" ? eventWrite : ticketWrite;
-    if (receipt.status === "idle") return kind === "event" && eventForm.lastSavedRevision !== null && eventDraftDirty
+    const hasNewerEdits = kind === "event"
+      ? eventForm.lastSavedRevision !== null && eventDraftDirty
+      : ticketForm.lastSavedRevision !== null && ticketDraftDirty;
+    if (receipt.status === "idle") return hasNewerEdits
       ? <Alert severity="info" sx={{ mb: 2 }}>Your previous changes were saved. These newer edits have not been saved.</Alert>
       : null;
     return (
@@ -970,7 +1063,7 @@ export default function SectionEventsManager({
       open={!!activeWriteReview}
       title="Start a new save request?"
       confirmLabel="I checked — start a new request"
-      confirmDisabled={activeWriteReview?.kind === "event" && activeWriteReview.created && activeWriteReview.eventFound}
+      confirmDisabled={!!activeWriteReview?.created && !!(activeWriteReview.kind === "event" ? activeWriteReview.eventFound : activeWriteReview.ticketFound)}
       pending={refreshing}
       pendingLabel="Loading…"
       error={error}
@@ -985,13 +1078,22 @@ export default function SectionEventsManager({
           ? "Your event is present in the latest list. Review its saved details before continuing."
           : "Your event is absent from the latest list."}
       </Box>}
+      {activeWriteReview?.kind === "ticket" && <Box sx={{ mt: 1 }}>
+        {activeWriteReview.ticketFound
+          ? "Your ticket type is present in the latest list. Review its saved details before continuing."
+          : "Your ticket type is absent from the latest list."}
+        {activeWriteReview.ticketRecord && <Box sx={{ mt: 1 }}>
+          {activeWriteReview.ticketRecord.title} — £{activeWriteReview.ticketRecord.price.toFixed(2)} — {activeWriteReview.ticketRecord.userGroup.name}
+          {activeWriteReview.ticketRecord.description && <Box>{activeWriteReview.ticketRecord.description}</Box>}
+        </Box>}
+      </Box>}
       <Box component="ul">
         {(activeWriteReview?.titles ?? []).map((title, index) => (
           <li key={`${index}:${title}`}>{title}</li>
         ))}
       </Box>
       {activeWriteReview?.titles.length === 0 && <Box>The latest list is empty.</Box>}
-      <Button disabled={refreshing || (activeWriteReview?.kind === "event" && !activeWriteReview.eventFound)} onClick={() => void acknowledgeReviewedWrite(true)} sx={{ mt: 2 }}>
+      <Button disabled={refreshing || (!!activeWriteReview && !(activeWriteReview.kind === "event" ? activeWriteReview.eventFound : activeWriteReview.ticketFound))} onClick={() => void acknowledgeReviewedWrite(true)} sx={{ mt: 2 }}>
         I found the saved change — close this draft
       </Button>
     </ConfirmationDialog>
@@ -1168,26 +1270,13 @@ export default function SectionEventsManager({
     )
       return;
     const fields = editingTicketType
-      ? {
-          ttTitle: editingTicketType.title,
-          ttDescription: editingTicketType.description ?? "",
-          ttPrice: String(editingTicketType.price),
-          ttSortOrder: String(editingTicketType.sortOrder),
-          ttAudience: editingTicketType.audience,
-          ttIncludesDinner: editingTicketType.includesDinner,
-          ttIncludesSymposium: editingTicketType.includesSymposium,
-          ttAccessGroup: editingTicketType.userGroup
-            ? {
-                id: editingTicketType.userGroup.id,
-                name: editingTicketType.userGroup.name,
-              }
-            : null,
-        }
+      ? ticketFields(editingTicketType)
       : {
           ...INITIAL_TICKET_FORM,
           ttSortOrder: String(eventDetailData?.event?.ticketTypes?.length ?? 0),
         };
     updateTicketForm({
+      ...INITIAL_TICKET_FORM,
       ...fields,
       initialized: true,
       baseline: formSnapshot(fields),
@@ -1203,6 +1292,7 @@ export default function SectionEventsManager({
   ]);
 
   const handleTicketTypeSubmit = async () => {
+    if (ticketWrite.status !== "idle") return;
     if (!ticketTypesEventId || !ttTitle.trim() || !ttAccessGroup) {
       setError("Title and user group are required");
       return;
@@ -1215,52 +1305,60 @@ export default function SectionEventsManager({
     const sortOrderNum = parseInt(ttSortOrder, 10) || 0;
     setSubmittingTicketType(true);
     setError(null);
+    const existingTicket = editingTicketType ?? ticketForm.committedTicket;
+    const ticketTypeId = existingTicket?.id ?? ticketForm.createId ?? crypto.randomUUID();
+    const submittedRevision = ticketForm.revision;
+    const submittedSnapshot = formSnapshot(ticketForm);
+    const created = !existingTicket;
+    updateTicketForm(previous => ({ ...previous, createId: previous.createId ?? ticketTypeId,
+      submission: { revision: submittedRevision, snapshot: submittedSnapshot, ticketTypeId, created } }));
     try {
-      await ticketWrite.runOnce(async () => {
+      const result = await ticketWrite.runOnce(async receipt => {
+        const scope = { sectionId, eventId: ticketTypesEventId, ticketTypeId };
+        const cacheWrite = captureTicketSaveCacheWrite(queryClient, dataConnect, scope);
         removeSectionEventSummaries(queryClient);
-        if (editingTicketType) {
-          await executeDataConnectMutation(
-            updateTicketTypeRef(dataConnect, {
-              id: editingTicketType.id,
-              userGroupId: ttAccessGroup!.id as UUIDString,
-              audience: ttAudience,
-              title: ttTitle.trim(),
-              description: ttDescription.trim() || null,
-              price: priceNum,
-              includesDinner: ttIncludesDinner,
-              includesSymposium: ttIncludesSymposium,
-              sortOrder: sortOrderNum,
-            }),
-          );
-        } else {
-          await executeDataConnectMutation(
-            createTicketTypeRef(dataConnect, {
-              eventId: ticketTypesEventId as UUIDString,
-              userGroupId: ttAccessGroup!.id as UUIDString,
-              audience: ttAudience,
-              title: ttTitle.trim(),
-              description: ttDescription.trim() || null,
-              price: priceNum,
-              includesDinner: ttIncludesDinner,
-              includesSymposium: ttIncludesSymposium,
-              sortOrder: sortOrderNum,
-            }),
-          );
+        const fields = {
+          userGroupId: ttAccessGroup!.id as UUIDString,
+          audience: ttAudience,
+          title: ttTitle.trim(),
+          description: ttDescription.trim() || null,
+          price: priceNum,
+          includesDinner: ttIncludesDinner,
+          includesSymposium: ttIncludesSymposium,
+          sortOrder: sortOrderNum,
+        };
+        const response = existingTicket
+          ? await executeDataConnectMutation(updateTicketTypeRef(dataConnect, { id: ticketTypeId, ...fields }))
+          : await executeDataConnectMutation(createTicketTypeRef(dataConnect, { id: ticketTypeId, eventId: ticketTypesEventId, ...fields }));
+        const saved = response.data.saved?.ticketType;
+        const event = response.data.saved?.event;
+        assertCanonicalCommittedTicket(saved, scope);
+        assertCanonicalCommittedEvent(event, scope);
+        assertCanonicalCommittedTicketResponse(saved, event, scope);
+        const written = existingTicket
+          ? ("ticketType_update" in response.data ? response.data.ticketType_update : null)
+          : ("ticketType_insert" in response.data ? response.data.ticketType_insert : null);
+        if (!written || !idsEqual(written.id, saved.id)) {
+          throw new Error("The ticket type save could not be confirmed. Check the latest list before continuing.");
         }
+        return { receipt, cacheWrite, ticket: saved, event, submittedRevision, submittedSnapshot, created };
       });
-      const refreshed = await refreshSavedChange(
-        `Ticket type ${editingTicketType ? "updated" : "created"}`,
-        refreshEventAdministration,
-      );
-      if (!isCurrentView() || !refreshed) return;
-      ticketWrite.acknowledge();
-      discardTicketDraft();
-      setTicketTypeDialogOpen(false);
+      if (!isCurrentView()) return;
+      try {
+        await applyCommittedTicketSave(result.cacheWrite, result.ticket, result.event);
+      } catch (caught) {
+        if (!isCurrentView()) return;
+        reportError("admin.tickets.saved-cache", caught, { sectionId, eventId: ticketTypesEventId, ticketTypeId });
+        return;
+      }
+      if (!isCurrentView() || !ticketWrite.acknowledgeIfCurrent(result.receipt)) return;
+      finishTicketSave(result.ticket, result.submittedRevision, result.submittedSnapshot);
+      showSuccess(`Ticket type ${result.created ? "created" : "updated"}`);
     } catch (err: unknown) {
       if (!isCurrentView()) return;
       reportError("admin.tickets.save", err, {
         eventId: ticketTypesEventId,
-        editing: Boolean(editingTicketType),
+        editing: Boolean(existingTicket),
       });
       setError(toAdminUserFacingError(err, "tickets").message);
     } finally {
@@ -1763,7 +1861,7 @@ export default function SectionEventsManager({
 
         <TicketTypeDialogSurface
           open={ticketTypeDialogOpen}
-          editingTicketType={editingTicketType}
+          editingTicketType={editingTicketType ?? ticketForm.committedTicket}
           title={ttTitle}
           description={ttDescription}
           price={ttPrice}

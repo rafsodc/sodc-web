@@ -23007,6 +23007,7 @@ The `CreateTicketType` Mutation requires an argument of type `CreateTicketTypeVa
 
 ```javascript
 export interface CreateTicketTypeVariables {
+  id?: UUIDString | null;
   eventId: UUIDString;
   userGroupId: UUIDString;
   audience: TicketAudience;
@@ -23029,6 +23030,62 @@ To access the data returned by a Mutation, use the `UseMutationResult.data` fiel
 ```javascript
 export interface CreateTicketTypeData {
   ticketType_insert: TicketType_Key;
+  saved?: {
+    ticketType?: {
+      id: UUIDString;
+      title: string;
+      description?: string | null;
+      price: number;
+      sortOrder: number;
+      audience: TicketAudience;
+      includesDinner: boolean;
+      includesSymposium: boolean;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+      updatedAt: TimestampString;
+      event: {
+        id: UUIDString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+    } & TicketType_Key;
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 ```
 
@@ -23065,6 +23122,7 @@ export default function CreateTicketTypeComponent() {
   // After calling the Mutation hook function, you must call `UseMutationResult.mutate()` to execute the Mutation.
   // The `useCreateTicketType` Mutation requires an argument of type `CreateTicketTypeVariables`:
   const createTicketTypeVars: CreateTicketTypeVariables = {
+    id: ..., // optional
     eventId: ..., 
     userGroupId: ..., 
     audience: ..., 
@@ -23077,7 +23135,7 @@ export default function CreateTicketTypeComponent() {
   };
   mutation.mutate(createTicketTypeVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
+  mutation.mutate({ id: ..., eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -23097,6 +23155,7 @@ export default function CreateTicketTypeComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.ticketType_insert);
+    console.log(mutation.data.saved);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -23139,6 +23198,62 @@ To access the data returned by a Mutation, use the `UseMutationResult.data` fiel
 ```javascript
 export interface UpdateTicketTypeData {
   ticketType_update?: TicketType_Key | null;
+  saved?: {
+    ticketType?: {
+      id: UUIDString;
+      title: string;
+      description?: string | null;
+      price: number;
+      sortOrder: number;
+      audience: TicketAudience;
+      includesDinner: boolean;
+      includesSymposium: boolean;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+      updatedAt: TimestampString;
+      event: {
+        id: UUIDString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+    } & TicketType_Key;
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 ```
 
@@ -23207,6 +23322,7 @@ export default function UpdateTicketTypeComponent() {
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
     console.log(mutation.data.ticketType_update);
+    console.log(mutation.data.saved);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
 }

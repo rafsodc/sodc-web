@@ -28329,6 +28329,7 @@ The `CreateTicketType` mutation requires an argument of type `CreateTicketTypeVa
 
 ```typescript
 export interface CreateTicketTypeVariables {
+  id?: UUIDString | null;
   eventId: UUIDString;
   userGroupId: UUIDString;
   audience: TicketAudience;
@@ -28347,6 +28348,62 @@ The `data` property is an object of type `CreateTicketTypeData`, which is define
 ```typescript
 export interface CreateTicketTypeData {
   ticketType_insert: TicketType_Key;
+  saved?: {
+    ticketType?: {
+      id: UUIDString;
+      title: string;
+      description?: string | null;
+      price: number;
+      sortOrder: number;
+      audience: TicketAudience;
+      includesDinner: boolean;
+      includesSymposium: boolean;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+      updatedAt: TimestampString;
+      event: {
+        id: UUIDString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+    } & TicketType_Key;
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 ```
 ### Using `CreateTicketType`'s action shortcut function
@@ -28357,6 +28414,7 @@ import { connectorConfig, createTicketType, CreateTicketTypeVariables } from '@d
 
 // The `CreateTicketType` mutation requires an argument of type `CreateTicketTypeVariables`:
 const createTicketTypeVars: CreateTicketTypeVariables = {
+  id: ..., // optional
   eventId: ..., 
   userGroupId: ..., 
   audience: ..., 
@@ -28372,18 +28430,20 @@ const createTicketTypeVars: CreateTicketTypeVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createTicketType(createTicketTypeVars);
 // Variables can be defined inline as well.
-const { data } = await createTicketType({ eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
+const { data } = await createTicketType({ id: ..., eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await createTicketType(dataConnect, createTicketTypeVars);
 
 console.log(data.ticketType_insert);
+console.log(data.saved);
 
 // Or, you can use the `Promise` API.
 createTicketType(createTicketTypeVars).then((response) => {
   const data = response.data;
   console.log(data.ticketType_insert);
+  console.log(data.saved);
 });
 ```
 
@@ -28395,6 +28455,7 @@ import { connectorConfig, createTicketTypeRef, CreateTicketTypeVariables } from 
 
 // The `CreateTicketType` mutation requires an argument of type `CreateTicketTypeVariables`:
 const createTicketTypeVars: CreateTicketTypeVariables = {
+  id: ..., // optional
   eventId: ..., 
   userGroupId: ..., 
   audience: ..., 
@@ -28409,7 +28470,7 @@ const createTicketTypeVars: CreateTicketTypeVariables = {
 // Call the `createTicketTypeRef()` function to get a reference to the mutation.
 const ref = createTicketTypeRef(createTicketTypeVars);
 // Variables can be defined inline as well.
-const ref = createTicketTypeRef({ eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
+const ref = createTicketTypeRef({ id: ..., eventId: ..., userGroupId: ..., audience: ..., title: ..., description: ..., price: ..., includesDinner: ..., includesSymposium: ..., sortOrder: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -28420,11 +28481,13 @@ const ref = createTicketTypeRef(dataConnect, createTicketTypeVars);
 const { data } = await executeMutation(ref);
 
 console.log(data.ticketType_insert);
+console.log(data.saved);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.ticketType_insert);
+  console.log(data.saved);
 });
 ```
 
@@ -28480,6 +28543,62 @@ The `data` property is an object of type `UpdateTicketTypeData`, which is define
 ```typescript
 export interface UpdateTicketTypeData {
   ticketType_update?: TicketType_Key | null;
+  saved?: {
+    ticketType?: {
+      id: UUIDString;
+      title: string;
+      description?: string | null;
+      price: number;
+      sortOrder: number;
+      audience: TicketAudience;
+      includesDinner: boolean;
+      includesSymposium: boolean;
+      userGroup: {
+        id: UUIDString;
+        name: string;
+        membershipStatuses?: MembershipStatus[] | null;
+      } & UserGroup_Key;
+      updatedAt: TimestampString;
+      event: {
+        id: UUIDString;
+        section: {
+          id: UUIDString;
+        } & Section_Key;
+      } & Event_Key;
+    } & TicketType_Key;
+    event?: {
+      id: UUIDString;
+      section: {
+        id: UUIDString;
+      } & Section_Key;
+      title: string;
+      location?: string | null;
+      guestOfHonour?: string | null;
+      sponsors?: string | null;
+      details?: string | null;
+      startDateTime: TimestampString;
+      endDateTime: TimestampString;
+      bookingStartDateTime: TimestampString;
+      bookingEndDateTime: TimestampString;
+      maxGuestsWithoutModeratorApproval: number;
+      updatedAt: TimestampString;
+      ticketTypes: ({
+        id: UUIDString;
+        title: string;
+        description?: string | null;
+        audience: TicketAudience;
+        price: number;
+        includesDinner: boolean;
+        includesSymposium: boolean;
+        sortOrder: number;
+        userGroup: {
+          id: UUIDString;
+          name: string;
+          membershipStatuses?: MembershipStatus[] | null;
+        } & UserGroup_Key;
+      } & TicketType_Key)[];
+    } & Event_Key;
+  };
 }
 ```
 ### Using `UpdateTicketType`'s action shortcut function
@@ -28512,11 +28631,13 @@ const dataConnect = getDataConnect(connectorConfig);
 const { data } = await updateTicketType(dataConnect, updateTicketTypeVars);
 
 console.log(data.ticketType_update);
+console.log(data.saved);
 
 // Or, you can use the `Promise` API.
 updateTicketType(updateTicketTypeVars).then((response) => {
   const data = response.data;
   console.log(data.ticketType_update);
+  console.log(data.saved);
 });
 ```
 
@@ -28553,11 +28674,13 @@ const ref = updateTicketTypeRef(dataConnect, updateTicketTypeVars);
 const { data } = await executeMutation(ref);
 
 console.log(data.ticketType_update);
+console.log(data.saved);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.ticketType_update);
+  console.log(data.saved);
 });
 ```
 

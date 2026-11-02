@@ -181,6 +181,130 @@ it("rejects a missing event update instead of returning a null-key successful sa
   expect(await snapshot()).toEqual(before);
 });
 
+const canonicalTicketInput = {
+  title: "Canonical saved ticket",
+  description: "The committed catalogue description",
+  price: 12.5,
+  sortOrder: 2,
+  audience: "MEMBER",
+  includesDinner: true,
+  includesSymposium: false,
+} satisfies Omit<AdminSdk.CreateTicketTypeVariables, "eventId" | "userGroupId">;
+const parentAuditTime = "2001-01-01T00:00:00Z";
+
+async function unchangedParentAudit() {
+  await raw("mutation ParentAudit($id:UUID!,$time:Timestamp!){event_update(id:$id,data:{updatedAt:$time})}", {
+    id: f.event, time: parentAuditTime,
+  });
+  return (await raw("query ParentAudit($id:UUID!){event(id:$id){updatedAt updatedBy}}", { id: f.event })).data;
+}
+
+async function expectCanonicalTicketSave(
+  saved: AdminSdk.CreateTicketTypeData["saved"], id: string,
+  a: Awaited<ReturnType<typeof actor>>,
+) {
+  if (!saved?.ticketType || !saved.event) throw new Error("Ticket save omitted its committed catalogue and parent detail");
+  const ticket = saved.ticketType;
+  expect(normalizedId(ticket.id)).toBe(normalizedId(id));
+  expect(normalizedId(ticket.event.id)).toBe(normalizedId(f.event));
+  expect(normalizedId(ticket.event.section.id)).toBe(normalizedId(f.section));
+  expect(normalizedId(ticket.userGroup.id)).toBe(normalizedId(f.group));
+  expect(ticket).toMatchObject({ ...canonicalTicketInput,
+    userGroup: { name: "Section member catalogue", membershipStatuses: ["REGULAR"] } });
+  expect(Number.isFinite(Date.parse(ticket.updatedAt))).toBe(true);
+  const { updatedAt, event, ...catalogueRow } = ticket;
+  expect(saved.event.ticketTypes.find(row => normalizedId(row.id) === normalizedId(ticket.id))).toEqual(catalogueRow);
+  expect(normalizedId(saved.event.id)).toBe(normalizedId(event.id));
+  expect(normalizedId(saved.event.section.id)).toBe(normalizedId(f.section));
+  expect(saved.event.ticketTypes.map(row => row.sortOrder)).toEqual(
+    saved.event.ticketTypes.map(row => row.sortOrder).sort((left, right) => left - right),
+  );
+  const detail = await dc.executeQuery<AdminSdk.GetEventByIdData>("GetEventById", { id: f.event }, a.options);
+  expect(saved.event).toEqual({ ...detail.data.event, updatedAt: saved.event.updatedAt });
+  // A child catalogue save must return its own server audit time, without
+  // manufacturing a parent event version for unrelated child data.
+  expect(Date.parse(saved.event.updatedAt)).toBe(Date.parse(parentAuditTime));
+  const audit = (await raw("query TicketAudit($id:UUID!){ticketType(id:$id){createdAt updatedAt createdBy updatedBy}}", { id })).data as {
+    ticketType: { createdAt: string; updatedAt: string; createdBy: string; updatedBy: string };
+  };
+  expect(updatedAt).toBe(audit.ticketType.updatedAt);
+  expect(audit.ticketType.updatedBy).toBe(a.uid);
+  return audit.ticketType;
+}
+
+for (const kind of ["admin", "explicit-moderator", "status-moderator"]) {
+  it(kind + " creates a canonical ticket and full parent detail in the authorized transaction", async () => {
+    const a = await actor(kind), parentBefore = await unchangedParentAudit();
+    const result = await dc.executeMutation<AdminSdk.CreateTicketTypeData, AdminSdk.CreateTicketTypeVariables>(
+      "CreateTicketType", { eventId: f.event, userGroupId: f.group, ...canonicalTicketInput }, a.options,
+    );
+    const audit = await expectCanonicalTicketSave(result.data.saved, result.data.ticketType_insert.id, a);
+    expect(audit.createdAt).toBe(audit.updatedAt);
+    expect(audit.createdBy).toBe(a.uid);
+    expect(result.data.saved?.event?.ticketTypes).toHaveLength(2);
+    expect((await raw("query ParentAudit($id:UUID!){event(id:$id){updatedAt updatedBy}}", { id: f.event })).data).toEqual(parentBefore);
+    expect(Object.keys(result.data).sort()).toEqual(["saved", "ticketType_insert"]);
+  });
+
+  it(kind + " updates a canonical ticket while preserving parent audit and ordered sibling rows", async () => {
+    const a = await actor(kind), parentBefore = await unchangedParentAudit();
+    const sibling = randomUUID(), oldTime = "2000-01-01T00:00:00Z";
+    await raw(`mutation BeforeTicketUpdate($id:UUID!,$sibling:UUID!,$event:UUID!,$group:UUID!,$time:Timestamp!) @transaction {
+      ticketType_update(id:$id,data:{updatedAt:$time})
+      ticketType_insert(data:{id:$sibling,eventId:$event,userGroupId:$group,title:"Preserved sibling",price:3,sortOrder:1,createdBy:"local-fixture",updatedBy:"local-fixture"})
+    }`, { id: f.ticket, sibling, event: f.event, group: f.group, time: oldTime });
+    const result = await dc.executeMutation<AdminSdk.UpdateTicketTypeData, AdminSdk.UpdateTicketTypeVariables>(
+      "UpdateTicketType", { id: f.ticket, userGroupId: f.group, ...canonicalTicketInput }, a.options,
+    );
+    expect(result.data.ticketType_update).toBeDefined();
+    expect(normalizedId(result.data.ticketType_update!.id)).toBe(normalizedId(f.ticket));
+    const audit = await expectCanonicalTicketSave(result.data.saved, f.ticket, a);
+    expect(Date.parse(audit.updatedAt)).toBeGreaterThan(Date.parse(oldTime));
+    expect(audit.createdBy).toBe("local-fixture");
+    expect(result.data.saved?.event?.ticketTypes.map(row => row.title)).toEqual(["Preserved sibling", canonicalTicketInput.title]);
+    expect((await raw("query ParentAudit($id:UUID!){event(id:$id){updatedAt updatedBy}}", { id: f.event })).data).toEqual(parentBefore);
+    expect(Object.keys(result.data).sort()).toEqual(["saved", "ticketType_update"]);
+  });
+}
+
+for (const identity of ["explicit", "null", "omitted"] as const) {
+  it("creates a ticket with " + identity + " identity and retains legacy server defaults", async () => {
+    const a = await actor("explicit-moderator"), id = randomUUID();
+    const result = await dc.executeMutation<AdminSdk.CreateTicketTypeData, AdminSdk.CreateTicketTypeVariables>(
+      "CreateTicketType", {
+        ...(identity === "omitted" ? {} : { id: identity === "explicit" ? id : null }),
+        eventId: f.event, userGroupId: f.group, audience: "MEMBER", title: "Default ticket",
+        price: 0, includesDinner: false, includesSymposium: true,
+      }, a.options,
+    );
+    const saved = result.data.saved?.ticketType;
+    if (!saved) throw new Error("CreateTicketType omitted its committed ticket");
+    expect(normalizedId(saved.id)).toBe(normalizedId(result.data.ticketType_insert.id));
+    if (identity === "explicit") expect(normalizedId(saved.id)).toBe(normalizedId(id));
+    expect(saved).toMatchObject({ title: "Default ticket", description: null, sortOrder: 0, price: 0,
+      audience: "MEMBER", includesDinner: false, includesSymposium: true });
+  });
+}
+
+it("rejects a reused ticket create identity without replacing either section's catalogue row", async () => {
+  const a = await actor("explicit-moderator"), otherTicket = randomUUID();
+  await raw("mutation OtherTicket($id:UUID!,$event:UUID!,$group:UUID!){ticketType_insert(data:{id:$id,eventId:$event,userGroupId:$group,title:\"Other section ticket\",price:5,createdBy:\"local-fixture\",updatedBy:\"local-fixture\"})}", {
+    id: otherTicket, event: f.otherEvent, group: f.unrelatedGroup,
+  });
+  const before = await snapshot();
+  for (const id of [f.ticket, otherTicket]) {
+    await expect(dc.executeMutation("CreateTicketType", { id, eventId: f.event, userGroupId: f.group, ...canonicalTicketInput }, a.options)).rejects.toThrow();
+    expect(await snapshot()).toEqual(before);
+  }
+});
+
+it("rejects a missing ticket update instead of acknowledging a null-key save", async () => {
+  const a = await actor("admin"), before = await snapshot();
+  await expect(dc.executeMutation("UpdateTicketType", { id: randomUUID(), userGroupId: f.group, ...canonicalTicketInput }, a.options))
+    .rejects.toThrow(/SECTION_MODERATOR_REQUIRED|TICKET_TYPE_SAVE_NOT_FOUND/);
+  expect(await snapshot()).toEqual(before);
+});
+
 for (const kind of ["admin", "explicit-moderator", "status-moderator"]) describe(kind + " actual allowed section operations", () => {
   for (const name of [...queryNames,...mutationNames]) it(name, async () => {
     const a = await actor(kind);
