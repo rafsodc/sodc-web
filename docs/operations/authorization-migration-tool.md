@@ -169,6 +169,33 @@ Run separate valid signed-token callable and connector acceptance tests in Dev; 
 
 The strict-installation path skips compatibility and must preserve existing authorization versions and legitimate denied/verification-held states. An unexpected live state or a different project/revision stops the run. Do not change installation type to make a phase pass.
 
+## Functions deployment exception
+
+The retained one-time authorization cutover is a bounded exception to the ordinary
+[Functions configuration guard](./functions-runtime-config-guard.md). In
+`scripts/authorization-migration-cloud.mjs`, the `functions` phase directly deploys
+the selected staged Functions through its pinned Firebase **15.22.3** adapter;
+`open` may deploy the precisely deferred repair/status/security-scheduler endpoints.
+These calls do not use `npm run deploy:functions` or claim its configuration receipt.
+
+The ordinary guard requires a completed migration receipt and the normal active
+inventory/invocation/Scheduler state. Those prerequisites do not yet hold during
+the approved legacy cutover, where writers remain frozen and jobs paused or absent.
+The exception applies only within the migration tool's explicitly approved literal
+project, run ID, reviewed clean source and Node 24/toolchain, phase gates, artifacts
+and provider proofs. Preserve the freeze and deferred-job controls; verify deployed
+Function identities and captured scheduler intents before opening and issuing the
+project-specific receipt. Never copy the tool's internal Firebase command into an
+ordinary release or rerun an initial migration to avoid a configuration failure.
+
+This exception does **not** establish that non-secret dotenv, secret versions or
+all runtime settings are preserved by the ordinary guard. Review those inputs and
+retain the required provider/configuration evidence in the separately approved
+migration plan. It neither reconciles Dev drift nor extends historical acceptance
+claims. Dev/Production's completed cutovers and receipts remain historical records.
+After migration, use the guarded npm deployment paths for normal releases; a new
+or materially changed installation needs its own reviewed cutover/provisioning plan.
+
 ## Positive old-writer retirement
 
 The initial `freeze` invocation captures every revision of each affected Cloud Run service **before** changing invocation policies. It persists the service/revision UIDs and immutable container image digests in `provider-old-writer-inventory.json`, bound into `provider-freeze.json`. The freeze pauses jobs, removes public invocation and denies direct onboarding. Its minimum request-timeout wait remains a scheduling precaution. An expired timeout, zero pending database transitions, a READY row, zero traffic/instances, a new ACTIVE revision or a refused ingress probe **cannot establish that an already admitted handler has stopped**. Cloud Run documents that a timed-out handler can continue running in its container ([request timeout](https://docs.cloud.google.com/run/docs/configuring/request-timeout)).

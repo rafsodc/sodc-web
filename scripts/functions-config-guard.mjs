@@ -185,7 +185,7 @@ export function metadataProvider(projectId, region) {
     invokerPolicy: (service) => {
       requireGuard(service.startsWith(`projects/${projectId}/locations/${region}/services/`) && /^[a-z0-9-]+$/.test(service.split("/").at(-1)),
         "invalid-cloud-run-service");
-      return get("run.googleapis.com", `/v1/${service}:getIamPolicy`);
+      return get("run.googleapis.com", `/v1/${service}:getIamPolicy?options.requestedPolicyVersion=3`);
     },
   };
 }
@@ -319,8 +319,13 @@ export async function collectAssessment({ root, environment, mode = "dotenv", cl
     const fn = functions.find((item) => item.name.endsWith(`/${endpoint.id}`));
     const before = applicationEnvironment(fn.serviceConfig.environmentVariables ?? {});
     const after = applicationEnvironment(endpoint.environmentVariables ?? {});
-    if (mode === "dotenv") {
+    // Preservation inherits endpoint-scoped values, but cannot authorize a configured
+    // bucket/origin for another environment. Absent/empty inherited values remain
+    // visible as required-nonempty deviations for exact review below.
+    if (mode === "dotenv" || (Object.hasOwn(after, "SECTION_FILES_BUCKET") && after.SECTION_FILES_BUCKET !== "")) {
       requireGuard(after.SECTION_FILES_BUCKET === `${projectId}.firebasestorage.app`, "wrong-project-bucket");
+    }
+    if (mode === "dotenv" || (Object.hasOwn(after, "APP_BASE_URL") && after.APP_BASE_URL !== "")) {
       requireGuard(after.APP_BASE_URL === policy.appBaseUrls[environment], "wrong-environment-app-base-url");
     }
     requireGuard(!secretNames.some((name) => Object.hasOwn(after, name)), "secret-name-in-application-dotenv");
@@ -360,9 +365,14 @@ export async function collectAssessment({ root, environment, mode = "dotenv", cl
         serviceAccount: desired.httpTarget.oidcToken.serviceAccountEmail });
     }
     const iam = await selectedProvider.invokerPolicy(fn.serviceConfig.service);
-    const invokers = (iam.bindings ?? []).filter((item) => item.role === "roles/run.invoker")
+    // A v1 policy can conceal a condition by renaming the role. Reject that legacy
+    // shape as well as explicit v3 conditions, before filtering/recording invokers.
+    const invokerBindings = (iam.bindings ?? []).filter((item) => item.role === "roles/run.invoker" ||
+      item.role?.startsWith("roles/run.invoker_withcond_"));
+    requireGuard(invokerBindings.every((item) => item.role === "roles/run.invoker" && !Object.hasOwn(item, "condition")),
+      "conditional-invoker-policy-not-supported");
+    const invokers = invokerBindings
       .map((item) => ({ ...item, members: [...(item.members ?? [])].sort() })).sort((a, b) => digest(a).localeCompare(digest(b)));
-    requireGuard(invokers.every((item) => !item.condition), "conditional-invoker-policy-not-supported");
     const publicMembers = invokers.flatMap((item) => item.members).filter((member) => ["allUsers", "allAuthenticatedUsers"].includes(member));
     const expectedPublic = auditConfig.expectedPublicInvokerFunctions.includes(endpoint.id);
     requireGuard(expectedPublic ? publicMembers.includes("allUsers") && !publicMembers.includes("allAuthenticatedUsers") : publicMembers.length === 0,

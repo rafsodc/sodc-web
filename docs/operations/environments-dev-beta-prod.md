@@ -56,7 +56,7 @@ The optional `beta` alias points at `sodc-web-beta`. An alias does not establish
 
 ## Local development (laptop → cloud Dev)
 
-1. **Clone** the repo and install dependencies (`npm install`, `cd functions && npm install`).
+1. **Clone** the repo and install locked dependencies from its root using Node 24 (`npm ci`, `npm --prefix functions ci`). Deployment uses Firebase CLI **15.22.3** and the lockfile's Functions SDK **7.2.5**; verify the CLI version rather than letting `npx` select an unreviewed version.
 2. **Configure web app env** — Copy or merge from your team’s secure storage (do not commit secrets):
    - Use a **Dev-only** Firebase web app config in `.env` or `.env.local` (see variable list in [environment-and-secrets.md](./environment-and-secrets.md)).
    - Ensure every `VITE_FIREBASE_*` value matches the **dev** Firebase project that backends should use.
@@ -98,8 +98,17 @@ Vite already embedded in the bundle.
 
 ## Non-mutating preflight
 
-Before running a real deploy, or at any point to validate a checkout without
-touching a remote environment, run the shared preflight directly:
+Use the shared preflight to validate a checkout without changing the remote
+environment before a real deployment.
+
+Run deployment commands from the root of a clean, isolated checkout of the reviewed
+commit. First stage the target Vite and complete non-secret Functions project env
+files, and complete the [Functions configuration review](./functions-runtime-config-guard.md#prepare-and-review)
+with the pinned tools above. Retain the same `SODC_FUNCTIONS_CONFIG_REVIEW` and,
+when explicitly reviewed, `SODC_FUNCTIONS_CONFIG_MODE` for preflight and deployment.
+The target's completed authorization-migration receipt is also required. An empty
+new project or an unfinished migration needs its separately reviewed provisioning
+workflow, not a raw Functions deployment to bypass these prerequisites.
 
 ```sh
 npm run deployment:preflight -- --env dev
@@ -113,7 +122,10 @@ project configuration; that every API in `config/deployment-check.json`'s
 environment and carries every required `VITE_FIREBASE_*` value (see
 [environment-and-secrets.md](./environment-and-secrets.md)); that Data Connect
 SDK generation produces no tracked or untracked drift; and that frontend and
-Functions lint, tests, and builds all pass. It never invokes `firebase deploy`
+Functions lint, tests, and builds all pass. It also compares the effective
+Functions configuration and supported provider contracts, then binds the guard's
+source/build/config/tool inputs into the full-preflight attestation. It never
+invokes `firebase deploy`
 or otherwise mutates remote state, and exits non-zero on the first failing
 check. `npm run deploy:<env>` (below) runs exactly this same preflight
 automatically before its first remote mutation — running it standalone first
@@ -174,6 +186,7 @@ Run this sequence independently for **Dev**, then **Prod** for the current relea
 
 ```sh
 export FIREBASE_PROJECT=dev
+# This variable is a Firebase alias: dev, beta or prod, not a literal project ID.
 git status --short
 git rev-parse HEAD
 firebase dataconnect:services:list --project "$FIREBASE_PROJECT"
@@ -183,13 +196,13 @@ Start from a clean checkout of the reviewed release commit. Record the commit SH
 
 ### 2. Verify generated SDK compatibility
 
-`npm run deployment:preflight -- --env "$FIREBASE_PROJECT"` automates this
-step (plus the environment-config, lint, and test checks below) and is what
-`npm run deploy:<env>` already runs first. Run it standalone here for the same
-effect, or run the equivalent commands by hand:
+The full `npm run deployment:preflight -- --env "$FIREBASE_PROJECT"` is required
+before deployment; `npm run deploy:<env>` already runs it first. The commands below
+are optional SDK/build diagnostics, not a substitute for the full preflight or its
+configuration-bound attestation:
 
 ```sh
-npx firebase dataconnect:sdk:generate --project "$FIREBASE_PROJECT"
+firebase dataconnect:sdk:generate --project "$FIREBASE_PROJECT"
 git diff --exit-code -- src/dataconnect-generated functions/src/dataconnect-admin-generated
 git status --short -- src/dataconnect-generated functions/src/dataconnect-admin-generated
 npm run build
@@ -198,9 +211,16 @@ npm --prefix functions run build
 
 The diff and status commands must both produce no output; the status check also catches new untracked generated files. If generation changes anything, stop and commit/review the generated files. If either build fails, stop before changing the remote environment. Do not deploy Functions compiled against stale generated operations.
 
+After completing diagnostics and the configuration review, run the full preflight:
+
+```sh
+npm run deployment:preflight -- --env "$FIREBASE_PROJECT"
+```
+
 ### 3. Deploy and validate Data Connect
 
 ```sh
+npm run deployment:functions-config -- --env "$FIREBASE_PROJECT" --verify
 firebase deploy --only dataconnect --project "$FIREBASE_PROJECT"
 firebase dataconnect:services:list --project "$FIREBASE_PROJECT"
 ```
@@ -236,13 +256,21 @@ mis-targeted, or permissive.
 
 ### 5. Deploy and validate Functions
 
-Only after the Data Connect and Storage checkpoints pass:
+Only after the full preflight and Data Connect/Storage checkpoints pass, use the
+guarded Functions-only command from the repository root. It verifies the saved
+full preflight and checks fresh target metadata immediately before the Functions
+mutation; it does not deploy Hosting:
 
 ```sh
-firebase deploy --only functions --project "$FIREBASE_PROJECT"
+npm run deploy:functions -- --env "$FIREBASE_PROJECT"
 ```
 
 Smoke-test the changed callable, HTTP, or scheduled Function through a non-destructive path. Check Functions logs for startup, Data Connect operation, authorization, and secret/configuration errors. Also repeat one established callable flow to catch connector compatibility regressions.
+
+If configuration, source/build inputs or provider state changed after preflight,
+stop for fresh review/preflight. Do not replace a blocked guard with raw Firebase
+CLI deployment; rollbacks also need review and preflight for their actual source
+and current target state.
 
 ### 6. Build and deploy Hosting
 
@@ -283,7 +311,7 @@ For the authorization migration, follow the [migration tool's failure and recove
 
 Checking out and redeploying a previous Data Connect definition cannot restore data removed by a destructive migration. Take a database backup and use a separately reviewed migration/rollback plan for destructive changes. Record the failed stage, target project, commit SHA, and corrective action before resuming promotion.
 
-`--from` only skips stages that already succeeded for the exact reviewed commit being deployed. A successful preflight records a local, gitignored attestation under `.firebase/deployment-preflight/`, bound to the target environment, Firebase project, and Git revision. Resume always rechecks that the checkout is clean and refuses to continue if the attestation is missing or does not match. If you've fixed anything and are deploying a new commit, restart promotion from preflight (the default, no `--from`) rather than resuming a stale partial run.
+`--from` only skips stages that already succeeded for the exact reviewed commit being deployed. A successful preflight records a local, gitignored attestation under `.firebase/deployment-preflight/`, bound to the target environment, Firebase project, Git revision and exact passing Functions guard receipt. Resume rechecks the clean checkout and attestation; resumes that deploy Functions also check fresh configuration/provider state. Missing or changed inputs block continuation. If you've fixed anything or the provider baseline changed, obtain fresh review/preflight rather than resuming a stale partial run.
 
 ## Promotion flow (recommended)
 

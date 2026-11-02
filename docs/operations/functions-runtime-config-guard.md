@@ -24,6 +24,9 @@ existing baseline is functionally correct.
   bound numeric version; an older enabled version cannot substitute for it. Secret
   payloads are never accessed. Permissions include Firebase, Resource Manager,
   Functions, Run/IAM, Scheduler and Secret Manager metadata viewers.
+- IAM reads request policy version 3. Explicit conditional invoker bindings and
+  downgraded `roles/run.invoker_withcond_*` aliases both block; unconditional
+  version-1 policies remain supported.
 - The two existing task trigger definitions are pinned by source-manifest hash.
   Retry, rate or invoker changes block pending adapter/policy review. Live Cloud
   Tasks queue state/enqueuer policy is **not** inspected or predicted. The Functions'
@@ -54,8 +57,9 @@ semantics rather than inheritance.
 
 Every endpoint's proposed application environment must equal its existing one,
 distinguishing absent, empty and nonempty values. This catches partial files and
-accidental broadening of endpoint-scoped settings. Normal mode also requires the
-target's canonical `APP_BASE_URL` and bucket. The non-local application URL, Notify
+accidental broadening of endpoint-scoped settings. Normal mode requires the
+target's canonical `APP_BASE_URL` and bucket. Preservation also rejects any
+nonempty inherited origin or bucket for the wrong environment. The non-local application URL, Notify
 delivery ceiling and enabled section-file settings are required. Optional template
 fallbacks may be absent or intentionally empty; `GOV_NOTIFY_SERVICE_ID` is optional.
 `ENV_NAME` and `PERMITTED_PROJECT_IDS` are reset-tool guardrails, not mandatory
@@ -96,6 +100,19 @@ npm run deploy:functions -- --env prod
 Both require the full preflight and existing authorization-migration receipt. They
 do not rerun/grant migrations. Do not substitute raw `firebase deploy --only functions`.
 
+### Bounded legacy migration exception
+
+The one-time current-authorization migration's
+[`functions` phase and deferred deployments in `open`](./authorization-migration-tool.md#functions-deployment-exception)
+use `scripts/authorization-migration-cloud.mjs` and its pinned staged-deployment
+adapter directly. The ordinary guard's completed receipt and normal active
+inventory/invocation/Scheduler prerequisites are unavailable during that approved,
+frozen legacy cutover. This is an explicit exception within the migration tool's
+reviewed project/run/source, phase gates and provider proofs, not a general raw CLI
+escape or a configuration-preservation guarantee. Review configuration separately
+in that migration plan. Once the target receipt exists, ordinary releases must
+use the guarded npm paths; do not repeat a migration to bypass a guard failure.
+
 ## Explicit preservation
 
 When canonical local dotenv differs from deployed settings, normal mode blocks.
@@ -110,6 +127,9 @@ node scripts/functions-config-guard.mjs --env dev --propose > /private/tmp/dev-p
 The CLI resolves an actually empty temporary `configDir`, with no effective
 non-secret params. Its inheritance helper preserves each endpoint independently.
 The proposal lists existing missing/empty policy deviations and default resets.
+An incorrect nonempty `APP_BASE_URL` or `SECTION_FILES_BUCKET`, including a
+whitespace-only value, blocks even a preservation proposal or reviewed override.
+Absent/empty inherited values remain listed deviations requiring exact review.
 After review, set `SODC_FUNCTIONS_CONFIG_REVIEW` to the reviewed JSON and retain the
 same mode/review for preflight and deployment. Review mode must be
 `preserve-existing`, with **zero** application environment changes. This explicitly

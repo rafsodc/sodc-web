@@ -14,9 +14,16 @@ site URL:    https://sodc-web-production.web.app
 ```
 
 If the real project ID differs, update `.firebaserc`, the Hosting CSP in
-`firebase.json`, environment files, callback URLs, and the commands below before
+`firebase.json`, the pinned deployment/Functions-guard target policies, environment
+files, callback URLs, and the commands below in a reviewed commit before
 deploying. Never point Prod at a Dev or Beta Firebase project, Stripe account,
 webhook secret, Notify service, or reCAPTCHA key.
+
+The ordinary deployment guard expects an established Functions inventory and a
+completed project-specific authorization-migration receipt. This guide is not an
+unguarded Functions bootstrap path: an empty/new target needs a separately reviewed
+provisioning/cutover plan that establishes those prerequisites. Do not fabricate
+a receipt or fall back to raw Functions deployment if ordinary preflight blocks.
 
 ## 1. Owners, prerequisites, and change record
 
@@ -29,25 +36,32 @@ The operator needs:
 
 - Owner-equivalent project-bootstrap access, followed by least-privilege IAM;
 - permission to attach the approved Google Cloud billing account;
-- Firebase CLI access and a current Node/npm toolchain;
+- Node **24**, Firebase CLI **15.22.3**, and the lockfile's Functions SDK **7.2.5**;
 - production access to Stripe and GOV.UK Notify;
 - control of any production DNS zone and reCAPTCHA configuration; and
 - access to the team's secret manager and incident/alert destinations.
 
-Start from the reviewed commit that passed Beta. Use a clean checkout:
+Start from an isolated clean checkout of the exact reviewed commit accepted in
+Dev (and Beta only if that optional environment is in use). Run these and the
+later npm commands from the repository root:
 
 ```sh
-git switch main
-git pull --ff-only origin main
 git status --short
 git rev-parse HEAD
+node --version     # Must be v24.x.
+firebase --version # Must be 15.22.3.
 npm ci
 npm --prefix functions ci
 firebase login
+gcloud auth login
 firebase projects:list
 ```
 
-`git status --short` must be empty. Record the commit SHA.
+`git status --short` must be empty. Record the commit SHA; do not replace it with
+an unreviewed newer `main` while provisioning. Stage the target Vite and complete
+non-secret Functions env files as described below. Before an ordinary deployment,
+complete the [guard's exact configuration review](./functions-runtime-config-guard.md#prepare-and-review)
+and retain the same review/mode for preflight and deployment.
 
 ## 2. Create the Firebase project and attach billing
 
@@ -306,7 +320,12 @@ service-account key.
 Cloud Functions loads project-specific non-secret values from
 `functions/.env.<project-id>`. Create the ignored file
 `functions/.env.sodc-web-production` using the complete matrix in
-[Environment and secrets](./environment-and-secrets.md). At minimum:
+[Environment and secrets](./environment-and-secrets.md). The commissioning-origin
+example below requires a reviewed `appBaseUrls.prod` policy matching that origin;
+the current production guard policy instead expects `https://www.sodc.net`.
+Choose the intended canonical origin in the reviewed source before preflight.
+The matrix's required Notify ceiling, bucket, scan mode and verified scanner URL
+must also be filled in; this abbreviated example is not a deployable complete file:
 
 ```dotenv
 APP_BASE_URL=https://sodc-web-production.web.app
@@ -341,8 +360,9 @@ firebase functions:secrets:set NOTIFY_CALLBACK_BEARER_TOKEN --project prod
 
 Use independent, cryptographically random values for the unsubscribe and Notify
 callback bearer tokens. `STRIPE_WEBHOOK_SECRET_PAYMENTS` comes from the dedicated
-payments endpoint. Redeploy every Function that references a secret whenever its
-value rotates.
+payments endpoint. A rotation must update every referencing Function through a
+separately reviewed rotation/provisioning workflow. The ordinary guard blocks a
+bound/latest-version mismatch; do not use raw Functions deployment to override it.
 
 Before deploying, review the CLI output showing which environment file was loaded.
 Stop if it names a Dev/Beta file or if `APP_BASE_URL` is not the production origin.
@@ -437,10 +457,15 @@ administrator works, use the application's reviewed approval and `grantAdmin`
 flows for later users. Confirm there are at least two production administrators
 before launch to avoid a single-person recovery dependency.
 
-## 12. First deployment
+## 12. First ordinary deployment after provisioning and cutover
 
-Return to the exact commit that passed Beta. Recheck project targeting and build
-configuration, then follow the schema-first order:
+Return to the exact reviewed commit accepted in Dev. Confirm that the approved
+provisioning/current-authorization cutover has established the expected Functions
+inventory and retained migration receipt. The migration tool's narrowly gated
+[Functions exception](./authorization-migration-tool.md#functions-deployment-exception)
+is not an ordinary release command or a general-purpose empty-project bootstrap.
+Recheck project targeting and the reviewed Functions configuration, then follow
+the schema-first order.
 
 Before attempting a real deploy, run the non-mutating preflight as a dry run.
 It is safe to run repeatedly while bootstrap is still in progress -- it never
@@ -450,8 +475,8 @@ calls `firebase deploy` or otherwise changes remote state:
 npm run deployment:preflight -- --env prod
 ```
 
-On a freshly created project this commonly fails its first few times on
-"Confirm required Google Cloud APIs are enabled": creating a Firebase project
+During provisioning, the check may report missing prerequisites such as the
+migration receipt, expected inventory or required Google Cloud APIs. Creating a Firebase project
 enables Firebase's own baseline APIs, but not every API Functions Gen2,
 Secret Manager, or App Check need (typically `artifactregistry`, `cloudbuild`,
 `firebaseappcheck`, `iamcredentials`, `run`, and `secretmanager`). Enable
@@ -462,12 +487,18 @@ correct if that list changes:
 ```sh
 gcloud services enable \
   $(node -e "console.log(require('./config/deployment-check.json').requiredApis.join(' '))") \
-  --project prod
+  --project sodc-web-production
 ```
 
+`gcloud` requires the literal Google Cloud project ID; it does not resolve the
+Firebase alias `prod`. Missing inventory, unsupported configuration or an unfinished
+migration require their reviewed workflow, not API enablement or a raw deployment
+to bypass the guard.
+
 Re-run the preflight until it passes end to end (it also runs frontend and
-Functions lint/test/build, and confirms `.env.production.local` has every
-required `VITE_FIREBASE_*` value from step 4). Once it passes, the reviewed
+Functions lint/test/build, verifies the exact Functions configuration review and
+provider baseline, and confirms `.env.production.local` has every required
+`VITE_FIREBASE_*` value from step 4). Once it passes, the reviewed
 application deployment can be run as one fail-fast command -- it runs this
 same preflight automatically before its first remote mutation:
 
@@ -489,15 +520,18 @@ git rev-parse HEAD
 firebase projects:list
 firebase dataconnect:services:list --project "$FIREBASE_PROJECT"
 
-npx firebase dataconnect:sdk:generate
+firebase dataconnect:sdk:generate --project "$FIREBASE_PROJECT"
 git diff --exit-code -- src/dataconnect-generated functions/src/dataconnect-admin-generated
 git status --short -- src/dataconnect-generated functions/src/dataconnect-admin-generated
 npm run build:prod
 npm --prefix functions run build
 
+# Diagnostics/builds above do not replace the full, configuration-bound preflight.
+npm run deployment:preflight -- --env "$FIREBASE_PROJECT"
+npm run deployment:functions-config -- --env "$FIREBASE_PROJECT" --verify
 firebase deploy --only dataconnect --project "$FIREBASE_PROJECT"
 firebase dataconnect:services:list --project "$FIREBASE_PROJECT"
-firebase deploy --only functions --project "$FIREBASE_PROJECT"
+npm run deploy:functions -- --env "$FIREBASE_PROJECT"
 
 # This rebuilds with .env.production.local before deploying to the prod alias.
 npm run deploy:hosting:prod
@@ -531,15 +565,20 @@ so changing the website domain does not change that endpoint.
    domains. If the existing site key is retained, no frontend rebuild is required
    for this step. If a new site key is issued, update
    `VITE_RECAPTCHA_SITE_KEY`, rebuild, and redeploy Hosting.
-5. Change `APP_BASE_URL` in `functions/.env.sodc-web-production` to the canonical
-   HTTPS origin, with no trailing slash, then redeploy Functions:
+5. Review the new canonical HTTPS origin in the tracked Functions-guard policy
+   (`config/functions-config-guard.json`, `appBaseUrls.prod`) as part of the release.
+   Change `APP_BASE_URL` in `functions/.env.sodc-web-production` to the same origin,
+   with no trailing slash:
 
    ```dotenv
    APP_BASE_URL=https://members.example.org
    ```
 
    ```sh
-   firebase deploy --only functions --project prod
+   # From the clean release checkout's root, review the exact env-delta proposal
+   # using the guard workflow and retain SODC_FUNCTIONS_CONFIG_REVIEW, then:
+   npm run deployment:preflight -- --env prod
+   npm run deploy:functions -- --env prod
    ```
 
    This changes Stripe Checkout return URLs, application links in Notify emails,

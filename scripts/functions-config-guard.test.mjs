@@ -14,7 +14,10 @@ import { deployGuardedFunctions } from "./functions-deploy.mjs";
 const projectId = "sodc-web";
 const region = "europe-west2";
 const directories = [];
-afterEach(async () => { vi.restoreAllMocks(); await Promise.all(directories.splice(0).map((file) => rm(file, { recursive: true, force: true }))); });
+afterEach(async () => {
+  vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs();
+  await Promise.all(directories.splice(0).map((file) => rm(file, { recursive: true, force: true })));
+});
 
 function baseDecision() {
   const environment = environmentProjection({ APP_BASE_URL: "https://sodc-web.web.app", OPTIONAL: "" });
@@ -130,6 +133,15 @@ describe("exact secret version metadata", () => {
     const value = metadata(); value.SECRET = { ...value.SECRET, state, name: `projects/${projectId}/secrets/SECRET/versions/2` };
     expect(() => assertSecretMetadata(endpoints, ["SECRET"], value, projectId)).toThrow("secret-latest-version-or-state-drift");
   });
+  it.each(["DISABLED", "DESTROYED"])("blocks a %s version even when latest still matches its pin", (state) => {
+    const value = metadata(); value.SECRET.state = state;
+    expect(() => assertSecretMetadata(endpoints, ["SECRET"], value, projectId)).toThrow("secret-latest-version-or-state-drift");
+  });
+  it.each(["latest", "not-numeric", ""])("rejects the unpinned secret version %s even if metadata matches", (version) => {
+    const value = structuredClone(endpoints); value[0].secretEnvironmentVariables[0].version = version;
+    const matching = metadata(); matching.SECRET.name = `projects/${projectId}/secrets/SECRET/versions/${version}`;
+    expect(() => assertSecretMetadata(value, ["SECRET"], matching, projectId)).toThrow("cross-project-or-unpinned-secret");
+  });
   it("blocks a newer enabled latest, missing metadata, cross-project refs, mixed pins, and unused new params", () => {
     const newer = metadata(); newer.SECRET.name = `projects/${projectId}/secrets/SECRET/versions/2`;
     expect(() => assertSecretMetadata(endpoints, ["SECRET"], newer, projectId)).toThrow("secret-latest");
@@ -186,7 +198,7 @@ describe("attestation and resumed deployment ordering", () => {
 
 // Each test creates a clean, self-contained repository. No ignored real project files,
 // installed global CLI, credentials, internet, SDK, or provider are needed in CI.
-async function fixture() {
+async function fixture({ publicInvoker = true } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), "functions-guard-test-")); directories.push(root);
   for (const directory of ["config", "functions/lib"]) await mkdir(path.join(root, directory), { recursive: true });
   const policy = { requiredEnvironmentKeys: ["APP_BASE_URL", "SECTION_FILES_BUCKET"], allowedEmptyEnvironmentKeys: ["OPTIONAL"],
@@ -194,7 +206,7 @@ async function fixture() {
   const values = { APP_BASE_URL: policy.appBaseUrls.dev, SECTION_FILES_BUCKET: `${projectId}.firebasestorage.app`, OPTIONAL: "" };
   const files = { ".gitignore": ".firebase\nfunctions/.env*\nfunctions/lib\n", ".firebaserc": { projects: { dev: projectId } },
     "firebase.json": { functions: [{ source: "functions", disallowLegacyRuntimeConfig: true, predeploy: ['npm --prefix "$RESOURCE_DIR" run build'] }] },
-    "config/functions-config-guard.json": policy, "config/deployment-check.json": { region, expectedPublicInvokerFunctions: ["example"] },
+    "config/functions-config-guard.json": policy, "config/deployment-check.json": { region, expectedPublicInvokerFunctions: publicInvoker ? ["example"] : [] },
     "functions/package.json": { main: "lib/index.js", engines: { node: "24" } }, "functions/package-lock.json": {}, "package-lock.json": {}, "functions/lib/index.js": "test" };
   for (const [file, value] of Object.entries(files)) await writeFile(path.join(root, file), typeof value === "string" ? value : JSON.stringify(value));
   const projectFile = path.join(root, `functions/.env.${projectId}`);
@@ -212,7 +224,8 @@ async function fixture() {
   const provider = { functions: vi.fn(async () => functions), schedulers: vi.fn(async () => [{ name: `projects/${projectId}/locations/${region}/jobs/scanner`, state: "ENABLED" }]),
     project: vi.fn(async () => ({ projectId, projectNumber: "123" })), firebaseConfig: vi.fn(async () => ({ projectId })),
     latestSecret: vi.fn(async () => ({ name: "projects/123/secrets/SECRET/versions/1", state: "ENABLED" })),
-    invokerPolicy: vi.fn(async () => ({ bindings: [{ role: "roles/run.invoker", members: ["allUsers"] }] })) };
+    invokerPolicy: vi.fn(async () => ({ version: 1, bindings: [{ role: "roles/run.invoker",
+      members: [publicInvoker ? "allUsers" : "serviceAccount:123-compute@developer.gserviceaccount.com"] }] })) };
   const cli = { identity: { version: "fake" }, env: { hasUserEnvs: vi.fn((options) => !options.configDir), loadUserEnvs: vi.fn((options) => options.configDir ? {} : ({ ...values })) },
     discovery: { buildFromV1Alpha1: vi.fn((manifest) => manifest) },
     build: { toBackend: vi.fn(() => ({ endpoints: [{ id: "example", callableTrigger: {}, environmentVariables: {}, secretEnvironmentVariables: [{ key: "SECRET", secret: "SECRET", projectId }] }] })) },
@@ -267,6 +280,42 @@ describe("offline actual guard orchestration with injected CLI/provider", () => 
     const f = await fixture(); f.cli.env.loadUserEnvs.mockReturnValue({ ...f.values, APP_BASE_URL: "https://www.sodc.net" });
     await expect(f.assess()).rejects.toThrow("wrong-environment-app-base-url");
   });
+  it.each([
+    ["SECTION_FILES_BUCKET", "sodc-web-production.firebasestorage.app", "wrong-project-bucket"],
+    ["APP_BASE_URL", "https://www.sodc.net", "wrong-environment-app-base-url"],
+    ["SECTION_FILES_BUCKET", " ", "wrong-project-bucket"],
+    ["APP_BASE_URL", " ", "wrong-environment-app-base-url"],
+  ])("blocks preservation proposals for a wrong inherited %s value %j", async (key, value, reason) => {
+    const f = await fixture();
+    const options = { cli: f.cli, provider: f.provider, manifestResult: f.manifestResult, mode: "preserve-existing" };
+    const proposal = await runFunctionsConfigGuard(f.root, "dev", { ...options, propose: true });
+    const reviewPath = path.join(f.root, ".firebase/review.json"); await mkdir(path.dirname(reviewPath), { recursive: true });
+    await writeFile(reviewPath, JSON.stringify({ ...proposal, reviewedBy: "operator", reason: "Preserve the reviewed environment" }));
+    f.functions[0].serviceConfig.environmentVariables[key] = value;
+    await expect(runFunctionsConfigGuard(f.root, "dev", { ...options, propose: true })).rejects.toThrow(reason);
+    await expect(runFunctionsConfigGuard(f.root, "dev", { ...options, reviewPath })).rejects.toThrow(reason);
+  });
+  it.each(["APP_BASE_URL", "SECTION_FILES_BUCKET"])("keeps absent/empty inherited %s visible and reviewable", async (key) => {
+    const f = await fixture();
+    const options = { cli: f.cli, provider: f.provider, manifestResult: f.manifestResult, mode: "preserve-existing" };
+    for (const value of [undefined, ""]) {
+      if (value === undefined) delete f.functions[0].serviceConfig.environmentVariables[key];
+      else f.functions[0].serviceConfig.environmentVariables[key] = value;
+      const proposal = await runFunctionsConfigGuard(f.root, "dev", { ...options, propose: true });
+      expect(proposal.environmentChanges).toEqual([]);
+      expect(proposal.policyDeviations).toEqual([{ endpoint: "example", key, reason: "required-nonempty" }]);
+      await expect(runFunctionsConfigGuard(f.root, "dev", options)).rejects.toThrow("preservation-requires-explicit-review");
+      const reviewPath = path.join(f.root, ".firebase/review.json"); await mkdir(path.dirname(reviewPath), { recursive: true });
+      await writeFile(reviewPath, JSON.stringify({ ...proposal, reviewedBy: "operator", reason: "Keep this existing missing value" }));
+      await expect(runFunctionsConfigGuard(f.root, "dev", { ...options, reviewPath })).resolves.toHaveProperty("status", "PASS");
+    }
+  });
+  it("checks the inherited environment rather than unused local dotenv values in preservation mode", async () => {
+    const f = await fixture();
+    f.cli.env.loadUserEnvs.mockImplementation((options) => options.configDir ? {} : ({
+      ...f.values, APP_BASE_URL: "https://www.sodc.net", SECTION_FILES_BUCKET: "sodc-web-production.firebasestorage.app" }));
+    await expect(f.assess({ mode: "preserve-existing" })).resolves.toHaveProperty("rows.0.after", environmentProjection(f.values));
+  });
   it("does not leak parser values or raw provider errors", async () => {
     const f = await fixture(); f.cli.env.loadUserEnvs.mockImplementation(() => { throw new Error("PRIVATE_VALUE=should-not-print"); });
     await expect(f.assess()).rejects.toThrow(/^Functions configuration guard blocked: dotenv-resolution-failed\.$/);
@@ -306,6 +355,18 @@ describe("offline actual guard orchestration with injected CLI/provider", () => 
   it("rejects conditional public invoker bindings instead of treating them as unconditional", async () => {
     const f = await fixture(); f.provider.invokerPolicy.mockResolvedValue({ bindings: [{ role: "roles/run.invoker", members: ["allUsers"], condition: { expression: "false" } }] });
     await expect(f.assess()).rejects.toThrow("conditional-invoker-policy-not-supported");
+  });
+  it.each(["allUsers", "allAuthenticatedUsers"])("rejects downgraded conditional invoker aliases containing %s on a private Function", async (member) => {
+    const f = await fixture({ publicInvoker: false });
+    f.provider.invokerPolicy.mockResolvedValue({ version: 1, bindings: [
+      { role: "roles/run.invoker", members: ["serviceAccount:123-compute@developer.gserviceaccount.com"] },
+      { role: "roles/run.invoker_withcond_0123456789abcdef", members: [member] },
+    ] });
+    await expect(f.assess()).rejects.toThrow("conditional-invoker-policy-not-supported");
+  });
+  it.each([true, false])("accepts an unconditional version-1 invoker policy (public=%s)", async (publicInvoker) => {
+    const f = await fixture({ publicInvoker });
+    await expect(f.assess()).resolves.toHaveProperty("rows.0.name", "example");
   });
   it("blocks custom build/postdeploy hooks and unknown config fields before any provider inventory read", async () => {
     const f = await fixture();
@@ -352,6 +413,55 @@ describe("offline actual guard orchestration with injected CLI/provider", () => 
 // These imports are intentionally exercised by fixture-only tests, never against PATH
 // credentials. The production provider uses only explicit-project metadata GET resources.
 describe("metadata and CLI boundary", () => {
+  async function providerFixture() {
+    const bin = await mkdtemp(path.join(tmpdir(), "functions-metadata-test-")); directories.push(bin);
+    await writeFile(path.join(bin, "gcloud"), "#!/bin/sh\nprintf '%s' SYNTHETIC_TEST_TOKEN\n", { mode: 0o700 });
+    vi.stubEnv("PATH", `${bin}${path.delimiter}${process.env.PATH}`);
+    const fetch = vi.fn(async () => Response.json({})); vi.stubGlobal("fetch", fetch);
+    return { fetch, provider: metadataProvider(projectId, region) };
+  }
+  it("requests IAM policy version 3 so conditional invoker bindings retain their conditions", async () => {
+    const { fetch, provider } = await providerFixture();
+    await provider.invokerPolicy(`projects/${projectId}/locations/${region}/services/example`);
+    expect(fetch).toHaveBeenCalledWith(
+      `https://run.googleapis.com/v1/projects/${projectId}/locations/${region}/services/example:getIamPolicy?options.requestedPolicyVersion=3`,
+      expect.objectContaining({ method: "GET", redirect: "error" }));
+    expect(fetch.mock.calls[0][1]).not.toHaveProperty("body");
+  });
+  it("collects every Functions page and encodes provider page tokens", async () => {
+    const { fetch, provider } = await providerFixture();
+    fetch.mockResolvedValueOnce(Response.json({ functions: [{ name: "first" }], nextPageToken: "next/+=" }))
+      .mockResolvedValueOnce(Response.json({ functions: [{ name: "second" }] }));
+    await expect(provider.functions()).resolves.toEqual([{ name: "first" }, { name: "second" }]);
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+      `https://cloudfunctions.googleapis.com/v2/projects/${projectId}/locations/${region}/functions?pageSize=1000`,
+      `https://cloudfunctions.googleapis.com/v2/projects/${projectId}/locations/${region}/functions?pageSize=1000&pageToken=next%2F%2B%3D`,
+    ]);
+  });
+  it.each(["functions", "schedulers"])("blocks repeated %s page tokens without making a third request", async (inventory) => {
+    const { fetch, provider } = await providerFixture();
+    const key = inventory === "functions" ? "functions" : "jobs";
+    fetch.mockImplementation(async () => {
+      if (fetch.mock.calls.length > 2) throw new Error("bounded pagination fixture exhausted");
+      return Response.json({ [key]: [], nextPageToken: "repeated" });
+    });
+    await expect(provider[inventory]()).rejects.toThrow("invalid-provider-pagination");
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+  it.each(["functions", "schedulers"])("blocks an incomplete %s inventory even when the page contains results", async (inventory) => {
+    const { fetch, provider } = await providerFixture();
+    const key = inventory === "functions" ? "functions" : "jobs";
+    fetch.mockResolvedValue(Response.json({ [key]: [{ name: "example" }], unreachable: [region] }));
+    await expect(provider[inventory]()).rejects.toThrow("incomplete-provider-list");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it("blocks a secret payload resource before fetch and permits only metadata", async () => {
+    const { fetch, provider } = await providerFixture();
+    await expect(provider.latestSecret("SECRET/versions/1:access")).rejects.toThrow("metadata-resource-not-allowed");
+    expect(fetch).not.toHaveBeenCalled();
+    await provider.latestSecret("SECRET");
+    expect(fetch.mock.calls[0][0]).toBe(`https://secretmanager.googleapis.com/v1/projects/${projectId}/secrets/SECRET/versions/latest`);
+  });
   it("requires a supported installed CLI before any provider operation", () => {
     expect(() => loadPinnedCli({ firebaseToolsVersion: "unsupported", firebaseToolsModules: {} }, "/does/not/exist/firebase")).toThrow("unsupported-firebase-cli-installation");
     expect(typeof metadataProvider).toBe("function");
@@ -424,6 +534,22 @@ describe("guarded direct Functions mutation boundary", () => {
     const f = await readyRunner();
     f.dependencies.cliLoader = () => ({ executable: "/fake/firebase.js", identity: { version: "changed" } });
     await expect(deployGuardedFunctions(f.root, "dev", f.dependencies)).rejects.toThrow("cli-changed-before-functions-command");
+    expect(f.dependencies.execute).not.toHaveBeenCalled();
+  });
+  it("blocks an ignored build change after the fresh guard and before the final command", async () => {
+    const f = await readyRunner();
+    f.dependencies.verifyMigration.mockImplementation(async () => {
+      await writeFile(path.join(f.root, "functions/lib/index.js"), "changed-after-guard");
+    });
+    await expect(deployGuardedFunctions(f.root, "dev", f.dependencies)).rejects.toThrow("build-changed-during-guard");
+    expect(f.dependencies.execute).not.toHaveBeenCalled();
+  });
+  it("blocks alias changes before copying the private snapshot", async () => {
+    const f = await readyRunner();
+    f.dependencies.verifyMigration.mockImplementation(async () => {
+      await writeFile(path.join(f.root, ".firebaserc"), JSON.stringify({ projects: { dev: "different-project" } }));
+    });
+    await expect(deployGuardedFunctions(f.root, "dev", f.dependencies)).rejects.toThrow("alias-changed-before-functions-command");
     expect(f.dependencies.execute).not.toHaveBeenCalled();
   });
   it("cleans private snapshots on command failure and performs no retry", async () => {
