@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -74,7 +74,9 @@ describe("environment deployment configuration", () => {
       "functions-lint",
       "functions-test",
       "functions-build",
+      "functions-config-preflight",
       "record-preflight-attestation",
+      "functions-config-before-first-deploy",
       "deploy-dataconnect",
       "deploy-functions",
       "deploy-hosting",
@@ -88,7 +90,8 @@ describe("environment deployment configuration", () => {
     const firebaseDeploys = plan.filter(({ command, args }) =>
       command === "firebase" && args[0] === "deploy",
     );
-    expect(firebaseDeploys).toHaveLength(2);
+    expect(firebaseDeploys).toHaveLength(1);
+    expect(plan.find(({ id }) => id === "deploy-functions").kind).toBe("guarded-functions-deploy");
     for (const step of firebaseDeploys) {
       expect(step.args.slice(-2)).toEqual(["--project", "prod"]);
       expect(step.args).not.toContain("storage");
@@ -134,6 +137,10 @@ describe("deployment preflight attestation", () => {
     const directory = await mkdtemp(path.join(tmpdir(), "deploy-attestation-"));
     try {
       const expected = { environment: "beta", projectId: "sodc-web-beta", gitSha: "abc123" };
+      const guardPath = path.join(directory, ".firebase/functions-config-guard/beta.json");
+      await mkdir(path.dirname(guardPath), { recursive: true });
+      const guard = { schemaVersion: "sodc-functions-config-guard/v1", status: "PASS", binding: expected };
+      await writeFile(guardPath, JSON.stringify(guard));
       await writePreflightAttestation(directory, expected);
       await expect(verifyPreflightAttestation(directory, expected)).resolves.toMatchObject(expected);
       expect(preflightAttestationPath(directory, "beta")).toContain("deployment-preflight/beta.json");
@@ -144,6 +151,8 @@ describe("deployment preflight attestation", () => {
       await expect(
         verifyPreflightAttestation(directory, { environment: "prod", projectId: "sodc-web-production", gitSha: "abc123" }),
       ).rejects.toThrow(/No valid preflight attestation/);
+      await writeFile(guardPath, JSON.stringify({ ...guard, binding: { ...expected, inputs: "changed" } }));
+      await expect(verifyPreflightAttestation(directory, expected)).rejects.toThrow(/changed after full preflight/);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

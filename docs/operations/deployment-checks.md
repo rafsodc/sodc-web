@@ -2,6 +2,11 @@
 
 Tracked in [GitHub issue #437](https://github.com/rafsodc/sodc-web/issues/437).
 
+Before deploying Functions, follow the [runtime configuration guard workflow](./functions-runtime-config-guard.md).
+The standard preflight/deployment wrappers and `npm run deploy:functions -- --env <dev|beta|prod>`
+require fresh metadata checks and hash-bound configuration review; a raw Firebase
+Functions deploy bypasses that supported guard.
+
 The repository provides a read-only audit for Dev, Beta, and Prod. It compares
 the selected Firebase alias with version-controlled expectations, inspects the
 deployed Firebase/GCP resources, and performs non-destructive Hosting checks.

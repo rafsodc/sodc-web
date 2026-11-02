@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "sodc-functions-config-policy/v1",
+  "firebaseToolsVersion": "15.22.3",
+  "firebaseToolsEntrypointSha256": "1e05ff8373e5a5c7222475a0d90d4db58c85c2f281d44d4884bc96062288b864",
+  "firebaseToolsModules": {
+    "lib/functions/env.js": "8d6a5e640f8273000e6d0aa3b51eba3ad375d9c1f4214ad97454410e34b91338",
+    "lib/deploy/functions/prepare.js": "de1221a9368b8372a8b094fdebdc0b6b562ed9fc6822182b3e97a8fe6b19ac56",
+    "lib/deploy/functions/build.js": "397208379661e08d3dc4daf8017920ab4574bcfa82ff71dc78d371b31d4857a3",
+    "lib/deploy/functions/params.js": "03d565efe867f407ac79e631df2eccfcb21525a76a7deb96cbe58558f1b54fc2",
+    "lib/deploy/functions/runtimes/discovery/v1alpha1.js": "02503adc2d1f5ed4edb6d4a2f2730b8fd00b036865a5b23eb7438e908d404576",
+    "lib/gcp/cloudfunctionsv2.js": "5706ca42c746246a109e3938e63519b5dbcbe0e49b3c134f694a6fb84613ddb1",
+    "lib/deploy/functions/validate.js": "162e07d3a451221cc902fdb8f9178ed05c8ec076c6de4e81a8ae19a56d1e814b",
+    "lib/gcp/cloudscheduler.js": "ee627631734ae491096aa887d7f81b952c28d811750a8d961acade73ffe86ac2",
+    "lib/gcp/proto.js": "461e5b1bf0b223064ed5c4530a8e29a856a9118d40fea5386b099cd9eda02676"
+  },
+  "appBaseUrls": {
+    "dev": "https://sodc-web.web.app",
+    "beta": "https://sodc-web-beta.web.app",
+    "prod": "https://www.sodc.net"
+  },
+  "externalSchedulerJobs": ["section-file-clamav-definitions"],
+  "supportedTaskQueueTriggers": {
+    "prepareAnnouncementSend": "740380bf3e2da0a4309e1ace44ce0ca44abbe47ef60bb0d750d3c62fb3ce532a",
+    "processAnnouncementEmail": "9d232bcf36bd5b58447c005aead3590a913d12128ee7cd3a19ce017417640983"
+  },
+  "requiredEnvironmentKeys": [
+    "APP_BASE_URL", "GOV_NOTIFY_DELIVERY_MODE",
+    "SECTION_FILES_BUCKET", "SECTION_FILE_MALWARE_SCANNER_URL",
+    "SECTION_FILE_MALWARE_SCAN_MODE"
+  ],
+  "allowedEmptyEnvironmentKeys": [
+    "PERMITTED_PROJECT_IDS", "ENV_NAME", "GOV_NOTIFY_SERVICE_ID", "GOV_NOTIFY_EMAIL_REPLY_TO_ID", "PAYMENT_OPS_ALERT_EMAILS",
+    "GOV_NOTIFY_TEMPLATE_PASSWORD_RESET", "GOV_NOTIFY_TEMPLATE_EMAIL_VERIFICATION", "GOV_NOTIFY_TEMPLATE_EMAIL_CHANGE_VERIFICATION",
+    "GOV_NOTIFY_TEMPLATE_BOOKING_CONFIRMATION", "GOV_NOTIFY_TEMPLATE_BOOKING_REVISION",
+    "GOV_NOTIFY_TEMPLATE_GUEST_TICKET_REQUEST_APPROVED", "GOV_NOTIFY_TEMPLATE_GUEST_TICKET_REQUEST_REJECTED",
+    "GOV_NOTIFY_TEMPLATE_GUEST_TICKET_REQUEST_SUBMITTED_MODERATOR", "GOV_NOTIFY_TEMPLATE_MEMBERSHIP_ACCESS_RESTRICTED",
+    "GOV_NOTIFY_TEMPLATE_MEMBERSHIP_ACTIVATED", "GOV_NOTIFY_TEMPLATE_PAYMENT_DISPUTE_OPS_ALERT",
+    "GOV_NOTIFY_TEMPLATE_PAYMENT_RECONCILIATION_EXCEPTION_ALERT", "GOV_NOTIFY_TEMPLATE_TICKET_ORDER_FAILED",
+    "GOV_NOTIFY_TEMPLATE_TICKET_ORDER_PAID", "GOV_NOTIFY_TEMPLATE_TICKET_ORDER_REFUNDED"
+  ]
+}

@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { compareExpected } from "./deployment-check-lib.mjs";
+import { GUARD_SCHEMA, digest } from "./functions-config-guard-lib.mjs";
 
 export const DEPLOYMENT_ENVIRONMENTS = Object.freeze({
   dev: Object.freeze({ projectId: "sodc-web" }),
@@ -30,13 +31,14 @@ export const REQUIRED_VITE_FIREBASE_KEYS = Object.freeze([
 
 /** Deployment stages in execution order; `--from` resumes at the start of one of these. */
 export const DEPLOY_STAGES = Object.freeze(["preflight", "dataconnect", "functions", "hosting", "audit"]);
-export const PREFLIGHT_ATTESTATION_SCHEMA_VERSION = "sodc-deployment-preflight/v1";
+export const PREFLIGHT_ATTESTATION_SCHEMA_VERSION = "sodc-deployment-preflight/v2";
 
 export function preflightAttestationPath(repositoryRoot, environment) {
   return path.join(repositoryRoot, ".firebase", "deployment-preflight", `${environment}.json`);
 }
 
 export async function writePreflightAttestation(repositoryRoot, { environment, projectId, gitSha }) {
+  const functionsGuard = await readFunctionsGuardReceipt(repositoryRoot, { environment, projectId, gitSha });
   const outputPath = preflightAttestationPath(repositoryRoot, environment);
   const temporaryPath = `${outputPath}.tmp`;
   await mkdir(path.dirname(outputPath), { recursive: true, mode: 0o700 });
@@ -47,12 +49,27 @@ export async function writePreflightAttestation(repositoryRoot, { environment, p
       environment,
       projectId,
       gitSha: gitSha.trim(),
+      functionsConfigGuardSha256: digest(functionsGuard),
       completedAt: new Date().toISOString(),
     }, null, 2)}\n`,
     { encoding: "utf8", mode: 0o600 },
   );
   await rename(temporaryPath, outputPath);
   return outputPath;
+}
+
+async function readFunctionsGuardReceipt(repositoryRoot, { environment, projectId, gitSha }) {
+  let receipt;
+  try {
+    receipt = JSON.parse(await readFile(path.join(repositoryRoot, ".firebase/functions-config-guard", `${environment}.json`), "utf8"));
+  } catch {
+    throw new Error("A passing Functions configuration guard receipt is required before full preflight can be attested.");
+  }
+  if (receipt.schemaVersion !== GUARD_SCHEMA || receipt.status !== "PASS" || receipt.binding?.environment !== environment ||
+    receipt.binding?.projectId !== projectId || receipt.binding?.gitSha !== gitSha.trim()) {
+    throw new Error("Functions configuration guard receipt does not match the preflight environment and revision.");
+  }
+  return receipt;
 }
 
 export async function verifyPreflightAttestation(repositoryRoot, expected) {
@@ -75,6 +92,10 @@ export async function verifyPreflightAttestation(repositoryRoot, expected) {
       `The saved preflight attestation does not match ${expected.environment} at revision ${expected.gitSha.trim()}. ` +
         "Run the full deployment preflight again before using --from.",
     );
+  }
+  const functionsGuard = await readFunctionsGuardReceipt(repositoryRoot, expected);
+  if (attestation.functionsConfigGuardSha256 !== digest(functionsGuard)) {
+    throw new Error("Functions configuration inputs or guard receipt changed after full preflight. Run full preflight again.");
   }
   return attestation;
 }
@@ -262,6 +283,11 @@ export function createPreflightSteps(environment) {
       args: ["--prefix", "functions", "run", "build"],
     },
     {
+      id: "functions-config-preflight",
+      label: "Check effective Functions configuration against the target runtime",
+      kind: "functions-config-record",
+    },
+    {
       id: "record-preflight-attestation",
       label: "Record the verified environment and revision",
       kind: "record-preflight-attestation",
@@ -274,6 +300,12 @@ export function createDeploymentPlan(environment, gitSha) {
   const preflight = createPreflightSteps(environment).map((step) => ({ ...step, stage: "preflight" }));
   const deploySteps = [
     {
+      id: "functions-config-before-first-deploy",
+      stage: "dataconnect",
+      label: "Recheck Functions configuration before the first remote deployment",
+      kind: "functions-config-verify",
+    },
+    {
       id: "deploy-dataconnect",
       stage: "dataconnect",
       label: "Deploy Data Connect",
@@ -284,8 +316,7 @@ export function createDeploymentPlan(environment, gitSha) {
       id: "deploy-functions",
       stage: "functions",
       label: "Build and deploy all Functions",
-      command: "firebase",
-      args: ["deploy", "--only", "functions", "--project", environment],
+      kind: "guarded-functions-deploy",
     },
     {
       id: "deploy-hosting",
