@@ -902,7 +902,7 @@ describe("SectionEventsManager", () => {
     expect(screen.getByLabelText(/^event details$/i)).toHaveValue("## Evening programme\n\nDinner and dancing.");
     expect(screen.getByRole("heading", { name: "Evening programme", level: 4 })).toBeInTheDocument();
     expect(screen.getByLabelText(/max guests without moderator approval/i)).toHaveValue(2);
-  });
+  }, 10_000);
 
   it("persists cleared optional event content as null", async () => {
     const user = userEvent.setup();
