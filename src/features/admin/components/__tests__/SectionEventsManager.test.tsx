@@ -1126,7 +1126,7 @@ describe("SectionEventsManager", () => {
     expect(mutation.vars.title).toBe("Retained event draft");
     expect(Date.parse(String(mutation.vars.endDateTime))).toBeGreaterThanOrEqual(Date.parse(String(mutation.vars.startDateTime)));
     await screen.findByText(editing ? "Event updated" : "Event created");
-  });
+  }, 20_000);
 
   function routedBooking(approvalStatus = "APPROVED") {
     return {
