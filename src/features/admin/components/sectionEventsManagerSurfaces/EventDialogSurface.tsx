@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   Alert,
   Box,
@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import SafeMarkdown from "../../../../shared/components/SafeMarkdown";
 import type { EventRow } from "../sectionEventsManagerTypes";
+import { EVENT_DATE_TIME_FIELDS, validateEventDateTimes, type EventDateTimeField } from "../../utils/eventDatetime";
 
 export interface EventDialogSurfaceProps {
   open: boolean;
@@ -78,6 +79,22 @@ export function EventDialogSurface({
   onMaxGuestsChange,
 }: EventDialogSurfaceProps) {
   const headingId = useId();
+  const [dateValidationAttempted, setDateValidationAttempted] = useState(false);
+  const dateInputs = useRef<Partial<Record<EventDateTimeField, HTMLInputElement | null>>>({});
+  const dateValidation = validateEventDateTimes({ startDateTime, endDateTime, bookingStartDateTime, bookingEndDateTime });
+  const dateErrors = dateValidationAttempted ? dateValidation.errors : {};
+  useEffect(() => { setDateValidationAttempted(false); }, [open, editingEvent?.id]);
+  const saveIsDisabled = submitting || saveDisabled || !title.trim();
+  const submit = () => {
+    if (saveIsDisabled) return;
+    setDateValidationAttempted(true);
+    if (!dateValidation.valid) {
+      const firstInvalid = EVENT_DATE_TIME_FIELDS.find(field => dateValidation.errors[field]);
+      if (firstInvalid) dateInputs.current[firstInvalid]?.focus();
+      return;
+    }
+    onSubmit();
+  };
   const previewDetails = details.trim();
   const informationFields = (
     <>
@@ -129,6 +146,10 @@ export function EventDialogSurface({
         type="datetime-local"
         fullWidth
         value={startDateTime}
+        required
+        inputRef={(input: HTMLInputElement | null) => { dateInputs.current.startDateTime = input; }}
+        error={!!dateErrors.startDateTime}
+        helperText={dateErrors.startDateTime}
         onChange={(event) => onStartDateTimeChange(event.target.value)}
         margin="dense"
         InputLabelProps={{ shrink: true }}
@@ -138,6 +159,10 @@ export function EventDialogSurface({
         type="datetime-local"
         fullWidth
         value={endDateTime}
+        required
+        inputRef={(input: HTMLInputElement | null) => { dateInputs.current.endDateTime = input; }}
+        error={!!dateErrors.endDateTime}
+        helperText={dateErrors.endDateTime}
         onChange={(event) => onEndDateTimeChange(event.target.value)}
         margin="dense"
         InputLabelProps={{ shrink: true }}
@@ -151,6 +176,10 @@ export function EventDialogSurface({
         type="datetime-local"
         fullWidth
         value={bookingStartDateTime}
+        required
+        inputRef={(input: HTMLInputElement | null) => { dateInputs.current.bookingStartDateTime = input; }}
+        error={!!dateErrors.bookingStartDateTime}
+        helperText={dateErrors.bookingStartDateTime}
         onChange={(event) => onBookingStartDateTimeChange(event.target.value)}
         margin="dense"
         InputLabelProps={{ shrink: true }}
@@ -160,6 +189,10 @@ export function EventDialogSurface({
         type="datetime-local"
         fullWidth
         value={bookingEndDateTime}
+        required
+        inputRef={(input: HTMLInputElement | null) => { dateInputs.current.bookingEndDateTime = input; }}
+        error={!!dateErrors.bookingEndDateTime}
+        helperText={dateErrors.bookingEndDateTime}
         onChange={(event) => onBookingEndDateTimeChange(event.target.value)}
         margin="dense"
         InputLabelProps={{ shrink: true }}
@@ -177,17 +210,17 @@ export function EventDialogSurface({
       />
     </>
   );
-  const saveIsDisabled = submitting || saveDisabled || !title.trim();
 
   if (embedded) {
     if (!open) return null;
     return (
       <Box
         component="form"
+        noValidate
         aria-labelledby={headingId}
-        onSubmit={(submit) => {
-          submit.preventDefault();
-          if (!saveIsDisabled) onSubmit();
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
         }}
       >
         <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} sx={{ mb: 2 }}>
@@ -234,7 +267,7 @@ export function EventDialogSurface({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button aria-label="Save" variant="contained" onClick={onSubmit} disabled={saveIsDisabled}>
+        <Button aria-label="Save" variant="contained" onClick={submit} disabled={saveIsDisabled}>
           {submitting ? <CircularProgress size={20} /> : "Save"}
         </Button>
       </DialogActions>

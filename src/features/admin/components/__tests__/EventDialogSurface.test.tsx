@@ -44,8 +44,8 @@ describe("Event details editor presentation", () => {
     expect(within(form).getByRole("heading", { level: 2, name: "Event details" })).toBeInTheDocument();
     expect(within(form).getByRole("status")).toHaveTextContent("Saved");
     expect(within(form).getByRole("group", { name: "Event information" })).toContainElement(screen.getByRole("textbox", { name: "Title" }));
-    expect(within(form).getByRole("group", { name: "Event schedule" })).toContainElement(screen.getByLabelText("Start date/time"));
-    expect(within(form).getByRole("group", { name: "Booking window" })).toContainElement(screen.getByLabelText("Booking window end"));
+    expect(within(form).getByRole("group", { name: "Event schedule" })).toContainElement(screen.getByLabelText("Start date/time", { exact: false }));
+    expect(within(form).getByRole("group", { name: "Booking window" })).toContainElement(screen.getByLabelText("Booking window end", { exact: false }));
     expect(screen.getByRole("button", { name: "Save" })).toHaveTextContent("Save changes");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(editor.onSubmit).toHaveBeenCalledTimes(1);
@@ -96,5 +96,40 @@ describe("Event details editor presentation", () => {
   it("does not render a closed inline editor", () => {
     render(<EventDialogSurface {...props({ embedded: true, open: false })} />);
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
+  });
+
+  describe.each([false, true])("date validation (embedded=%s)", (embedded) => {
+    it.each([
+      ["startDateTime", "", "Start date/time", "Start date/time is required."],
+      ["endDateTime", "", "End date/time", "End date/time is required."],
+      ["bookingStartDateTime", "", "Booking window start", "Booking window start is required."],
+      ["bookingEndDateTime", "", "Booking window end", "Booking window end is required."],
+      ["endDateTime", "2026-11-20T12:59", "End date/time", "End date/time must be on or after start date/time."],
+      ["bookingEndDateTime", "2026-10-01T08:59", "Booking window end", "Booking window end must be on or after booking window start."],
+    ] as const)("keeps the draft and focuses invalid %s", async (field, value, label, message) => {
+      const user = userEvent.setup();
+      const editor = props({ embedded, [field]: value });
+      render(<EventDialogSurface {...editor} />);
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(editor.onSubmit).not.toHaveBeenCalled();
+      const input = screen.getByLabelText(label, { exact: false, selector: "input" });
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(input).toHaveAccessibleDescription(message);
+      expect(input).toHaveFocus();
+      expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("Annual Dinner");
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+    });
+
+    it("clears the field error after correction and allows one explicit save", async () => {
+      const user = userEvent.setup();
+      const editor = props({ embedded, endDateTime: "2026-11-20T12:00" });
+      const view = render(<EventDialogSurface {...editor} />);
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(editor.onSubmit).not.toHaveBeenCalled();
+      view.rerender(<EventDialogSurface {...editor} endDateTime="2026-11-20T13:00" />);
+      expect(screen.queryByText("End date/time must be on or after start date/time.")).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(editor.onSubmit).toHaveBeenCalledTimes(1);
+    });
   });
 });

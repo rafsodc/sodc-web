@@ -1091,6 +1091,43 @@ describe("SectionEventsManager", () => {
     return event;
   }
 
+  it.each([false, true])("rejects invalid dates before a write and preserves an explicit retry (editing=%s)", async (editing) => {
+    const user = userEvent.setup();
+    if (editing) {
+      prepareRoutedEvent();
+      canonicalManager("/sections/section-1/manage/events/ev-1?task=details");
+      await screen.findByRole("textbox", { name: "Title" });
+    } else {
+      render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+      await user.click(screen.getByRole("button", { name: /add event/i }));
+    }
+    fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Retained event draft" } });
+    const fields = [
+      ["Start date/time", "2030-03-01T18:00"], ["End date/time", "2030-03-01T22:00"],
+      ["Booking window start", "2030-01-01T00:00"], ["Booking window end", "2030-02-28T00:00"],
+    ];
+    for (const [label, value] of fields) {
+      fireEvent.change(screen.getByLabelText(label, { exact: false, selector: "input" }), { target: { value } });
+    }
+    const badLabel = editing ? "Booking window end" : "End date/time";
+    const badInput = screen.getByLabelText(badLabel, { exact: false, selector: "input" });
+    fireEvent.change(badInput, { target: { value: editing ? "2029-12-31T23:59" : "2030-03-01T17:59" } });
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(firebaseDataConnect.executeMutation).not.toHaveBeenCalled();
+    expect(badInput).toHaveAttribute("aria-invalid", "true");
+    expect(badInput).toHaveFocus();
+    expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("Retained event draft");
+    expect(screen.queryByText(/previous save|check latest list/i)).not.toBeInTheDocument();
+    fireEvent.change(badInput, { target: { value: editing ? "2030-02-28T00:00" : "2030-03-01T22:00" } });
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(firebaseDataConnect.executeMutation).toHaveBeenCalledTimes(1));
+    const mutation = vi.mocked(firebaseDataConnect.executeMutation).mock.calls[0][0] as unknown as { name: string; vars: Record<string, unknown> };
+    expect(mutation.name).toBe(editing ? "UpdateEvent" : "CreateEvent");
+    expect(mutation.vars.title).toBe("Retained event draft");
+    expect(Date.parse(String(mutation.vars.endDateTime))).toBeGreaterThanOrEqual(Date.parse(String(mutation.vars.startDateTime)));
+    await screen.findByText(editing ? "Event updated" : "Event created");
+  });
+
   function routedBooking(approvalStatus = "APPROVED") {
     return {
       id: "routed-booking", status: "SUBMITTED", approvalStatus,
