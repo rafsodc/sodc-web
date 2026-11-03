@@ -31,6 +31,19 @@ export function invalidateDataConnectQueries(queryClient: QueryClient, queryKeys
 export function invalidateAnnouncementPreferences(queryClient: QueryClient) {
   return invalidateDataConnectQueries(queryClient, [["GetMyAnnouncementPreferences"], ["GetSectionAnnouncementOptOut"]]);
 }
+/** An own-authorization change may interrupt an acknowledged preference save.
+ * Retire current-session projections without attempting blocked private reads;
+ * the visible recovery action will load authoritative state after the gate lifts.
+ */
+export async function retireAnnouncementPreferences(queryClient: QueryClient) {
+  const session = captureSession();
+  const queryKeys = [["GetMyAnnouncementPreferences"], ["GetSectionAnnouncementOptOut"]];
+  assertSessionCurrent(session);
+  await Promise.all(queryKeys.map(queryKey => queryClient.cancelQueries({ queryKey })));
+  assertSessionCurrent(session);
+  await Promise.all(queryKeys.map(queryKey => queryClient.invalidateQueries({ queryKey, refetchType: "none" })));
+  assertSessionCurrent(session);
+}
 // Group membership/purpose links also determine the aggregate preference section list.
 export function invalidateUserSectionAccess(queryClient: QueryClient) {
   // Access changes retire summaries before any fallible server revalidation.

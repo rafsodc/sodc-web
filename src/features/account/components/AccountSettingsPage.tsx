@@ -60,7 +60,8 @@ import {
   toMemberDataError,
 } from "../../../shared/errors";
 import FailureState from "../../../shared/components/FailureState";
-import { invalidateAnnouncementPreferences } from "../../../shared/query/invalidation";
+import { invalidateAnnouncementPreferences, retireAnnouncementPreferences } from "../../../shared/query/invalidation";
+import { usePreferenceSaveGuard } from "../hooks/usePreferenceSaveGuard";
 
 export interface AccountSettingsPageProps {
   user: User;
@@ -76,6 +77,7 @@ function usesEmailPassword(user: User): boolean {
 }
 
 function AnnouncementPreferencesList() {
+  const { begin: beginPreferenceSave, available: preferenceAvailable } = usePreferenceSaveGuard("account-preferences");
   const queryClient = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useGetMyAnnouncementPreferences(dataConnect, { staleTime: 30_000 });
   const optOut = useOptOutSectionAnnouncement();
@@ -88,6 +90,29 @@ function AnnouncementPreferencesList() {
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [preferenceError, setPreferenceError] = useState<string | null>(null);
+  const [preferenceInterrupted, setPreferenceInterrupted] = useState(false);
+  const [interruptedReloadFailed, setInterruptedReloadFailed] = useState(false);
+
+  const finishPreferenceSave = async (operation: NonNullable<ReturnType<typeof beginPreferenceSave>>) => {
+    if (operation.hasSessionOwner() && !operation.hasCurrentSession()) {
+      try { await retireAnnouncementPreferences(queryClient); }
+      catch (error) { if (operation.ownsView()) reportError("account.announcement-preferences.retire", error); }
+    }
+    if (operation.ownsView()) {
+      if (!operation.isCurrent()) {
+        setGlobalOverride(null);
+        setLocalOverrides(new Map());
+        setPreferenceInterrupted(true);
+        setInterruptedReloadFailed(false);
+        setRefreshFailed(false);
+        setPreferenceError(null);
+        setSnackbar(null);
+      }
+      setGlobalBusy(false);
+      setBusy(null);
+    }
+    operation.finish();
+  };
 
   const sections = useMemo(() => {
     return getAnnouncementSections(data);
@@ -101,24 +126,38 @@ function AnnouncementPreferencesList() {
     globalOverride ?? data?.user?.announcementOptOutAll ?? false;
 
   const retryPreferences = async () => {
+    const operation = beginPreferenceSave();
+    if (!operation) return;
     setGlobalBusy(true);
+    setInterruptedReloadFailed(false);
     try {
       await invalidateAnnouncementPreferences(queryClient);
+      if (!operation.isCurrent()) return;
       setRefreshFailed(false);
+      setPreferenceInterrupted(false);
       setGlobalOverride(null);
       setLocalOverrides(new Map());
-    } catch { setRefreshFailed(true); }
-    finally { setGlobalBusy(false); }
+    } catch {
+      if (operation.isCurrent()) {
+        if (preferenceInterrupted) setInterruptedReloadFailed(true);
+        else setRefreshFailed(true);
+      }
+    }
+    finally { await finishPreferenceSave(operation); }
   };
 
   const handleGlobalToggle = async () => {
+    const operation = beginPreferenceSave();
+    if (!operation) return;
     const newOptOut = !announcementOptOutAll;
     setGlobalOverride(newOptOut);
     setGlobalBusy(true);
     setPreferenceError(null);
+    setSnackbar(null);
     let saved = false;
     try {
       await runSessionOperation(() => updateGlobalOptOut.mutateAsync({ announcementOptOutAll: newOptOut }));
+      if (!operation.hasCurrentSession()) return;
       saved = true;
       queryClient.setQueryData(
         ["GetMyAnnouncementPreferences", null],
@@ -127,7 +166,9 @@ function AnnouncementPreferencesList() {
             ? { ...old, user: { ...old.user, announcementOptOutAll: newOptOut } }
             : old,
       );
+      if (!operation.hasCurrentSession()) return;
       await invalidateAnnouncementPreferences(queryClient);
+      if (!operation.isCurrent()) return;
       setGlobalOverride(null);
       setSnackbar(
         newOptOut
@@ -135,19 +176,23 @@ function AnnouncementPreferencesList() {
           : "Announcement emails enabled",
       );
     } catch (error) {
+      if (!operation.isCurrent()) return;
       reportError("account.announcement-preferences.global", error);
       if (saved) setRefreshFailed(true);
       else { setGlobalOverride(null); setPreferenceError("We couldn’t save your email preferences. Check your connection and try again."); }
     } finally {
-      setGlobalBusy(false);
+      await finishPreferenceSave(operation);
     }
   };
 
   const handleToggle = async (sectionId: string, currentlyOptedOut: boolean) => {
+    const operation = beginPreferenceSave();
+    if (!operation) return;
     const newOptedOut = !currentlyOptedOut;
     setLocalOverrides(prev => new Map(prev).set(sectionId, newOptedOut));
     setBusy(sectionId);
     setPreferenceError(null);
+    setSnackbar(null);
     let saved = false;
     try {
       if (currentlyOptedOut) {
@@ -155,6 +200,7 @@ function AnnouncementPreferencesList() {
       } else {
         await runSessionOperation(() => optOut.mutateAsync({ sectionId }));
       }
+      if (!operation.hasCurrentSession()) return;
       saved = true;
       queryClient.setQueryData(
         ["GetMyAnnouncementPreferences", null],
@@ -166,10 +212,13 @@ function AnnouncementPreferencesList() {
           return { ...old, user: { ...old.user, optOuts: newOptOuts } };
         }
       );
+      if (!operation.hasCurrentSession()) return;
       await invalidateAnnouncementPreferences(queryClient);
+      if (!operation.isCurrent()) return;
       setLocalOverrides(prev => { const m = new Map(prev); m.delete(sectionId); return m; });
       setSnackbar(newOptedOut ? "Opted out of announcements" : "Opted in to announcements");
     } catch (error) {
+      if (!operation.isCurrent()) return;
       reportError("account.announcement-preferences.section", error);
       if (saved) setRefreshFailed(true);
       else {
@@ -177,12 +226,12 @@ function AnnouncementPreferencesList() {
         setPreferenceError("We couldn’t save your email preferences. Check your connection and try again.");
       }
     } finally {
-      setBusy(null);
+      await finishPreferenceSave(operation);
     }
   };
 
   return (
-    <Box component="section" aria-labelledby="email-preferences-heading">
+    <Box component="section" aria-labelledby="email-preferences-heading" aria-busy={globalBusy || busy !== null}>
       <Typography id="email-preferences-heading" variant="h6" component="h2" sx={{ mb: 1 }}>
         Announcement emails
       </Typography>
@@ -190,14 +239,16 @@ function AnnouncementPreferencesList() {
         Choose whether you receive optional announcements. Account-security, booking, and payment
         messages are always sent when required.
       </Typography>
-      {refreshFailed ? <Alert severity="warning" action={<Button onClick={() => void retryPreferences()} disabled={globalBusy}>Retry refresh</Button>}>Your email preferences were saved, but the latest preferences could not be loaded.</Alert> : null}
+      {refreshFailed ? <Alert severity="warning" action={<Button onClick={() => void retryPreferences()} disabled={globalBusy || !preferenceAvailable}>Retry refresh</Button>}>Your email preferences were saved, but the latest preferences could not be loaded.</Alert> : null}
+      {preferenceInterrupted ? <Alert severity="warning" action={<Button onClick={() => void retryPreferences()} disabled={globalBusy || !preferenceAvailable}>Reload preferences</Button>}>Your account changed while updating email preferences. {interruptedReloadFailed ? "We couldn’t reload your email preferences. Check your connection and try again." : "Reload them before making another change."}</Alert> : null}
       {preferenceError ? <Alert severity="error">{preferenceError}</Alert> : null}
+      {globalBusy || busy !== null ? <Typography role="status" variant="body2">Updating email preferences…</Typography> : null}
       <FormControlLabel
         control={
           <Switch
             checked={!announcementOptOutAll}
             onChange={() => void handleGlobalToggle()}
-            disabled={isLoading || globalBusy || busy !== null || refreshFailed || isError}
+            disabled={isLoading || globalBusy || busy !== null || refreshFailed || preferenceInterrupted || isError || !preferenceAvailable}
           />
         }
         label="Receive announcement emails"
@@ -229,7 +280,6 @@ function AnnouncementPreferencesList() {
         <Stack spacing={0.5}>
           {sections.map((section) => {
             const isOptedOut = localOverrides.has(section.id) ? localOverrides.get(section.id)! : optOutIds.has(section.id);
-            const isBusy = busy === section.id;
             return (
               <FormControlLabel
                 key={section.id}
@@ -238,7 +288,7 @@ function AnnouncementPreferencesList() {
                     checked={!isOptedOut}
                     onChange={() => void handleToggle(section.id, isOptedOut)}
                     size="small"
-                    disabled={isBusy || globalBusy || refreshFailed || announcementOptOutAll}
+                    disabled={busy !== null || globalBusy || refreshFailed || preferenceInterrupted || announcementOptOutAll || !preferenceAvailable}
                   />
                 }
                 label={<Typography variant="body2">{section.name}</Typography>}
@@ -676,7 +726,7 @@ export default function AccountSettingsPage({
         </Box>
 
         <Divider />
-        <AnnouncementPreferencesList />
+        <AnnouncementPreferencesList key={user.uid} />
 
         {canResign && (
           <>

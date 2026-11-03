@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { ComponentProps } from "react";
-import { render, screen, waitFor } from "../../../../test-utils";
+import { act, render, screen, waitFor } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AccountSettingsPage from "../AccountSettingsPage";
@@ -9,6 +9,8 @@ import * as dataConnectReact from "@dataconnect/generated/react";
 import { createMockUser } from "../../../../test-utils/mocks/firebase";
 import type { UserData } from "../../../../types";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
+import { captureSession, createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
+import { beginAuthorizationUpdate, resumeAuthorizationReads } from "../../../../shared/auth/authorizationUpdate";
 
 vi.mock("firebase/auth", () => ({
   EmailAuthProvider: {
@@ -29,7 +31,7 @@ vi.mock("firebase/auth", () => ({
 }));
 
 import { invalidateAnnouncementPreferences } from "../../../../shared/query/invalidation";
-vi.mock("../../../../shared/query/invalidation", () => ({invalidateAnnouncementPreferences: vi.fn().mockResolvedValue(undefined)}));
+vi.mock("../../../../shared/query/invalidation", () => ({invalidateAnnouncementPreferences: vi.fn().mockResolvedValue(undefined), retireAnnouncementPreferences: vi.fn().mockResolvedValue(undefined)}));
 
 const mockUpsertUser = vi.fn().mockResolvedValue({ data: { user_update: { id: "user-1" } } });
 
@@ -584,12 +586,15 @@ describe("AccountSettingsPage", () => {
 });
 
 describe("AnnouncementPreferencesList", () => {
+  const uninstalls: Array<() => void> = [];
+  afterEach(() => { uninstalls.reverse().forEach(uninstall => uninstall()); uninstalls.length = 0; });
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockOptOutAsync.mockResolvedValue(undefined);
-    mockOptInAsync.mockResolvedValue(undefined);
-    mockUpdateGlobalOptOutAsync.mockResolvedValue(undefined);
+    mockOptOutAsync.mockReset().mockResolvedValue(undefined);
+    mockOptInAsync.mockReset().mockResolvedValue(undefined);
+    mockUpdateGlobalOptOutAsync.mockReset().mockResolvedValue(undefined);
+    vi.mocked(invalidateAnnouncementPreferences).mockReset().mockResolvedValue(undefined);
   });
 
   const sectionWithAccess = {
@@ -601,6 +606,164 @@ describe("AnnouncementPreferencesList", () => {
       },
     ],
   };
+
+  const setPreferences = (optOuts: string[] = [], global = false) => {
+    vi.mocked(dataConnectReact.useGetMyAnnouncementPreferences).mockReturnValue({
+      data: { user: { membershipStatus: MembershipStatus.REGULAR, announcementOptOutAll: global,
+        userGroups: [{ userGroup: { membershipStatuses: null, purposeLinks: [
+          { purposes: [SectionUserGroupPurpose.ACCESS], section: { id: "s1", name: "Alpha Section" } },
+          { purposes: [SectionUserGroupPurpose.ACCESS], section: { id: "s2", name: "Beta Section" } },
+        ] } }], optOuts: optOuts.map(id => ({ section: { id } })) }, allUserGroups: [] }, isLoading: false,
+    } as never);
+  };
+  function deferred<T>() {
+    let resolve!: (value: T) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<T>((done, failed) => { resolve = done; reject = failed; });
+    return { promise, resolve, reject };
+  }
+
+  it("serializes different section saves until the first write and refresh settle", async () => {
+    const user = userEvent.setup(), write = deferred<undefined>(), refresh = deferred<undefined>();
+    setPreferences(); mockOptOutAsync.mockReturnValueOnce(write.promise);
+    vi.mocked(invalidateAnnouncementPreferences).mockImplementationOnce(() => refresh.promise);
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+    const alpha = screen.getByRole("switch", { name: "Alpha Section" }), beta = screen.getByRole("switch", { name: "Beta Section" });
+    await user.click(alpha);
+    expect(alpha).toBeDisabled(); expect(beta).toBeDisabled();
+    expect(screen.getByRole("switch", { name: "Receive announcement emails" })).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent("Updating email preferences");
+    expect(mockOptOutAsync).toHaveBeenCalledOnce();
+    await act(async () => { write.resolve(undefined); await write.promise; });
+    expect(beta).toBeDisabled();
+    setPreferences(["s1"]);
+    await act(async () => { refresh.resolve(undefined); await refresh.promise; });
+    await waitFor(() => expect(beta).toBeEnabled());
+    expect(alpha).not.toBeChecked();
+    await user.click(beta); expect(mockOptOutAsync).toHaveBeenNthCalledWith(2, { sectionId: "s2" });
+  });
+
+  it.each(["global", "section"] as const)("announces a rejected %s write, restores confirmed state and allows an explicit retry", async scope => {
+    const user = userEvent.setup(); setPreferences();
+    const mutate = scope === "global" ? mockUpdateGlobalOptOutAsync : mockOptOutAsync;
+    mutate.mockRejectedValueOnce(new Error("offline"));
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+    const toggle = screen.getByRole("switch", { name: scope === "global" ? "Receive announcement emails" : "Alpha Section" });
+    await user.click(toggle);
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn’t save your email preferences");
+    expect(toggle).toBeChecked(); expect(toggle).toBeEnabled();
+    expect(invalidateAnnouncementPreferences).not.toHaveBeenCalled();
+    vi.mocked(invalidateAnnouncementPreferences).mockImplementationOnce(async () => setPreferences(scope === "global" ? [] : ["s1"], scope === "global"));
+    await user.click(toggle);
+    expect(mutate).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(screen.queryByText(/We couldn’t save your email preferences/)).not.toBeInTheDocument();
+    expect(invalidateAnnouncementPreferences).toHaveBeenCalledOnce();
+  });
+
+  it("preserves a confirmed section choice through failed refresh and retries only reads", async () => {
+    const user = userEvent.setup(); setPreferences();
+    vi.mocked(invalidateAnnouncementPreferences).mockRejectedValueOnce(new Error("offline")).mockRejectedValueOnce(new Error("still offline"));
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+    await user.click(screen.getByRole("switch", { name: "Alpha Section" }));
+    expect(await screen.findByText(/Your email preferences were saved, but/)).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Alpha Section" })).not.toBeChecked();
+    expect(screen.getByRole("switch", { name: "Beta Section" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Retry refresh" }));
+    expect(screen.getByText(/Your email preferences were saved, but/)).toBeInTheDocument();
+    vi.mocked(invalidateAnnouncementPreferences).mockImplementationOnce(async () => setPreferences(["s1"]));
+    await user.click(screen.getByRole("button", { name: "Retry refresh" }));
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Beta Section" })).toBeEnabled());
+    expect(mockOptOutAsync).toHaveBeenCalledOnce(); expect(invalidateAnnouncementPreferences).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole("switch", { name: "Alpha Section" })).not.toBeChecked();
+  });
+
+  it("clears earlier success feedback when the next request starts and fails", async () => {
+    const user = userEvent.setup(); setPreferences();
+    vi.mocked(invalidateAnnouncementPreferences).mockImplementationOnce(async () => setPreferences(["s1"]));
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+    await user.click(screen.getByRole("switch", { name: "Alpha Section" }));
+    expect(await screen.findByText("Opted out of announcements")).toBeInTheDocument();
+    mockOptOutAsync.mockRejectedValueOnce(new Error("offline"));
+    await user.click(screen.getByRole("switch", { name: "Beta Section" }));
+    expect(await screen.findByText(/We couldn’t save your email preferences/)).toBeInTheDocument();
+    expect(screen.queryByText("Opted out of announcements")).not.toBeInTheDocument();
+  });
+
+  it("discards old account overrides and ignores late feedback after account replacement", async () => {
+    const user = userEvent.setup(), write = deferred<undefined>(); setPreferences();
+    const first = createSessionLifecycle(); first.observe(mockUser.uid);
+    uninstalls.push(installSessionRuntime({ lifecycle: first, retire: () => first.retire(), signOut: async () => first.retire() }));
+    mockUpdateGlobalOptOutAsync.mockReturnValueOnce(write.promise);
+    const view = renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+    await user.click(screen.getByRole("switch", { name: "Receive announcement emails" }));
+    expect(screen.getByRole("switch", { name: "Receive announcement emails" })).not.toBeChecked();
+    const second = createSessionLifecycle(); second.observe("user-2");
+    uninstalls.push(installSessionRuntime({ lifecycle: second, retire: () => second.retire(), signOut: async () => second.retire() }));
+    view.rerender(<MemoryRouter><AccountSettingsPage user={createMockUser({ uid: "user-2" })} userData={{ ...userData, id: "user-2" }} isAdmin={false} /></MemoryRouter>);
+    expect(screen.getByRole("switch", { name: "Receive announcement emails" })).toBeChecked();
+    await act(async () => { write.resolve(undefined); await write.promise; });
+    expect(screen.queryByText(/We couldn’t save your email preferences/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Opted out of all announcement emails/)).not.toBeInTheDocument();
+    expect(invalidateAnnouncementPreferences).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("drops late refresh feedback after the session retires, refresh fails=%s", async fails => {
+    const user = userEvent.setup(), refresh = deferred<undefined>(); setPreferences();
+    const owner = createSessionLifecycle(); owner.observe(mockUser.uid);
+    uninstalls.push(installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() }));
+    vi.mocked(invalidateAnnouncementPreferences).mockReturnValueOnce(refresh.promise);
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+    await user.click(screen.getByRole("switch", { name: "Receive announcement emails" }));
+    await waitFor(() => expect(invalidateAnnouncementPreferences).toHaveBeenCalledOnce());
+    act(() => owner.retire());
+    await act(async () => {
+      if (fails) refresh.reject(new Error("late refresh failure")); else refresh.resolve(undefined);
+      await refresh.promise.catch(() => undefined);
+    });
+    expect(screen.queryByText("Opted out of all announcement emails")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Your email preferences were saved, but/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/We couldn’t save your email preferences/)).not.toBeInTheDocument();
+    expect(mockUpdateGlobalOptOutAsync).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["global", "write"], ["section", "write"], ["global", "refresh"], ["section", "refresh"],
+  ] as const)("recovers %s preferences after an authorization change interrupts the %s", async (scope, phase) => {
+    const user = userEvent.setup(), pending = deferred<undefined>(); setPreferences();
+    const owner = createSessionLifecycle(); owner.observe(mockUser.uid);
+    uninstalls.push(installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() }));
+    const mutation = scope === "global" ? mockUpdateGlobalOptOutAsync : mockOptOutAsync;
+    if (phase === "write") mutation.mockReturnValueOnce(pending.promise);
+    else vi.mocked(invalidateAnnouncementPreferences).mockReturnValueOnce(pending.promise);
+    renderAccountSettings({ user: mockUser, userData, isAdmin: false });
+    const name = scope === "global" ? "Receive announcement emails" : "Alpha Section";
+    await user.click(screen.getByRole("switch", { name }));
+    const token = captureSession(); let update!: ReturnType<typeof beginAuthorizationUpdate>;
+    act(() => { update = beginAuthorizationUpdate(token); });
+    await act(async () => { pending.resolve(undefined); await pending.promise; });
+    expect(await screen.findByText(/Your account changed while updating email preferences/)).toBeInTheDocument();
+    expect(screen.queryByText("Updating email preferences…")).not.toBeInTheDocument();
+    expect(screen.getByRole("switch", { name })).toBeChecked();
+    expect(screen.getByRole("switch", { name })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reload preferences" })).toBeDisabled();
+    act(() => update.finish(true, true));
+    expect(screen.getByRole("button", { name: "Reload preferences" })).toBeDisabled();
+    act(() => resumeAuthorizationReads(token));
+    expect(screen.getByRole("button", { name: "Reload preferences" })).toBeEnabled();
+    vi.mocked(invalidateAnnouncementPreferences).mockRejectedValueOnce(new Error("reload offline"));
+    await user.click(screen.getByRole("button", { name: "Reload preferences" }));
+    expect(await screen.findByText(/We couldn’t reload your email preferences/)).toBeInTheDocument();
+    expect(screen.queryByText(/Your email preferences were saved, but/)).not.toBeInTheDocument();
+    expect(screen.getByRole("switch", { name })).toBeDisabled();
+    vi.mocked(invalidateAnnouncementPreferences).mockImplementationOnce(async () => setPreferences(scope === "section" ? ["s1"] : [], scope === "global"));
+    await user.click(screen.getByRole("button", { name: "Reload preferences" }));
+    await waitFor(() => expect(screen.queryByText(/Your account changed while updating email preferences/)).not.toBeInTheDocument());
+    expect(screen.getByRole("switch", { name })).not.toBeChecked();
+    expect(screen.getByRole("switch", { name })).toBeEnabled();
+    expect(mutation).toHaveBeenCalledOnce();
+    expect(invalidateAnnouncementPreferences).toHaveBeenCalledTimes(phase === "write" ? 2 : 3);
+  });
 
   it("shows 'not a member' when user has no sections", () => {
     vi.mocked(dataConnectReact.useGetMyAnnouncementPreferences).mockReturnValue({
