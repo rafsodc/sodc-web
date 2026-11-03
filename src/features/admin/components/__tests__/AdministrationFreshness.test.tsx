@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { initializeApp, deleteApp, type FirebaseApp } from "firebase/app";
 import { executeQuery, getDataConnect, type DataConnect } from "firebase/data-connect";
 import { BookingApprovalStatus, BookingStatus, MembershipStatus, TicketAudience, getMyBookingsRef, getEventByIdRef, getEventsForSectionRef, getUserGroupByIdRef, listUserGroupsRef, listEventBookingsForAdminRef } from "@dataconnect/generated";
-import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { act, fireEvent, render, screen, waitFor, within } from "../../../../test-utils";
 import UserGroups from "../UserGroups";
@@ -61,6 +62,7 @@ let eventExists: boolean;
 let failReadsAfterWrite: string | null;
 let failingRead: string | null;
 let nextApp = 0;
+let navigateManager: ReturnType<typeof useNavigate>;
 const read = vi.fn();
 const write = vi.fn();
 const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -77,9 +79,16 @@ function RoutedEventManager() {
   return <SectionEventsManager sectionId="section-1" sectionName="Events" initialEventId={eventId} routeControlled onBack={vi.fn()} />;
 }
 
+function ManagerNavigationProbe() {
+  const navigate = useNavigate();
+  useEffect(() => { navigateManager = navigate; }, [navigate]);
+  return null;
+}
+
 function routedEventView(path = "/sections/section-1/manage/events/event-1?task=details") {
   return <QueryClientProvider client={queryClient}><MemoryRouter initialEntries={[path]}>
-    <Routes><Route path="/sections/:sectionId/manage/events/:eventId" element={<RoutedEventManager />} /><Route path="/sections/:sectionId/manage/events" element={<RoutedEventManager />} /></Routes>
+    <ManagerNavigationProbe />
+    <Routes><Route path="/sections/:sectionId/manage/events/:eventId" element={<RoutedEventManager />} /><Route path="/sections/:sectionId/manage/events" element={<RoutedEventManager />} /><Route path="/elsewhere" element={<p>Elsewhere</p>} /></Routes>
   </MemoryRouter></QueryClientProvider>;
 }
 
@@ -119,13 +128,12 @@ beforeEach(() => {
     if (failingWrite) throw new Error("Write rejected");
     if (name === "CreateUserGroup") groups.push({ ...group("created-group", String(variables.name)), description: String(variables.description ?? "") });
     if (name === "UpdateUserGroup") groups = groups.map((row) => row.id === variables.id ? { ...row, name: String(variables.name), description: String(variables.description ?? "") } : row);
-    if (name === "CreateTicketType") ticketTypes.push({ ...ticket("created-type", String(variables.title)), price: Number(variables.price) });
-    if (name === "UpdateTicketType") ticketTypes = ticketTypes.map((row) => row.id === variables.id ? { ...row, title: String(variables.title), price: Number(variables.price) } : row);
+    const ticketResult = name === "CreateTicketType" || name === "UpdateTicketType" ? commitTicketCatalog(name, variables) : null;
     if (name === "DeleteUserGroup") groups = groups.filter((row) => row.id !== variables.id);
     if (name === "DeleteTicketType") ticketTypes = ticketTypes.filter((row) => row.id !== variables.id);
     if (name === "DeleteEvent") eventExists = false;
     failingRead = failReadsAfterWrite;
-    return { data: {}, extensions: {} };
+    return ticketResult ?? { data: {}, extensions: {} };
   });
   (context.dc as DataConnect & { _transportClass: unknown })._transportClass = class {
     invokeQuery = read; invokeMutation = write; _setCallerSdkType() { /* local SDK metadata only */ }
@@ -182,6 +190,274 @@ function eventSession() {
 }
 
 const eventReadCount = () => read.mock.calls.filter(([name]) => name === "GetEventsForSection" || name === "GetEventById").length;
+
+function commitTicketCatalog(name: string, variables: Record<string, unknown>, parent = {
+  ...copy(event), section: { id: "section-1" }, ticketTypes: copy(ticketTypes), updatedAt: "2026-11-02T12:00:00Z",
+}) {
+  const id = String(variables.id ?? "created-type");
+  const committed = {
+    ...ticket(id, String(variables.title).trim()), description: variables.description == null ? null : String(variables.description),
+    price: Number(variables.price), sortOrder: Number(variables.sortOrder ?? 0), audience: variables.audience as TicketAudience,
+    includesDinner: Boolean(variables.includesDinner), includesSymposium: Boolean(variables.includesSymposium),
+    userGroup: { id: String(variables.userGroupId), name: "Members", membershipStatuses: [] },
+    updatedAt: "2026-11-02T12:01:00Z",
+  };
+  ticketTypes = [...ticketTypes.filter(row => !idsEqual(row.id, id)), committed].sort((a, b) => a.sortOrder - b.sortOrder);
+  parent.ticketTypes = copy(ticketTypes);
+  return { data: {
+    [name === "CreateTicketType" ? "ticketType_insert" : "ticketType_update"]: { id },
+    saved: { ticketType: { ...copy(committed), event: { id: parent.id, section: copy(parent.section) } }, event: copy(parent) },
+  }, extensions: {} };
+}
+
+function ticketCatalogServer() {
+  const server = eventServer();
+  const commit = (name: string, variables: Record<string, unknown>) => commitTicketCatalog(name, variables, server.current()!);
+  write.mockImplementation(async (name: string, variables: Record<string, unknown>) => commit(name, variables));
+  return { ...server, commit };
+}
+
+async function ticketEditor(kind: "create" | "update") {
+  const rendered = render(routedEventView(`/sections/section-1/manage/events/event-1?task=tickets&ticket=${kind === "create" ? "new" : "type-1"}`));
+  const user = userEvent.setup();
+  await screen.findByLabelText(/^title/i);
+  if (kind === "create") {
+    await user.click(screen.getByRole("combobox", { name: /access group/i }));
+    await user.click(await screen.findByRole("option", { name: "Members" }));
+  } else {
+    await waitFor(() => expect(screen.getByLabelText(/^title/i)).toHaveValue("Dinner"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeEnabled());
+  }
+  return { rendered, user };
+}
+
+describe("canonical committed ticket catalogue saves", () => {
+  it.each(["create", "update"] as const)("publishes the canonical %s record and sorted catalogue without any follow-up query", async kind => {
+    const endSession = eventSession();
+    ticketTypes.push({ ...ticket("type-later", "Later ticket"), sortOrder: 9 });
+    const server = ticketCatalogServer();
+    const { rendered, user } = await ticketEditor(kind);
+    try {
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "  Canonical ticket  " } });
+      fireEvent.change(screen.getByLabelText(/^price/i), { target: { value: "42" } });
+      fireEvent.change(screen.getByLabelText(/^sort order/i), { target: { value: "-1" } });
+      const before = read.mock.calls.length;
+      const eventReadsBefore = eventReadCount();
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitForDialogToClose();
+      expect(read).toHaveBeenCalledTimes(before);
+      expect(write.mock.calls.map(([name]) => name)).toEqual([kind === "create" ? "CreateTicketType" : "UpdateTicketType"]);
+      if (kind === "create") expect(write.mock.calls[0][1].id).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(await screen.findByText("Canonical ticket", { exact: true })).toBeInTheDocument();
+      const cached = queryClient.getQueryData<{ event: typeof event & { ticketTypes: TicketTypeRow[] } }>(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey);
+      expect(cached?.event).toEqual(server.current());
+      expect(cached?.event.ticketTypes.map(row => row.title)).toEqual(kind === "create" ? ["Canonical ticket", "Dinner", "Later ticket"] : ["Canonical ticket", "Later ticket"]);
+      await user.click(screen.getByRole("link", { name: "Edit Canonical ticket" }));
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("Canonical ticket");
+      expect(screen.getByLabelText(/^price/i)).toHaveValue(42);
+      expect(eventReadCount()).toBe(eventReadsBefore);
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it.each(["create", "update"] as const)("keeps newer inputs during a pending %s and next updates the same ticket ID", async kind => {
+    const endSession = eventSession(); const server = ticketCatalogServer();
+    let complete!: () => void;
+    write.mockImplementationOnce((name: string, variables: Record<string, unknown>) => new Promise(resolve => {
+      const result = server.commit(name, variables); complete = () => resolve(result);
+    }));
+    const { rendered, user } = await ticketEditor(kind);
+    try {
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Submitted ticket" } });
+      const before = read.mock.calls.length;
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(write).toHaveBeenCalledOnce());
+      const firstId = String(write.mock.calls[0][1].id);
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Newer unsaved ticket" } });
+      fireEvent.change(screen.getByLabelText(/^price/i), { target: { value: "53" } });
+      await act(async () => complete());
+      expect(await screen.findByText(/These newer edits have not been saved/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer unsaved ticket");
+      expect(screen.getByLabelText(/^price/i)).toHaveValue(53);
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      expect(read).toHaveBeenCalledTimes(before);
+      expect(server.current()!.ticketTypes.find(row => idsEqual(row.id, firstId))?.title).toBe("Submitted ticket");
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitForDialogToClose();
+      expect(write.mock.calls.map(([name]) => name)).toEqual([kind === "create" ? "CreateTicketType" : "UpdateTicketType", "UpdateTicketType"]);
+      expect(write.mock.calls[1][1].id).toBe(firstId);
+      expect(server.current()!.ticketTypes.find(row => idsEqual(row.id, firstId))?.title).toBe("Newer unsaved ticket");
+      expect(read).toHaveBeenCalledTimes(before);
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it.each(["null ticket", "null event", "missing timestamp", "missing catalogue", "null write key", "wrong write key"])("keeps the draft uncertain for a 200 response with %s", async variant => {
+    const endSession = eventSession(); const server = ticketCatalogServer();
+    write.mockImplementationOnce(async (name: string, variables: Record<string, unknown>) => {
+      const result = server.commit(name, variables);
+      if (variant === "null ticket") result.data.saved.ticketType = null as never;
+      if (variant === "null event") result.data.saved.event = null as never;
+      if (variant === "missing timestamp") delete (result.data.saved.ticketType as { updatedAt?: string }).updatedAt;
+      if (variant === "missing catalogue") delete (result.data.saved.event as { ticketTypes?: TicketTypeRow[] }).ticketTypes;
+      if (variant === "null write key") result.data.ticketType_update = null as never;
+      if (variant === "wrong write key") result.data.ticketType_update = { id: "other-ticket" };
+      return result;
+    });
+    const { rendered, user } = await ticketEditor("update");
+    try {
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Retained ticket draft" } });
+      const before = read.mock.calls.length;
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(await screen.findByText(/The previous save could not be confirmed/)).toBeInTheDocument();
+      expect(screen.getByRole("dialog", { name: "Edit ticket type" })).toBeInTheDocument();
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Retained ticket draft");
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(read).toHaveBeenCalledTimes(before);
+      expect(write).toHaveBeenCalledOnce();
+      expect(queryClient.getQueryData<{ event: { ticketTypes: TicketTypeRow[] } }>(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey)?.event.ticketTypes[0].title).toBe("Dinner");
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it("recovers a lost create by its exact ticket ID, retains newer edits and never inserts twice", async () => {
+    const endSession = eventSession(); const server = ticketCatalogServer();
+    write.mockImplementationOnce(async (name: string, variables: Record<string, unknown>) => {
+      server.commit(name, variables); throw new Error("Response lost after ticket insert committed");
+    });
+    const { rendered, user } = await ticketEditor("create");
+    try {
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Original create title" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await screen.findByText(/The previous save could not be confirmed/);
+      const createdId = String(write.mock.calls[0][1].id);
+      expect(createdId).toMatch(/^[0-9a-f-]{36}$/i);
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Newer title after lost response" } });
+      failingRead = "GetEventById";
+      await user.click(screen.getByRole("button", { name: "Check latest list" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Check latest list" })).toBeEnabled());
+      expect(screen.queryByRole("dialog", { name: "Start a new save request?" })).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer title after lost response");
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      failingRead = null;
+      const before = write.mock.calls.length;
+      await user.click(screen.getByRole("button", { name: "Check latest list" }));
+      const review = await screen.findByRole("dialog", { name: "Start a new save request?" });
+      expect(within(review).getByRole("button", { name: "I checked — start a new request" })).toBeDisabled();
+      await user.click(within(review).getByRole("button", { name: "I found the saved change — close this draft" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Start a new save request?", hidden: true })).not.toBeInTheDocument());
+      expect(write).toHaveBeenCalledTimes(before);
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer title after lost response");
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitForDialogToClose();
+      expect(write.mock.calls.map(([name]) => name)).toEqual(["CreateTicketType", "UpdateTicketType"]);
+      expect(write.mock.calls[1][1].id).toBe(createdId);
+      expect(server.current()!.ticketTypes.filter(row => idsEqual(row.id, createdId))).toHaveLength(1);
+      expect(server.current()!.ticketTypes.find(row => idsEqual(row.id, createdId))?.title).toBe("Newer title after lost response");
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it("does not mistake an identically named ticket for a failed create and retains its ID for an explicit retry", async () => {
+    const endSession = eventSession(); const server = ticketCatalogServer();
+    ticketTypes.push(ticket("unrelated-ticket", "Same title"));
+    server.current()!.ticketTypes = copy(ticketTypes);
+    write.mockRejectedValueOnce(new Error("Ticket insert rejected before commit"));
+    const { rendered, user } = await ticketEditor("create");
+    try {
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Same title" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await screen.findByText(/The previous save could not be confirmed/);
+      const createId = String(write.mock.calls[0][1].id);
+      expect(createId).toMatch(/^[0-9a-f-]{36}$/i);
+      await user.click(screen.getByRole("button", { name: "Check latest list" }));
+      const review = await screen.findByRole("dialog", { name: "Start a new save request?" });
+      expect(within(review).getByRole("button", { name: "I found the saved change — close this draft" })).toBeDisabled();
+      await user.click(within(review).getByRole("button", { name: "I checked — start a new request" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Start a new save request?", hidden: true })).not.toBeInTheDocument());
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Same title");
+      expect(write).toHaveBeenCalledOnce();
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitForDialogToClose();
+      expect(write.mock.calls.map(([name]) => name)).toEqual(["CreateTicketType", "CreateTicketType"]);
+      expect(write.mock.calls[1][1].id).toBe(createId);
+      expect(server.current()!.ticketTypes.filter(row => idsEqual(row.id, createId))).toHaveLength(1);
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it("rejects a pre-save late detail result instead of overwriting the committed ticket catalogue", async () => {
+    const endSession = eventSession(); const server = ticketCatalogServer();
+    const { rendered, user } = await ticketEditor("update");
+    try {
+      const previous = copy(server.current());
+      const originalRead = read.getMockImplementation()!;
+      let complete!: () => void;
+      let held = false;
+      read.mockImplementation((name: string, variables: Record<string, unknown>) => {
+        if (name === "GetEventById" && !held) {
+          held = true;
+          return new Promise(resolve => { complete = () => resolve({ data: { event: previous }, extensions: {} }); });
+        }
+        return originalRead(name, variables);
+      });
+      let oldRead!: Promise<unknown>;
+      act(() => { oldRead = queryClient.fetchQuery({ ...dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })), staleTime: 0 }).catch(() => undefined); });
+      await waitFor(() => expect(complete).toBeTypeOf("function"));
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Committed ticket after old read" } });
+      const before = read.mock.calls.length;
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitForDialogToClose();
+      await act(async () => { complete(); await oldRead; });
+      expect(read).toHaveBeenCalledTimes(before);
+      expect(await screen.findByText("Committed ticket after old read", { exact: true })).toBeInTheDocument();
+      const cached = queryClient.getQueryData<{ event: { ticketTypes: TicketTypeRow[] } }>(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey);
+      expect(cached?.event.ticketTypes[0].title).toBe("Committed ticket after old read");
+      // A cancelled SDK operation can still populate its private cache. App
+      // readers use SERVER_ONLY, so the next real authoritative refresh must
+      // obtain the committed record instead of trusting that SDK snapshot.
+      const fresh = await refreshDataConnectQuery(queryClient, getEventByIdRef(context.dc, { id: event.id }));
+      expect(fresh.event?.ticketTypes[0].title).toBe("Committed ticket after old read");
+      expect((await executeQuery(getEventByIdRef(context.dc, { id: event.id }))).data.event?.ticketTypes[0].title).toBe("Committed ticket after old read");
+      expect(write).toHaveBeenCalledOnce();
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it.each(["route", "logout", "account"] as const)("does not publish a late committed ticket after %s retirement", async retirement => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const server = ticketCatalogServer();
+    let complete!: () => void;
+    write.mockImplementationOnce((name: string, variables: Record<string, unknown>) => new Promise(resolve => {
+      const result = server.commit(name, variables); complete = () => resolve(result);
+    }));
+    const { rendered, user } = await ticketEditor("update");
+    try {
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Old session ticket save" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(write).toHaveBeenCalledOnce());
+      await act(async () => {
+        if (retirement === "logout") owner.retire();
+        if (retirement === "account") owner.observe("replacement-user");
+        navigateManager("/elsewhere");
+      });
+      const before = read.mock.calls.length;
+      await act(async () => complete());
+      expect(screen.getByText("Elsewhere")).toBeInTheDocument();
+      expect(screen.queryByText("Old session ticket save", { exact: true })).not.toBeInTheDocument();
+      const cached = queryClient.getQueryData<{ event: { ticketTypes: TicketTypeRow[] } }>(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey);
+      expect(cached?.event.ticketTypes[0].title).not.toBe("Old session ticket save");
+      expect(read).toHaveBeenCalledTimes(before);
+      expect(write).toHaveBeenCalledOnce();
+      if (retirement === "route") {
+        await act(async () => navigateManager(-1));
+        expect(await screen.findByLabelText(/^title/i)).toHaveValue("Old session ticket save");
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        expect(screen.getByText(/The previous save completed/)).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Load saved change" }));
+        await waitForDialogToClose();
+        expect(await screen.findByText("Old session ticket save", { exact: true })).toBeInTheDocument();
+        expect(write).toHaveBeenCalledOnce();
+      }
+    } finally { rendered.unmount(); owner.retire(); uninstall(); }
+  }, 20_000);
+});
 
 describe("canonical committed event saves", () => {
   it.each(["create", "update"] as const)("renders the committed %s result without post-save event reads", async kind => {
@@ -471,7 +747,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     } finally { rendered.unmount(); endSession(); }
   }, 20_000);
 
-  it("refreshes the observed ticket detail after saving from an uppercase event URL", async () => {
+  it("publishes the observed ticket detail without a read after saving from an uppercase event URL", async () => {
     const endSession = eventSession();
     const canonicalId = "182a30a9-7cb1-46eb-a5dc-83a54d6dc503";
     const server = eventServer(true, canonicalId.replaceAll("-", ""));
@@ -480,8 +756,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     }
     write.mockImplementationOnce(async (name: string, variables: Record<string, unknown>) => {
       expect(name).toBe("UpdateTicketType");
-      server.current()!.ticketTypes[0].title = String(variables.title);
-      return { data: { ticketType_update: { id: "type-1" } }, extensions: {} };
+      return commitTicketCatalog(name, variables, server.current()!);
     });
     const rendered = render(routedEventView(`/sections/section-1/manage/events/${canonicalId.toUpperCase()}?task=tickets&ticket=type-1`));
     try {
@@ -492,7 +767,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
       await waitForDialogToClose();
       expect(await screen.findByText("Updated ticket through canonical detail", { exact: true })).toBeInTheDocument();
       expect(queryClient.getQueryData(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: canonicalId })).queryKey)).toEqual({ event: server.current() });
-      expect(read.mock.calls.slice(before).filter(([name]) => name === "GetEventById").map(([, variables]) => variables.id)).toEqual([canonicalId]);
+      expect(read.mock.calls.slice(before).filter(([name]) => name === "GetEventById")).toEqual([]);
       expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateTicketType"]);
     } finally { rendered.unmount(); endSession(); }
   }, 20_000);
@@ -699,7 +974,7 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     expect(screen.queryByText("New ticket")).not.toBeInTheDocument();
     expect(screen.queryByText("Updated ticket")).not.toBeInTheDocument();
     expect(write.mock.calls.map(([name]) => name)).toEqual(["CreateTicketType", "UpdateTicketType", "DeleteTicketType"]);
-    expect(read.mock.calls.filter(([name]) => name === "GetEventsForSection").length).toBeGreaterThanOrEqual(4);
+    expect(read.mock.calls.filter(([name]) => name === "GetEventsForSection").length).toBeGreaterThanOrEqual(2);
     rendered.rerender(view("events", "delete-event-list"));
     const originalRead = read.getMockImplementation()!;
     let completeOldDetail!: (value: { data: unknown; extensions: object }) => void;
@@ -730,74 +1005,51 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     expect(screen.queryByRole("heading", { name: "Event admin: Annual Dinner" })).not.toBeInTheDocument();
   }, 30_000);
 
-  it.each(["none", "bookings", "guests"] as const)("refreshes dependent report metadata after editing a ticket type; failed dependency=%s", async (failedDependency) => {
-    bookings = [booking()];
+  it("publishes a ticket edit without dependent reads and refreshes joined reports only when reopened", async () => {
+    const endSession = eventSession(); bookings = [booking()];
     const originalRead = read.getMockImplementation()!;
     read.mockImplementation(async (name: string, variables: Record<string, unknown>) => {
-      if (name === failingRead) throw new Error("Dependent report unavailable");
-      if (name === "GetEventById") return { data: copy({ event: { ...event, section: { id: "section-1" }, ticketTypes } }), extensions: {} };
       if (name === "ListEventBookingsForAdmin") return { data: copy({ event: {
-        id: event.id,
-        // Model the real query's ticketType join rather than holding a detached
-        // fixture snapshot: the catalogue edit affects existing report rows.
-        bookings: bookings.map((current) => ({ ...current, lines: current.lines.map((line) => ({ ...line,
-          ticketType: ticketTypes.find((type) => type.id === line.ticketType.id) ?? line.ticketType,
+        id: event.id, bookings: bookings.map(current => ({ ...current, lines: current.lines.map(line => ({ ...line,
+          ticketType: ticketTypes.find(type => type.id === line.ticketType.id) ?? line.ticketType,
         })) })), bookingTicketOrders: [],
       } }), extensions: {} };
       return originalRead(name, variables);
     });
-    let guestReadFails = false;
-    vi.mocked(guestCall).mockImplementation(async () => {
-      if (guestReadFails && write.mock.calls.length > 0) throw new Error("Dependent guest list unavailable");
-      return { event: {}, guests: [], ticketTypes: [] } as never;
-    });
-    // Prime both cache layers with the old catalogue/report metadata and retain
-    // the application's 30-second freshness window during navigation.
+    ticketCatalogServer();
     await queryClient.fetchQuery(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })));
     await queryClient.fetchQuery(dataConnectQueryOptions(listEventBookingsForAdminRef(context.dc, { eventId: event.id })));
-    await executeQuery(getEventsForSectionRef(context.dc, { sectionId: "section-1" }));
-    render(<QueryClientProvider client={queryClient}><MemoryRouter initialEntries={["/sections/section-1/manage/events/event-1"]}>
-      <SectionEventsManager sectionId="section-1" sectionName="Events" initialEventId="event-1" routeControlled onBack={vi.fn()} />
-    </MemoryRouter></QueryClientProvider>);
-    const user = userEvent.setup();
-    expect(await screen.findByText("£25.00")).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "Tickets & attendees" }));
-    await user.click(screen.getByRole("tab", { name: "Ticket types" }));
-    await user.click(await screen.findByRole("link", { name: "Edit Dinner" }));
-    fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Updated dinner" } });
-    fireEvent.change(screen.getByLabelText(/^price/i), { target: { value: "42" } });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeEnabled());
-    const bookingReadsBefore = read.mock.calls.filter(([name]) => name === "ListEventBookingsForAdmin").length;
-    const guestReadsBefore = vi.mocked(guestCall).mock.calls.length;
-    if (failedDependency === "bookings") failReadsAfterWrite = "ListEventBookingsForAdmin";
-    if (failedDependency === "guests") guestReadFails = true;
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    if (failedDependency !== "none") {
-      expect((await screen.findAllByText(/Ticket type updated.*already saved/)).length).toBeGreaterThan(0);
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    const rendered = render(routedEventView("/sections/section-1/manage/events/event-1"));
+    try {
+      const user = userEvent.setup();
+      expect(await screen.findByText("£25.00")).toBeInTheDocument();
+      await user.click(screen.getByRole("tab", { name: "Tickets & attendees" }));
+      await user.click(screen.getByRole("tab", { name: "Ticket types" }));
+      await user.click(await screen.findByRole("link", { name: "Edit Dinner" }));
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Updated dinner" } });
+      fireEvent.change(screen.getByLabelText(/^price/i), { target: { value: "42" } });
+      const readsBefore = read.mock.calls.length;
+      const bookingReadsBefore = read.mock.calls.filter(([name]) => name === "ListEventBookingsForAdmin").length;
+      const guestReadsBefore = vi.mocked(guestCall).mock.calls.length;
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitForDialogToClose();
+      expect(await screen.findByText("Updated dinner", { exact: true })).toBeInTheDocument();
+      expect(read).toHaveBeenCalledTimes(readsBefore);
+      expect(vi.mocked(guestCall)).toHaveBeenCalledTimes(guestReadsBefore);
       expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateTicketType"]);
-      // A retry through the editor's successful-write receipt must retry the
-      // failed dependency as well, without acknowledging or replaying the write.
-      await user.click(screen.getByRole("button", { name: "Load saved change" }));
-      await waitFor(() => expect(screen.getByRole("button", { name: "Load saved change" })).toBeEnabled());
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-      expect(screen.getByRole("dialog", { name: "Edit ticket type" })).toBeInTheDocument();
-      expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateTicketType"]);
-      failingRead = null; guestReadFails = false;
-      await user.click(screen.getByRole("button", { name: "Load saved change" }));
-    }
-    await waitForDialogToClose();
-    await user.click(screen.getByRole("tab", { name: "Overview" }));
-    expect(await screen.findByText("£42.00")).toBeInTheDocument();
-    expect(screen.queryByText("£25.00")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "Tickets & attendees" }));
-    expect(await screen.findByRole("cell", { name: "Updated dinner" })).toBeInTheDocument();
-    expect(read.mock.calls.filter(([name]) => name === "ListEventBookingsForAdmin").length).toBeGreaterThan(bookingReadsBefore);
-    expect(vi.mocked(guestCall).mock.calls.length).toBeGreaterThan(guestReadsBefore);
-    expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateTicketType"]);
-    const sdkReport = (await executeQuery(listEventBookingsForAdminRef(context.dc, { eventId: event.id }))).data.event;
-    expect(sdkReport?.bookings[0].lines[0].ticketType.title).toBe("Updated dinner");
-    expect(sdkReport?.bookings[0].lines[0].ticketType.price).toBe(42);
+      expect(queryClient.getQueryState(dataConnectQueryOptions(listEventBookingsForAdminRef(context.dc, { eventId: event.id })).queryKey)?.isInvalidated).toBe(true);
+      await user.click(screen.getByRole("tab", { name: "Overview" }));
+      expect(await screen.findByText("£42.00")).toBeInTheDocument();
+      expect(screen.queryByText("£25.00")).not.toBeInTheDocument();
+      expect(read.mock.calls.filter(([name]) => name === "ListEventBookingsForAdmin").length).toBeGreaterThan(bookingReadsBefore);
+      expect(vi.mocked(guestCall).mock.calls.length).toBeGreaterThan(guestReadsBefore);
+      await user.click(screen.getByRole("tab", { name: "Tickets & attendees" }));
+      expect(await screen.findByRole("cell", { name: "Updated dinner" })).toBeInTheDocument();
+      const sdkReport = (await executeQuery(listEventBookingsForAdminRef(context.dc, { eventId: event.id }))).data.event;
+      expect(sdkReport?.bookings[0].lines[0].ticketType.title).toBe("Updated dinner");
+      expect(sdkReport?.bookings[0].lines[0].ticketType.price).toBe(42);
+      expect(write).toHaveBeenCalledOnce();
+    } finally { rendered.unmount(); endSession(); }
   }, 30_000);
 
   it.each([
@@ -858,32 +1110,44 @@ describe("rendered administration freshness with the installed SDK cache", () =>
     expect(write.mock.calls.map(([name]) => name)).toEqual([writeName]);
   }, 30_000);
 
-  it("keeps failed ticket drafts and revalidates a failed confirmed-write refresh on a later visit", async () => {
-    const rendered = render(view("event")); const user = await openCreateTicket(); failingWrite = true;
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByText(/The previous save could not be confirmed/)).toBeInTheDocument();
-    expect(screen.getByRole("button", {name:"Save"})).toBeDisabled();
-    expect(screen.getByLabelText(/^title/i)).toHaveValue("New ticket");
-    expect(ticketTypes.map((row) => row.title)).toEqual(["Dinner"]);
-    await user.click(screen.getByRole("button",{name:"Check latest list"}));
-    await user.click(within(await screen.findByRole("dialog",{name:"Start a new save request?"})).getByRole("button",{name:"I checked — start a new request"}));
-    await waitFor(() => expect(screen.queryByRole("dialog",{name:"Start a new save request?",hidden:true})).not.toBeInTheDocument());
-    failingWrite = false; failReadsAfterWrite = "GetEventById";
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    expect((await screen.findAllByText(/Ticket type created.*already saved/)).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
-    await user.click(await screen.findByRole("button", { name: "Load saved change" }));
-    expect((await screen.findAllByText(/Saved change loaded.*already saved/)).length).toBeGreaterThan(0);
-    expect(write).toHaveBeenCalledTimes(2);
-    failingRead = null;
-    await user.click(screen.getByRole("button",{name:"Load saved change"}));
-    await waitForDialogToClose();
-    rendered.rerender(view("events", "revisit-list"));
-    await user.click(await screen.findByRole("button", { name: /event admin/i }));
-    await user.click(screen.getByRole("button", { name: "Ticket types" }));
-    expect(await screen.findByText("New ticket")).toBeInTheDocument();
-    expect(write).toHaveBeenCalledTimes(2);
-  }, 30_000);
+  it("keeps a confirmed ticket receipt truthful when a newer read blocks publication and retries recovery without writing", async () => {
+    const endSession = eventSession(); const server = ticketCatalogServer();
+    let complete!: () => void;
+    write.mockImplementationOnce((name: string, variables: Record<string, unknown>) => new Promise(resolve => {
+      const result = server.commit(name, variables); complete = () => resolve(result);
+    }));
+    const { rendered, user } = await ticketEditor("update");
+    try {
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Confirmed submitted ticket" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(write).toHaveBeenCalledOnce());
+      server.current()!.ticketTypes[0].title = "Newer remote catalogue title";
+      await act(async () => { await refreshDataConnectQuery(queryClient, getEventByIdRef(context.dc, { id: event.id })); });
+      const before = read.mock.calls.length;
+      await act(async () => complete());
+      expect(await screen.findByText(/The previous save completed/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Confirmed submitted ticket");
+      expect(screen.queryByText(/We could not complete the ticket operation/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Unsaved changes", { exact: true })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(read).toHaveBeenCalledTimes(before);
+      expect(queryClient.getQueryData<{ event: { ticketTypes: TicketTypeRow[] } }>(dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey)?.event.ticketTypes[0].title).toBe("Newer remote catalogue title");
+      failingRead = "GetEventById";
+      await user.click(screen.getByRole("button", { name: "Load saved change" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Load saved change" })).toBeEnabled());
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Confirmed submitted ticket");
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(write).toHaveBeenCalledOnce();
+      failingRead = null;
+      await user.click(screen.getByRole("button", { name: "Load saved change" }));
+      await waitForDialogToClose();
+      expect(await screen.findByText("Newer remote catalogue title", { exact: true })).toBeInTheDocument();
+      expect(screen.queryByText(/We could not complete the ticket operation/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/The ticket type was saved. Load/)).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Retry refresh" })).not.toBeInTheDocument();
+      expect(write).toHaveBeenCalledOnce();
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
 
   it("shows confirmed approval and attendance edits after callable writes against primed cached bookings", async () => {
     bookings = [booking(BookingApprovalStatus.PENDING)];

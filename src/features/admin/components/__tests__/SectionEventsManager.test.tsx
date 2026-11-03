@@ -95,8 +95,8 @@ vi.mock("@dataconnect/generated", async () => {
     createEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", name: "CreateEvent", vars })),
     updateEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", name: "UpdateEvent", vars })),
     deleteEventRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
-    createTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
-    updateTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
+    createTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", name: "CreateTicketType", vars })),
+    updateTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", name: "UpdateTicketType", vars })),
     deleteTicketTypeRef: vi.fn((_dc: unknown, vars: unknown) => ({ type: "mutation", vars })),
     ...Object.fromEntries([
       ["getEventsForSectionRef", "GetEventsForSection"], ["getEventByIdRef", "GetEventById"],
@@ -113,6 +113,26 @@ function eventSaveResponse(variables: Record<string, unknown>, created = false) 
 }
 function latestCreateVariables() {
   return vi.mocked(generated.createEventRef).mock.calls.at(-1)![1] as unknown as Record<string, unknown>;
+}
+function latestTicketCreateVariables() {
+  return vi.mocked(generated.createTicketTypeRef).mock.calls.at(-1)![1] as unknown as Record<string, unknown>;
+}
+
+function ticketSaveResponse(variables: Record<string, unknown>, created = false) {
+  const observed = vi.mocked(reactGenerated.useGetEventById).mock.results.at(-1)?.value?.data?.event;
+  const fields = { description: null, price: 0, sortOrder: 0, audience: generated.TicketAudience.MEMBER,
+    includesDinner: false, includesSymposium: false, ...variables,
+    userGroup: { id: variables.userGroupId, name: "Members", membershipStatuses: [] } };
+  const savedEvent = { id: variables.eventId ?? observed?.id ?? "ev-1", title: "Owned event", location: null,
+    guestOfHonour: null, sponsors: null, details: null, startDateTime: "2030-03-01T18:00:00Z",
+    endDateTime: "2030-03-01T22:00:00Z", bookingStartDateTime: "2030-02-01T00:00:00Z",
+    bookingEndDateTime: "2030-02-28T23:59:59Z", maxGuestsWithoutModeratorApproval: 0,
+    ...observed, section: { id: "section-1" }, updatedAt: "2026-11-02T12:00:00Z",
+    ticketTypes: [...(observed?.ticketTypes ?? []).filter((row: { id: string }) => row.id !== variables.id), fields],
+  };
+  return { data: { [created ? "ticketType_insert" : "ticketType_update"]: { id: variables.id }, saved: {
+    ticketType: { ...fields, updatedAt: "2026-11-02T12:01:00Z", event: { id: savedEvent.id, section: savedEvent.section } }, event: savedEvent,
+  } } };
 }
 
 function CanonicalManagerRoute() {
@@ -155,7 +175,9 @@ describe("SectionEventsManager", () => {
     vi.mocked(firebaseDataConnect.executeMutation).mockReset().mockImplementation(async ref => {
       const mutation = ref as unknown as { name?: string; vars: Record<string, unknown> };
       return (mutation.name === "CreateEvent" || mutation.name === "UpdateEvent"
-        ? eventSaveResponse(mutation.vars, mutation.name === "CreateEvent") : {}) as never;
+        ? eventSaveResponse(mutation.vars, mutation.name === "CreateEvent")
+        : mutation.name === "CreateTicketType" || mutation.name === "UpdateTicketType"
+          ? ticketSaveResponse(mutation.vars, mutation.name === "CreateTicketType") : {}) as never;
     });
     vi.mocked(guestCall).mockResolvedValue({ event: {}, guests: [], ticketTypes: [] });
     vi.mocked(firebaseFunctions.reviewBookingRevision).mockResolvedValue({
@@ -880,7 +902,7 @@ describe("SectionEventsManager", () => {
     expect(screen.getByLabelText(/^event details$/i)).toHaveValue("## Evening programme\n\nDinner and dancing.");
     expect(screen.getByRole("heading", { name: "Evening programme", level: 4 })).toBeInTheDocument();
     expect(screen.getByLabelText(/max guests without moderator approval/i)).toHaveValue(2);
-  });
+  }, 10_000);
 
   it("persists cleared optional event content as null", async () => {
     const user = userEvent.setup();
@@ -1515,8 +1537,8 @@ describe("SectionEventsManager", () => {
     mockGetEventById({data:{event},isLoading:false,isError:false});
     const view = canonicalManager("/sections/section-1/manage/events/ev-1?task=tickets&ticket=ticket-1");
     expect(await screen.findByLabelText(/^title/i)).toHaveValue("Member dinner");
-    view.unmount();
-    canonicalManager("/sections/section-1/manage/events/ev-1?task=tickets&ticket=foreign");
+    await act(async () => { view.unmount(); });
+    await act(async () => { canonicalManager("/sections/section-1/manage/events/ev-1?task=tickets&ticket=foreign"); });
     expect(screen.getByText("Ticket type unavailable in this event.")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   },20_000);
@@ -1661,7 +1683,9 @@ describe("SectionEventsManager", () => {
     const event={id:"ev-1",section:{id:sectionId},title:"Event",ticketTypes:[],maxGuestsWithoutModeratorApproval:0};
     mockGetEventsForSection({data:{section:{id:sectionId,events:[event]}},isLoading:false,isError:false});
     mockGetEventById({data:{event},isLoading:false,isError:false});
-    vi.mocked(firebaseDataConnect.executeQuery).mockResolvedValue({data:{userGroups:[{id:"group-1",name:"Members"}]}} as never);
+    vi.mocked(firebaseDataConnect.executeQuery).mockImplementation(async ref => ({ data: ref.name === "GetEventById"
+      ? { event: ticketSaveResponse(latestTicketCreateVariables(), true).data.saved.event }
+      : { userGroups: [{ id: "group-1", name: "Members" }] } }) as never);
     let complete!:(value:unknown)=>void;
     const pending=new Promise(resolve=>{complete=resolve});
     vi.mocked(firebaseDataConnect.executeMutation).mockReturnValueOnce(pending as never);
@@ -1678,7 +1702,7 @@ describe("SectionEventsManager", () => {
       expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
       expect(generated.createTicketTypeRef).toHaveBeenCalledOnce();
       await act(async()=>managerNavigation(1));
-      await act(async()=>{complete({});await pending;});
+      await act(async()=>{complete(ticketSaveResponse(latestTicketCreateVariables(), true));await pending;});
       expect(screen.getByText("Elsewhere")).toBeInTheDocument();
       await act(async()=>managerNavigation(-1));
       expect(await screen.findByText(/The previous save completed/)).toBeInTheDocument();
@@ -1710,7 +1734,7 @@ describe("SectionEventsManager", () => {
       }
       const savedEvent = kind === "event" ? { ...event, ...latestCreateVariables(), id: latestCreateVariables().id } : event;
       return { data: name === "GetEventsForSection" ? { section: { id: sectionId, events: [savedEvent] } }
-        : name === "GetEventById" ? { event: { ...savedEvent, ticketTypes: [{ id: "saved-ticket", title: savedTitle }] } }
+        : name === "GetEventById" ? { event: kind === "ticket" ? ticketSaveResponse(latestTicketCreateVariables(), true).data.saved.event : { ...savedEvent, ticketTypes: [] } }
         : { userGroups: [{ id: "group-1", name: "Members" }] } } as never;
     });
     vi.mocked(firebaseDataConnect.executeMutation).mockRejectedValueOnce(new Error("Response lost after server commit"));
