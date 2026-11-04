@@ -158,10 +158,10 @@ export function ManageSectionsListSurface({
                         Manage events
                       </Button>
                     )}
-                    <IconButton size="small" {...(configurationHref ? {component:RouterLink,to:configurationHref(section.id)} : {onClick: () => onEdit(section)})} color="primary">
+                    <IconButton size="small" aria-label={`Edit ${section.name}`} {...(configurationHref ? {component:RouterLink,to:configurationHref(section.id)} : {onClick: () => onEdit(section)})} color="primary">
                       <EditIcon />
                     </IconButton>
-                    <IconButton size="small" onClick={() => onDelete(section)} color="error">
+                    <IconButton size="small" aria-label={`Delete ${section.name}`} onClick={() => onDelete(section)} color="error">
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
@@ -326,6 +326,7 @@ export function SectionEditorDialogSurface({
                         <TableCell align="right">
                           <IconButton
                             size="small"
+                            aria-label={`Remove ${group.name} from ${editingSection.name} (${group.purpose.toLowerCase()})`}
                             onClick={() => onRemoveUserGroup(group.id, group.purpose)}
                             color="error"
                             disabled={removingUserGroupId === `${group.id}-${group.purpose}`}
