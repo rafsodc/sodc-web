@@ -46,7 +46,7 @@ describe("Event details editor presentation", () => {
     expect(within(form).getByRole("group", { name: "Event information" })).toContainElement(screen.getByRole("textbox", { name: "Title" }));
     expect(within(form).getByRole("group", { name: "Event schedule" })).toContainElement(screen.getByLabelText("Start date/time", { exact: false }));
     expect(within(form).getByRole("group", { name: "Booking window" })).toContainElement(screen.getByLabelText("Booking window end", { exact: false }));
-    expect(screen.getByRole("button", { name: "Save" })).toHaveTextContent("Save changes");
+    expect(screen.getByRole("button", { name: "Save" })).toHaveTextContent(/^Save$/);
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(editor.onSubmit).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole("button", { name: "Discard changes" }));

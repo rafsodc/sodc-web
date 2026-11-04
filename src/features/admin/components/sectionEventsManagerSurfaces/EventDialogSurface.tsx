@@ -274,7 +274,7 @@ export function EventDialogSurface({
           <Stack direction="row" justifyContent="flex-end" gap={1} flexWrap="wrap">
             <Button type="button" onClick={onClose} disabled={submitting}>Discard changes</Button>
             <Button aria-label={saveLabel} aria-busy={submitting} type="submit" variant="contained" disabled={saveIsDisabled}>
-              {saveContent ?? "Save changes"}
+              {saveContent ?? "Save"}
             </Button>
           </Stack>
         </Stack>
