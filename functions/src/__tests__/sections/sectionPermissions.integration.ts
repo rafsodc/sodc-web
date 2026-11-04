@@ -181,6 +181,93 @@ it("rejects a missing event update instead of returning a null-key successful sa
   expect(await snapshot()).toEqual(before);
 });
 
+const eventDateFields = ["startDateTime", "endDateTime", "bookingStartDateTime", "bookingEndDateTime"] as const;
+type EventDates = Pick<AdminSdk.CreateEventVariables, typeof eventDateFields[number]>;
+async function eventDateSnapshot() {
+  return (await raw(`query EventDatesSnapshot {
+    events(orderBy:{id:ASC}) {
+      id sectionId title location guestOfHonour sponsors details
+      startDateTime endDateTime bookingStartDateTime bookingEndDateTime
+      maxGuestsWithoutModeratorApproval createdAt updatedAt createdBy updatedBy
+    }
+  }`)).data;
+}
+
+describe("direct API event date validation", () => {
+  for (const operation of ["CreateEvent", "UpdateEvent"] as const) {
+    for (const kind of ["admin", "explicit-moderator", "status-moderator"]) {
+      for (const invalid of [
+        { label: "reversed event times", dates: { endDateTime: "2030-01-01T10:00:00Z" }, code: "EVENT_END_BEFORE_START" },
+        { label: "reversed booking times", dates: { bookingEndDateTime: "2029-11-30T23:59:59Z" }, code: "BOOKING_END_BEFORE_START" },
+        // The end's local clock reads later, but its UTC instant is earlier.
+        { label: "reversed event instants hidden by timezone offsets", dates: {
+          startDateTime: "2030-10-27T01:15:00Z", endDateTime: "2030-10-27T01:45:00+01:00",
+        }, code: "EVENT_END_BEFORE_START" },
+        { label: "reversed booking instants hidden by timezone offsets", dates: {
+          bookingStartDateTime: "2030-10-27T01:15:00Z", bookingEndDateTime: "2030-10-27T01:45:00+01:00",
+        }, code: "BOOKING_END_BEFORE_START" },
+      ]) {
+        it(`${operation} rejects ${kind}'s ${invalid.label} without changing any event or audit field`, async () => {
+          const a = await actor(kind), before = await eventDateSnapshot();
+          await expect(dc.executeMutation(operation, {
+            ...variables(operation), ...canonicalEventInput, ...invalid.dates,
+          }, a.options)).rejects.toThrow(invalid.code);
+          expect(await eventDateSnapshot()).toEqual(before);
+        });
+      }
+
+      for (const valid of [
+        { label: "equal instants expressed with different offsets", dates: {
+          startDateTime: "2030-01-01T12:00:00+01:00", endDateTime: "2030-01-01T11:00:00Z",
+          bookingStartDateTime: "2029-12-01T00:00:00Z", bookingEndDateTime: "2029-12-01T01:00:00+01:00",
+        } },
+        { label: "ordered instants across the autumn clock change", dates: {
+          startDateTime: "2030-10-27T01:45:00+01:00", endDateTime: "2030-10-27T01:15:00Z",
+          bookingStartDateTime: "2030-10-27T01:45:00+01:00", bookingEndDateTime: "2030-10-27T01:15:00Z",
+        } },
+        { label: "spring-offset instants and a booking window after the event", dates: {
+          startDateTime: "2030-03-31T00:45:00Z", endDateTime: "2030-03-31T02:15:00+01:00",
+          bookingStartDateTime: "2031-01-01T00:00:00Z", bookingEndDateTime: "2031-01-02T00:00:00Z",
+        } },
+      ] satisfies { label: string; dates: EventDates }[]) {
+        it(`${operation} accepts ${kind}'s ${valid.label} and preserves optional fields`, async () => {
+          const a = await actor(kind);
+          const result = await dc.executeMutation<AdminSdk.CreateEventData | AdminSdk.UpdateEventData, Record<string, unknown>>(operation, {
+            ...variables(operation), ...canonicalEventInput, ...valid.dates,
+          }, a.options);
+          const saved = result.data.saved?.event;
+          if (!saved) throw new Error("Event save omitted its committed event");
+          for (const field of eventDateFields) expect(Date.parse(saved[field])).toBe(Date.parse(valid.dates[field]));
+          expect(saved).toMatchObject({ location: null, guestOfHonour: canonicalEventInput.guestOfHonour,
+            sponsors: null, details: canonicalEventInput.details });
+        });
+      }
+    }
+
+    for (const field of eventDateFields) {
+      it(`${operation} rejects missing, null and malformed ${field} before writing`, async () => {
+        const a = await actor("admin"), before = await eventDateSnapshot();
+        for (const invalid of [undefined, null, "", "not-a-timestamp", "2030-02-30T12:00:00Z", "2030-01-01T12:00:00", 1_700_000_000]) {
+          const input: Record<string, unknown> = { ...variables(operation), ...canonicalEventInput };
+          if (invalid === undefined) delete input[field]; else input[field] = invalid;
+          await expect(dc.executeMutation(operation, input, a.options)).rejects.toThrow();
+          expect(await eventDateSnapshot()).toEqual(before);
+        }
+      });
+    }
+
+    for (const kind of ["member", "cross-section", "stale", "revoked-admin"]) {
+      it(`${operation} retains ${kind} authorization rejection before range validation`, async () => {
+        const a = await actor(kind), before = await eventDateSnapshot();
+        await expect(dc.executeMutation(operation, {
+          ...variables(operation), ...canonicalEventInput, endDateTime: "2030-01-01T10:00:00Z",
+        }, a.options)).rejects.toThrow(/ACCESS_REVOKED|SESSION_VERSION_STALE|SECTION_MODERATOR_REQUIRED/);
+        expect(await eventDateSnapshot()).toEqual(before);
+      });
+    }
+  }
+});
+
 const canonicalTicketInput = {
   title: "Canonical saved ticket",
   description: "The committed catalogue description",

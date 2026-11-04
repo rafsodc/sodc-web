@@ -106,7 +106,7 @@ import type {
   TicketOrderAdminRow,
   TicketTypeRow,
 } from "./sectionEventsManagerTypes";
-import { fromDatetimeLocal, toDatetimeLocal } from "../utils/eventDatetime";
+import { toDatetimeLocal, validateEventDateTimes } from "../utils/eventDatetime";
 import {
   activeEventTicketRows,
   currentActiveBookings,
@@ -1150,6 +1150,11 @@ export default function SectionEventsManager({
       setError("Max guests without moderator approval is required and must be a non-negative integer");
       return;
     }
+    const dates = validateEventDateTimes({ startDateTime, endDateTime, bookingStartDateTime, bookingEndDateTime });
+    if (!dates.valid) {
+      setError(Object.values(dates.errors)[0] ?? "Check the event and booking dates before saving.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     const existingEvent = editingEvent ?? eventForm.committedEvent;
@@ -1169,9 +1174,7 @@ export default function SectionEventsManager({
         const fields = {
           title: title.trim(), location: location.trim() || null,
           guestOfHonour: guestOfHonour.trim() || null, sponsors: sponsors.trim() || null,
-          details: details.trim() || null, startDateTime: fromDatetimeLocal(startDateTime),
-          endDateTime: fromDatetimeLocal(endDateTime), bookingStartDateTime: fromDatetimeLocal(bookingStartDateTime),
-          bookingEndDateTime: fromDatetimeLocal(bookingEndDateTime), maxGuestsWithoutModeratorApproval: n,
+          details: details.trim() || null, ...dates.timestamps, maxGuestsWithoutModeratorApproval: n,
         };
         const response = existingEvent
           ? await executeDataConnectMutation(updateEventRef(dataConnect, { id: eventId, ...fields }))

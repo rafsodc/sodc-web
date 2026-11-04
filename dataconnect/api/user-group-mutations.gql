@@ -283,7 +283,11 @@ mutation CreateEvent(
   $bookingEndDateTime: Timestamp!
   $maxGuestsWithoutModeratorApproval: Int!
 ) @auth(expr: "auth.token.enabled == true") @transaction {
-  query @redact {
+  # Validate instants after authorization/scope checks and before any write.
+  # Equal endpoints remain valid; booking dates are independent of event dates.
+  query @redact
+    @check(expr: "timestamp(vars.endDateTime) >= timestamp(vars.startDateTime)", message: "EVENT_END_BEFORE_START")
+    @check(expr: "timestamp(vars.bookingEndDateTime) >= timestamp(vars.bookingStartDateTime)", message: "BOOKING_END_BEFORE_START") {
   currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
     @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
     syncStatus
@@ -368,7 +372,10 @@ mutation UpdateEvent(
   $bookingEndDateTime: Timestamp!
   $maxGuestsWithoutModeratorApproval: Int!
 ) @auth(expr: "auth.token.enabled == true") @transaction {
-  query @redact {
+  # Keep the same temporal invariants for direct API updates as for creates.
+  query @redact
+    @check(expr: "timestamp(vars.endDateTime) >= timestamp(vars.startDateTime)", message: "EVENT_END_BEFORE_START")
+    @check(expr: "timestamp(vars.bookingEndDateTime) >= timestamp(vars.bookingStartDateTime)", message: "BOOKING_END_BEFORE_START") {
   currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
     @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
     syncStatus
