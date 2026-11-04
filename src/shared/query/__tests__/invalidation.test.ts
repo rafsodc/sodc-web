@@ -19,11 +19,14 @@ import { SECTION_EVENT_SUMMARIES_KEY, captureSectionEventSummaryRead, rememberSe
 
 import {
   invalidateAnnouncementPreferences,
+  retireAnnouncementPreferences,
   invalidateMyBookings,
   invalidateSectionsForUser,
   invalidateUserSectionAccess,
   refreshMyBookingsFromServer,
 } from "../invalidation";
+import { captureSession, createSessionLifecycle, installSessionRuntime, SessionChangedError } from "../../appShell/sessionLifecycle";
+import { beginAuthorizationUpdate, privateReadsBlocked } from "../../auth/authorizationUpdate";
 
 function queryClientWithInvalidateSpy() {
   const invalidateQueries = vi.fn().mockResolvedValue(undefined);
@@ -45,6 +48,35 @@ describe("cross-view query invalidation", () => {
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyAnnouncementPreferences"], refetchType: "all" }, {throwOnError: true});
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetSectionAnnouncementOptOut"], refetchType: "all" }, {throwOnError: true});
+  });
+
+  it("retires both preference projections during an authorization block without starting reads", async () => {
+    const owner = createSessionLifecycle(); owner.observe("member-a");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const update = beginAuthorizationUpdate(captureSession());
+    const { queryClient, invalidateQueries } = queryClientWithInvalidateSpy();
+    try {
+      await retireAnnouncementPreferences(queryClient);
+      expect(privateReadsBlocked(captureSession())).toBe(true);
+      expect(queryClient.cancelQueries).toHaveBeenCalledTimes(2);
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetMyAnnouncementPreferences"], refetchType: "none" });
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["GetSectionAnnouncementOptOut"], refetchType: "none" });
+      expect(executeQuery).not.toHaveBeenCalled();
+    } finally { update.finish(true); uninstall(); }
+  });
+
+  it("cannot retire a replacement account's caches after pending cancellation", async () => {
+    const owner = createSessionLifecycle(); owner.observe("member-a");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const { queryClient, invalidateQueries } = queryClientWithInvalidateSpy();
+    let resolve!: () => void; const pending = new Promise<void>(done => { resolve = done; });
+    vi.mocked(queryClient.cancelQueries).mockReturnValue(pending);
+    try {
+      const result = retireAnnouncementPreferences(queryClient);
+      owner.retire(); resolve();
+      await expect(result).rejects.toBeInstanceOf(SessionChangedError);
+      expect(invalidateQueries).not.toHaveBeenCalled();
+    } finally { uninstall(); }
   });
 
   it("invalidates access, navigation and preferences derived from group membership", async () => {
