@@ -1091,6 +1091,65 @@ describe("SectionEventsManager", () => {
     return event;
   }
 
+  it("keeps an active modal draft and one pending request through failure, review and explicit retry", async () => {
+    const user = userEvent.setup();
+    let fail!: (error: Error) => void;
+    const pending = new Promise((_resolve, reject) => { fail = reject; });
+    vi.mocked(firebaseDataConnect.executeMutation).mockReturnValueOnce(pending as never);
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    await user.click(screen.getByRole("button", { name: "Add event" }));
+    const dialog = screen.getByRole("dialog", { name: "Add event" });
+    const editor = within(dialog);
+    const fields = [
+      ["Title", "Retained dinner"], ["Location", "Original hall"], ["Guest of honour", "Guest name"],
+      ["Sponsors", "Sponsor one\nSponsor two"], ["Event details", "## Draft\nKeep these details."],
+      ["Start date/time", "2030-03-01T18:00"], ["End date/time", "2030-03-01T22:00"],
+      ["Booking window start", "2030-01-01T00:00"], ["Booking window end", "2030-02-28T00:00"],
+      ["Max guests without moderator approval", "2"],
+    ];
+    for (const [label, value] of fields) {
+      fireEvent.change(editor.getByLabelText(label, { exact: false, selector: "input,textarea" }), { target: { value } });
+    }
+    await user.dblClick(editor.getByRole("button", { name: "Save" }));
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    const originalId = latestCreateVariables().id;
+    const saving = editor.getByRole("button", { name: "Saving event" });
+    expect(saving).toBeDisabled();
+    expect(saving).toHaveAttribute("aria-busy", "true");
+    expect(saving).toHaveTextContent("Saving…");
+    fireEvent.click(saving);
+    const location = editor.getByRole("textbox", { name: "Location" });
+    await user.click(location);
+    fireEvent.change(location, { target: { value: "Newer hall edit" } });
+    await act(async () => { fail(new Error("Network timeout")); await pending.catch(() => {}); });
+    expect(dialog).toBeInTheDocument();
+    const message = "We could not complete the event operation. Please refresh and try again.";
+    expect(editor.getByText(message).closest('[role="alert"]')).toBeInTheDocument();
+    expect(dialog).toHaveAccessibleDescription(message);
+    expect(editor.getByText(message)).toBeInTheDocument();
+    expect(editor.getByText(/The previous save could not be confirmed/)).toBeInTheDocument();
+    expect(location).toHaveFocus();
+    for (const [label, value] of fields) {
+      const input = editor.getByLabelText(label, { exact: false, selector: "input,textarea" });
+      expect(input).toHaveValue(label === "Location" ? "Newer hall edit" : label === "Max guests without moderator approval" ? Number(value) : value);
+    }
+    expect(editor.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    vi.mocked(firebaseDataConnect.executeQuery).mockResolvedValue({ data: { section: { id: sectionId, events: [] } } } as never);
+    await user.click(editor.getByRole("button", { name: "Check latest list" }));
+    const review = await screen.findByRole("dialog", { name: "Start a new save request?" });
+    await user.click(within(review).getByRole("button", { name: "I checked — start a new request" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Start a new save request?", hidden: true })).not.toBeInTheDocument());
+    expect(editor.getByRole("textbox", { name: "Location" })).toHaveValue("Newer hall edit");
+    expect(editor.getByRole("button", { name: "Save" })).toBeEnabled();
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    await user.click(editor.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add event", hidden: true })).not.toBeInTheDocument());
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledTimes(2);
+    expect(latestCreateVariables()).toMatchObject({ id: originalId, title: "Retained dinner", location: "Newer hall edit", maxGuestsWithoutModeratorApproval: 2 });
+    expect(await screen.findByText("Event created")).toBeInTheDocument();
+  }, 20_000);
+
   it.each([false, true])("rejects invalid dates before a write and preserves an explicit retry (editing=%s)", async (editing) => {
     const user = userEvent.setup();
     if (editing) {
@@ -1607,7 +1666,7 @@ describe("SectionEventsManager", () => {
       await act(async()=>managerNavigation("/elsewhere"));
       await act(async()=>managerNavigation(-1));
       expect(await screen.findByLabelText(/^title/i)).toHaveValue("Pending one event");
-      expect(screen.getByRole("button",{name:"Save"})).toBeDisabled();
+      expect(screen.getByRole("button",{name:"Saving event"})).toBeDisabled();
       expect(screen.getByText(/This save is still being confirmed/)).toBeInTheDocument();
       expect(generated.createEventRef).toHaveBeenCalledOnce();
       await act(async()=>managerNavigation(1));

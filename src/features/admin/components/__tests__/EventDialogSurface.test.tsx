@@ -46,7 +46,7 @@ describe("Event details editor presentation", () => {
     expect(within(form).getByRole("group", { name: "Event information" })).toContainElement(screen.getByRole("textbox", { name: "Title" }));
     expect(within(form).getByRole("group", { name: "Event schedule" })).toContainElement(screen.getByLabelText("Start date/time", { exact: false }));
     expect(within(form).getByRole("group", { name: "Booking window" })).toContainElement(screen.getByLabelText("Booking window end", { exact: false }));
-    expect(screen.getByRole("button", { name: "Save" })).toHaveTextContent("Save changes");
+    expect(screen.getByRole("button", { name: "Save" })).toHaveTextContent(/^Save$/);
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(editor.onSubmit).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole("button", { name: "Discard changes" }));
@@ -83,14 +83,82 @@ describe("Event details editor presentation", () => {
     expect(editor.onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it.each([{ submitting: true }, { saveDisabled: true }, { title: " " }])("honours existing save-blocking conditions %j", (state) => {
+  it.each([{ submitting: true }, { saveDisabled: true }])("honours existing save-blocking conditions %j", (state) => {
     const editor = props({ embedded: true, ...state });
     render(<EventDialogSurface {...editor} />);
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const save = screen.getByRole("button", { name: state.submitting ? "Saving event" : "Save" });
+    expect(save).toBeDisabled();
+    fireEvent.click(save);
     expect(editor.onSubmit).not.toHaveBeenCalled();
     fireEvent.submit(screen.getByRole("form", { name: "Event details" }));
     expect(editor.onSubmit).not.toHaveBeenCalled();
+  });
+
+  describe.each([false, true])("non-date feedback (embedded=%s)", (embedded) => {
+    it.each([
+      ["title", " ", "Title", "Title is required."],
+      ["maxGuestsStr", "", "Max guests without moderator approval", "Max guests without moderator approval is required."],
+      ["maxGuestsStr", "-1", "Max guests without moderator approval", "Enter a whole number of guest places, 0 or more."],
+      ["maxGuestsStr", "1.5", "Max guests without moderator approval", "Enter a whole number of guest places, 0 or more."],
+    ] as const)("shows actionable feedback after attempting to save invalid %s=%s", async (field, value, label, message) => {
+      const user = userEvent.setup();
+      const editor = props({ embedded, [field]: value });
+      const view = render(<EventDialogSurface {...editor} />);
+      const input = screen.getByLabelText(label, { exact: false, selector: "input" });
+      expect(input).not.toHaveAttribute("aria-invalid", "true");
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(editor.onSubmit).not.toHaveBeenCalled();
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(input).toHaveAccessibleDescription(message);
+      expect(input).toHaveFocus();
+      expect(screen.getByRole("textbox", { name: "Location" })).toHaveValue("RAF Club");
+      view.rerender(<EventDialogSurface {...editor} {...{ [field]: field === "title" ? "Corrected title" : "0" }} />);
+      expect(input).not.toHaveAttribute("aria-invalid", "true");
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(editor.onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    it("focuses the first invalid field in display order", async () => {
+      const user = userEvent.setup();
+      const editor = props({ embedded, title: "", startDateTime: "", maxGuestsStr: "-1" });
+      const view = render(<EventDialogSurface {...editor} />);
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(screen.getByRole("textbox", { name: "Title" })).toHaveFocus();
+      view.rerender(<EventDialogSurface {...editor} title="Corrected title" />);
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(screen.getByLabelText("Start date/time", { exact: false, selector: "input" })).toHaveFocus();
+      view.rerender(<EventDialogSurface {...editor} title="Corrected title" startDateTime="2026-11-20T13:00" />);
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(screen.getByRole("spinbutton", { name: "Max guests without moderator approval" })).toHaveFocus();
+      expect(editor.onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("associates announced server errors without interrupting a newer edit", () => {
+      const editor = props({ embedded });
+      const view = render(<EventDialogSurface {...editor} />);
+      const location = screen.getByRole("textbox", { name: "Location" });
+      location.focus();
+      view.rerender(<EventDialogSurface {...editor} error="Unable to save the event." />);
+      const surface = embedded ? screen.getByRole("form", { name: "Event details" }) : screen.getByRole("dialog", { name: "Add event" });
+      expect(surface).toHaveAccessibleDescription("Unable to save the event.");
+      expect(screen.getByRole("alert")).toHaveTextContent("Unable to save the event.");
+      expect(location).toHaveFocus();
+      view.rerender(<EventDialogSurface {...editor} />);
+      expect(surface).not.toHaveAttribute("aria-describedby");
+    });
+
+    it("labels a pending save truthfully and blocks another submission", () => {
+      const editor = props({ embedded, submitting: true });
+      render(<EventDialogSurface {...editor} />);
+      const save = screen.getByRole("button", { name: "Saving event" });
+      expect(save).toHaveTextContent("Saving…");
+      expect(save).toHaveAttribute("aria-busy", "true");
+      expect(save).toBeDisabled();
+      fireEvent.click(save);
+      if (embedded) fireEvent.submit(screen.getByRole("form", { name: "Event details" }));
+      expect(editor.onSubmit).not.toHaveBeenCalled();
+    });
   });
 
   it("does not render a closed inline editor", () => {
