@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { render, screen } from "../../../../test-utils";
-import { SectionUserGroupPurpose } from "@dataconnect/generated";
+import { SectionType, SectionUserGroupPurpose } from "@dataconnect/generated";
 import { ManageSectionsListSurface, SectionEditorDialogSurface } from "../ManageSectionsSurfaces";
 import type { SectionUserGroupRow, SectionWithDetails } from "../manageSectionsTypes";
 
@@ -124,14 +124,16 @@ describe("SectionEditorDialogSurface accessible group removal", () => {
   const linkedGroups: SectionUserGroupRow[] = [
     { id: "group-1", name: "Shared Group", purpose: SectionUserGroupPurpose.ACCESS },
     { id: "group-1", name: "Shared Group", purpose: SectionUserGroupPurpose.MEMBER },
+    { id: "group-1", name: "Shared Group", purpose: SectionUserGroupPurpose.BOOKER },
   ];
 
   it("distinguishes group links by section and purpose and removes the keyboard-selected link", async () => {
     const user = userEvent.setup();
     const onRemoveUserGroup = vi.fn();
-    renderDialog({ sectionUserGroups: linkedGroups, onRemoveUserGroup });
-    const removeAccess = screen.getByRole("button", { name: "Remove Shared Group from Test Section (access)" });
-    const removeMember = screen.getByRole("button", { name: "Remove Shared Group from Test Section (member)" });
+    renderDialog({ sectionUserGroups: linkedGroups, sectionType: SectionType.EVENTS, onRemoveUserGroup });
+    const removeAccess = screen.getByRole("button", { name: "Remove Shared Group from the access purpose in Test Section" });
+    const removeMember = screen.getByRole("button", { name: "Remove Shared Group from the member purpose in Test Section" });
+    const removeBooker = screen.getByRole("button", { name: "Remove Shared Group from the booker purpose in Test Section" });
 
     expect(screen.getByRole("textbox", { name: "Section Name" })).toHaveFocus();
     await user.tab();
@@ -140,9 +142,11 @@ describe("SectionEditorDialogSurface accessible group removal", () => {
     expect(removeAccess).toHaveFocus();
     await user.tab();
     expect(removeMember).toHaveFocus();
+    await user.tab();
+    expect(removeBooker).toHaveFocus();
     await user.keyboard("{Enter}");
 
-    expect(onRemoveUserGroup).toHaveBeenCalledExactlyOnceWith("group-1", SectionUserGroupPurpose.MEMBER);
+    expect(onRemoveUserGroup).toHaveBeenCalledExactlyOnceWith("group-1", SectionUserGroupPurpose.BOOKER);
   });
 
   it("keeps the pending removal named and disabled while other group links stay keyboard reachable", async () => {
@@ -153,8 +157,8 @@ describe("SectionEditorDialogSurface accessible group removal", () => {
       removingUserGroupId: "group-1-ACCESS",
       onRemoveUserGroup,
     });
-    const removeAccess = screen.getByRole("button", { name: "Remove Shared Group from Test Section (access)" });
-    const removeMember = screen.getByRole("button", { name: "Remove Shared Group from Test Section (member)" });
+    const removeAccess = screen.getByRole("button", { name: "Remove Shared Group from the access purpose in Test Section" });
+    const removeMember = screen.getByRole("button", { name: "Remove Shared Group from the member purpose in Test Section" });
     expect(removeAccess).toBeDisabled();
     expect(removeMember).toBeEnabled();
 
