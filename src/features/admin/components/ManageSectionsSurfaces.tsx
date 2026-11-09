@@ -326,7 +326,7 @@ export function SectionEditorDialogSurface({
                         <TableCell align="right">
                           <IconButton
                             size="small"
-                            aria-label={`Remove ${group.name} from ${editingSection.name} (${group.purpose.toLowerCase()})`}
+                            aria-label={`Remove ${group.name} from the ${group.purpose.toLowerCase()} purpose in ${editingSection.name}`}
                             onClick={() => onRemoveUserGroup(group.id, group.purpose)}
                             color="error"
                             disabled={removingUserGroupId === `${group.id}-${group.purpose}`}
