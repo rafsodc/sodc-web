@@ -156,7 +156,7 @@ export function metadataProvider(projectId, region) {
       resource.includes(`/projects/${projectId}`) && !resource.includes(":access"), "metadata-resource-not-allowed");
     try {
       const response = await fetch(`https://${host}${resource}`, { method: "GET", redirect: "error",
-        headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(30_000) });
+        headers: { Authorization: `Bearer ${token}`, "x-goog-user-project": projectId }, signal: AbortSignal.timeout(30_000) });
       requireGuard(response.ok, "provider-metadata-read-failed");
       return await response.json();
     } catch { throw new GuardError("provider-metadata-read-failed"); }

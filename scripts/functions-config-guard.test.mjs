@@ -420,6 +420,18 @@ describe("metadata and CLI boundary", () => {
     const fetch = vi.fn(async () => Response.json({})); vi.stubGlobal("fetch", fetch);
     return { fetch, provider: metadataProvider(projectId, region) };
   }
+  it("uses the selected project for metadata quota without changing the read-only boundary", async () => {
+    const { fetch, provider } = await providerFixture();
+    await provider.firebaseConfig();
+    await provider.project();
+    for (const [url, options] of fetch.mock.calls) {
+      expect(url).toContain(`/projects/${projectId}`);
+      expect(options).toMatchObject({method: "GET", redirect: "error", headers: {"x-goog-user-project": projectId}});
+      expect(options).not.toHaveProperty("body");
+    }
+    fetch.mockResolvedValueOnce(Response.json({error: {message: "private provider detail"}}, {status: 403}));
+    await expect(provider.firebaseConfig()).rejects.toThrow("provider-metadata-read-failed");
+  });
   it("requests IAM policy version 3 so conditional invoker bindings retain their conditions", async () => {
     const { fetch, provider } = await providerFixture();
     await provider.invokerPolicy(`projects/${projectId}/locations/${region}/services/example`);
