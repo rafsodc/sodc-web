@@ -15,7 +15,7 @@ for (const [key, value] of Object.entries(process.env)) {
 }
 if (process.env.FIREBASE_CONFIG) throw new Error("Ambiguous Firebase configuration forbidden.");
 const transport = process.env.ACCOUNT_DELETION_TRANSPORT ?? "local";
-if (!["local", "hosted"].includes(transport)) throw new Error("Unknown validation transport.");
+if (!["local", "hosted", "browser"].includes(transport)) throw new Error("Unknown validation transport.");
 const apiKey = process.env.VITE_FIREBASE_API_KEY;
 if (!apiKey) throw new Error("Development Firebase API key required.");
 const require = createRequire(import.meta.url);
@@ -40,7 +40,7 @@ async function createFixture(role, admin) {
   fixtures.push(fixture);
   await auth.createUser({uid, email, password, emailVerified: true});
   await dc.executeGraphql(`mutation CreateDeletionFixture($uid: String!, $email: String!) {
-    user_insert(data: {id: $uid, email: $email, firstName: "Deletion", lastName: "Fixture", serviceNumber: "VALIDATION", membershipStatus: REGULAR, createdBy: "validation", updatedBy: "validation"})
+    user_insert(data: {id: $uid, email: $email, firstName: "Deletion", lastName: "Fixture", serviceNumber: "VALIDATION", membershipStatus: REGULAR, profileReviewedAt_expr: "request.time", mobileNumber: "+447700900123", createdBy: "validation", updatedBy: "validation"})
   }`, {variables: {uid, email}});
   await auth.setCustomUserClaims(uid, {enabled: true, admin});
   await transitions.initializeUserSecurityState({userId: uid, actorId: uid, actorKind: "OPERATOR", operationId: randomUUID(), reason: "Disposable Dev account deletion validation", allowAdminBootstrap: admin});
@@ -111,6 +111,48 @@ try {
   }
   mark("create disposable fixtures");
   const actor = await createFixture("actor", true), target = await createFixture("target", false);
+  if (transport === "browser") {
+    mark("browser sign-in and deletion");
+    const {chromium} = require("@playwright/test");
+    mark("browser launch");
+    const browser = await chromium.launch({headless: true});
+    try {
+      const page = await browser.newPage();
+      page.setDefaultTimeout(60000);
+      mark("browser sign-in page");
+      await page.goto("https://sodc-web.web.app/admin/users");
+      await page.getByRole("button", {name: "Decline preference cookies", exact: true}).click();
+      await page.getByLabel("Email", {exact: true}).fill(actor.email);
+      await page.getByLabel("Password", {exact: true}).fill(actor.password);
+      await page.getByRole("main").getByRole("button", {name: "Sign in", exact: true}).click();
+      mark("browser admin page");
+      await page.getByRole("heading", {name: "Manage Users", exact: true}).waitFor();
+      await page.getByLabel("Search by Email or Display Name").fill(target.email);
+      const row = page.getByRole("row").filter({hasText: target.email});
+      await row.getByRole("button", {name: "Delete account", exact: true}).click();
+      const dialog = page.getByRole("dialog");
+      assert.equal(await dialog.getByRole("button", {name: "Permanently delete account"}).count(), 0);
+      await dialog.getByRole("button", {name: "Check account", exact: true}).click();
+      const confirm = dialog.getByRole("button", {name: "Permanently delete account"});
+      await confirm.waitFor({timeout: 120000});
+      assert.equal(await confirm.isDisabled(), true);
+      await dialog.getByLabel("Type the account email to confirm").fill(target.email);
+      assert.equal(await confirm.isDisabled(), true);
+      await dialog.getByRole("checkbox").check();
+      assert.equal(await confirm.isEnabled(), true);
+      await confirm.click();
+      await dialog.waitFor({state: "hidden", timeout: 120000});
+      await page.getByText("Account deleted. Complete the separate external-record and backup erasure checks.").waitFor();
+      await assert.rejects(auth.getUser(target.uid), {code: "auth/user-not-found"});
+      assert.equal((await security.getUserSecurityState({userId: target.uid})).data.userSecurityState, null);
+      console.log("PASS: Dev browser sign-in, search, preview, confirmation guards, deletion, success feedback and actual account absence.");
+    } catch (error) {
+      let message = String(error.message);
+      for (const fixture of fixtures) for (const value of [fixture.password, fixture.idToken]) if (value) message = message.replaceAll(value, "[redacted]");
+      console.error(message.slice(0, 1600));
+      throw error;
+    } finally {await browser.close();}
+  } else {
   mark("authorization checks");
   await assert.rejects(call(target, actor), {code: "permission-denied"});
   mark("self-deletion check");
@@ -137,6 +179,7 @@ try {
   assert.equal((await call(actor, target, {apply: true, noRetention: true})).deleted, true);
   assert.equal((await security.getUserSecurityState({userId: actor.uid})).data.userSecurityState.adminReady, true);
   console.log(`PASS: Dev backend (${transport}) with real Firebase tokens: authorization, preview, linked-record blocker, deletion, absence verification and repeated request.`);
+  }
 } catch (error) {
   failed = true;
   console.error(`Validation error category: ${error.code ?? error.name ?? "unknown"}`);

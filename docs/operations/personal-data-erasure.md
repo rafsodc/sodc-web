@@ -122,8 +122,13 @@ ACCOUNT_DELETION_PROJECT=sodc-web ACCOUNT_DELETION_CONFIRM=sodc-web \
 node --env-file=.env.development.local functions/scripts/validate-account-deletion-cloud.mjs
 ```
 
+On 10 November 2026 the Dev hosting build also passed a real browser walkthrough:
+sign-in, user search, preview, typed-email and retention confirmation guards,
+deletion, success feedback, account absence and fixture cleanup.
+
 By default this calls the local build with real cloud services and verified
-tokens. Set `ACCOUNT_DELETION_TRANSPORT=hosted` to exercise the fixed Dev HTTPS
+tokens. Set `ACCOUNT_DELETION_TRANSPORT=browser` to repeat this walkthrough in
+a temporary Playwright Chromium session against Dev hosting. Set `ACCOUNT_DELETION_TRANSPORT=hosted` to exercise the fixed Dev HTTPS
 callable endpoint after deploying it. The runner does not deploy anything.
 
 ```sh
