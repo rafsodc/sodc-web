@@ -1923,17 +1923,17 @@ mutation CreateNotificationDelivery(
   $notificationType: String!
   $deliveryKey: String!
   $recoveryPayload: String
-  $recipientUserId: String
+  $recipientUserId: String = null
   $deliveryMode: GovNotifyDeliveryMode
   $status: NotificationDeliveryStatus!
   $ticketOrderId: UUID
   $bookingId: UUID
-  $userId: String
+  $userId: String = null
   $provider: String
   $attemptCount: Int!
   $lastAttemptedAt: Timestamp
 ) @auth(level: NO_ACCESS) @transaction {
-  query @redact @check(expr: "response.query.subject.size() == 0 && response.query.recipient.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
+  query @redact @check(expr: "(vars.userId == null || response.query.subject.size() == 0) && (vars.recipientUserId == null || response.query.recipient.size() == 0)", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
     subject: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId} recipient: accountErasures(where: {userId: {eq: $recipientUserId}}, limit: 1) {userId}
   }
   notificationDelivery_insert(
@@ -3175,13 +3175,13 @@ mutation CreateNotifyDeliveryReceipt(
   $notifyStatus: String!
   $reference: String
   $recipientHash: String!
-  $userId: String
+  $userId: String = null
   $eventAt: Timestamp!
   $eventOrderingKey: String!
   $affectsBounceState: Boolean!
   $lastAttemptedAt: Timestamp!
 ) @auth(level: NO_ACCESS) @transaction {
-  query @redact @check(expr: "response.query.subject.size() == 0 && response.query.contacts.size() < 10000 && response.query.contacts.all(e, vars.userId != null && e.userId != vars.userId)", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
+  query @redact @check(expr: "(vars.userId == null || response.query.subject.size() == 0) && response.query.contacts.size() < 10000 && response.query.contacts.all(e, vars.userId != null && e.userId != vars.userId)", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
     subject: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId} contacts: accountErasures(where: {emailHash: {eq: $recipientHash}}, limit: 10000) {userId}
   }
   notifyDeliveryReceipt_insert(

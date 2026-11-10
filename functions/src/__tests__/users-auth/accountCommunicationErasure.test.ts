@@ -21,6 +21,7 @@ describe("member-only communication erasure", () => {
     expect(() => pruneAnnouncementSnapshot("not-json", uid, email)).toThrow();
     expect(() => pruneAnnouncementSnapshot(JSON.stringify({version: 2, tasks: [], skippedRecipients: []}), uid, email)).toThrow();
     expect(() => pruneAnnouncementSnapshot(JSON.stringify({version: 1, tasks: [{...survivor, email}], skippedRecipients: []}), uid, email)).toThrow("AMBIGUOUS");
+    expect(accountDeletionMatch("AnnouncementSend", {recipientSnapshot: original, audienceSummary: `Shared note mentioning ${email}`}, uid, email)).toBe("block");
   });
   it("fences snapshot contents and counts in one authorized transaction", () => {
     const pruned = pruneAnnouncementSnapshot(original, uid, email);

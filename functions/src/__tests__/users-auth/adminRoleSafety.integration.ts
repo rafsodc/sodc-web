@@ -195,6 +195,8 @@ afterEach(async () => {
     announcementRecipient_deleteMany(where: {announcementSendId: {in: $sends}})
     announcementSend_deleteMany(where: {id: {in: $sends}})
     section_deleteMany(where: {id: {in: $sections}})
+    notificationDelivery_deleteMany(where: {_or: [{recipientUserId: {in: $users}}, {userId: {in: $users}}]})
+    notifyDeliveryReceipt_deleteMany(where: {userId: {in: $users}})
     accountErasure_deleteMany(where: {userId: {in: $users}})
     userSecurityState_deleteMany(where: {userId: {in: $users}})
     securityTransition_deleteMany(where: {operationId: {in: $operations}})
@@ -611,6 +613,28 @@ describe("account deletion against actual disposable SQL", () => {
     await expect(admin.createAnnouncementSendWithDeliveryMode(dc, {id: randomUUID(), sectionId: caseSectionIds[0], templateUuid: "fixture", sentBy: variables.actorId, recipientCount: 1, skippedCount: 0, recipientSnapshot: shared.snapshot, requestedDeliveryMode: "SIMULATION", siteDeliveryMode: "SIMULATION", effectiveDeliveryMode: "SIMULATION", recipientIds: [variables.uid]})).rejects.toThrow("ACCOUNT_ERASURE_IN_PROGRESS");
     // Cached pre-erasure writers cannot persist an unlisted audience either.
     await expect(admin.createAnnouncementSendWithDeliveryMode(dc, {id: randomUUID(), sectionId: caseSectionIds[0], templateUuid: "fixture", sentBy: variables.actorId, recipientCount: 1, skippedCount: 0, recipientSnapshot: shared.snapshot, requestedDeliveryMode: "SIMULATION", siteDeliveryMode: "SIMULATION", effectiveDeliveryMode: "SIMULATION"})).rejects.toThrow("ACCOUNT_ERASURE_IN_PROGRESS");
+  });
+  it("permits unrelated notifications and a newly registered identity at the same address", async () => {
+    const variables = await deletionFixture();
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    await expect(admin.createNotificationDelivery(dc, {channel: "EMAIL", notificationType: "ERASURE_UNRELATED", deliveryKey: randomUUID(), recipientUserId: variables.actorId, status: "SENT", attemptCount: 1})).resolves.toBeDefined();
+    await expect(admin.createNotifyDeliveryReceipt(dc, {id: randomUUID(), userId: variables.actorId, recipientHash: variables.emailHashes[0], notifyStatus: "delivered", eventAt: "2026-01-01T00:00:00Z", eventOrderingKey: "fixture", affectsBounceState: false, lastAttemptedAt: "2026-01-01T00:00:00Z"})).resolves.toBeDefined();
+  });
+  it("waits for claimed notification and announcement leases before purging owned records", async () => {
+    const variables = await deletionFixture();
+    const shared = await sharedSnapshotFixture(variables);
+    const delivery = randomUUID(), recipient = randomUUID();
+    await dc.executeGraphql(`mutation SeedActiveDelivery($uid: String!, $delivery: UUID!, $send: UUID!, $recipient: UUID!, $email: String!) {
+      announcementSend_update(key: {id: $send}, data: {recipientSnapshot: null})
+      notificationDelivery_insert(data: {id: $delivery, channel: EMAIL, notificationType: "ERASURE_LEASE", deliveryKey: $email, userId: $uid, status: PENDING, lastAttemptedAt_expr: "request.time", createdBy: "fixture", updatedBy: "fixture"})
+      announcementRecipient_insert(data: {id: $recipient, announcementSendId: $send, userId: $uid, email: $email, firstName: "Remove", lastName: "Fixture", status: "sending", processingStartedAt_expr: "request.time"})
+    }`, {variables: {uid: variables.uid, email: variables.email, send: shared.send, delivery, recipient}});
+    await expect(dc.executeGraphql(deleteInactiveAccountMutation, {variables})).rejects.toThrow("ERASURE_DRAIN_PENDING");
+    await dc.executeGraphql("mutation SettleNotification($id: UUID!) {notificationDelivery_update(key: {id: $id}, data: {lastAttemptedAt: \"2026-01-01T00:00:00Z\"})}", {variables: {id: delivery}});
+    await expect(dc.executeGraphql(deleteInactiveAccountMutation, {variables})).rejects.toThrow("ERASURE_DRAIN_PENDING");
+    await dc.executeGraphql("mutation SettleAnnouncement($id: UUID!) {announcementRecipient_update(key: {id: $id}, data: {processingStartedAt: \"2026-01-01T00:00:00Z\"})}", {variables: {id: recipient}});
+    await dc.executeGraphql(deleteInactiveAccountMutation, {variables});
+    expect(await state(variables.uid)).toBeNull();
   });
   it("rejects early deletion before the suppression drain has elapsed", async () => {
     const variables = await deletionFixture();

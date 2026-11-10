@@ -25,7 +25,12 @@ export function accountDeletionMatch(name: string, row: any, uid: string, email:
   const text = JSON.stringify(row).toLowerCase();
   if (![uid.toLowerCase(), ...emails, ...[...emails].map(sha), ...knownHashes].some(value => text.includes(value))) return "none";
   if (name === "AnnouncementSend") {
-    try { return pruneAnnouncementSnapshot(row.recipientSnapshot, uid, email, emails).removed ? "remove" : "block"; }
+    try {
+      const pruned = pruneAnnouncementSnapshot(row.recipientSnapshot, uid, email, emails);
+      const remaining = JSON.stringify({...row, recipientSnapshot: pruned.replacement}).toLowerCase();
+      const retainsIdentity = [uid.toLowerCase(), ...emails, ...[...emails].map(sha), ...knownHashes].some(value => remaining.includes(value));
+      return pruned.removed && !retainsIdentity ? "remove" : "block";
+    }
     catch { return "block"; }
   }
   if (name === "AnnouncementRecipient") return row.userId === uid ? "remove" : "block";

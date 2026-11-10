@@ -38,7 +38,9 @@ GDPR erasure.
 
 Roll out the schema and guarded connector operations first, then all announcement,
 notification, callback and security writers, then the new deletion callable and
-frontend. Do not enable deletion before those workers are updated. After the first
+frontend. Do not enable deletion before those workers are updated. The deletion runtime
+identity must have `cloudtasks.tasks.delete` for the announcement queue; verify
+that permission before release. Cancellation failure stops the erasure. After the first
 erasure, old snapshot writers without the complete recipient-ID list fail closed.
 Do not roll back suppression guards or restore a deleted UID without operator
 review. A database restore must reapply the restricted ledger before enabling
@@ -143,8 +145,9 @@ delete may take several minutes.
 The cloud validation runner accepts only the explicitly confirmed Dev project,
 checks existing administrator safety before creating fixtures, and retires its
 temporary administrator through the supported transition during cleanup. It
-accepts SIMULATION or TEAM_TEST because it invokes no mailer and its notification
-fixture is terminal SENT. It never changes delivery settings. From the repository
+accepts SIMULATION or TEAM_TEST because it invokes no mailer, its notification
+fixture is terminal SENT and its queued task is SIMULATION, scheduled an hour
+ahead and cancelled during cleanup. It never changes delivery settings. From the repository
 root, after building Functions:
 
 ```sh

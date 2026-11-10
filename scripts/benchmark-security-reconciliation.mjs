@@ -147,6 +147,9 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
       if (id === "firebase-functions/v2/scheduler") return { onSchedule: (options, handler) => { scheduleOptions = clone(options); return handler; } };
       if (id === "firebase-functions/logger") return logger;
       if (id === "./securityRepository") return repository;
+      // The local benchmark has no erasing subjects. Keep this external database
+      // boundary offline; suppression itself has dedicated integration coverage.
+      if (id === "./communicationErasureGuard") return {isUserErasing: async () => false};
       if (id === "@dataconnect/admin-generated") return { getUserMembershipStatus: async () => { throw new Error("Unexpected bootstrap/profile operation in sweep"); } };
       if (id.startsWith("./")) return load(id.slice(2).replace(/\.js$/, "") + ".ts");
       throw new Error("Unapproved benchmark import; real SDK/network access is forbidden");

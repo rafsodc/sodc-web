@@ -114,7 +114,14 @@ async function verifyCommunications() {
     assert.equal(result.data.notificationDelivery, null);
     assert.equal(result.data.notifyDeliveryReceipt, null);
     assert.ok(result.data.accountErasures.length >= 2 && result.data.accountErasures.every(row => row.completedAt));
-    await assert.rejects(queue.delete(item.taskId), error => ["functions/task-not-found", "functions/not-found"].includes(error.code));
+    // Admin TaskQueue.delete intentionally resolves for absent tasks. A read
+    // proves cancellation without accidentally performing it during verification.
+    const access = await applicationDefault().getAccessToken();
+    const taskResponse = await fetch(`https://cloudtasks.googleapis.com/v2/projects/sodc-web/locations/europe-west2/queues/processAnnouncementEmail/tasks/${item.taskId}`, {
+      headers: {Authorization: `Bearer ${access.access_token}`, "x-goog-user-project": "sodc-web"}, signal: AbortSignal.timeout(30000),
+    });
+    assert.equal(taskResponse.status, 404, "Selected task must already be absent");
+    await taskResponse.body?.cancel();
     const {processAnnouncementEmailTask} = require("../lib/announcementDelivery.js");
     await processAnnouncementEmailTask(item.task, {retryCount: 0}, {repository: {get: () => {throw new Error("Erased task must not reach storage");}}, client: {sendEmail: () => {throw new Error("Erased task must not send");}}});
     const sdk = require("@dataconnect/admin-generated");
