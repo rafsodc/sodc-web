@@ -5,29 +5,56 @@
 Manage Users now offers **Delete account** for non-admin accounts. The callable
 requires fresh enabled administrator authority, rejects self-deletion, runs a
 read-only inventory and requires email confirmation plus a no-retention decision.
-It supports initialized inactive accounts only. Operator-authored security
-history, pending security work, financial/provider references, bookings,
-announcements and shared content are routed to the operator workflow below.
+It supports initialized non-admin accounts and their owned announcement recipient
+entries, version-1 shared announcement snapshots, notification deliveries without
+financial references, callback receipts and completed non-admin security history.
+Only the selected member's entries are removed from shared snapshots; surviving
+entries and summary fields are preserved and recipient counts are adjusted.
+Financial records, unsupported snapshots, ambiguous shared addresses, shared
+content and administrator audit evidence remain blockers.
 
-The server repeats the inventory on apply, disables access through the current
-authorization transition, then checks again. Account metadata and the profile
-are removed in a transaction that checks the acting admin's security version and
-the target's deletion operation. Auth is deleted last and absence is verified.
-An interrupted deletion leaves the account disabled and explicitly requires
-operator recovery. The screen never reports full GDPR erasure: external data,
-backups and late background writes still require the operational checks below.
+Apply establishes a durable per-member suppression record before disabling access
+and revoking sessions. Announcement tasks are cancelled by deterministic ID, and
+new recipients, snapshots, notification deliveries and callback receipts are
+blocked at the database boundary. Workers check suppression before sending.
+The function waits at least 330 seconds for previously running send/preparation
+work, then repeats the inventory. Active delivery leases cause a retry response.
+Other recipients continue normally; this workflow needs no global sending pause.
 
-Deployment requires both the `deleteAccount` function and the updated frontend.
-Before enabling production use, validate the service GraphQL inventory and
-transaction against a disposable account in a non-production project, including
-concurrent permission changes and provider/background jobs. No production
-deletion has been performed during implementation.
+Shared snapshots are redacted one at a time using an authorized compare-and-swap
+transaction on the original contents and counts. The profile and owned records
+are then removed under administrator and target security-version fences. Auth is
+deleted last and absence is verified. An interruption leaves the account disabled
+and suppressed; retry from the screen to resume. Recovery after profile deletion
+requires the durable marker proving that this workflow removed it. Unknown
+Auth-only accounts still require operator review.
+
+The restricted `AccountErasure` ledger retains only the UID, normalized email
+hashes and deletion stage timestamps. It contains no name, raw address or message
+content. Historical address hashes prevent late provider callbacks from
+recreating records. Backups, provider-held messages and other external records
+still require separate operational review; the screen does not claim complete
+GDPR erasure.
+
+Roll out the schema and guarded connector operations first, then all announcement,
+notification, callback and security writers, then the new deletion callable and
+frontend. Do not enable deletion before those workers are updated. The deletion runtime
+identity must have `cloudtasks.tasks.delete` for the announcement queue; verify
+that permission before release. Cancellation failure stops the erasure. After the first
+erasure, old snapshot writers without the complete recipient-ID list fail closed.
+Do not roll back suppression guards or restore a deleted UID without operator
+review. A database restore must reapply the restricted ledger before enabling
+writers or exposing restored personal data.
 
 Use a restricted operator session and a case reference that contains no personal
 data. Record the request, identity verification, scope and retention decision in
 the restricted case system. Do not put the subject's details in Git or tickets.
 
-## Supported scope
+## Legacy operator tool scope
+
+Use the admin screen for supported communication erasure and retries. The legacy
+operator tool does not implement communication cleanup or the online suppression
+protocol; do not use it to bypass an admin-screen blocker.
 
 `functions/scripts/erase-personal-data.mjs` supports an inactive non-admin account
 with no domain activity or external customer record. It removes the profile,
@@ -109,11 +136,18 @@ success response. The operator tool recognizes completed administrator deletion
 holds so an interrupted admin deletion can be finished after the maintenance
 and external-review requirements are met.
 
+The extended cloud validation runner seeds only synthetic shared announcements,
+terminal notifications, historical-address receipts and a future SIMULATION task.
+It checks preservation of the other recipient, task cancellation, historical
+address suppression and rejection of late recipient insertion. Its long-running
+delete may take several minutes.
+
 The cloud validation runner accepts only the explicitly confirmed Dev project,
 checks existing administrator safety before creating fixtures, and retires its
 temporary administrator through the supported transition during cleanup. It
-accepts SIMULATION or TEAM_TEST because it invokes no mailer and its notification
-fixture is terminal SENT. It never changes delivery settings. From the repository
+accepts SIMULATION or TEAM_TEST because it invokes no mailer, its notification
+fixture is terminal SENT and its queued task is SIMULATION, scheduled an hour
+ahead and cancelled during cleanup. It never changes delivery settings. From the repository
 root, after building Functions:
 
 ```sh

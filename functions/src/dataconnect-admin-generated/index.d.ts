@@ -151,6 +151,12 @@ export interface AbortSectionFileReplacementVariables {
   updatedBy: string;
 }
 
+export interface AccountErasure_Key {
+  userId: string;
+  emailHash: string;
+  __typename?: 'AccountErasure_Key';
+}
+
 export interface AcquireUserEmailLeaseData {
   user_updateMany: number;
 }
@@ -534,6 +540,7 @@ export interface CreateAnnouncementSendWithDeliveryModeVariables {
   replyToDisplayLabel?: string | null;
   replyToEmailAddress?: string | null;
   replyToNotifyUuid?: string | null;
+  recipientIds?: string[];
 }
 
 export interface CreateEventData {

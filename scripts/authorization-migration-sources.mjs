@@ -121,11 +121,22 @@ function onboarding(source) {
     auth.push({ start: parsed[index].start, end: parsed[parsed[open].closing].end, denied });
   }
   if (auth.length !== 1) throw new Error("Exactly one reviewed onboarding authorization is required");
-  const content = parsed.slice(body + 1, parsed[body].closing);
+  let insertionStart = body + 1;
+  if (parsed[insertionStart]?.value === "query") {
+    // Only this reviewed, read-only erasure guard may precede onboarding. The
+    // freeze still replaces the operation's authorization with NO_ACCESS.
+    const guard = tokens(`query @redact {
+      erasure: accountErasures(where: {userId: {eq_expr: "auth.uid"}}, limit: 1) @check(expr: "this.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {userId}
+    }`);
+    const signature = values => JSON.stringify(values.map(token => [token.value, Boolean(token.string)]));
+    if (signature(parsed.slice(insertionStart, insertionStart + guard.length)) !== signature(guard)) throw new Error("Unknown onboarding read guard");
+    insertionStart += guard.length;
+  }
+  const content = parsed.slice(insertionStart, parsed[body].closing);
   if (content[0]?.value !== "user_insert" || content[1]?.value !== "(" || content[1].closing === undefined) throw new Error("Unknown onboarding insertion");
-  const insertionEnd = parsed[body + 2].closing;
+  const insertionEnd = parsed[insertionStart + 1].closing;
   if (insertionEnd !== parsed[body].closing - 1) throw new Error("Unknown additional onboarding writes or selections");
-  const data = parsed.slice(body + 3, insertionEnd);
+  const data = parsed.slice(insertionStart + 2, insertionEnd);
   if (data[0]?.value !== "data" || data[1]?.value !== ":" || data[2]?.value !== "{" || data.at(-1)?.value !== "}") throw new Error("Unknown onboarding data");
   const fields = new Map();
   const allowed = new Set(["id_expr", "email_expr", "membershipStatus", "firstName", "lastName", "serviceNumber", "mobileNumber", "postNominals", "requestedMembershipStatus", "isRegular", "isReserve", "isCivilServant", "isIndustry", "rank", "shareContactInfo"]);

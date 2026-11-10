@@ -8,6 +8,7 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import type { Request } from "firebase-functions/v2/https";
 import type { Response } from "express";
 import * as logger from "firebase-functions/logger";
+import { isErasedContact, isUserErasing } from "../../communicationErasureGuard";
 import {
   handleNotifyDelivery,
   notifyCallbackSecret,
@@ -292,6 +293,20 @@ describe("handleNotifyDelivery", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     repository = new InMemoryNotifyReceiptRepository();
+  });
+  it("acknowledges a delayed callback for an erased contact without recreating a receipt", async () => {
+    vi.mocked(isErasedContact).mockResolvedValueOnce(true);
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq(), res, BEARER, dependencies(repository));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repository.receipts.size).toBe(0);
+  });
+
+  it("drops an old announcement callback even when the address belongs to a new identity", async () => {
+    vi.mocked(isUserErasing).mockResolvedValueOnce(true);
+    const res = await sendReceipt(repository, receipt({reference: "announcement:10000000-0000-4000-8000-000000000001:erased-identity"}));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repository.receipts.size).toBe(0);
   });
 
   it("rejects requests with a wrong bearer token", async () => {

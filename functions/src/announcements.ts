@@ -1,3 +1,4 @@
+import { erasingUserIds } from "./communicationErasureGuard";
 import { currentAuthorization } from "./currentAuthorization";
 import { parseEventAnnouncementSelection, resolveEventAnnouncementAudience, type EventAnnouncementSelection } from "./eventAnnouncementAudience";
 import { createHash, randomUUID } from "node:crypto";
@@ -507,10 +508,17 @@ function parseRecipientSnapshot(value: string | null | undefined): AnnouncementR
   }
 }
 
+async function suppressErasedSnapshotRecipients(snapshot: AnnouncementRecipientSnapshot): Promise<void> {
+  const erased = await erasingUserIds([...snapshot.tasks.map(task => task.recipientId), ...snapshot.skippedRecipients.map(recipient => recipient.userId)]);
+  snapshot.tasks = snapshot.tasks.filter(task => !erased.has(task.recipientId));
+  snapshot.skippedRecipients = snapshot.skippedRecipients.filter(recipient => !erased.has(recipient.userId));
+}
+
 async function ensureRecipientRows(
   sendId: string,
   snapshot: AnnouncementRecipientSnapshot,
 ): Promise<Map<string, { id: string; status: string }>> {
+  await suppressErasedSnapshotRecipients(snapshot);
   const current = await collectDataConnectPages(async (limit, offset) => {
     const result = await getAnnouncementRecipientsForResumePaged({ sendId, limit, offset });
     return result.data?.announcementRecipients ?? [];
@@ -859,6 +867,7 @@ export const sendSectionAnnouncement = onCall(
         ...(eventAudience ? { eventAudience, audienceSummary: eventResolution!.audienceSummary } : {}),
       };
 
+      await suppressErasedSnapshotRecipients(snapshot);
       try {
         await createAnnouncementSendWithDeliveryMode({
           id: requestId,
@@ -869,6 +878,7 @@ export const sendSectionAnnouncement = onCall(
           recipientCount: snapshot.tasks.length,
           skippedCount: snapshot.skippedRecipients.length,
           recipientSnapshot: JSON.stringify(snapshot),
+          recipientIds: [...snapshot.tasks.map(task => task.recipientId), ...snapshot.skippedRecipients.map(recipient => recipient.userId)],
           audienceSummary: snapshot.audienceSummary ?? null,
           requestedDeliveryMode:
             deliveryMode.requestedMode as DataConnectGovNotifyDeliveryMode,

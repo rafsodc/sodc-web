@@ -36,6 +36,12 @@ export enum SecuritySyncStatus {
   SUPERSEDED = "SUPERSEDED",
 }
 
+export interface AccountErasure_Key {
+  userId: string;
+  emailHash: string;
+  __typename?: 'AccountErasure_Key';
+}
+
 export interface ActivateAdminSafetyControlData {
   adminSafetyControl_updateMany: number;
   adminSafetyAudit_insert: AdminSafetyAudit_Key;

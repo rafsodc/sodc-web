@@ -8,6 +8,7 @@ vi.mock("../../securityRepository", () => ({getUserSecurityState: mocks.lookup, 
 vi.mock("@dataconnect/admin-generated", () => ({getUserMembershipStatus: mocks.profile}));
 import { initializeUserSecurityState, transitionUserSecurity, synchronizeUserSecurity } from "../../currentAuthorizationTransitions";
 import { requireCurrentAuthorization } from "../../currentAuthorization";
+import { isUserErasing } from "../../communicationErasureGuard";
 type State = {userId: string; securityVersion: number; membershipStatus: string; desiredEnabled: boolean; desiredAdmin: boolean;
  accessReady: boolean; adminReady: boolean; operationId: string; syncStatus: string; user: {membershipStatus: string}};
 let state: State | null;
@@ -47,6 +48,18 @@ beforeEach(() => {
   mocks.supersede.mockImplementation(async ({operationId}) => {operations.get(operationId)!.syncStatus = "SUPERSEDED";});
 });
 describe("durable security transition", () => {
+  it.each([{admin: true}, {authDisabled: false}, {reason: "ACCOUNT_DELETION", authDisabled: false}])("refuses grants or restoration while deletion is in progress: %s", async change => {
+    vi.mocked(isUserErasing).mockResolvedValue(true);
+    await expect(transitionUserSecurity({...input, ...change})).rejects.toThrow("deletion is in progress");
+    expect(mocks.begin).not.toHaveBeenCalled();
+    expect(mocks.setClaims).not.toHaveBeenCalled();
+  });
+  it("allows the explicit deletion hold while keeping access disabled", async () => {
+    vi.mocked(isUserErasing).mockResolvedValue(true);
+    await transitionUserSecurity({...input, reason: "ACCOUNT_DELETION", authDisabled: true});
+    expect(account.disabled).toBe(true);
+    expect(state).toMatchObject({accessReady: false, adminReady: false});
+  });
   it("commits profile/version/denial before changing Auth and verifies the mirror before readiness", async () => {
     await transitionUserSecurity(input);
     expect(events).toEqual(["database-denial", "auth", "database-ready"]);

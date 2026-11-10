@@ -1,3 +1,4 @@
+import { isUserErasing, isErasureWriteDenied } from "./communicationErasureGuard";
 import * as logger from "firebase-functions/logger";
 import {
   claimNotificationDeliveryById,
@@ -475,6 +476,7 @@ export async function sendNotificationOnce(
   request: SendNotificationOnceRequest,
   dependencies: SendNotificationOnceDependencies = {}
 ): Promise<SendNotificationOnceResult> {
+  if (await isUserErasing(request.userId) || await isUserErasing(request.recipientUserId)) return {outcome: "skipped", reason: "ACCOUNT_ERASURE_IN_PROGRESS"};
   if (request.recoveryClaim) {
     const claim = createNotificationRecoveryClaim(request.recoveryClaim);
     const originalMode = recoveryDeliveryMode(claim, request.deliveryMode, request.deliveryKey);
@@ -519,7 +521,7 @@ export async function sendNotificationOnce(
     attemptStartedAt,
     leaseMs,
     recoveryPayload
-  );
+  ).catch(error => { if (isErasureWriteDenied(error)) return {outcome: "skipped" as const, reason: "ACCOUNT_ERASURE_IN_PROGRESS"}; throw error; });
 
   if ("outcome" in claimResult) {
     return claimResult;
@@ -527,6 +529,9 @@ export async function sendNotificationOnce(
 
   try {
     const assertOwnership = async () => {
+      if (await isUserErasing(request.userId) || await isUserErasing(request.recipientUserId)) {
+        throw Object.assign(new Error("ACCOUNT_ERASURE_IN_PROGRESS"), {code: "ACCOUNT_ERASURE_IN_PROGRESS"});
+      }
       const current = await repository.getByChannelAndKey({ channel: request.channel, deliveryKey: request.deliveryKey });
       if (!current || current.id !== claimResult.delivery.id || current.status !== NotificationDeliveryStatus.PENDING ||
         current.attemptCount !== claimResult.attemptCount || !notificationDeliveryTimestampsEqual(current.lastAttemptedAt, attemptStartedAt) ||

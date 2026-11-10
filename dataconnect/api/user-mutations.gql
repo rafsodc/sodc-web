@@ -25,7 +25,10 @@ mutation CreateUserProfile(
   $isIndustry: Boolean
   $rank: String
   $shareContactInfo: Boolean
-) @auth(expr: "auth.token.email_verified == true") {
+) @auth(expr: "auth.token.email_verified == true") @transaction {
+  query @redact {
+    erasure: accountErasures(where: {userId: {eq_expr: "auth.uid"}}, limit: 1) @check(expr: "this.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {userId}
+  }
   user_insert(
     data: {
       id_expr: "auth.uid"
@@ -67,6 +70,7 @@ mutation UpsertUser(
   $shareContactInfo: Boolean
 ) @auth(expr: "auth.token.enabled == true") @transaction {
   query @redact {
+    erasure: accountErasures(where: {userId: {eq_expr: "auth.uid"}}, limit: 1) @check(expr: "this.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {userId}
   currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
     @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
     syncStatus
@@ -116,6 +120,7 @@ mutation UpdateUser(
   $isIndustry: Boolean
 ) @auth(expr: "auth.token.admin == true && auth.token.enabled == true") @transaction {
   query @redact {
+    erasure: accountErasures(where: {userId: {eq: $userId}}, limit: 1) @check(expr: "this.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {userId}
   currentAuthorization: userSecurityState(key: {userId_expr: "auth.uid"}) @redact
     @check(expr: "this != null && this.accessReady == true && this.syncStatus == 'READY' && this.membershipStatus == this.user.membershipStatus", message: "ACCESS_REVOKED") {
     syncStatus

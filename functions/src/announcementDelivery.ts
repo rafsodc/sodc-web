@@ -1,3 +1,4 @@
+import { isUserErasing, isErasureWriteDenied } from "./communicationErasureGuard";
 import { randomUUID } from "node:crypto";
 import { NotifyClient } from "notifications-node-client";
 import * as logger from "firebase-functions/logger";
@@ -312,6 +313,7 @@ export async function processAnnouncementEmailTask(
   context: TaskContext,
   dependencies: ProcessAnnouncementEmailDependencies = {},
 ): Promise<void> {
+  if (await isUserErasing(task.recipientId)) return;
   const repository = dependencies.repository ?? dataConnectAnnouncementDeliveryRepository;
   const effectiveDeliveryMode = task.effectiveDeliveryMode ?? "LIVE";
   const client = dependencies.client ??
@@ -327,7 +329,8 @@ export async function processAnnouncementEmailTask(
 
   let row = await repository.get(task.sendId, task.recipientId);
   if (!row) {
-    await repository.createLegacyTaskRow(task);
+    try { await repository.createLegacyTaskRow(task); }
+    catch (error) { if (isErasureWriteDenied(error)) return; throw error; }
     row = await repository.get(task.sendId, task.recipientId);
   }
   if (!row) throw new Error("Announcement recipient row could not be created");
@@ -364,6 +367,7 @@ export async function processAnnouncementEmailTask(
   row = claimed;
 
   try {
+    if (await isUserErasing(task.recipientId)) return;
     const response = await client.sendEmail(task.templateUuid, task.email, {
       personalisation: task.personalisation,
       reference,

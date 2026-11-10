@@ -55,6 +55,20 @@ describe("migration source classification and precise onboarding freeze", () => 
     expect(denied[0].content).toContain('LegacyMembers @auth(expr:"auth.token.enabled == true")');
   });
 
+  it("preserves the exact erasure read guard while freezing onboarding and rejects weakened guards", () => {
+    const guard = `query @redact {
+      erasure: accountErasures(where: {userId: {eq_expr: "auth.uid"}}, limit: 1) @check(expr: "this.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {userId}
+    }`;
+    const source = legacy.replace('== true") {', `== true") @transaction {${guard}`);
+    const frozen = denyOnboarding(files(source));
+    expect(frozen[0].content).toContain(guard);
+    expect(frozen[0].content).toContain("@auth(level: NO_ACCESS)");
+    expect(denyOnboarding(frozen)).toEqual(frozen);
+    for (const changed of [guard.replace("== 0", ">= 0"), guard.replace("auth.uid", "vars.uid"), guard.replace("limit: 1", "limit: 0")]) {
+      expect(() => denyOnboarding(files(source.replace(guard, changed)))).toThrow("read guard");
+    }
+  });
+
   it.each([
     legacy.replace("CreateUserProfile", "SomethingElse"),
     legacy + legacy,

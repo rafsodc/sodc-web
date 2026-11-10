@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { isUserErasing } from "../../communicationErasureGuard";
 import {
   processAnnouncementEmailTask,
   type AnnouncementDeliveryRepository,
@@ -72,6 +73,21 @@ function harness(initialStatus: AnnouncementRecipientStatus = "queued") {
 }
 
 describe("processAnnouncementEmailTask", () => {
+  it("drops an erased member's delayed task before reading, recreating or sending a recipient", async () => {
+    const test = harness();
+    vi.mocked(isUserErasing).mockResolvedValueOnce(true);
+    await processAnnouncementEmailTask(task, {retryCount: 2}, {repository: test.repository, client: test.client});
+    expect(test.repository.get).not.toHaveBeenCalled();
+    expect(test.repository.createLegacyTaskRow).not.toHaveBeenCalled();
+    expect(test.sendEmail).not.toHaveBeenCalled();
+  });
+  it("treats a suppression marker racing legacy-row recreation as a completed task", async () => {
+    const test = harness();
+    vi.mocked(test.repository.get).mockResolvedValueOnce(null);
+    vi.mocked(test.repository.createLegacyTaskRow).mockRejectedValueOnce(new Error("ACCOUNT_ERASURE_IN_PROGRESS"));
+    await processAnnouncementEmailTask(task, {retryCount: 0}, {repository: test.repository, client: test.client});
+    expect(test.sendEmail).not.toHaveBeenCalled();
+  });
   it("sends attendee messages without a one-click unsubscribe header", async () => {
     const test = harness();
     const attendeeTask = { ...task };
