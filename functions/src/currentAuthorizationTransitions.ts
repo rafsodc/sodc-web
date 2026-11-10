@@ -254,7 +254,8 @@ export async function transitionUserSecurity(input: SecurityTransitionInput): Pr
   const operationId = input.operationId ?? randomUUID();
   const intentHash = securityIntentHash(input);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    if (await isUserErasing(input.userId) && input.reason !== "ACCOUNT_DELETION" &&
+    const deletionHold = input.reason === "ACCOUNT_DELETION" && input.authDisabled === true && input.admin !== true;
+    if (await isUserErasing(input.userId) && !deletionHold &&
         !(input.actorKind === "OPERATOR" && input.authDisabled === true && input.admin === false)) {
       throw new HttpsError("failed-precondition", "Account deletion is in progress.");
     }
