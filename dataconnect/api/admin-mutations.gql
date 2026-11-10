@@ -906,7 +906,10 @@ mutation CreateUser(
   $isCivilServant: Boolean
   $isIndustry: Boolean
   $now: Timestamp!
-) @auth(level: NO_ACCESS) {
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.erasure.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
+    erasure: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId}
+  }
   user_upsert(
     data: {
       id: $userId
@@ -1929,7 +1932,10 @@ mutation CreateNotificationDelivery(
   $provider: String
   $attemptCount: Int!
   $lastAttemptedAt: Timestamp
-) @auth(level: NO_ACCESS) {
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.subject.size() == 0 && response.query.recipient.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
+    subject: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId} recipient: accountErasures(where: {userId: {eq: $recipientUserId}}, limit: 1) {userId}
+  }
   notificationDelivery_insert(
     data: {
       channel: $channel
@@ -2637,7 +2643,12 @@ mutation CreateAnnouncementSendWithDeliveryMode(
   $replyToDisplayLabel: String
   $replyToEmailAddress: String
   $replyToNotifyUuid: String
-) @auth(level: NO_ACCESS) {
+  $recipientIds: [String!]! = []
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.erased.size() == 0 && (response.query.anyErasure.size() == 0 || vars.recipientIds.size() == vars.recipientCount + vars.skippedCount)", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
+    erased: accountErasures(where: {userId: {in: $recipientIds}}, limit: 1) {userId}
+    anyErasure: accountErasures(limit: 1) {userId}
+  }
   announcementSend_insert(data: {
     id: $id
     sectionId: $sectionId
@@ -2669,7 +2680,10 @@ mutation CreateAnnouncementRecipient(
   $skippedReason: String
   $sentAt: Timestamp
   $failureReason: String
-) @auth(level: NO_ACCESS) {
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.erasures.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
+    erasures: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId}
+  }
   announcementRecipient_insert(data: {
     id: $id
     announcementSendId: $announcementSendId
@@ -2700,7 +2714,10 @@ mutation CreateAnnouncementRecipientWithDeliveryMode(
   $sentAt: Timestamp
   $failureReason: String
   $effectiveDeliveryMode: GovNotifyDeliveryMode!
-) @auth(level: NO_ACCESS) {
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.erasures.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
+    erasures: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId}
+  }
   announcementRecipient_insert(data: {
     id: $id
     announcementSendId: $announcementSendId
@@ -3163,7 +3180,10 @@ mutation CreateNotifyDeliveryReceipt(
   $eventOrderingKey: String!
   $affectsBounceState: Boolean!
   $lastAttemptedAt: Timestamp!
-) @auth(level: NO_ACCESS) {
+) @auth(level: NO_ACCESS) @transaction {
+  query @redact @check(expr: "response.query.subject.size() == 0 && response.query.contacts.size() < 10000 && response.query.contacts.all(e, vars.userId != null && e.userId != vars.userId)", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
+    subject: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId} contacts: accountErasures(where: {emailHash: {eq: $recipientHash}}, limit: 10000) {userId}
+  }
   notifyDeliveryReceipt_insert(
     data: {
       id: $id

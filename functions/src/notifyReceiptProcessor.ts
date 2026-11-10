@@ -1,3 +1,4 @@
+import { isErasedContact, isErasureWriteDenied, isUserErasing } from "./communicationErasureGuard";
 import { createHash } from "node:crypto";
 import * as logger from "firebase-functions/logger";
 import {
@@ -588,15 +589,19 @@ export async function processNotifyReceipt(
     throw new Error("Notify receipt lease duration must be a positive number");
   }
 
+  const erasedReference = parseAnnouncementReference(receipt.reference);
+  if (erasedReference && await isUserErasing(erasedReference.recipientId)) return {outcome: "processed", attemptCount: 0};
   const affectsState = affectsBounceState(receipt.status);
-  const initialUser = affectsState ? await repository.findUserByEmail(receipt.to) : null;
-  const claim = await claimReceipt({
+  const initialUser = await repository.findUserByEmail(receipt.to);
+  if (await isErasedContact(receipt.to, initialUser?.id)) return {outcome: "processed", attemptCount: 0};
+  let claim;
+  try { claim = await claimReceipt({
     repository,
     receipt,
     userId: initialUser?.id ?? null,
     receivedAt,
     leaseMs,
-  });
+  }); } catch (error) { if (isErasureWriteDenied(error)) return {outcome: "processed", attemptCount: 0}; throw error; }
   if (claim.outcome !== "claimed") {
     return { outcome: claim.outcome, attemptCount: claim.record.attemptCount };
   }

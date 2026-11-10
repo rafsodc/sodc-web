@@ -22800,6 +22800,7 @@ export interface CreateAnnouncementSendWithDeliveryModeVariables {
   replyToDisplayLabel?: string | null;
   replyToEmailAddress?: string | null;
   replyToNotifyUuid?: string | null;
+  recipientIds?: string[];
 }
 ```
 ### Return Type
@@ -22835,13 +22836,14 @@ const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeli
   replyToDisplayLabel: ..., // optional
   replyToEmailAddress: ..., // optional
   replyToNotifyUuid: ..., // optional
+  recipientIds: ..., // optional
 };
 
 // Call the `createAnnouncementSendWithDeliveryMode()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createAnnouncementSendWithDeliveryMode(createAnnouncementSendWithDeliveryModeVars);
 // Variables can be defined inline as well.
-const { data } = await createAnnouncementSendWithDeliveryMode({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., audienceSummary: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., });
+const { data } = await createAnnouncementSendWithDeliveryMode({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., audienceSummary: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., recipientIds: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -22880,12 +22882,13 @@ const createAnnouncementSendWithDeliveryModeVars: CreateAnnouncementSendWithDeli
   replyToDisplayLabel: ..., // optional
   replyToEmailAddress: ..., // optional
   replyToNotifyUuid: ..., // optional
+  recipientIds: ..., // optional
 };
 
 // Call the `createAnnouncementSendWithDeliveryModeRef()` function to get a reference to the mutation.
 const ref = createAnnouncementSendWithDeliveryModeRef(createAnnouncementSendWithDeliveryModeVars);
 // Variables can be defined inline as well.
-const ref = createAnnouncementSendWithDeliveryModeRef({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., audienceSummary: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., });
+const ref = createAnnouncementSendWithDeliveryModeRef({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., audienceSummary: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., recipientIds: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);

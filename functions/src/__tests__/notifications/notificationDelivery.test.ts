@@ -10,6 +10,7 @@ import {
   type NotificationDeliveryRepository,
 } from "../../notificationDelivery";
 import { parseNotificationRecoveryPayload } from "../../notificationRecoveryPayload";
+import { isUserErasing } from "../../communicationErasureGuard";
 import { resolveRuntimeGovNotifyDeliveryMode } from "../../govNotifyDeliveryConfiguration";
 
 vi.mock("firebase-functions/logger", () => ({
@@ -164,6 +165,14 @@ function createRepository(initialRecords: StoredDelivery[] = []): {
 }
 
 describe("notificationDelivery", () => {
+  it("suppresses an erased subject before creating a ledger or invoking a provider", async () => {
+    const {repository, records} = createRepository();
+    const send = vi.fn();
+    vi.mocked(isUserErasing).mockResolvedValueOnce(true);
+    expect(await sendNotificationOnce({channel: NotificationChannel.EMAIL, notificationType: "MEMBERSHIP", deliveryKey: "erased", userId: "erased-user", send}, {repository})).toEqual({outcome: "skipped", reason: "ACCOUNT_ERASURE_IN_PROGRESS"});
+    expect(records.size).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(resolveRuntimeGovNotifyDeliveryMode).mockImplementation(async (requestedMode) => ({

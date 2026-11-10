@@ -2,6 +2,19 @@ import { vi } from "vitest";
 
 process.env.GOV_NOTIFY_DELIVERY_MODE = "LIVE";
 
+// External database suppression lookups default to no active erasure. Dedicated
+// tests override this boundary to exercise suppressed and racing requests.
+vi.mock("../communicationErasureGuard", async () => {
+  const {createHash} = await import("node:crypto");
+  return ({
+  isUserErasing: vi.fn(async () => false),
+  erasingUserIds: vi.fn(async () => new Set()),
+  isErasedContact: vi.fn(async () => false),
+  erasureEmailHash: (email: string) => createHash("sha256").update(email.trim().toLowerCase()).digest("hex"),
+  isErasureWriteDenied: (error: unknown) => String(error).includes("ACCOUNT_ERASURE_IN_PROGRESS"),
+  });
+});
+
 // Mock firebase-admin
 vi.mock("firebase-admin", () => ({
   auth: () => ({

@@ -28,7 +28,7 @@ Deploy Data Connect schema and connector changes before deploying Functions. Gen
 | `requestEmailChange` | 5 | 1 hour | Sensitive Firebase Auth action and GOV.UK Notify |
 | `getMyAuthorizationStatus` | 30 | 5 minutes | Own current session metadata, fresh Auth read and existing READY mirror repair |
 | `reconcileMyEmail` | 10 | 1 hour | Firebase Auth read and profile mutation |
-| `deleteAccount` | 10 | 1 hour | Account inventory and irreversible account deletion |
+| `deleteAccount` | 10 | 1 hour | Account inventory, communication erasure and irreversible account deletion |
 | `grantAdmin` | 20 | 1 hour | Firebase Auth claim write |
 | `revokeAdmin` | 20 | 1 hour | Firebase Auth enumeration and claim write |
 | `listAdminUsers` | 30 | 5 minutes | Firebase Auth enumeration |
@@ -87,7 +87,7 @@ Risk levels are relative to other authenticated callables in this application. â
 | `requestEmailChange` | High | Low | Firebase Auth, GOV.UK Notify | Medium | Enabled + recent authentication; current identity derived from Auth; 5/hour |
 | `getMyAuthorizationStatus` | Medium | None | Firebase Auth | Low | Authenticated own-session exception; no target UID/member data/grant; 30/5 minutes |
 | `reconcileMyEmail` | Medium | None | Firebase Auth | Low | Authenticated; verified Auth email copied to caller-owned profile; 10/hour |
-| `deleteAccount` | High | High | Firebase Auth and Data Connect | Very high | Current enabled admin; 10/hour; self/admin protection, preview, retention confirmation and transaction fences |
+| `deleteAccount` | High | High | Firebase Auth and Data Connect | Very high | Current enabled admin; 10/hour; self/admin protection, preview, retention confirmation, durable communication suppression, sender drain and transaction fences |
 | `grantAdmin` | High | Low | Firebase Auth | Medium | Admin + enabled; 20/hour |
 | `revokeAdmin` | High | Medium | Firebase Auth | Medium | Admin + enabled; 20/hour; last-admin guard |
 | `listAdminUsers` | Medium | High | Firebase Auth | Medium | Admin + enabled; 30/5 minutes |

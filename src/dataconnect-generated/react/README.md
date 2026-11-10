@@ -18383,6 +18383,7 @@ export interface CreateAnnouncementSendWithDeliveryModeVariables {
   replyToDisplayLabel?: string | null;
   replyToEmailAddress?: string | null;
   replyToNotifyUuid?: string | null;
+  recipientIds?: string[];
 }
 ```
 ### Return Type
@@ -18448,10 +18449,11 @@ export default function CreateAnnouncementSendWithDeliveryModeComponent() {
     replyToDisplayLabel: ..., // optional
     replyToEmailAddress: ..., // optional
     replyToNotifyUuid: ..., // optional
+    recipientIds: ..., // optional
   };
   mutation.mutate(createAnnouncementSendWithDeliveryModeVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., audienceSummary: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., });
+  mutation.mutate({ id: ..., sectionId: ..., templateUuid: ..., templateName: ..., sentBy: ..., recipientCount: ..., skippedCount: ..., audienceSummary: ..., recipientSnapshot: ..., requestedDeliveryMode: ..., siteDeliveryMode: ..., effectiveDeliveryMode: ..., replyToAddressId: ..., replyToDisplayLabel: ..., replyToEmailAddress: ..., replyToNotifyUuid: ..., recipientIds: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {

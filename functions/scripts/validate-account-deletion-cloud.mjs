@@ -22,7 +22,9 @@ const require = createRequire(import.meta.url);
 const {initializeApp, applicationDefault, getApps, deleteApp} = require("firebase-admin/app");
 const {getAuth} = require("firebase-admin/auth");
 const {getDataConnect} = require("firebase-admin/data-connect");
-initializeApp({projectId: "sodc-web", credential: applicationDefault()});
+// Dev worker identity, read from its deployed service configuration. Needed when
+// the operator uses user ADC rather than service-account credentials.
+initializeApp({projectId: "sodc-web", credential: applicationDefault(), serviceAccountId: "931675247602-compute@developer.gserviceaccount.com"});
 const auth = getAuth();
 const dc = getDataConnect({connector: "api", serviceId: "sodc-web-service", location: "europe-west2"});
 const security = require("../lib/securityRepository.js");
@@ -30,7 +32,11 @@ const transitions = require("../lib/currentAuthorizationTransitions.js");
 const {deleteAccount} = require("../lib/accountDeletion.js");
 const prefix = "deletion-validation-" + randomUUID();
 const fixtures = [];
-const notifications = [];
+const communications = [];
+const {getFunctions} = require("firebase-admin/functions");
+const {announcementErasureTaskIds} = require("../lib/accountCommunicationErasure.js");
+const {erasureEmailHash} = require("../lib/communicationErasureGuard.js");
+const queue = getFunctions().taskQueue("locations/europe-west2/functions/processAnnouncementEmail");
 let stage = "preflight", failed = false;
 function mark(value) {stage = value; console.log(`Validation stage: ${value}`);}
 
@@ -73,7 +79,59 @@ async function call(actor, target, extra = {}) {
   assert.ok(body.result, "Hosted callable returned no result");
   return body.result;
 }
+async function seedCommunications(actor, target) {
+  const section = randomUUID(), send = randomUUID(), own = randomUUID(), survivorId = randomUUID(), notification = randomUUID(), receipt = randomUUID();
+  const formerEmail = `${target.uid}-former@example.invalid`;
+  const task = {sendId: send, recipientId: target.uid, email: formerEmail, firstName: "Deletion", lastName: "Fixture", personalisation: {name: "Remove"}, templateUuid: randomUUID(), effectiveDeliveryMode: "SIMULATION"};
+  const survivor = {...task, recipientId: actor.uid, email: actor.email, personalisation: {name: "Keep", token: "preserve-exactly"}};
+  const fixture = {section, send, own, survivorId, notification, receipt, target, task, survivor, taskId: announcementErasureTaskIds(send, target.uid, "SIMULATION")[0]};
+  communications.push(fixture);
+  await dc.executeGraphql(`mutation SeedDeletionCommunications($section: UUID!, $send: UUID!, $own: UUID!, $survivor: UUID!, $notification: UUID!, $receipt: String!, $uid: String!, $actor: String!, $email: String!, $actorEmail: String!, $hash: String!, $snapshot: String!) {
+    section_insert(data: {id: $section, name: "Disposable deletion validation", type: MEMBERS, createdBy: "validation", updatedBy: "validation"})
+    announcementSend_insert(data: {id: $send, sectionId: $section, templateUuid: "validation", sentBy: $actor, recipientCount: 2, skippedCount: 0, effectiveDeliveryMode: SIMULATION, siteDeliveryMode: SIMULATION, requestedDeliveryMode: SIMULATION, recipientSnapshot: $snapshot})
+    own: announcementRecipient_insert(data: {id: $own, announcementSendId: $send, userId: $uid, email: $email, firstName: "Deletion", lastName: "Fixture", status: "queued", effectiveDeliveryMode: SIMULATION})
+    survivor: announcementRecipient_insert(data: {id: $survivor, announcementSendId: $send, userId: $actor, email: $actorEmail, firstName: "Deletion", lastName: "Fixture", status: "sent", effectiveDeliveryMode: SIMULATION})
+    notificationDelivery_insert(data: {id: $notification, channel: EMAIL, notificationType: "DELETION_VALIDATION", deliveryKey: $receipt, userId: $uid, status: SENT, createdBy: "validation", updatedBy: "validation"})
+    notifyDeliveryReceipt_insert(data: {id: $receipt, notifyStatus: "delivered", recipientHash: $hash, eventAt_expr: "request.time", eventOrderingKey: $receipt, affectsBounceState: false, processingStatus: PROCESSED, lastAttemptedAt_expr: "request.time", createdBy: "validation", updatedBy: "validation"})
+  }`, {variables: {section, send, own, survivor: survivorId, notification, receipt, uid: target.uid, actor: actor.uid, email: formerEmail, actorEmail: actor.email, hash: erasureEmailHash(formerEmail), snapshot: JSON.stringify({version: 1, tasks: [task, survivor], skippedRecipients: [], audienceSummary: "preserve summary"})}});
+  // Only the selected synthetic member gets a task, scheduled far in the future.
+  await queue.enqueue(task, {id: fixture.taskId, scheduleDelaySeconds: 3600, dispatchDeadlineSeconds: 60});
+}
+async function verifyCommunications() {
+  for (const item of communications) {
+    const result = await dc.executeGraphql(`query VerifyErasedCommunications($send: UUID!, $uid: String!, $receipt: String!, $notification: UUID!) {
+      announcementSend(id: $send) {recipientSnapshot recipientCount skippedCount}
+      announcementRecipients(where: {announcementSendId: {eq: $send}}) {id userId email status}
+      notificationDelivery(id: $notification) {id}
+      notifyDeliveryReceipt(id: $receipt) {id}
+      accountErasures(where: {userId: {eq: $uid}}) {emailHash completedAt}
+    }`, {variables: {send: item.send, uid: item.target.uid, receipt: item.receipt, notification: item.notification}});
+    assert.deepEqual(JSON.parse(result.data.announcementSend.recipientSnapshot), {version: 1, tasks: [item.survivor], skippedRecipients: [], audienceSummary: "preserve summary"});
+    assert.equal(result.data.announcementSend.recipientCount, 1);
+    assert.equal(result.data.announcementRecipients.length, 1);
+    assert.equal(result.data.announcementRecipients[0].id.replaceAll("-", ""), item.survivorId.replaceAll("-", ""));
+    assert.deepEqual({...result.data.announcementRecipients[0], id: undefined}, {id: undefined, userId: item.survivor.recipientId, email: item.survivor.email, status: "sent"});
+    assert.equal(result.data.notificationDelivery, null);
+    assert.equal(result.data.notifyDeliveryReceipt, null);
+    assert.ok(result.data.accountErasures.length >= 2 && result.data.accountErasures.every(row => row.completedAt));
+    await assert.rejects(queue.delete(item.taskId), error => ["functions/task-not-found", "functions/not-found"].includes(error.code));
+    const {processAnnouncementEmailTask} = require("../lib/announcementDelivery.js");
+    await processAnnouncementEmailTask(item.task, {retryCount: 0}, {repository: {get: () => {throw new Error("Erased task must not reach storage");}}, client: {sendEmail: () => {throw new Error("Erased task must not send");}}});
+    const sdk = require("@dataconnect/admin-generated");
+    await assert.rejects(sdk.createAnnouncementRecipient({id: randomUUID(), announcementSendId: item.send, userId: item.target.uid, email: item.task.email, firstName: "Deletion", lastName: "Fixture", status: "queued"}), /ACCOUNT_ERASURE_IN_PROGRESS/);
+  }
+  console.log("PASS: shared-recipient preservation, historical-address removal, task cancellation and late-task/write suppression.");
+}
 async function cleanup() {
+  for (const item of communications) {
+    try {await queue.delete(item.taskId);} catch (error) {if (!["functions/task-not-found", "functions/not-found"].includes(error.code)) throw error;}
+    await dc.executeGraphql(`mutation RemoveCommunicationFixture($send: UUID!, $section: UUID!, $receipt: String!) {
+      announcementRecipient_deleteMany(where: {announcementSendId: {eq: $send}})
+      announcementSend_delete(key: {id: $send})
+      section_delete(key: {id: $section})
+      notifyDeliveryReceipt_delete(key: {id: $receipt})
+    }`, {variables: {send: item.send, section: item.section, receipt: item.receipt}});
+  }
   for (const fixture of fixtures) {
     assert.ok(fixture.uid.startsWith(prefix + "-"));
     const state = (await security.getUserSecurityState({userId: fixture.uid})).data.userSecurityState;
@@ -88,6 +146,7 @@ async function cleanup() {
       callableRateLimitBucket_deleteMany(where: {userId: {eq: $uid}})
       callableInvocation_deleteMany(where: {userId: {eq: $uid}})
       securityTransition_deleteMany(where: {userId: {eq: $uid}})
+      accountErasure_deleteMany(where: {userId: {eq: $uid}})
       user_deleteMany(where: {id: {eq: $uid}})
     }`, {variables: {uid: fixture.uid, expectedStates: retired ? 1 : 0}});
     if (identity) await auth.deleteUser(fixture.uid);
@@ -97,8 +156,8 @@ async function cleanup() {
 try {
   const [control, roster, mode] = await Promise.all([security.getAdminSafetyControl(), security.listReadyAdministrators(), dc.executeGraphql("query ValidationEmailMode { govNotifyDeliveryConfiguration(key: {id: \"site-wide\"}) {mode} }")]);
   mark("preflight: non-live email mode");
-  // This runner invokes no mailer or membership-notification callable. Its only
-  // notification fixture is terminal SENT and can never be dispatched.
+  // No mailer is invoked. The queued synthetic task uses SIMULATION and is
+  // scheduled one hour ahead; cleanup always cancels it.
   assert.ok(["SIMULATION", "TEAM_TEST"].includes(mode.data.govNotifyDeliveryConfiguration?.mode));
   mark("preflight: admin safety control");
   assert.equal(control.data.adminSafetyControl?.status, "READY");
@@ -111,6 +170,8 @@ try {
   }
   mark("create disposable fixtures");
   const actor = await createFixture("actor", true), target = await createFixture("target", false);
+  mark("seed shared communications and cancellable task");
+  await seedCommunications(actor, target);
   if (transport === "browser") {
     mark("browser sign-in and deletion");
     const {chromium} = require("@playwright/test");
@@ -141,7 +202,7 @@ try {
       await dialog.getByRole("checkbox").check();
       assert.equal(await confirm.isEnabled(), true);
       await confirm.click();
-      await dialog.waitFor({state: "hidden", timeout: 120000});
+      await dialog.waitFor({state: "hidden", timeout: 540000});
       await page.getByText("Account deleted. Complete the separate external-record and backup erasure checks.").waitFor();
       await assert.rejects(auth.getUser(target.uid), {code: "auth/user-not-found"});
       assert.equal((await security.getUserSecurityState({userId: target.uid})).data.userSecurityState, null);
@@ -165,14 +226,11 @@ try {
   assert.equal((await call(actor, target)).eligible, true);
   assert.equal((await auth.getUser(target.uid)).disabled, false);
   mark("linked record blocker");
-  const notification = randomUUID(); notifications.push(notification);
-  await dc.executeGraphql(`mutation LinkedDeletionFixture($id: UUID!, $uid: String!, $key: String!) {
-    notificationDelivery_insert(data: {id: $id, channel: EMAIL, notificationType: "DELETION_VALIDATION", deliveryKey: $key, userId: $uid, status: SENT, createdBy: "validation", updatedBy: "validation"})
-  }`, {variables: {id: notification, uid: target.uid, key: notification}});
+  await dc.executeGraphql("mutation AddFinancialBlocker($uid: String!) {user_update(key: {id: $uid}, data: {stripeCustomerId: \"disposable-validation-no-provider-customer\"})}", {variables: {uid: target.uid}});
   assert.equal((await call(actor, target)).eligible, false);
   await assert.rejects(call(actor, target, {apply: true, noRetention: true}), {code: "failed-precondition"});
   assert.equal((await auth.getUser(target.uid)).disabled, false);
-  await dc.executeGraphql("mutation RemoveLinkedDeletionFixture($id: UUID!) {notificationDelivery_deleteMany(where: {id: {eq: $id}, notificationType: {eq: \"DELETION_VALIDATION\"}})}", {variables: {id: notification}});
+  await dc.executeGraphql("mutation RemoveFinancialBlocker($uid: String!) {user_update(key: {id: $uid}, data: {stripeCustomerId: null})}", {variables: {uid: target.uid}});
   mark("delete and verify");
   assert.equal((await call(actor, target, {apply: true, noRetention: true})).deleted, true);
   await assert.rejects(auth.getUser(target.uid), {code: "auth/user-not-found"});
@@ -180,13 +238,16 @@ try {
   assert.equal((await security.getUserSecurityState({userId: actor.uid})).data.userSecurityState.adminReady, true);
   console.log(`PASS: Dev backend (${transport}) with real Firebase tokens: authorization, preview, linked-record blocker, deletion, absence verification and repeated request.`);
   }
+  mark("verify communication erasure and suppression");
+  await verifyCommunications();
 } catch (error) {
   failed = true;
   console.error(`Validation error category: ${error.code ?? error.name ?? "unknown"}`);
+  console.error(String(error.message).slice(0, 600));
   console.error(`FAIL: Dev deletion validation at stage: ${stage}. Run prefix: ${prefix}`);
 } finally {
   try {await cleanup(); console.log("Disposable fixture cleanup verified.");}
-  catch {failed = true; console.error(`CLEANUP INCOMPLETE. Inspect only fixture prefix: ${prefix}`);}
+  catch (error) {failed = true; console.error(String(error.message).slice(0, 600)); console.error(`CLEANUP INCOMPLETE. Inspect only fixture prefix: ${prefix}`);}
   await Promise.all(getApps().map(app => deleteApp(app)));
   if (failed) process.exitCode = 1;
 }

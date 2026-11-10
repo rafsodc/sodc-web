@@ -1,3 +1,4 @@
+import { isUserErasing } from "./communicationErasureGuard";
 import { createHash, randomUUID } from "node:crypto";
 import * as admin from "firebase-admin";
 import { HttpsError } from "firebase-functions/v2/https";
@@ -253,6 +254,10 @@ export async function transitionUserSecurity(input: SecurityTransitionInput): Pr
   const operationId = input.operationId ?? randomUUID();
   const intentHash = securityIntentHash(input);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    if (await isUserErasing(input.userId) && input.reason !== "ACCOUNT_DELETION" &&
+        !(input.actorKind === "OPERATOR" && input.authDisabled === true && input.admin === false)) {
+      throw new HttpsError("failed-precondition", "Account deletion is in progress.");
+    }
     if (await replay(input, operationId)) return;
     const state = (await db.getUserSecurityState({userId: input.userId})).data.userSecurityState;
     if (!state) {
