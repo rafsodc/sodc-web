@@ -109,7 +109,7 @@ Read-only metadata checks against `sodc-web-production` found:
 | --- | --- | --- |
 | Cloud SQL automated backups | Standard backups, enabled, seven retained **successful backups**, midnight UTC window | Confirm that each pre-erasure backup has disappeared after seven newer successful backups; this is count-based, not a guaranteed seven-day expiry. |
 | Cloud SQL point-in-time recovery | Enabled; seven days of transaction logs in Cloud Storage | Confirm the earliest recoverable time has advanced beyond erasure. A configured window alone is not proof of physical deletion at an exact instant. |
-| Cloud SQL manual backups | Two successful on-demand snapshots, dated 12 August and 25 October 2026; no expiry shown | Require an owner and a disposal/retention decision. These shared backups were not deleted during this check. |
+| Cloud SQL manual backups | The two on-demand snapshots dated 12 August and 25 October 2026 were deleted on 10 November 2026 following explicit owner instruction | Post-deletion inventory confirmed no manual backups remained and all seven original successful automated backups were preserved. Review any new manual backup separately. |
 | Instance-deletion backup settings | Retain-on-delete false; final backup disabled | These settings do not expire the manual backups of a running instance. |
 | Announcement task queue | Running; four attempts, 30–120 second backoff | Verify selected tasks absent. Attempts/backoff do not bound future scheduled task lifetime; Cloud Tasks has a 31-day retention limit. |
 | Cloud Logging | Global `_Default` bucket 30 days; `_Required` bucket 400 days | Separate operational/security-log retention. Contents were not inspected; do not describe these as account data erased by the callable. |
@@ -117,10 +117,11 @@ Read-only metadata checks against `sodc-web-production` found:
 
 For an erasure on 10 November 2026, the daily-backup rollover is expected around
 17 November **only if seven subsequent backups succeed**. Recovery-log expiry
-must be checked separately after its seven-day window. The manual snapshots mean
-there is currently **no confirmed final backup-expiry date**. Keep restore
-exclusion in force until their disposition is resolved. Do not restore a shared
-backup merely to inspect this member's data.
+must be checked separately after its seven-day window. The manual snapshots no
+longer prevent rollover, but final backup erasure is still **not confirmed** until
+the remaining pre-erasure automated backups and recovery window are verified gone.
+Keep restore exclusion in force until then. Do not restore a shared backup merely
+to inspect this member's data.
 
 The bucket-name inventory did not establish that no database exports exist.
 Review export destinations, provider CSV downloads, operator copies and any
