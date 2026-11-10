@@ -63,6 +63,7 @@
     "createNotifyReplyToAddress",
     "createOrganiserGuestCheckout",
     "createTicketCheckoutSession",
+    "deleteAccount",
     "deleteSectionFile",
     "finalizeSectionFileReplacement",
     "finalizeSectionFileUpload",

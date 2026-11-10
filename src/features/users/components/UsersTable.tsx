@@ -40,6 +40,8 @@ interface UsersTableProps {
   mode: "edit" | "admin";
   /** When mode is "admin", show an edit control alongside grant/revoke actions. */
   onEdit?: (user: SearchUser) => void;
+  onDelete?: (user: SearchUser) => void;
+  currentUserId?: string;
   /** When set, shows an "Edit Groups" button (replaces row-click to open groups). */
   onEditGroups?: (user: SearchUser) => void;
   onGrantAdmin?: (userId: string) => void;
@@ -56,6 +58,8 @@ export default function UsersTable({
   users,
   mode,
   onEdit,
+  onDelete,
+  currentUserId,
   onEditGroups,
   onGrantAdmin,
   onRevokeAdmin,
@@ -235,6 +239,7 @@ export default function UsersTable({
             {editUserBtn}
             {editGroupsBtn}
             {adminButtons}
+            {onDelete && <Button color="error" size="small" disabled={disabled || isAdmin || user.uid === currentUserId} onClick={(event) => { event.stopPropagation(); onDelete(user); }}>Delete account</Button>}
           </Box>
         );
       }

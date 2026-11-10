@@ -23,6 +23,7 @@ import PaginationDisplay from "../../../shared/components/PaginationDisplay";
 import EditUserDialog from "../../profile/components/EditUserDialog";
 import PotentialLostMembers from "./PotentialLostMembers";
 import NewMembersReport from "./NewMembersReport";
+import DeleteAccountDialog from "./DeleteAccountDialog";
 import UserGroupMemberships from "./UserGroupMemberships";
 import { listAdminUsers } from "./listAdminUsers";
 import { grantAdminClaim, revokeAdminClaim } from "../../../shared/utils/firebaseFunctions";
@@ -69,6 +70,7 @@ export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsers
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<SearchUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<SearchUser | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchAdminUsers = useCallback(async () => {
@@ -303,6 +305,8 @@ export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsers
                 users={searchResults}
                 mode="admin"
                 onEdit={handleEdit}
+                onDelete={setDeletingUser}
+                currentUserId={auth.currentUser?.uid}
                 onEditGroups={(u) => setSelectedUserId(u.uid)}
                 onGrantAdmin={handleGrantAdmin}
                 onRevokeAdmin={handleRevokeAdmin}
@@ -391,6 +395,12 @@ export default function ManageUsers({ onBack, onCurrentUserUpdate }: ManageUsers
         onSave={handleSaveEdit}
         onSuccess={handleSuccessSnackbar}
       />
+      {deletingUser && <DeleteAccountDialog key={deletingUser.uid} user={deletingUser} onClose={() => setDeletingUser(null)} onDeleted={() => {
+        setDeletingUser(null);
+        setSelectedUserId(null);
+        setSuccessMessage("Account deleted. Complete the separate external-record and backup erasure checks.");
+        void refetchSearch();
+      }} />}
 
       <Snackbar
         open={!!successMessage}
