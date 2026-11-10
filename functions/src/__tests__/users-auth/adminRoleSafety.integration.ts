@@ -7,6 +7,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import type { DataConnect } from "firebase-admin/data-connect";
 import type { App } from "firebase-admin/app";
 import type * as SecuritySdk from "@dataconnect/security-admin-generated";
+import { deleteInactiveAccountMutation } from "../../accountDeletionDatabase";
+import { accountDeletionInventory } from "../../accountDeletionInventory";
 
 // No ordinary test setup or Auth impersonation supplies the mutation evidence.
 // These tests exercise actual SQL transactions in the runner's fresh local DB.
@@ -498,6 +500,58 @@ describe("actual independent-process administrator safety transactions", () => {
     expect(await state(applicant)).toBeNull();
     expect(await operation(String(request.variables.operationId))).toBeNull();
     expect(await control()).toEqual(before);
+    await assertCount(1);
+  });
+});
+
+describe("account deletion against actual disposable SQL", () => {
+  async function deletionFixture() {
+    const [actorId] = await initialize(1);
+    const uid = await seedUser("delete-target", false);
+    const op = operationId();
+    await dc.executeGraphql(`mutation HoldDeletion($uid: String!, $op: String!) {
+      userSecurityState_update(key: {userId: $uid}, data: {operationId: $op, accessReady: false, desiredEnabled: false})
+    }`, {variables: {uid, op}});
+    return {uid, email: `${uid}@example.test`, operationId: op, targetVersion: (await state(uid)).securityVersion,
+      actorId, actorVersion: (await state(actorId)).securityVersion};
+  }
+  it("accepts every inventory selection and primary-key ordering in the real schema", async () => {
+    await deletionFixture();
+    for (const table of accountDeletionInventory) {
+      const result = await dc.executeGraphqlRead<Record<string, unknown[]>, never>(`query ValidateDeletionInventory { ${table.collection}(orderBy: ${table.orderBy}, limit: 250, offset: 0) { ${table.selection} } }`);
+      expect(Array.isArray(result.data[table.collection]), table.name).toBe(true);
+    }
+  });
+  it("removes target metadata and profile while preserving the acting admin", async () => {
+    const variables = await deletionFixture();
+    await dc.executeGraphql(`mutation SeedDeletionCounters($uid: String!) {
+      callableInvocation_insert(data: {userId: $uid, functionName: "fixture", windowStart: "2026-01-01T00:00:00Z", count: 1})
+      callableRateLimitBucket_insert(data: {userId: $uid, functionName: "fixture", windowStart: "2026-01-01T00:00:00Z", count: 1})
+    }`, {variables: {uid: variables.uid}});
+    await dc.executeGraphql(deleteInactiveAccountMutation, {variables});
+    const result = await dc.executeGraphql<any, {uid: string}>(`query VerifyDeletion($uid: String!) {
+      users(where: {id: {eq: $uid}}) {id}
+      userSecurityStates(where: {userId: {eq: $uid}}) {userId}
+      callableInvocations(where: {userId: {eq: $uid}}) {userId}
+      callableRateLimitBuckets(where: {userId: {eq: $uid}}) {userId}
+      securityTransitions(where: {userId: {eq: $uid}}) {operationId}
+    }`, {variables: {uid: variables.uid}});
+    expect(Object.values(result.data).every(rows => Array.isArray(rows) && rows.length === 0)).toBe(true);
+    expect((await state(variables.actorId)).adminReady).toBe(true);
+    await assertCount(1);
+  });
+  it("rolls back target removal when the actor's authority version is stale", async () => {
+    const variables = await deletionFixture();
+    await expect(dc.executeGraphql(deleteInactiveAccountMutation, {variables: {...variables, actorVersion: variables.actorVersion + 1}})).rejects.toThrow();
+    expect((await state(variables.uid)).operationId).toBe(variables.operationId);
+    await assertCount(1);
+  });
+  it("rolls back deletion when the target changes or email confirmation is stale", async () => {
+    const variables = await deletionFixture();
+    for (const change of [{targetVersion: variables.targetVersion + 1}, {email: "different@example.test"}]) {
+      await expect(dc.executeGraphql(deleteInactiveAccountMutation, {variables: {...variables, ...change}})).rejects.toThrow();
+      expect((await state(variables.uid)).operationId).toBe(variables.operationId);
+    }
     await assertCount(1);
   });
 });
