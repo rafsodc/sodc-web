@@ -57,7 +57,11 @@ async function assertDeletionHold(uid: string, email: string, operationId: strin
   return state.securityVersion;
 }
 
-export const deleteMyAccount = onCall({region: FUNCTIONS_REGION, timeoutSeconds: 540}, async request => {
+// Explicit limits make first deployment reviewable without quota-dependent defaults.
+const selfDeletionOptions = {region: FUNCTIONS_REGION, timeoutSeconds: 540, memory: "256MiB", cpu: 1,
+  concurrency: 80, minInstances: 0, maxInstances: 20, ingressSettings: "ALLOW_ALL"} as const;
+
+export const deleteMyAccount = onCall(selfDeletionOptions, async request => {
   let erasureWriteStarted = false;
   let operationIdForLog: string | undefined;
   try {
