@@ -36,6 +36,7 @@ recreating records. Backups, provider-held messages and other external records
 still require separate operational review; the screen does not claim complete
 GDPR erasure.
 
+
 Roll out the schema and guarded connector operations first, then all announcement,
 notification, callback and security writers, then the new deletion callable and
 frontend. Do not enable deletion before those workers are updated. The deletion runtime
@@ -49,6 +50,88 @@ writers or exposing restored personal data.
 Use a restricted operator session and a case reference that contains no personal
 data. Record the request, identity verification, scope and retention decision in
 the restricted case system. Do not put the subject's details in Git or tickets.
+
+## Retention and erasure closure
+
+### Suppression record policy
+
+The operational target is to retain a completed `AccountErasure` record for
+**100 days after `completedAt`**, with a service-owner review by day 90. This is
+an operational policy choice, not a statutory retention period. It covers the
+31-day Cloud Tasks lifetime and Notify's configurable message-retention window
+of up to 90 days, with a margin for delayed processing. Message retention alone
+does not establish when every callback or manual replay source has ended.
+
+**Current implementation:** records have no TTL or automatic purge job. This
+policy requires manual disposition; writing it does not make records expire.
+Do not introduce a blind 100-day TTL while recoverable copies or replay sources
+remain. The service owner must record review and disposal in the restricted case
+record and arrange a separately reviewed purge when all conditions below hold:
+
+- Every marker for the UID has a completed deletion and profile-deletion timestamp;
+  Auth, the profile and owned active records remain absent.
+- Provider-held recipient/message data and outstanding delivery callbacks are
+  confirmed expired or removed. A published default is not service-specific proof.
+- Queued tasks are absent, their retention window has elapsed, and legacy imports,
+  downloaded reports and other replay sources have been reviewed.
+- All pre-erasure automated backups, recovery logs, manual backups and exports
+  capable of restoring the identity are expired or disposed of, or have been
+  irreversibly sanitised and verified. An old shared backup with no expiry fails
+  this condition.
+
+If a condition is unresolved at day 100, retain only the existing minimal marker
+under a named, documented exception. Record the reason, owner and next review
+within 30 days; repeat reviews until disposal is possible. Do not treat an open
+exception as approval for indefinite retention. Incomplete deletions are recovery
+work, not candidates for retention purging. Do not use the ledger for marketing,
+profiling or preventing a legitimate new registration under a different UID.
+
+A restore must remain isolated, with writers and callbacks disabled, until the
+current erasure ledger has been reapplied and erased identities removed from the
+restored data. A pre-erasure backup may not contain the ledger at all. The current
+application stores the ledger in Data Connect; it does not automatically maintain
+an independent disaster-recovery copy. Operators must have a current restricted
+case/ledger copy independent of the restored database. If that evidence is
+unavailable, do not open the restored service. This is a required operational
+restore gate, not an automated restore guarantee.
+
+The UID and unsalted email hash remain restricted pseudonymous personal data;
+hashing does not exempt them from retention review. The ICO requires retention to
+be justified and reviewed, and backup data awaiting replacement to be kept beyond
+use. See [storage limitation](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-protection-principles/a-guide-to-the-data-protection-principles/storage-limitation/)
+and [erasure and backups](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/individual-rights/right-to-erasure/).
+
+### Production retention settings checked on 10 November 2026
+
+Read-only metadata checks against `sodc-web-production` found:
+
+| Store | Observed setting | Closure requirement |
+| --- | --- | --- |
+| Cloud SQL automated backups | Standard backups, enabled, seven retained **successful backups**, midnight UTC window | Confirm that each pre-erasure backup has disappeared after seven newer successful backups; this is count-based, not a guaranteed seven-day expiry. |
+| Cloud SQL point-in-time recovery | Enabled; seven days of transaction logs in Cloud Storage | Confirm the earliest recoverable time has advanced beyond erasure. A configured window alone is not proof of physical deletion at an exact instant. |
+| Cloud SQL manual backups | The two on-demand snapshots dated 12 August and 25 October 2026 were deleted on 10 November 2026 following explicit owner instruction | Post-deletion inventory confirmed no manual backups remained and all seven original successful automated backups were preserved. Review any new manual backup separately. |
+| Instance-deletion backup settings | Retain-on-delete false; final backup disabled | These settings do not expire the manual backups of a running instance. |
+| Announcement task queue | Running; four attempts, 30–120 second backoff | Verify selected tasks absent. Attempts/backoff do not bound future scheduled task lifetime; Cloud Tasks has a 31-day retention limit. |
+| Cloud Logging | Global `_Default` bucket 30 days; `_Required` bucket 400 days | Separate operational/security-log retention. Contents were not inspected; do not describe these as account data erased by the callable. |
+| GOV.UK Notify | Service-specific setting and remaining recipient records require an authenticated dashboard check | Published default is seven days, configurable from three to 90 days. Do not substitute that default for the actual setting. |
+
+For an erasure on 10 November 2026, the daily-backup rollover is expected around
+17 November **only if seven subsequent backups succeed**. Recovery-log expiry
+must be checked separately after its seven-day window. The manual snapshots no
+longer prevent rollover, but final backup erasure is still **not confirmed** until
+the remaining pre-erasure automated backups and recovery window are verified gone.
+Keep restore exclusion in force until then. Do not restore a shared backup merely
+to inspect this member's data.
+
+The bucket-name inventory did not establish that no database exports exist.
+Review export destinations, provider CSV downloads, operator copies and any
+separately retained Auth exports in the restricted case process. No member names,
+addresses, UID values or email hashes belong in this document or a public PR.
+
+Sources: [Cloud SQL backup retention](https://docs.cloud.google.com/sql/docs/postgres/backup-recovery/backups),
+[Cloud Tasks retention](https://docs.cloud.google.com/tasks/docs/comp-pub-sub),
+[Notify retention](https://www.notifications.service.gov.uk/using-notify/data-retention-period).
+
 
 ## Legacy operator tool scope
 

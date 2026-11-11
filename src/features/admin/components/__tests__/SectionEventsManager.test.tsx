@@ -1622,6 +1622,7 @@ describe("SectionEventsManager", () => {
       await act(async () => managerNavigation(-1));
       expect(await screen.findByLabelText(/^title/i)).toHaveValue("Unsent event draft");
       await user.click(screen.getByRole("button",{name:"Cancel"}));
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
       await user.click(await screen.findByRole("link",{name:"Add event"}));
       expect(await screen.findByLabelText(/^title/i)).toHaveValue("");
     } finally { view.unmount(); uninstall(); }
@@ -1679,6 +1680,8 @@ describe("SectionEventsManager", () => {
         ? {section:{id:sectionId,events:[eventSaveResponse(latestCreateVariables(),true).data.saved.event]}}
         : {event:eventSaveResponse(latestCreateVariables(),true).data.saved.event}}) as never);
       await user.click(screen.getByRole("button",{name:"Load saved change"}));
+      // The closing portal keeps the page aria-hidden until its exit completes.
+      await waitFor(() => expect(screen.queryByRole("dialog", { hidden: true })).not.toBeInTheDocument(), { timeout: 5000 });
       expect(await screen.findByRole("link",{name:"Add event"})).toBeInTheDocument();
       expect(generated.createEventRef).toHaveBeenCalledOnce();
       expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
