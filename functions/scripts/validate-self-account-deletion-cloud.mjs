@@ -11,6 +11,31 @@ export const SELF_DELETION_REGION = "europe-west2";
 export const SELF_DELETION_CALLABLES = Object.freeze(["deleteMyAccount", "deleteAccount"]);
 const ROOT = `https://${SELF_DELETION_REGION}-${SELF_DELETION_PROJECT}.cloudfunctions.net`;
 const TYPE = "SELF_ACCOUNT_DELETION_VALIDATION";
+const TASK_WORKER_NAME = `projects/${SELF_DELETION_PROJECT}/locations/${SELF_DELETION_REGION}/functions/processAnnouncementEmail`;
+// Fixed Dev compute identity, also used by the existing admin validation runner.
+const TASK_SERVICE_ACCOUNT = "931675247602-compute@developer.gserviceaccount.com";
+
+export function validateSelfDeletionTaskWorker(metadata) {
+  if (metadata?.name !== TASK_WORKER_NAME || metadata?.state !== "ACTIVE" || metadata?.serviceConfig?.serviceAccountEmail !== TASK_SERVICE_ACCOUNT) {
+    throw new Error("Fixed Dev task worker resource, active state and runtime identity required.");
+  }
+  return TASK_SERVICE_ACCOUNT;
+}
+
+export function selfDeletionValidationErrorCategory(error) {
+  const categories = {
+    ERR_ASSERTION: "assertion",
+    "functions/invalid-argument": "task-invalid-argument",
+    "functions/permission-denied": "task-permission-denied",
+    "functions/unauthenticated": "task-unauthenticated",
+    "functions/unknown-error": "task-unknown-error",
+    "functions/internal-error": "task-internal-error",
+    "auth/insufficient-permission": "auth-permission-denied",
+    "app/invalid-credential": "credential-unavailable",
+  };
+  const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+  return typeof code === "string" && Object.hasOwn(categories, code) ? categories[code] : "unclassified";
+}
 
 /** Fail before SDK loading, ADC, fixture creation or network access. */
 export function validateSelfAccountDeletionEnvironment(env, args = []) {
@@ -61,7 +86,7 @@ export async function runSelfAccountDeletionValidation(env = process.env, args =
   const transitions = require("../lib/currentAuthorizationTransitions.js");
   const {announcementErasureTaskIds} = require("../lib/accountCommunicationErasure.js");
   const {erasureEmailHash} = require("../lib/communicationErasureGuard.js");
-  const queue = getFunctions().taskQueue(`locations/${options.region}/functions/processAnnouncementEmail`);
+  let queue;
   const prefix = `self-erasure-${randomUUID()}`;
   const fixtures = [], communications = [];
   let baselineCount, baselineAdministratorIds, stage = "preflight", failed = false;
@@ -249,6 +274,13 @@ export async function runSelfAccountDeletionValidation(env = process.env, args =
       assert.equal(response.error?.status, "UNAUTHENTICATED", "Hosted endpoint did not enforce sign-in");
       if (name === "deleteMyAccount") requireNotStartedRefusal(response, "UNAUTHENTICATED");
     }
+    mark("fixed Dev task worker resource and runtime identity");
+    const taskMetadata = await readCloud(`https://cloudfunctions.googleapis.com/v2/${TASK_WORKER_NAME}?fields=name,state,serviceConfig/serviceAccountEmail`);
+    const taskServiceAccount = validateSelfDeletionTaskWorker(taskMetadata);
+    // User ADC has no service-account email to infer. Bind task creation only to
+    // this verified Dev worker identity; default Auth/Data Connect apps stay intact.
+    const taskApp = initializeApp({projectId: options.projectId, credential, serviceAccountId: taskServiceAccount}, "self-account-deletion-validation-tasks");
+    queue = getFunctions(taskApp).taskQueue(`locations/${options.region}/functions/processAnnouncementEmail`);
     mark("non-live email mode and baseline administrator health");
     const [control, roster, mode] = await Promise.all([security.getAdminSafetyControl(), security.listReadyAdministrators(), dc.executeGraphql("query ValidationSelfDeletionEmailMode {govNotifyDeliveryConfiguration(key: {id: \"site-wide\"}) {mode}}")]);
     assert.ok(["SIMULATION", "TEAM_TEST"].includes(mode.data.govNotifyDeliveryConfiguration?.mode), "Dev email mode must be non-live");
@@ -349,12 +381,13 @@ export async function runSelfAccountDeletionValidation(env = process.env, args =
     await verifyAbsent(interrupted);
     assert.equal((await security.getUserSecurityState({userId: admin.uid})).data.userSecurityState.adminReady, true);
     console.log("PASS: real hosted NOT_STARTED details, recent sign-in refusal and administrator recovery of the actual interrupted SELF hold.");
-  } catch {
+  } catch (error) {
     failed = true;
+    console.error(`Validation failure category: ${selfDeletionValidationErrorCategory(error)}`);
     console.error(`FAIL: hosted self-deletion validation at stage: ${stage}. Synthetic run prefix: ${prefix}`);
   } finally {
     try {await cleanup(); console.log(fixtures.length ? "Synthetic fixture cleanup and baseline administrator count verified." : "No synthetic fixtures were created.");}
-    catch {failed = true; console.error(`CLEANUP INCOMPLETE: inspect only synthetic run prefix ${prefix}`);}
+    catch (error) {failed = true; console.error(`Cleanup failure category: ${selfDeletionValidationErrorCategory(error)}`); console.error(`CLEANUP INCOMPLETE: inspect only synthetic run prefix ${prefix}`);}
     await Promise.all(getApps().map(app => deleteApp(app)));
   }
   if (failed) throw new Error("Hosted self-deletion validation failed; see bounded stage and cleanup outcome.");

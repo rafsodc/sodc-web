@@ -6,12 +6,16 @@ let gate: (env: Record<string, string | undefined>, args?: string[]) => {project
 let run: (env: Record<string, string | undefined>, args?: string[]) => Promise<void>;
 let callableUrl: (name: string) => string;
 let notStarted: (response: unknown, status: string, code?: string) => void;
+let taskIdentity: (metadata: unknown) => string;
+let failureCategory: (error: unknown) => string;
 beforeAll(async () => {
   const runner = await import(pathToFileURL(resolve("scripts/validate-self-account-deletion-cloud.mjs")).href);
   gate = runner.validateSelfAccountDeletionEnvironment;
   run = runner.runSelfAccountDeletionValidation;
   callableUrl = runner.selfDeletionCallableUrl;
   notStarted = runner.requireNotStartedRefusal;
+  taskIdentity = runner.validateSelfDeletionTaskWorker;
+  failureCategory = runner.selfDeletionValidationErrorCategory;
 });
 const safe = {RUN_SELF_ACCOUNT_DELETION_VALIDATION: "1", SELF_ACCOUNT_DELETION_PROJECT: "sodc-web", SELF_ACCOUNT_DELETION_CONFIRM: "sodc-web"};
 
@@ -67,5 +71,32 @@ describe("hosted self-deletion validation boundary", () => {
       {error: {status: "FAILED_PRECONDITION", details: {deletionStatus: "NOT_STARTED", code: "ACCOUNT_DELETION_INCOMPLETE"}}},
       {result: {deleted: true}, error: {status: "FAILED_PRECONDITION", details: {deletionStatus: "NOT_STARTED", code: "ACCOUNT_CHANGED"}}},
     ]) expect(() => notStarted(response, "FAILED_PRECONDITION", "ACCOUNT_CHANGED")).toThrow();
+  });
+});
+
+
+describe("hosted validation task identity", () => {
+  const worker = {name: "projects/sodc-web/locations/europe-west2/functions/processAnnouncementEmail", state: "ACTIVE",
+    serviceConfig: {serviceAccountEmail: "931675247602-compute@developer.gserviceaccount.com"}};
+  it("accepts only the active fixed Dev worker's exact runtime identity", () => {
+    expect(taskIdentity(worker)).toBe("931675247602-compute@developer.gserviceaccount.com");
+  });
+  it.each([
+    undefined, {}, {...worker, name: "projects/sodc-web-production/locations/europe-west2/functions/processAnnouncementEmail"},
+    {...worker, name: "projects/sodc-web/locations/us-central1/functions/processAnnouncementEmail"},
+    {...worker, name: "projects/sodc-web/locations/europe-west2/functions/deleteMyAccount"},
+    {...worker, state: "DEPLOYING"}, {...worker, serviceConfig: {}},
+    {...worker, serviceConfig: {serviceAccountEmail: "123456789-compute@developer.gserviceaccount.com"}},
+    {...worker, serviceConfig: {serviceAccountEmail: "other@sodc-web.iam.gserviceaccount.com"}},
+    {...worker, serviceConfig: {serviceAccountEmail: "931675247602-compute@developer.gserviceaccount.com.attacker.example"}},
+  ])("rejects missing, unrelated or changed task metadata %j", metadata => {
+    expect(() => taskIdentity(metadata)).toThrow("Fixed Dev task worker");
+  });
+  it("reports only bounded static failure categories", () => {
+    expect(failureCategory({code: "functions/invalid-argument", message: "private provider detail"})).toBe("task-invalid-argument");
+    expect(failureCategory({code: "functions/permission-denied"})).toBe("task-permission-denied");
+    expect(failureCategory({code: "functions/unknown-error", message: "credential details"})).toBe("task-unknown-error");
+    expect(failureCategory({code: "ERR_ASSERTION", actual: "private data"})).toBe("assertion");
+    for (const error of [new Error("private credential detail"), {code: "credential-secret-value"}, {code: "__proto__"}, null]) expect(failureCategory(error)).toBe("unclassified");
   });
 });
