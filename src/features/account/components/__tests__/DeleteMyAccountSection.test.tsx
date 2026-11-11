@@ -385,4 +385,47 @@ describe("DeleteMyAccountSection", () => {
     expect(screen.getByText("Contact an administrator to request deletion of this account.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Delete my account" })).not.toBeInTheDocument();
   });
+
+  it("requires fresh email, password and membership acknowledgement after a refused attempt", async () => {
+    mocks.call.mockResolvedValueOnce({ data: { eligible: true } })
+      .mockRejectedValueOnce({ details: { code: "ACCOUNT_CHANGED", deletionStatus: "NOT_STARTED" } })
+      .mockResolvedValueOnce({ data: { eligible: true } });
+    render(<DeleteMyAccountSection user={member()} isAdmin={false} />);
+    const user = await openAndCheck(); await confirmDeletion(user);
+    await user.click(screen.getByRole("button", { name: "Permanently delete my account" }));
+    await screen.findByText(/This deletion request was not started because your account changed/);
+    await user.click(screen.getByRole("button", { name: "Check account" }));
+    expect(await screen.findByLabelText("Type your account email to confirm")).toHaveValue("");
+    expect(screen.getByLabelText("Current password for account deletion")).toHaveValue("");
+    expect(screen.getByRole("checkbox", { name: /I understand that deleting my account will end my membership/ })).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "Permanently delete my account" })).toBeDisabled();
+    expect(mocks.call).toHaveBeenCalledTimes(3);
+  });
+
+  it("delivers authorization recovery while retaining uncertainty when no not-started proof exists", async () => {
+    const result = deferred<never>();
+    mocks.call.mockResolvedValueOnce({ data: { eligible: true } }).mockReturnValueOnce(result.promise);
+    const lifecycle = createSessionLifecycle(); lifecycle.observe("member-1");
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    const uninstall = installSessionRuntime({ lifecycle, retire: vi.fn(), signOut });
+    const session = captureSession("member-1");
+    const delivered = vi.fn();
+    const unsubscribe = subscribeAuthorizationDenials(delivered);
+    const error = { code: "functions/permission-denied", details: { code: "ACCESS_REVOKED" } };
+    try {
+      render(<DeleteMyAccountSection user={member()} isAdmin={false} />);
+      const user = await openAndCheck(); await confirmDeletion(user);
+      await user.click(screen.getByRole("button", { name: "Permanently delete my account" }));
+      await screen.findByRole("status");
+      await act(async () => result.reject(error));
+      expect(delivered).toHaveBeenCalledOnce();
+      expect(delivered).toHaveBeenCalledWith({ error, session });
+      expect(privateReadsBlocked(session)).toBe(true);
+      expect(authorizationUpdatePending(session)).toBe(false);
+      expect(await screen.findByText(/Deletion could not be confirmed/)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+      expect(signOut).not.toHaveBeenCalled();
+    } finally { unsubscribe(); resumeAuthorizationReads(session); uninstall(); }
+  });
+
 });
