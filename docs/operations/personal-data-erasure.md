@@ -55,36 +55,44 @@ the restricted case system. Do not put the subject's details in Git or tickets.
 
 ### Suppression record policy
 
-The operational target is to retain a completed `AccountErasure` record for
-**100 days after `completedAt`**, with a service-owner review by day 90. This is
-an operational policy choice, not a statutory retention period. It covers the
-31-day Cloud Tasks lifetime and Notify's configurable message-retention window
-of up to 90 days, with a margin for delayed processing. Message retention alone
-does not establish when every callback or manual replay source has ended.
+The service-owner-approved retention target for a completed `AccountErasure`
+record is **30 days after `completedAt`**, with a service-owner review by day 25.
+The service owner approved this period on 11 November 2026 and confirmed that
+Notify expires this service's data after 30 days. This is an operational policy
+choice, not a statutory retention period. Disposal remains subject to the
+conditions below: provider retention alone does not establish when every task,
+callback or manual replay source has ended.
 
 **Current implementation:** records have no TTL or automatic purge job. This
 policy requires manual disposition; writing it does not make records expire.
-Do not introduce a blind 100-day TTL while recoverable copies or replay sources
+Do not introduce a blind 30-day TTL while recoverable copies or replay sources
 remain. The service owner must record review and disposal in the restricted case
 record and arrange a separately reviewed purge when all conditions below hold:
 
 - Every marker for the UID has a completed deletion and profile-deletion timestamp;
   Auth, the profile and owned active records remain absent.
-- Provider-held recipient/message data and outstanding delivery callbacks are
-  confirmed expired or removed. A published default is not service-specific proof.
-- Queued tasks are absent, their retention window has elapsed, and legacy imports,
-  downloaded reports and other replay sources have been reviewed.
+- Provider-held recipient/message data has reached its confirmed expiry date or
+  was removed, and outstanding delivery callbacks are resolved. For Notify, use
+  the owner-confirmed 30-day period from the last relevant provider submission;
+  no further dashboard check of that setting is required.
+- All affected queued tasks are confirmed cancelled or absent, or their maximum
+  retention window has elapsed. Cloud Tasks can retain a task for 31 days, so
+  the 30-day target alone is insufficient if task cancellation or absence is
+  unconfirmed. Legacy imports, downloaded reports and other replay sources have
+  also been reviewed.
 - All pre-erasure automated backups, recovery logs, manual backups and exports
   capable of restoring the identity are expired or disposed of, or have been
   irreversibly sanitised and verified. An old shared backup with no expiry fails
   this condition.
 
-If a condition is unresolved at day 100, retain only the existing minimal marker
+If a condition is unresolved at day 30, retain only the existing minimal marker
 under a named, documented exception. Record the reason, owner and next review
 within 30 days; repeat reviews until disposal is possible. Do not treat an open
-exception as approval for indefinite retention. Incomplete deletions are recovery
-work, not candidates for retention purging. Do not use the ledger for marketing,
-profiling or preventing a legitimate new registration under a different UID.
+exception as approval for indefinite retention. Apply the same disposal decision
+to independent case/ledger copies of the UID and email hashes. Incomplete
+deletions are recovery work, not candidates for retention purging. Do not use the
+ledger for marketing, profiling or preventing a legitimate new registration under
+a different UID.
 
 A restore must remain isolated, with writers and callbacks disabled, until the
 current erasure ledger has been reapplied and erased identities removed from the
@@ -101,9 +109,11 @@ be justified and reviewed, and backup data awaiting replacement to be kept beyon
 use. See [storage limitation](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-protection-principles/a-guide-to-the-data-protection-principles/storage-limitation/)
 and [erasure and backups](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/individual-rights/right-to-erasure/).
 
-### Production retention settings checked on 10 November 2026
+### Production retention settings and evidence
 
-Read-only metadata checks against `sodc-web-production` found:
+Read-only metadata checks against `sodc-web-production` on 10 November 2026 found
+the settings below. Notify's service-specific retention period was confirmed by
+the service owner on 11 November 2026.
 
 | Store | Observed setting | Closure requirement |
 | --- | --- | --- |
@@ -113,7 +123,7 @@ Read-only metadata checks against `sodc-web-production` found:
 | Instance-deletion backup settings | Retain-on-delete false; final backup disabled | These settings do not expire the manual backups of a running instance. |
 | Announcement task queue | Running; four attempts, 30–120 second backoff | Verify selected tasks absent. Attempts/backoff do not bound future scheduled task lifetime; Cloud Tasks has a 31-day retention limit. |
 | Cloud Logging | Global `_Default` bucket 30 days; `_Required` bucket 400 days | Separate operational/security-log retention. Contents were not inspected; do not describe these as account data erased by the callable. |
-| GOV.UK Notify | Service-specific setting and remaining recipient records require an authenticated dashboard check | Published default is seven days, configurable from three to 90 days. Do not substitute that default for the actual setting. |
+| GOV.UK Notify | Service owner confirmed on 11 November 2026 that this service expires data after 30 days | Record expiry from the last relevant provider submission and allow the 30-day period to elapse; no further dashboard check of the setting is required. Resolve any outstanding callbacks or separately retained exports before suppression disposal. |
 
 For an erasure on 10 November 2026, the daily-backup rollover is expected around
 17 November **only if seven subsequent backups succeed**. Recovery-log expiry
