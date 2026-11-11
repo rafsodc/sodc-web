@@ -198,6 +198,10 @@ fixture access. Build Functions before a real run. Existing baseline administrat
 health and a non-live Dev email mode are checked before fixture creation. The
 runner uses random synthetic identities, real password sign-ins and verified
 Firebase ID tokens; it never prints passwords, tokens or baseline identities.
+Task fixtures use a separate task-only app bound to the active, fixed Dev worker's
+verified service account; the operator's credential permissions remain unchanged.
+Long callable requests use an explicit 540-second HTTPS/socket deadline so a
+shorter default fetch header timeout cannot cut off the required sender drain.
 
 The hosted checks cover NOT_STARTED refusal details, authorization changes,
 retention review, rate limiting and an actually aged sign-in refreshed without

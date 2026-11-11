@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import {randomBytes, randomUUID} from "node:crypto";
 import {createRequire} from "node:module";
+import {request as httpsRequest} from "node:https";
 import path from "node:path";
 import process from "node:process";
 import {fileURLToPath} from "node:url";
@@ -9,6 +10,9 @@ import {fileURLToPath} from "node:url";
 export const SELF_DELETION_PROJECT = "sodc-web";
 export const SELF_DELETION_REGION = "europe-west2";
 export const SELF_DELETION_CALLABLES = Object.freeze(["deleteMyAccount", "deleteAccount"]);
+export const SELF_DELETION_CALLABLE_TIMEOUT_MS = 540000;
+const MAX_CALLABLE_REQUEST_BYTES = 16384;
+const MAX_CALLABLE_RESPONSE_BYTES = 65536;
 const ROOT = `https://${SELF_DELETION_REGION}-${SELF_DELETION_PROJECT}.cloudfunctions.net`;
 const TYPE = "SELF_ACCOUNT_DELETION_VALIDATION";
 const TASK_WORKER_NAME = `projects/${SELF_DELETION_PROJECT}/locations/${SELF_DELETION_REGION}/functions/processAnnouncementEmail`;
@@ -32,6 +36,12 @@ export function selfDeletionValidationErrorCategory(error) {
     "functions/internal-error": "task-internal-error",
     "auth/insufficient-permission": "auth-permission-denied",
     "app/invalid-credential": "credential-unavailable",
+    SELF_DELETION_TRANSPORT_FAILED: "hosted-transport-failed",
+    SELF_DELETION_TRANSPORT_TIMEOUT: "hosted-transport-timeout",
+    SELF_DELETION_REQUEST_INVALID: "hosted-request-invalid",
+    SELF_DELETION_RESPONSE_INVALID: "hosted-response-invalid",
+    SELF_DELETION_RESPONSE_TOO_LARGE: "hosted-response-too-large",
+    SELF_DELETION_OUTCOME_UNCERTAIN: "hosted-outcome-uncertain",
   };
   const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
   return typeof code === "string" && Object.hasOwn(categories, code) ? categories[code] : "unclassified";
@@ -57,6 +67,115 @@ export function validateSelfAccountDeletionEnvironment(env, args = []) {
 export function selfDeletionCallableUrl(name) {
   if (!SELF_DELETION_CALLABLES.includes(name)) throw new Error("Unsupported validation callable.");
   return `${ROOT}/${name}`;
+}
+
+function callableDeadline(milliseconds) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), milliseconds);
+  timer.unref();
+  return {signal: controller.signal, cancel: () => clearTimeout(timer)};
+}
+
+function callableTransportError(code) {
+  return Object.assign(new Error("Hosted callable transport did not complete."), {code});
+}
+
+/** Native HTTPS has no Undici five-minute header deadline. The fixed target,
+ * owned whole-request deadline and socket timeout cover the full sender drain. */
+export async function requestSelfDeletionCallable(name, data, idToken, {requestImpl = httpsRequest, deadlineFactory = callableDeadline} = {}) {
+  const url = new URL(selfDeletionCallableUrl(name));
+  let payload;
+  try {payload = JSON.stringify({data});}
+  catch {throw callableTransportError("SELF_DELETION_REQUEST_INVALID");}
+  if (Buffer.byteLength(payload) > MAX_CALLABLE_REQUEST_BYTES) throw callableTransportError("SELF_DELETION_REQUEST_INVALID");
+  return new Promise((resolve, reject) => {
+    let request, response, deadline, settled = false, ended = false;
+    const chunks = [];
+    let bytes = 0;
+    const abort = () => fail("SELF_DELETION_TRANSPORT_TIMEOUT");
+    const cancelDeadline = () => {
+      deadline?.signal.removeEventListener("abort", abort);
+      deadline?.cancel();
+    };
+    const fail = code => {
+      if (settled) return;
+      settled = true;
+      cancelDeadline();
+      response?.destroy();
+      request?.destroy();
+      reject(callableTransportError(code));
+    };
+    try {
+      deadline = deadlineFactory(SELF_DELETION_CALLABLE_TIMEOUT_MS);
+      if (deadline.signal.aborted) {fail("SELF_DELETION_TRANSPORT_TIMEOUT"); return;}
+      deadline.signal.addEventListener("abort", abort, {once: true});
+      request = requestImpl(url, {
+        method: "POST", agent: false, timeout: SELF_DELETION_CALLABLE_TIMEOUT_MS, signal: deadline.signal,
+        headers: {"Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload), ...(idToken ? {Authorization: `Bearer ${idToken}`} : {})},
+      }, incoming => {
+        response = incoming;
+        const status = incoming.statusCode;
+        const contentType = incoming.headers["content-type"];
+        // Native HTTPS never follows redirects, and a redirect is not a valid
+        // callable response even if it happens to contain JSON.
+        if (!Number.isInteger(status) || status < 200 || status >= 600 || (status >= 300 && status < 400) ||
+            typeof contentType !== "string" || !/^application\/json(?:\s*;|$)/i.test(contentType)) {
+          fail("SELF_DELETION_RESPONSE_INVALID"); return;
+        }
+        if (Number(incoming.headers["content-length"]) > MAX_CALLABLE_RESPONSE_BYTES) {fail("SELF_DELETION_RESPONSE_TOO_LARGE"); return;}
+        incoming.on("error", () => fail("SELF_DELETION_TRANSPORT_FAILED"));
+        incoming.on("aborted", () => fail("SELF_DELETION_TRANSPORT_FAILED"));
+        incoming.on("close", () => {if (!ended) fail("SELF_DELETION_TRANSPORT_FAILED");});
+        incoming.on("data", chunk => {
+          if (settled) return;
+          const value = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          bytes += value.length;
+          if (bytes > MAX_CALLABLE_RESPONSE_BYTES) {fail("SELF_DELETION_RESPONSE_TOO_LARGE"); return;}
+          chunks.push(value);
+        });
+        incoming.on("end", () => {
+          ended = true;
+          if (settled) return;
+          let body;
+          try {body = JSON.parse(Buffer.concat(chunks, bytes).toString("utf8"));}
+          catch {fail("SELF_DELETION_RESPONSE_INVALID"); return;}
+          const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
+          const hasResult = object(body) && Object.hasOwn(body, "result");
+          const hasError = object(body) && Object.hasOwn(body, "error");
+          if (!object(body) || hasResult === hasError ||
+              (hasResult && (status >= 300 || !object(body.result))) ||
+              (hasError && (!object(body.error) || typeof body.error.status !== "string"))) {
+            fail("SELF_DELETION_RESPONSE_INVALID"); return;
+          }
+          settled = true;
+          cancelDeadline();
+          resolve(body);
+        });
+      });
+      request.on("error", () => fail("SELF_DELETION_TRANSPORT_FAILED"));
+      request.on("timeout", () => fail("SELF_DELETION_TRANSPORT_TIMEOUT"));
+      request.setTimeout(SELF_DELETION_CALLABLE_TIMEOUT_MS);
+      request.end(payload);
+    } catch {fail("SELF_DELETION_TRANSPORT_FAILED");}
+  });
+}
+
+export function knownSelfDeletionOutcome(body) {
+  if (body?.result?.deleted === true && body.error === undefined) return true;
+  return body?.result === undefined && typeof body?.error?.status === "string" &&
+    (body.error.details?.deletionStatus === "NOT_STARTED" || body.error.details?.code === "ACCOUNT_DELETION_INCOMPLETE");
+}
+
+export async function awaitSelfDeletionHostedOutcomes(requests, started, {now = Date.now, wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))} = {}) {
+  const outcomes = await Promise.allSettled(requests);
+  if (outcomes.some(outcome => outcome.status === "rejected" || !knownSelfDeletionOutcome(outcome.value))) {
+    // A transport failure or unproven gateway error does not establish that the
+    // server stopped. Do not let fixture cleanup race its full runtime budget.
+    const remaining = started + 570000 - now();
+    if (remaining > 0) await wait(remaining);
+    throw callableTransportError("SELF_DELETION_OUTCOME_UNCERTAIN");
+  }
+  return outcomes.map(outcome => outcome.value);
 }
 
 export function requireNotStartedRefusal(response, status, code) {
@@ -101,14 +220,7 @@ export async function runSelfAccountDeletionValidation(env = process.env, args =
   }
   async function call(name, actor, data) {
     if (actor) own(actor);
-    const response = await fetch(selfDeletionCallableUrl(name), {
-      method: "POST", headers: {"Content-Type": "application/json", ...(actor ? {Authorization: `Bearer ${actor.idToken}`} : {})},
-      body: JSON.stringify({data}), signal: AbortSignal.timeout(540000),
-    });
-    assert.ok(response.headers.get("content-type")?.includes("application/json"), "Hosted endpoint missing or non-callable response");
-    const body = await response.json();
-    assert.ok(body && typeof body === "object" && ((response.ok && body.result) || body.error), "Unexpected hosted callable response");
-    return body;
+    return requestSelfDeletionCallable(name, data, actor?.idToken);
   }
   const self = (actor, extra = {}) => call("deleteMyAccount", actor, {email: actor.email, operationId: randomUUID(), apply: false, ...extra});
   const erase = (actor, extra = {}) => self(actor, {apply: true, confirmMembershipEnd: true, ...extra});
@@ -340,16 +452,7 @@ export async function runSelfAccountDeletionValidation(env = process.env, args =
     await Promise.all([signIn(success), signIn(interrupted)]);
     mark("hosted self deletion and real interruption: waiting for at least 330-second drain");
     const started = Date.now();
-    const outcomes = await Promise.allSettled([erase(success), erase(interrupted)]);
-    if (outcomes.some(outcome => outcome.status === "rejected")) {
-      // A transport failure does not prove that the server stopped. Both calls
-      // have settled locally; allow the full server budget plus a margin before
-      // cleanup can alter their synthetic state. No request is retried.
-      const remaining = started + 570000 - Date.now();
-      if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining));
-      throw new Error("Hosted request transport outcome uncertain");
-    }
-    const [completed, partial] = outcomes.map(outcome => outcome.value);
+    const [completed, partial] = await awaitSelfDeletionHostedOutcomes([erase(success), erase(interrupted)], started);
     const elapsed = Date.now() - started;
     assert.ok(elapsed < 540000, "Hosted requests exceeded the540-second budget");
     assert.equal(completed.result?.deleted, true, "Hosted self deletion was not confirmed");
@@ -376,7 +479,10 @@ export async function runSelfAccountDeletionValidation(env = process.env, args =
 
     mark("settle owned lease and recover via hosted administrator callable");
     await dc.executeGraphql("mutation SettleOwnedSelfDeletionLease($id: UUID!, $uid: String!, $type: String!) {notificationDelivery_updateMany(where: {id: {eq: $id}, userId: {eq: $uid}, notificationType: {eq: $type}, status: {eq: PENDING}, recoveryPayload: {isNull: true}}, data: {status: SENT, sentAt_expr: \"request.time\"}) @check(expr: \"this == 1\", message: \"FIXTURE_LEASE_CHANGED\")}", {variables: {id: notification, uid: interrupted.uid, type: TYPE}});
-    const recovered = await call("deleteAccount", admin, {uid: interrupted.uid, email: interrupted.email, operationId: randomUUID(), apply: true, noRetention: true});
+    const recoveryStarted = Date.now();
+    const [recovered] = await awaitSelfDeletionHostedOutcomes([
+      call("deleteAccount", admin, {uid: interrupted.uid, email: interrupted.email, operationId: randomUUID(), apply: true, noRetention: true}),
+    ], recoveryStarted);
     assert.equal(recovered.result?.deleted, true, "Hosted admin could not recover interrupted SELF deletion");
     await verifyAbsent(interrupted);
     assert.equal((await security.getUserSecurityState({userId: admin.uid})).data.userSecurityState.adminReady, true);
