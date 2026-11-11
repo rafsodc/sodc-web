@@ -15,6 +15,10 @@ const MAX_CALLABLE_REQUEST_BYTES = 16384;
 const MAX_CALLABLE_RESPONSE_BYTES = 65536;
 const ROOT = `https://${SELF_DELETION_REGION}-${SELF_DELETION_PROJECT}.cloudfunctions.net`;
 const TYPE = "SELF_ACCOUNT_DELETION_VALIDATION";
+export const settleSelfDeletionLeaseMutation = `mutation SettleOwnedSelfDeletionLease($id: UUID!, $uid: String!, $type: String!) @transaction {
+  notificationDelivery_updateMany(where: {id: {eq: $id}, userId: {eq: $uid}, notificationType: {eq: $type}, status: {eq: PENDING}, recoveryPayload: {isNull: true}},
+    data: {status: SENT, sentAt_expr: "request.time"}) @check(expr: "this == 1", message: "FIXTURE_LEASE_CHANGED")
+}`;
 const TASK_WORKER_NAME = `projects/${SELF_DELETION_PROJECT}/locations/${SELF_DELETION_REGION}/functions/processAnnouncementEmail`;
 // Fixed Dev compute identity, also used by the existing admin validation runner.
 const TASK_SERVICE_ACCOUNT = "931675247602-compute@developer.gserviceaccount.com";
@@ -477,13 +481,15 @@ export async function runSelfAccountDeletionValidation(env = process.env, args =
     requireNotStartedRefusal(await erase(recent), "FAILED_PRECONDITION", "RECENT_LOGIN_REQUIRED");
     await verifyNoErasure(recent);
 
-    mark("settle owned lease and recover via hosted administrator callable");
-    await dc.executeGraphql("mutation SettleOwnedSelfDeletionLease($id: UUID!, $uid: String!, $type: String!) {notificationDelivery_updateMany(where: {id: {eq: $id}, userId: {eq: $uid}, notificationType: {eq: $type}, status: {eq: PENDING}, recoveryPayload: {isNull: true}}, data: {status: SENT, sentAt_expr: \"request.time\"}) @check(expr: \"this == 1\", message: \"FIXTURE_LEASE_CHANGED\")}", {variables: {id: notification, uid: interrupted.uid, type: TYPE}});
+    mark("settle only the owned synthetic pending lease");
+    await dc.executeGraphql(settleSelfDeletionLeaseMutation, {variables: {id: notification, uid: interrupted.uid, type: TYPE}});
+    mark("recover interrupted self deletion via hosted administrator callable");
     const recoveryStarted = Date.now();
     const [recovered] = await awaitSelfDeletionHostedOutcomes([
       call("deleteAccount", admin, {uid: interrupted.uid, email: interrupted.email, operationId: randomUUID(), apply: true, noRetention: true}),
     ], recoveryStarted);
     assert.equal(recovered.result?.deleted, true, "Hosted admin could not recover interrupted SELF deletion");
+    mark("verify hosted administrator recovery and account absence");
     await verifyAbsent(interrupted);
     assert.equal((await security.getUserSecurityState({userId: admin.uid})).data.userSecurityState.adminReady, true);
     console.log("PASS: real hosted NOT_STARTED details, recent sign-in refusal and administrator recovery of the actual interrupted SELF hold.");
