@@ -26,11 +26,11 @@ async function assertStartingIdentity(uid: string, email: string, version: numbe
   const user = await admin.auth().getUser(uid);
   if (user.disabled || !user.emailVerified || user.email?.trim().toLowerCase() !== email.toLowerCase() ||
       user.customClaims?.enabled !== true || user.customClaims?.securityVersion !== version) {
-    throw new HttpsError("failed-precondition", "Your account changed. Sign in again before deleting your account.");
+    throw new HttpsError("failed-precondition", "Your account changed. Sign in again before deleting your account.", {code: "ACCOUNT_CHANGED"});
   }
   const state = (await getUserSecurityState({userId: uid})).data.userSecurityState;
   if (!state || state.securityVersion !== version || state.syncStatus !== "READY" || !state.accessReady) {
-    throw new HttpsError("failed-precondition", "Your account changed. Sign in again before deleting your account.");
+    throw new HttpsError("failed-precondition", "Your account changed. Sign in again before deleting your account.", {code: "ACCOUNT_CHANGED"});
   }
   return user.customClaims?.admin !== true && !state.desiredAdmin && !state.adminReady;
 }
@@ -58,36 +58,42 @@ async function assertDeletionHold(uid: string, email: string, operationId: strin
 }
 
 export const deleteMyAccount = onCall({region: FUNCTIONS_REGION, timeoutSeconds: 540}, async request => {
-  await requireEnabled(request);
-  await enforceRateLimit("deleteMyAccount", request.auth!.uid);
-  // There is deliberately no caller-selected target or retention override.
-  if (request.data?.uid !== undefined || request.data?.noRetention !== undefined) {
-    throw new HttpsError("invalid-argument", "Only your own account can be deleted.");
-  }
-  const uid = request.auth!.uid;
-  const email = requireString(request.data?.email, "email");
-  const operationId = securityRequestOperationId(request);
-  const actorVersion = securityRequestAuthority(request, "SELF").actorSecurityVersion!;
-  const apply = request.data?.apply === true;
-  if (apply) {
-    requireRecentDeletionAuthentication(request);
-    if (request.data?.confirmMembershipEnd !== true) {
-      throw new HttpsError("invalid-argument", "Confirm that deleting your account ends your membership.");
-    }
-  }
-  const allowedIdentity = await assertStartingIdentity(uid, email, actorVersion);
-  const markers = await accountErasureState(uid);
-  if (!allowedIdentity || markers.length) {
-    if (!apply) return {eligible: false};
-    throw new HttpsError("failed-precondition", reviewMessage);
-  }
-  const plan = await inventoryAccountDeletion(uid, email, operationId);
-  const eligible = plan.profile && plan.state && Object.keys(plan.blockers).length === 0;
-  if (!apply) return {eligible};
-  if (!eligible) throw new HttpsError("failed-precondition", reviewMessage);
-  requireRecentDeletionAuthentication(request);
-
+  let erasureWriteStarted = false;
+  let operationIdForLog: string | undefined;
   try {
+    await requireEnabled(request);
+    await enforceRateLimit("deleteMyAccount", request.auth!.uid);
+    // There is deliberately no caller-selected target or retention override.
+    if (request.data?.uid !== undefined || request.data?.noRetention !== undefined) {
+      throw new HttpsError("invalid-argument", "Only your own account can be deleted.");
+    }
+    const uid = request.auth!.uid;
+    const email = requireString(request.data?.email, "email");
+    const operationId = securityRequestOperationId(request);
+    operationIdForLog = operationId;
+    const actorVersion = securityRequestAuthority(request, "SELF").actorSecurityVersion!;
+    const apply = request.data?.apply === true;
+    if (apply) {
+      requireRecentDeletionAuthentication(request);
+      if (request.data?.confirmMembershipEnd !== true) {
+        throw new HttpsError("invalid-argument", "Confirm that deleting your account ends your membership.");
+      }
+    }
+    const allowedIdentity = await assertStartingIdentity(uid, email, actorVersion);
+    const markers = await accountErasureState(uid);
+    if (!allowedIdentity || markers.length) {
+      if (!apply) return {eligible: false};
+      throw new HttpsError("failed-precondition", reviewMessage, {code: "ACCOUNT_REVIEW_REQUIRED"});
+    }
+    const plan = await inventoryAccountDeletion(uid, email, operationId);
+    const eligible = plan.profile && plan.state && Object.keys(plan.blockers).length === 0;
+    if (!apply) return {eligible};
+    if (!eligible) throw new HttpsError("failed-precondition", reviewMessage, {code: "ACCOUNT_REVIEW_REQUIRED"});
+    requireRecentDeletionAuthentication(request);
+
+    // From this point, an uncertain write may already have created suppression.
+    // Only the preflight above can promise that this request did not start erasure.
+    erasureWriteStarted = true;
     const marker = await startAccountErasure(uid, plan.emails);
     await cancelErasureTasks(plan.taskIds);
     await assertStartingIdentity(uid, email, actorVersion).then(allowed => {if (!allowed) throw new Error("SELF_ERASURE_IDENTITY_CHANGED");});
@@ -123,8 +129,16 @@ export const deleteMyAccount = onCall({region: FUNCTIONS_REGION, timeoutSeconds:
     await completeAccountErasure(uid);
     logger.info("Self-service account deletion completed", {operationId});
     return {deleted: true};
-  } catch {
-    logger.error("Self-service account deletion incomplete", {operationId});
+  } catch (error) {
+    if (!erasureWriteStarted) {
+      if (error instanceof HttpsError) {
+        const details = error.details !== null && typeof error.details === "object" && !Array.isArray(error.details) ? error.details : {};
+        throw new HttpsError(error.code, error.message, {...details, deletionStatus: "NOT_STARTED"});
+      }
+      throw new HttpsError("unavailable", "Account checks could not be completed. Please try again or contact an administrator.",
+        {deletionStatus: "NOT_STARTED"});
+    }
+    logger.error("Self-service account deletion incomplete", {operationId: operationIdForLog});
     throw new HttpsError("failed-precondition", "Deletion did not complete. Your membership has ended or your account may be disabled. Please contact the club administrator to finish deleting it.",
       {code: "ACCOUNT_DELETION_INCOMPLETE"});
   }

@@ -4,15 +4,27 @@ import { EmailAuthProvider, reauthenticateWithCredential, type User } from "fire
 import { functions } from "../../../config/firebase";
 import { httpsCallable } from "../../../shared/utils/sessionCallable";
 import { beginAuthorizationUpdate } from "../../../shared/auth/authorizationUpdate";
+import { classifyAuthorizationFailure } from "../../../shared/auth/authorizationFailure";
 import { cancelPrivateReads, captureSession, isSessionCurrent, runSessionOperation, signOutPrivateSession } from "../../../shared/appShell/sessionLifecycle";
 
 interface DeletionResult { eligible?: boolean; deleted?: boolean }
 interface DeletionRequest { email: string; operationId: string; apply: boolean; confirmMembershipEnd: boolean }
 
-function deletionErrorCode(error: unknown): string | undefined {
+function deletionErrorDetail(error: unknown, field: "code" | "deletionStatus"): string | undefined {
   if (!error || typeof error !== "object" || !("details" in error)) return undefined;
   const details = error.details;
-  return details && typeof details === "object" && "code" in details && typeof details.code === "string" ? details.code : undefined;
+  if (!details || typeof details !== "object" || !(field in details)) return undefined;
+  const value = Reflect.get(details, field);
+  return typeof value === "string" ? value : undefined;
+}
+
+function deletionRefusalMessage(error: unknown, code: string | undefined): string {
+  if (code === "ACCOUNT_REVIEW_REQUIRED") return "This deletion request was not started. Please contact an administrator to review your account.";
+  if (code === "ACCOUNT_CHANGED" || classifyAuthorizationFailure(error)) return "This deletion request was not started because your account changed. Sign in again before trying to delete your account.";
+  if (error && typeof error === "object" && "code" in error && (error.code === "functions/resource-exhausted" || error.code === "resource-exhausted")) {
+    return "This deletion request was not started. Too many requests. Please try again later.";
+  }
+  return "This deletion request was not started. Check your account again before trying, or contact an administrator.";
 }
 
 function DeleteMyAccountDialog({ user, onClose }: { user: User; onClose: () => void }) {
@@ -72,18 +84,26 @@ function DeleteMyAccountDialog({ user, onClose }: { user: User; onClose: () => v
         setEligible(result.eligible === true);
       }
     } catch (caught) {
-      const recentLoginRequired = deletionErrorCode(caught) === "RECENT_LOGIN_REQUIRED";
-      update?.finish(true, deletionSubmitted && !recentLoginRequired);
+      const code = deletionErrorDetail(caught, "code");
+      const recentLoginRequired = code === "RECENT_LOGIN_REQUIRED";
+      const deletionNotStarted = !deletionConfirmed && (recentLoginRequired || (code !== "ACCOUNT_DELETION_INCOMPLETE" && deletionErrorDetail(caught, "deletionStatus") === "NOT_STARTED"));
+      // A known refusal made no own-authority change: resume reads and deliver
+      // any independent authorization denial deferred while the call was pending.
+      update?.finish(!deletionNotStarted && !classifyAuthorizationFailure(caught), deletionSubmitted && !deletionNotStarted);
       if (!isSessionCurrent(session)) return;
       if (!mounted.current) {
-        if (deletionSubmitted && !recentLoginRequired) {
+        if (deletionSubmitted && !deletionNotStarted) {
           try { await signOutPrivateSession(); }
           catch { /* The session boundary owns sign-out recovery after navigation. */ }
         }
         return;
       }
-      if (recentLoginRequired) {
-        setError("Please sign out and sign in again, then return here to confirm account deletion.");
+      if (deletionNotStarted) {
+        setEligible(code === "ACCOUNT_REVIEW_REQUIRED" ? false : null);
+        setConfirmed(false); setEmail(""); setPassword("");
+        setError(recentLoginRequired
+          ? "Please sign out and sign in again, then return here to confirm account deletion."
+          : deletionRefusalMessage(caught, code));
       } else if (deletionConfirmed) {
         setMustSignOut(true);
         setError("Your account was deleted, but we couldn’t sign you out. Please try signing out again.");
@@ -113,7 +133,7 @@ function DeleteMyAccountDialog({ user, onClose }: { user: User; onClose: () => v
       <Alert severity="warning">Deleting your account will end your SODC membership and permanently remove your sign-in access. This action cannot be undone.</Alert>
       <Typography>Your profile and eligible personal records will be removed. Some records, including backups and records we must retain, may be kept for the required period. We keep a minimal deletion record temporarily to prevent delayed messages restoring your data.</Typography>
       {error && <Alert severity="error">{error}</Alert>}
-      {eligible === false && <Alert severity="info">Your account needs administrator review before it can be deleted. Please contact an administrator to request deletion. Your membership has not been changed.</Alert>}
+      {eligible === false && <Alert severity="info">Your account needs administrator review before it can be deleted. Please contact an administrator to request deletion. This request has not changed your membership.</Alert>}
       {applying && <Typography role="status">Deleting your account can take several minutes while pending messages are stopped. Keep this page open. You will be signed out when it finishes.</Typography>}
       {eligible && !mustSignOut && <>
         <TextField label="Type your account email to confirm" value={email} onChange={event => setEmail(event.target.value)} disabled={busy} autoComplete="off" fullWidth />

@@ -6,6 +6,7 @@ import { createMockUser } from "../../../../test-utils/mocks/firebase";
 import { createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
 import { authorizationUpdatePending, privateReadsBlocked, resumeAuthorizationReads } from "../../../../shared/auth/authorizationUpdate";
 import { captureSession } from "../../../../shared/appShell/sessionLifecycle";
+import { reportAuthorizationDenial, subscribeAuthorizationDenials } from "../../../../shared/auth/authorizationRecoveryEvents";
 import DeleteMyAccountSection from "../DeleteMyAccountSection";
 
 const mocks = vi.hoisted(() => ({ call: vi.fn(), credential: vi.fn(() => ({})), reauthenticate: vi.fn(), signOut: vi.fn() }));
@@ -79,7 +80,7 @@ describe("DeleteMyAccountSection", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Delete my account" }));
     await user.click(screen.getByRole("button", { name: "Check account" }));
-    expect(await screen.findByText(/Your account needs administrator review/)).toHaveTextContent("Your membership has not been changed");
+    expect(await screen.findByText(/Your account needs administrator review/)).toHaveTextContent("This request has not changed your membership");
     expect(screen.queryByRole("button", { name: "Permanently delete my account" })).not.toBeInTheDocument();
     expect(mocks.reauthenticate).not.toHaveBeenCalled();
   });
@@ -127,9 +128,9 @@ describe("DeleteMyAccountSection", () => {
     expect(mocks.reauthenticate).not.toHaveBeenCalled();
   });
 
-  it("does not describe confirmed deletion as failed when signout fails", async () => {
+  it.each([new Error("offline"), { details: { code: "RECENT_LOGIN_REQUIRED", deletionStatus: "NOT_STARTED" } }])("does not describe confirmed deletion as refused or failed when signout fails: %j", async error => {
     mocks.call.mockResolvedValueOnce({ data: { eligible: true } }).mockResolvedValueOnce({ data: { deleted: true } });
-    mocks.signOut.mockRejectedValueOnce(new Error("offline"));
+    mocks.signOut.mockRejectedValueOnce(error);
     render(<DeleteMyAccountSection user={member()} isAdmin={false} />);
     const user = await openAndCheck(); await confirmDeletion(user);
     await user.click(screen.getByRole("button", { name: "Permanently delete my account" }));
@@ -178,6 +179,125 @@ describe("DeleteMyAccountSection", () => {
       expect(privateReadsBlocked(session)).toBe(true);
       await user.click(screen.getByRole("button", { name: "Sign out" }));
       expect(signOut).toHaveBeenCalledOnce();
+    } finally { resumeAuthorizationReads(session); uninstall(); }
+  });
+
+  it.each([
+    { label: "administrator review", error: { code: "functions/failed-precondition", details: { code: "ACCOUNT_REVIEW_REQUIRED", deletionStatus: "NOT_STARTED" } }, message: /Please contact an administrator to review your account/, canRecheck: false },
+    { label: "changed identity", error: { code: "functions/failed-precondition", details: { code: "ACCOUNT_CHANGED", deletionStatus: "NOT_STARTED" } }, message: /This deletion request was not started because your account changed/, canRecheck: true },
+    { label: "rate limit", error: { code: "functions/resource-exhausted", details: { deletionStatus: "NOT_STARTED" } }, message: /Too many requests. Please try again later/, canRecheck: true },
+    { label: "unavailable preflight", error: { code: "functions/unavailable", details: { deletionStatus: "NOT_STARTED" } }, message: /Check your account again before trying/, canRecheck: true },
+  ])("resumes reads after a confirmed preflight refusal: $label", async ({error, message, canRecheck}) => {
+    mocks.call.mockResolvedValueOnce({ data: { eligible: true } }).mockRejectedValueOnce(error);
+    const lifecycle = createSessionLifecycle(); lifecycle.observe("member-1");
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    const uninstall = installSessionRuntime({ lifecycle, retire: vi.fn(), signOut });
+    const session = captureSession("member-1");
+    try {
+      render(<DeleteMyAccountSection user={member()} isAdmin={false} />);
+      const user = await openAndCheck(); await confirmDeletion(user);
+      await user.click(screen.getByRole("button", { name: "Permanently delete my account" }));
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(screen.queryByText(/Deletion could not be confirmed/)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+      expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Permanently delete my account" })).not.toBeInTheDocument();
+      expect(Boolean(screen.queryByRole("button", { name: "Check account" }))).toBe(canRecheck);
+      expect(privateReadsBlocked(session)).toBe(false);
+      expect(authorizationUpdatePending(session)).toBe(false);
+      expect(signOut).not.toHaveBeenCalled();
+    } finally { resumeAuthorizationReads(session); uninstall(); }
+  });
+
+  it.each(["ACCESS_REVOKED", "SESSION_VERSION_STALE"])("delivers deferred authorization recovery after a known refusal: %s", async code => {
+    const result = deferred<never>();
+    mocks.call.mockResolvedValueOnce({ data: { eligible: true } }).mockReturnValueOnce(result.promise);
+    const lifecycle = createSessionLifecycle(); lifecycle.observe("member-1");
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    const uninstall = installSessionRuntime({ lifecycle, retire: vi.fn(), signOut });
+    const session = captureSession("member-1");
+    const delivered = vi.fn(() => ({ blocked: privateReadsBlocked(session), pending: authorizationUpdatePending(session) }));
+    const unsubscribe = subscribeAuthorizationDenials(delivered);
+    const error = { code: "functions/permission-denied", details: { code, deletionStatus: "NOT_STARTED" } };
+    try {
+      render(<DeleteMyAccountSection user={member()} isAdmin={false} />);
+      const user = await openAndCheck(); await confirmDeletion(user);
+      await user.click(screen.getByRole("button", { name: "Permanently delete my account" }));
+      await screen.findByRole("status");
+      expect(authorizationUpdatePending(session)).toBe(true);
+      expect(delivered).not.toHaveBeenCalled();
+      await act(async () => result.reject(error));
+      expect(delivered).toHaveBeenCalledOnce();
+      expect(delivered).toHaveBeenCalledWith({ error, session });
+      expect(delivered.mock.results[0].value).toEqual({ blocked: false, pending: false });
+      expect(await screen.findByText(/This deletion request was not started because your account changed/)).toBeInTheDocument();
+      expect(signOut).not.toHaveBeenCalled();
+    } finally { unsubscribe(); resumeAuthorizationReads(session); uninstall(); }
+  });
+
+  it("delivers an independent deferred denial when an ordinary refusal confirms no own change", async () => {
+    const result = deferred<never>();
+    mocks.call.mockResolvedValueOnce({ data: { eligible: true } }).mockReturnValueOnce(result.promise);
+    const lifecycle = createSessionLifecycle(); lifecycle.observe("member-1");
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    const uninstall = installSessionRuntime({ lifecycle, retire: vi.fn(), signOut });
+    const session = captureSession("member-1");
+    const delivered = vi.fn();
+    const unsubscribe = subscribeAuthorizationDenials(delivered);
+    const independentDenial = { details: { code: "ACCESS_REVOKED" } };
+    try {
+      render(<DeleteMyAccountSection user={member()} isAdmin={false} />);
+      const user = await openAndCheck(); await confirmDeletion(user);
+      await user.click(screen.getByRole("button", { name: "Permanently delete my account" }));
+      await screen.findByRole("status");
+      act(() => { reportAuthorizationDenial(independentDenial, session); });
+      expect(delivered).not.toHaveBeenCalled();
+      await act(async () => result.reject({ code: "functions/resource-exhausted", details: { deletionStatus: "NOT_STARTED" } }));
+      expect(delivered).toHaveBeenCalledOnce();
+      expect(delivered).toHaveBeenCalledWith({ error: independentDenial, session });
+      expect(privateReadsBlocked(session)).toBe(false);
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+      expect(signOut).not.toHaveBeenCalled();
+    } finally { unsubscribe(); resumeAuthorizationReads(session); uninstall(); }
+  });
+
+  it("does not sign out after an unmounted request is confirmed not started", async () => {
+    const result = deferred<never>();
+    mocks.call.mockResolvedValueOnce({ data: { eligible: true } }).mockReturnValueOnce(result.promise);
+    const lifecycle = createSessionLifecycle(); lifecycle.observe("member-1");
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    const uninstall = installSessionRuntime({ lifecycle, retire: vi.fn(), signOut });
+    const session = captureSession("member-1");
+    try {
+      const view = render(<DeleteMyAccountSection user={member()} isAdmin={false} />);
+      const user = await openAndCheck(); await confirmDeletion(user);
+      await user.click(screen.getByRole("button", { name: "Permanently delete my account" }));
+      await screen.findByRole("status");
+      view.unmount();
+      await act(async () => result.reject({ code: "functions/failed-precondition", details: { code: "ACCOUNT_REVIEW_REQUIRED", deletionStatus: "NOT_STARTED" } }));
+      expect(privateReadsBlocked(session)).toBe(false);
+      expect(authorizationUpdatePending(session)).toBe(false);
+      expect(signOut).not.toHaveBeenCalled();
+    } finally { resumeAuthorizationReads(session); uninstall(); }
+  });
+
+  it.each([
+    { code: "functions/failed-precondition" },
+    { code: "functions/failed-precondition", details: { code: "ACCOUNT_DELETION_INCOMPLETE", deletionStatus: "NOT_STARTED" } },
+  ])("keeps an unconfirmed refusal or incomplete erasure on the uncertain path: %j", async error => {
+    mocks.call.mockResolvedValueOnce({ data: { eligible: true } }).mockRejectedValueOnce(error);
+    const lifecycle = createSessionLifecycle(); lifecycle.observe("member-1");
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    const uninstall = installSessionRuntime({ lifecycle, retire: vi.fn(), signOut });
+    const session = captureSession("member-1");
+    try {
+      render(<DeleteMyAccountSection user={member()} isAdmin={false} />);
+      const user = await openAndCheck(); await confirmDeletion(user);
+      await user.click(screen.getByRole("button", { name: "Permanently delete my account" }));
+      expect(await screen.findByText(/Deletion could not be confirmed/)).toBeInTheDocument();
+      expect(privateReadsBlocked(session)).toBe(true);
+      expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Sign out" })).toBeEnabled();
     } finally { resumeAuthorizationReads(session); uninstall(); }
   });
 

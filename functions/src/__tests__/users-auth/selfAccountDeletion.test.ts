@@ -1,4 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
+import { HttpsError } from "firebase-functions/v2/https";
 const mocks = vi.hoisted(() => ({getUser: vi.fn(), get: vi.fn(), write: vi.fn(), transition: vi.fn(), remove: vi.fn(), revoke: vi.fn(), requireEnabled: vi.fn(), marker: vi.fn(), start: vi.fn(), drain: vi.fn(), cancel: vi.fn(), complete: vi.fn(), state: vi.fn(), intent: vi.fn(), rate: vi.fn()}));
 vi.mock("firebase-admin", () => ({auth: () => ({getUser: mocks.getUser, deleteUser: mocks.remove, revokeRefreshTokens: mocks.revoke})}));
 vi.mock("firebase-admin/data-connect", () => ({getDataConnect: () => ({executeGraphqlRead: mocks.get, executeGraphql: mocks.write})}));
@@ -44,8 +45,8 @@ beforeEach(() => {
 });
 
 it("requires current member authority before inspecting personal data", async () => {
-  mocks.requireEnabled.mockRejectedValue(new Error("access revoked"));
-  await expect(deleteMyAccount.run(request())).rejects.toThrow("access revoked");
+  mocks.requireEnabled.mockRejectedValue(new HttpsError("permission-denied", "access revoked", {code: "ACCESS_REVOKED"}));
+  await expect(deleteMyAccount.run(request())).rejects.toMatchObject({code: "permission-denied", details: {code: "ACCESS_REVOKED", deletionStatus: "NOT_STARTED"}});
   expect(mocks.getUser).not.toHaveBeenCalled();
   expect(mocks.get).not.toHaveBeenCalled();
 });
@@ -183,4 +184,41 @@ it("requires administrator recovery if Auth deletion fails after profile erasure
   await expect(deleteMyAccount.run(apply())).rejects.toMatchObject({details: {code: "ACCOUNT_DELETION_INCOMPLETE"}});
   expect(mocks.complete).not.toHaveBeenCalled();
   expect(identity.disabled).toBe(true);
+});
+
+it("preserves stale-session recovery evidence on a refusal before erasure", async () => {
+  mocks.requireEnabled.mockRejectedValue(new HttpsError("unauthenticated", "Refresh your sign-in session", {code: "SESSION_VERSION_STALE"}));
+  await expect(deleteMyAccount.run(apply())).rejects.toMatchObject({code: "unauthenticated", details: {code: "SESSION_VERSION_STALE", deletionStatus: "NOT_STARTED"}});
+  expect(mocks.start).not.toHaveBeenCalled();
+});
+it.each(["rate limit", "new booking", "changed identity"])("marks %s refusal as not started after a successful preview", async reason => {
+  await expect(deleteMyAccount.run(request())).resolves.toEqual({eligible: true});
+  if (reason === "rate limit") mocks.rate.mockRejectedValueOnce(new HttpsError("resource-exhausted", "Too many requests"));
+  else if (reason === "new booking") rows.bookings = [{booker: {id: uid}}];
+  else identity.email = "changed@example.invalid";
+  const expectedCode = reason === "rate limit" ? "resource-exhausted" : "failed-precondition";
+  const details = reason === "new booking" ? {code: "ACCOUNT_REVIEW_REQUIRED"} : reason === "changed identity" ? {code: "ACCOUNT_CHANGED"} : {};
+  await expect(deleteMyAccount.run(apply())).rejects.toMatchObject({code: expectedCode, details: {...details, deletionStatus: "NOT_STARTED"}});
+  expect(mocks.start).not.toHaveBeenCalled();
+  expect(mocks.transition).not.toHaveBeenCalled();
+  expect(mocks.revoke).not.toHaveBeenCalled();
+  expect(mocks.remove).not.toHaveBeenCalled();
+  expect(identity.disabled).toBe(false);
+  expect(state.membershipStatus).toBe("REGULAR");
+});
+it("maps unexpected preflight failures to static not-started guidance", async () => {
+  mocks.getUser.mockRejectedValueOnce(new Error("private provider detail must not escape"));
+  await expect(deleteMyAccount.run(apply())).rejects.toMatchObject({code: "unavailable", message: "Account checks could not be completed. Please try again or contact an administrator.", details: {deletionStatus: "NOT_STARTED"}});
+  expect(mocks.start).not.toHaveBeenCalled();
+});
+it.each(["marker write", "task cancellation"])("never promises not-started after an uncertain %s", async stage => {
+  const error = new HttpsError("unavailable", "Unknown commit outcome", {deletionStatus: "NOT_STARTED"});
+  if (stage === "marker write") mocks.start.mockRejectedValueOnce(error);
+  else mocks.cancel.mockRejectedValueOnce(error);
+  const outcome = await deleteMyAccount.run(apply()).catch(error => error);
+  expect(outcome).toMatchObject({details: {code: "ACCOUNT_DELETION_INCOMPLETE"}});
+  expect(outcome.details).not.toHaveProperty("deletionStatus");
+  expect(mocks.start).toHaveBeenCalled();
+  expect(mocks.transition).not.toHaveBeenCalled();
+  expect(mocks.remove).not.toHaveBeenCalled();
 });

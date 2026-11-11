@@ -18,11 +18,22 @@ self-service deletion.
 Eligible deletion uses the same communication suppression, task cancellation,
 sender drain, shared-snapshot redaction and database fences as administrator
 erasure. Membership is ended and sign-in is disabled before the final erasure.
-Completion signs out the member and clears the private session. If the operation
-is interrupted, leave the account disabled and suppressed; an administrator must
-finish deletion through Manage Users. Do not promise deletion is complete after
-an unconfirmed response. Provider-held data and recoverable copies remain subject
-to the retention and restore procedures below.
+Completion signs out the member and clears the private session. A confirmed
+refusal before suppression begins leaves the dialog cancellable and restores
+private reads; existing access-revocation or stale-session recovery still applies.
+An unconfirmed write or interrupted operation requires administrator review; do
+not promise deletion is complete after an unconfirmed response. After the deletion
+hold is established, leave the account disabled and suppressed and finish through
+Manage Users. Provider-held data and recoverable copies remain subject to the
+retention and restore procedures below.
+
+Suppression is established before access is disabled. If task cancellation or the
+identity re-check fails at that point, the account may remain enabled and still
+a member while its messages are suppressed. Keep the marker and have
+an operator inspect the current identity and security state. Resume Manage Users
+deletion for an eligible non-admin account; a concurrently promoted administrator
+needs operator review. Do not remove suppression or change privileges as an
+automatic rollback.
 
 ## Admin screen
 
