@@ -6,13 +6,30 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { verifyAuthorizationMigration } from "./check-authorization-migration.mjs";
 import { parseDeploymentEnvironment, verifyPreflightAttestation } from "./deploy-environment-lib.mjs";
-import { loadPinnedCli, runFunctionsConfigGuard } from "./functions-config-guard.mjs";
-import { GuardError, bytesDigest, requireGuard } from "./functions-config-guard-lib.mjs";
+import { loadPinnedCli, runFunctionsConfigGuard, verifyCreatedEndpointContracts } from "./functions-config-guard.mjs";
+import { GUARD_SCHEMA, GuardError, bytesDigest, requireGuard } from "./functions-config-guard-lib.mjs";
+
+/** Hosting resumption must prove any reviewed creation actually completed, even
+ * when the Functions command was skipped or its previous post-check failed. */
+export async function verifyCreationsBeforeHosting(root, environment, {verifyCreations = verifyCreatedEndpointContracts} = {}) {
+  let receipt;
+  try {receipt = JSON.parse(await readFile(path.join(root, ".firebase/functions-config-guard", `${environment}.json`), "utf8"));}
+  catch {throw new GuardError("missing-functions-guard-before-hosting");}
+  requireGuard(receipt?.schemaVersion === GUARD_SCHEMA && receipt.status === "PASS" && receipt.binding?.environment === environment,
+    "invalid-functions-guard-before-hosting");
+  if (receipt.outcome?.endpointCreations?.length) {
+    const proof = await verifyCreations(root, environment, receipt);
+    requireGuard(proof?.status === "PASS", "created-endpoint-verification-failed");
+    return proof;
+  }
+  return {status: "NOT_REQUIRED"};
+}
 
 /** The only supported direct Functions mutation path. A freshly checked receipt, pinned
  * executable and private snapshot of dotenv inputs are used by the same awaited command. */
 export async function deployGuardedFunctions(root, environment, { guard = runFunctionsConfigGuard,
   cliLoader = loadPinnedCli, verifyPreflight = verifyPreflightAttestation, verifyMigration = verifyAuthorizationMigration,
+  verifyCreations = verifyCreatedEndpointContracts,
   execute = (executable, args) => spawnSync(process.execPath, [executable, ...args], {
     cwd: root, stdio: "inherit", env: { ...process.env, CLOUDSDK_CORE_DISABLE_PROMPTS: "1" },
   }) } = {}) {
@@ -53,10 +70,23 @@ export async function deployGuardedFunctions(root, environment, { guard = runFun
     const cli = cliLoader(policy);
     requireGuard(JSON.stringify(cli.identity) === JSON.stringify(receipt.binding.cli), "cli-changed-before-functions-command");
     requireGuard(typeof receipt.assertUnchanged === "function", "missing-final-input-check");
+    const hasCreations = receipt.outcome?.endpointCreations?.length > 0;
+    const creationProofPath = path.join(root, ".firebase/functions-config-guard", `${environment}-creation-verification.json`);
+    // This file describes the latest attempt; a failed attempt must not leave an
+    // older PASS proof that could be mistaken for verification of this release.
+    if (hasCreations) await rm(creationProofPath, {force: true});
     await receipt.assertUnchanged();
     const result = await execute(cli.executable, ["deploy", "--only", "functions", "--project", environment,
       "--config", file, "--non-interactive"]);
     requireGuard(!result.error && result.status === 0, "functions-command-failed");
+    if (hasCreations) {
+      // The enclosing full release must stop before Hosting if provider creation
+      // did not produce exactly the reviewed contract and preserve existing ones.
+      const proof = await verifyCreations(root, environment, receipt);
+      requireGuard(proof?.status === "PASS", "created-endpoint-verification-failed");
+      await mkdir(path.dirname(creationProofPath), {recursive: true, mode: 0o700});
+      await writeFile(creationProofPath, `${JSON.stringify(proof, null, 2)}\n`, {mode: 0o600});
+    }
     return result;
   } catch (error) {
     if (error instanceof GuardError) throw error;

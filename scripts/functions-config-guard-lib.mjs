@@ -123,7 +123,7 @@ export function assertSecretMetadata(endpoints, declaredSecrets, metadata, proje
 }
 
 /** Pure decision layer. All inputs are non-secret hashes or metadata. */
-export function configurationProposal({ binding, endpoints, policy, baseline, providerDefaultResets = [] }) {
+export function configurationProposal({ binding, endpoints, policy, baseline, providerDefaultResets = [], endpointCreations = [] }) {
   const environmentChanges = [];
   const policyDeviations = [];
   for (const endpoint of endpoints) {
@@ -142,14 +142,14 @@ export function configurationProposal({ binding, endpoints, policy, baseline, pr
     }
   }
   const proposal = { schemaVersion: REVIEW_SCHEMA, bindingSha256: digest(binding), baselineSha256: digest(baseline),
-    environmentChanges, policyDeviations, providerDefaultResets };
+    environmentChanges, policyDeviations, providerDefaultResets, endpointCreations };
   return canonical(proposal);
 }
 
 export function evaluateConfiguration({ review, ...inputs }) {
   const proposal = configurationProposal(inputs);
   const { binding } = inputs;
-  const { environmentChanges, policyDeviations, providerDefaultResets } = proposal;
+  const { environmentChanges, policyDeviations, providerDefaultResets, endpointCreations } = proposal;
   if (review) {
     requireGuard(review.schemaVersion === REVIEW_SCHEMA && ["preserve-existing", "change-environment"].includes(review.mode) &&
       typeof review.reviewedBy === "string" && review.reviewedBy.trim().length > 0 &&
@@ -159,9 +159,11 @@ export function evaluateConfiguration({ review, ...inputs }) {
       digest(review.environmentChanges) === digest(environmentChanges) && digest(review.policyDeviations) === digest(policyDeviations),
     "review-does-not-match-exact-proposal");
     requireGuard(digest(review.providerDefaultResets) === digest(providerDefaultResets), "unreviewed-provider-default-resets");
+    requireGuard(digest(review.endpointCreations ?? []) === digest(endpointCreations), "unreviewed-endpoint-creations");
     requireGuard(review.mode !== "preserve-existing" || environmentChanges.length === 0,
       "preservation-cannot-change-environment");
   } else {
+    requireGuard(endpointCreations.length === 0, "endpoint-creations-require-explicit-review");
     requireGuard(binding.mode === "dotenv", "preservation-requires-explicit-review");
     requireGuard(environmentChanges.length === 0, "unreviewed-application-environment-change");
     requireGuard(policyDeviations.length === 0, "missing-empty-or-partial-environment");

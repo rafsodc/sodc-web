@@ -76,10 +76,15 @@ Roll out the schema and guarded connector operations (including the narrowly
 scoped self-deletion security transition) first, then all announcement,
 notification, callback and security writers, then the new deletion callable and
 frontend. Do not enable deletion before those workers are updated.
-Adding `deleteMyAccount` changes the deployed endpoint inventory. The current
-Functions configuration guard rejects new endpoints; its endpoint-creation
-contract requires a separate review before rollout. Do not bypass that guard or
-publish the member UI before the callable and connector changes are deployed.
+Adding `deleteMyAccount` changes the deployed endpoint inventory. Use the
+[reviewed endpoint-creation contract](./functions-runtime-config-guard.md) and
+explicit runtime limits; an unreviewed creation still fails closed. In preservation
+mode the new callable intentionally receives no application environment variables
+or secret bindings; its Firebase project context is platform-managed. After the
+guarded Functions deployment, run the read-only `--verify-creations` check and the
+hosted Dev validation below before publishing the member UI. Do not bypass the
+guard. A completed creation invalidates the old review and preflight baseline for
+later deployments; collect a fresh proposal when starting another release.
 The deletion runtime identity must have `cloudtasks.tasks.delete` for the announcement queue; verify
 that permission before release. Cancellation failure stops the erasure. After the first
 erasure, old snapshot writers without the complete recipient-ID list fail closed.
@@ -172,6 +177,45 @@ Sources: [Cloud SQL backup retention](https://docs.cloud.google.com/sql/docs/pos
 [Cloud Tasks retention](https://docs.cloud.google.com/tasks/docs/comp-pub-sub),
 [Notify retention](https://www.notifications.service.gov.uk/using-notify/data-retention-period).
 
+
+## Hosted Dev self-deletion validation
+
+Deploy the authorization connector first, then the new callable through the
+guarded Functions path. Use a clean, reviewed Node 24 checkout, its matching Dev
+web configuration and the existing project authorization-migration receipt. The
+runner accepts only the fixed `sodc-web` Dev project, explicit opt-ins and hosted
+callable URLs; production, emulator and caller-supplied endpoint overrides fail
+before SDK or credential access.
+
+```sh
+RUN_SELF_ACCOUNT_DELETION_VALIDATION=1 \
+SELF_ACCOUNT_DELETION_PROJECT=sodc-web SELF_ACCOUNT_DELETION_CONFIRM=sodc-web \
+node --env-file=.env.development.local functions/scripts/validate-self-account-deletion-cloud.mjs
+```
+
+Add `--check` for a local targeting-only check with no SDK, credential, network or
+fixture access. Build Functions before a real run. Existing baseline administrator
+health and a non-live Dev email mode are checked before fixture creation. The
+runner uses random synthetic identities, real password sign-ins and verified
+Firebase ID tokens; it never prints passwords, tokens or baseline identities.
+
+The hosted checks cover NOT_STARTED refusal details, authorization changes,
+retention review, rate limiting and an actually aged sign-in refreshed without
+resetting its authentication time. Successful deletion preserves another synthetic
+recipient and proves runtime task-delete permission by independently reading that
+a known queued SIMULATION task has disappeared. A second request encounters an
+owned active delivery lease after the 330-second drain, leaving a genuine disabled
+SELF hold. The runner settles only that synthetic lease and completes deletion
+through the hosted administrator callable.
+
+The active notification fixture has no recovery payload and cannot send mail.
+Both long requests settle before cleanup; an uncertain transport outcome waits
+out the server budget before owned state is changed. All temporary roles, records,
+markers and tasks are removed and the baseline administrator count is verified.
+Retain the bounded PASS/stage/cleanup output as private release evidence. Any
+cleanup failure requires review of only the printed synthetic run prefix. Do not
+promote to production until the hosted run, creation-contract verification and
+ordinary deployment audit pass.
 
 ## Legacy operator tool scope
 

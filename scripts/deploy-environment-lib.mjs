@@ -319,6 +319,12 @@ export function createDeploymentPlan(environment, gitSha) {
       kind: "guarded-functions-deploy",
     },
     {
+      id: "functions-creation-before-hosting",
+      stage: "hosting",
+      label: "Confirm reviewed Function creations before publishing the UI",
+      kind: "functions-creation-verify",
+    },
+    {
       id: "deploy-hosting",
       stage: "hosting",
       label: "Build and deploy Hosting",

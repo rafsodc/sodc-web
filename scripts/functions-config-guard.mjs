@@ -273,8 +273,11 @@ export async function collectAssessment({ root, environment, mode = "dotenv", cl
   requireGuard(project.projectId === projectId && /^\d+$/.test(String(project.projectNumber)), "project-metadata-mismatch");
   requireGuard(functions.length > 0 && jobs.length > 0, "empty-provider-inventory");
   const manifestIds = Object.keys(discovered.manifest.endpoints).sort();
-  requireGuard(digest(functions.map((fn) => fn.name?.split("/").at(-1)).sort()) === digest(manifestIds),
-    "endpoint-inventory-or-scope-change");
+  const deployedIds = functions.map((fn) => fn.name?.split("/").at(-1)).sort();
+  const creationIds = manifestIds.filter((id) => !deployedIds.includes(id));
+  requireGuard(new Set(deployedIds).size === deployedIds.length && deployedIds.every((id) => manifestIds.includes(id)) &&
+    creationIds.every((id) => Object.hasOwn(policy.reviewableCallableCreations ?? {}, id)),
+  "endpoint-inventory-or-scope-change");
   for (const fn of functions) {
     requireGuard(fn.name === `projects/${projectId}/locations/${region}/functions/${fn.name.split("/").at(-1)}` &&
       fn.state === "ACTIVE" && fn.buildConfig?.runtime === "nodejs24" && fn.serviceConfig?.allTrafficOnLatestRevision === true,
@@ -315,9 +318,10 @@ export async function collectAssessment({ root, environment, mode = "dotenv", cl
   const rows = [];
   const liveContracts = [];
   const providerDefaultResets = [];
+  const endpointCreations = [];
   for (const endpoint of selectedCli.backend.allEndpoints(candidate).sort((a, b) => a.id.localeCompare(b.id))) {
     const fn = functions.find((item) => item.name.endsWith(`/${endpoint.id}`));
-    const before = applicationEnvironment(fn.serviceConfig.environmentVariables ?? {});
+    const before = applicationEnvironment(fn?.serviceConfig.environmentVariables ?? {});
     const after = applicationEnvironment(endpoint.environmentVariables ?? {});
     // Preservation inherits endpoint-scoped values, but cannot authorize a configured
     // bucket/origin for another environment. Absent/empty inherited values remain
@@ -330,6 +334,39 @@ export async function collectAssessment({ root, environment, mode = "dotenv", cl
     }
     requireGuard(!secretNames.some((name) => Object.hasOwn(after, name)), "secret-name-in-application-dotenv");
     const want = selectedCli.functions.functionFromEndpoint(endpoint);
+    if (!fn) {
+      const creation = policy.reviewableCallableCreations[endpoint.id];
+      requireGuard(Object.hasOwn(endpoint, "callableTrigger") && !endpoint.httpsTrigger && !endpoint.scheduleTrigger &&
+        !endpoint.taskQueueTrigger && !want.eventTrigger && endpoint.platform === "gcfv2" &&
+        want.name === `projects/${projectId}/locations/${region}/functions/${endpoint.id}` &&
+        want.buildConfig.runtime === creation.runtime && want.buildConfig.entryPoint === endpoint.id &&
+        creation.identity === "default-compute" && digest(creation.invokers) === digest(["allUsers"]) &&
+        auditConfig.expectedPublicInvokerFunctions.includes(endpoint.id), "unsupported-endpoint-creation-contract");
+      const serviceConfiguration = Object.fromEntries(Object.entries(want.serviceConfig).filter(([key]) =>
+        !["environmentVariables", "secretEnvironmentVariables"].includes(key)));
+      // Only known API reset values are normalized. Ambiguous provider maxima
+      // must be explicit in source; creation never guesses a quota-dependent default.
+      const defaults = { serviceAccountEmail: `${project.projectNumber}-compute@developer.gserviceaccount.com`,
+        ingressSettings: "ALLOW_ALL", minInstanceCount: 0, vpcConnector: null,
+        vpcConnectorEgressSettings: null, directVpcNetworkInterface: null, directVpcEgress: null };
+      for (const [key, value] of Object.entries(serviceConfiguration)) {
+        if (value === null && Object.hasOwn(defaults, key)) serviceConfiguration[key] = defaults[key];
+      }
+      serviceConfiguration.serviceAccountEmail ??= defaults.serviceAccountEmail;
+      const expectedService = { ...creation.serviceConfiguration, serviceAccountEmail: defaults.serviceAccountEmail };
+      for (const key of ["vpcConnector", "vpcConnectorEgressSettings", "directVpcNetworkInterface", "directVpcEgress"]) {
+        if (Object.hasOwn(serviceConfiguration, key)) expectedService[key] = null;
+      }
+      requireGuard(digest(serviceConfiguration) === digest(expectedService), "new-endpoint-runtime-or-identity-not-reviewed");
+      requireGuard(digest(creation.secretBindings) === digest([]) && sortedSecrets(want.serviceConfig.secretEnvironmentVariables).length === 0 &&
+        sortedSecrets(endpoint.secretEnvironmentVariables).length === 0, "new-endpoint-secrets-not-supported");
+      requireGuard(mode !== "preserve-existing" || Object.keys(after).length === 0, "new-endpoint-preservation-environment-not-empty");
+      endpointCreations.push({ name: endpoint.id, projectId, region, platform: endpoint.platform, runtime: want.buildConfig.runtime,
+        entryPoint: want.buildConfig.entryPoint, trigger: "callable", serviceConfiguration, environment: environmentProjection(after),
+        invokers: creation.invokers, secretBindings: [] });
+      rows.push({ name: endpoint.id, before: environmentProjection(before), after: environmentProjection(after) });
+      continue;
+    }
     requireGuard(want.buildConfig.entryPoint === fn.buildConfig.entryPoint, "entrypoint-contract-change");
     for (const [key, value] of Object.entries(want.serviceConfig)) {
       if (["environmentVariables", "secretEnvironmentVariables"].includes(key)) continue;
@@ -396,7 +433,7 @@ export async function collectAssessment({ root, environment, mode = "dotenv", cl
   await assertUnchanged();
   const review = reviewPath ? await json(reviewPath) : undefined;
   const proposal = { bindingSha256: digest(bindings), baselineSha256: digest(baseline) };
-  return { binding: bindings, baseline, rows, policy, review, proposal, providerDefaultResets, assertUnchanged };
+  return { binding: bindings, baseline, rows, policy, review, proposal, providerDefaultResets, endpointCreations, assertUnchanged };
 }
 
 export function guardPath(root, environment) {
@@ -413,16 +450,17 @@ export async function runFunctionsConfigGuard(root, environment, { verify = fals
     let proposal;
     if (propose) {
       const recorder = { ...configurationProposal({ binding: assessment.binding, endpoints: assessment.rows, policy: assessment.policy,
-        baseline: assessment.baseline, providerDefaultResets: assessment.providerDefaultResets }), mode: mode === "preserve-existing" ? mode : "change-environment",
+        baseline: assessment.baseline, providerDefaultResets: assessment.providerDefaultResets, endpointCreations: assessment.endpointCreations }), mode: mode === "preserve-existing" ? mode : "change-environment",
         reviewedBy: "REPLACE_AFTER_REVIEW", reason: "REPLACE_AFTER_REVIEW" };
       return { status: "REVIEW_REQUIRED", ...recorder };
     }
     proposal = evaluateConfiguration({ binding: assessment.binding, endpoints: assessment.rows, policy: assessment.policy,
-      baseline: assessment.baseline, review: assessment.review, providerDefaultResets: assessment.providerDefaultResets });
+      baseline: assessment.baseline, review: assessment.review, providerDefaultResets: assessment.providerDefaultResets,
+      endpointCreations: assessment.endpointCreations });
     const receipt = { schemaVersion: GUARD_SCHEMA, status: "PASS", checkedAt: new Date().toISOString(),
       binding: assessment.binding, baseline: assessment.baseline, reviewSha256: assessment.review ? digest(assessment.review) : null,
       outcome: { mode, environmentChanges: proposal.environmentChanges, policyDeviations: proposal.policyDeviations,
-        providerDefaultResets: proposal.providerDefaultResets },
+        providerDefaultResets: proposal.providerDefaultResets, endpointCreations: proposal.endpointCreations },
       secretPayloadsRead: false, providerWrites: false, environmentValuesPersisted: false };
     if (verify) verifyGuardReceipt(await json(guardPath(root, environment)), receipt);
     else {
@@ -437,15 +475,57 @@ export async function runFunctionsConfigGuard(root, environment, { verify = fals
   }
 }
 
+/** Read-only closure check after the guarded creation command. The pre-creation
+ * receipt is evidence of intent, never a passing attestation for the new baseline. */
+export async function verifyCreatedEndpointContracts(root, environment, receipt, {cli, provider, manifestResult} = {}) {
+  try {
+    requireGuard(receipt?.schemaVersion === GUARD_SCHEMA && receipt.status === "PASS" &&
+      receipt.binding?.environment === environment && typeof receipt.reviewSha256 === "string" &&
+      Array.isArray(receipt.outcome?.endpointCreations) && receipt.outcome.endpointCreations.length > 0,
+    "missing-reviewed-creation-receipt");
+    const assessment = await collectAssessment({root, environment, mode: receipt.binding.mode, cli, provider, manifestResult});
+    requireGuard(digest(assessment.binding) === digest(receipt.binding), "creation-verification-local-inputs-changed");
+    requireGuard(assessment.endpointCreations.length === 0, "reviewed-endpoint-creation-not-complete");
+    const creations = receipt.outcome.endpointCreations;
+    for (const creation of creations) {
+      const live = assessment.baseline.functions.find(endpoint => endpoint.name === creation.name);
+      requireGuard(live && live.runtime === creation.runtime && live.entryPoint === creation.entryPoint && live.trigger === creation.trigger &&
+        digest(live.environment) === digest(creation.environment) &&
+        live.invokersSha256 === digest([{role: "roles/run.invoker", members: creation.invokers}]),
+      "created-endpoint-contract-does-not-match-review");
+    }
+    const existingContract = contract => Object.fromEntries(Object.entries(contract).filter(([key]) => key !== "deployedRevisionSha256"));
+    for (const prior of receipt.baseline.functions) {
+      const live = assessment.baseline.functions.find(endpoint => endpoint.name === prior.name);
+      requireGuard(live && digest(existingContract(live)) === digest(existingContract(prior)), "existing-endpoint-changed-during-creation");
+    }
+    requireGuard(digest(assessment.baseline.schedulers) === digest(receipt.baseline.schedulers) &&
+      digest(assessment.baseline.secrets) === digest(receipt.baseline.secrets), "creation-scheduler-or-secret-baseline-changed");
+    await assessment.assertUnchanged();
+    return {schemaVersion: "sodc-functions-creation-verification/v1", status: "PASS", checkedAt: new Date().toISOString(),
+      environment, projectId: receipt.binding.projectId, gitSha: receipt.binding.gitSha,
+      createdEndpoints: creations.map(({name}) => name), bindingSha256: digest(assessment.binding),
+      reviewedCreationsSha256: digest(creations), resultingBaselineSha256: digest(assessment.baseline), providerWrites: false};
+  } catch (error) {
+    if (error instanceof GuardError) throw error;
+    throw new GuardError("unsupported-creation-verification-input");
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const environment = args[args.indexOf("--env") + 1];
   requireGuard(args.includes("--env") && Object.hasOwn(DEPLOYMENT_ENVIRONMENTS, environment), "explicit-environment-required");
-  requireGuard(args.every((argument, index) => ["--env", "--verify", "--propose"].includes(argument) || args[index - 1] === "--env"), "unsupported-argument");
+  requireGuard(args.every((argument, index) => ["--env", "--verify", "--propose", "--verify-creations"].includes(argument) || args[index - 1] === "--env"), "unsupported-argument");
+  if (args.includes("--verify-creations")) {
+    requireGuard(!args.includes("--verify") && !args.includes("--propose"), "conflicting-creation-verification-arguments");
+    console.log(JSON.stringify(await verifyCreatedEndpointContracts(repositoryRoot, environment, await json(guardPath(repositoryRoot, environment)))));
+    return;
+  }
   const receipt = await runFunctionsConfigGuard(repositoryRoot, environment, { verify: args.includes("--verify"), propose: args.includes("--propose") });
   console.log(JSON.stringify(receipt.status === "REVIEW_REQUIRED" ? receipt : {
     status: receipt.status, environment, projectId: receipt.binding.projectId, gitSha: receipt.binding.gitSha,
-    endpoints: receipt.baseline.functions.length, schedulers: receipt.baseline.schedulers.length,
+    endpoints: receipt.baseline.functions.length, endpointCreations: receipt.outcome.endpointCreations.length, schedulers: receipt.baseline.schedulers.length,
     secretBindings: receipt.baseline.secrets.length, mode: receipt.binding.mode }));
 }
 

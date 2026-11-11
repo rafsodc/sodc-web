@@ -72,8 +72,9 @@ the direct `node` command when redirecting JSON to avoid npm's command banner.
 
 An intentional environment update uses review `mode: "change-environment"`. It
 authorizes only its exact before/after hashes and listed policy deviations. It
-cannot authorize new Functions, runtime identities, invokers, secret versions,
-custom hooks or unsupported trigger changes.
+cannot by itself authorize new Functions, runtime identities, invokers, secret
+versions, custom hooks or unsupported trigger changes. The narrow callable-creation
+contract below requires an additional exact `endpointCreations` review.
 
 SDK reset-null options require care. Known defaults (default compute identity,
 ingress, timeout, zero minimum instances and absent VPC) are compared explicitly.
@@ -112,6 +113,65 @@ reviewed project/run/source, phase gates and provider proofs, not a general raw 
 escape or a configuration-preservation guarantee. Review configuration separately
 in that migration plan. Once the target receipt exists, ordinary releases must
 use the guarded npm paths; do not repeat a migration to bypass a guard failure.
+
+## Reviewed callable creation
+
+The creation allowlist currently contains only `deleteMyAccount`. All deployed
+endpoints must still exist in the source manifest, and any other missing source
+endpoint, extra live endpoint or endpoint deletion is blocked. Allowed creation
+is not automatic approval: both normal and preservation modes require a matching
+review of the exact `endpointCreations` proposal, bound to the commit, compiled
+manifest, project, environment, existing provider baseline and dotenv inputs.
+
+A creation proposal records the new name, region, Gen 2 Node 24 runtime, entry
+point, callable trigger, default compute identity, explicit CPU/memory/concurrency/
+instance/timeout/ingress limits, application-environment hashes, public callable
+invoker and zero secret bindings. The callable's explicit source limits must match
+its policy contract; ambiguous reset-null instance maxima, custom identities,
+secret bindings and other trigger types are refused. The pinned CLI's release
+fabricator is also hashed because it establishes new callable public-invoker
+semantics. This does not grant unauthenticated application access: the callable
+still enforces its own current member authentication and deletion checks.
+
+In `preserve-existing` mode, the new endpoint receives **no application environment**.
+This faithfully matches the actual empty `configDir` handed to the pinned CLI:
+only already-deployed endpoints inherit their own settings. No other endpoint is
+invented or used as an environment template. For `deleteMyAccount`, the reachable
+Auth/Data Connect erasure path uses platform project configuration and its fixed
+region; it does not send mail or use the application URL, section-file settings
+or Notify keys. Missing policy-required application keys remain listed deviations
+and require explicit review, rather than being silently waived. In dotenv mode,
+the canonical application values are included in the exact creation contract and
+its reviewed environment changes.
+
+`--propose` still performs no provider writes and never produces a passing receipt.
+The existing genuine preflight, authorization-migration receipt and guarded npm
+deployment paths remain mandatory. Fresh verification before the deployment command
+must see the same absent new endpoint and the same existing baseline. If creation
+has already appeared or any provider/source input changes, the old creation review
+and receipt are rejected; collect and review a fresh proposal. After deployment,
+the guarded Functions runner automatically verifies the actual runtime, identity,
+invoker, empty-or-reviewed environment and absence of secrets before returning
+success. A verification failure stops a full release before Hosting. The Hosting
+stage also performs fresh creation verification, including when resuming directly
+with `--from hosting`, so the resume path cannot skip the creation gate. On success,
+the sanitized proof is written to the ignored
+`.firebase/functions-config-guard/<env>-creation-verification.json`; the stale
+pre-creation receipt is not overwritten. Any stale creation proof is removed
+before the command so a failed attempt cannot leave an old PASS result. Existing-only releases do not invoke
+this creation-specific postcheck. The same read-only check can be repeated before
+publishing the UI:
+
+```sh
+node scripts/functions-config-guard.mjs --env dev --verify-creations
+```
+
+This uses the recorded pre-creation intent without treating it as approval of the
+new provider baseline. It checks that every reviewed creation is now present,
+local inputs are identical, prior endpoint contracts are unchanged (apart from
+expected deployed-revision metadata), and Scheduler/secret baselines still match.
+It returns a sanitized proof and does not replace the stale receipt. Then run the
+normal deployment audit and hosted disposable fixture validation. A pre-creation proposal is not proof of the resulting service.
 
 ## Explicit preservation
 
