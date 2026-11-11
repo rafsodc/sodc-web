@@ -1,5 +1,29 @@
 # Personal data erasure
 
+## Member account settings
+
+Enabled members can choose **Delete account** in Account Settings. The screen
+warns that deletion ends membership, permanently removes sign-in access and
+cannot be undone. A read-only eligibility check precedes typed-email confirmation,
+explicit acknowledgement that membership ends and recent authentication.
+
+The `deleteMyAccount` callable derives the target from the authenticated member;
+callers cannot select another account or certify that retention obligations do
+not apply. Financial, shared-content and administrator-audit blockers are checked
+on the server. Ineligible members are directed to contact an administrator;
+checking eligibility or cancelling the dialog does not end membership.
+Administrator accounts require another administrator's help and cannot use
+self-service deletion.
+
+Eligible deletion uses the same communication suppression, task cancellation,
+sender drain, shared-snapshot redaction and database fences as administrator
+erasure. Membership is ended and sign-in is disabled before the final erasure.
+Completion signs out the member and clears the private session. If the operation
+is interrupted, leave the account disabled and suppressed; an administrator must
+finish deletion through Manage Users. Do not promise deletion is complete after
+an unconfirmed response. Provider-held data and recoverable copies remain subject
+to the retention and restore procedures below.
+
 ## Admin screen
 
 Manage Users now offers **Delete account** for non-admin accounts. The callable
@@ -37,10 +61,15 @@ still require separate operational review; the screen does not claim complete
 GDPR erasure.
 
 
-Roll out the schema and guarded connector operations first, then all announcement,
+Roll out the schema and guarded connector operations (including the narrowly
+scoped self-deletion security transition) first, then all announcement,
 notification, callback and security writers, then the new deletion callable and
-frontend. Do not enable deletion before those workers are updated. The deletion runtime
-identity must have `cloudtasks.tasks.delete` for the announcement queue; verify
+frontend. Do not enable deletion before those workers are updated.
+Adding `deleteMyAccount` changes the deployed endpoint inventory. The current
+Functions configuration guard rejects new endpoints; its endpoint-creation
+contract requires a separate review before rollout. Do not bypass that guard or
+publish the member UI before the callable and connector changes are deployed.
+The deletion runtime identity must have `cloudtasks.tasks.delete` for the announcement queue; verify
 that permission before release. Cancellation failure stops the erasure. After the first
 erasure, old snapshot writers without the complete recipient-ID list fail closed.
 Do not roll back suppression guards or restore a deleted UID without operator
@@ -200,6 +229,15 @@ and do not establish compatibility with a deployed service.
    the requester only when these obligations are satisfied.
 
 ## Checks
+
+On 11 November 2026, member self-service deletion passed local UI tests for
+membership warnings, confirmations, sign-in checks and session replacement, plus
+backend tests for own-account authorization, retention blockers and interrupted
+recovery. All 71 disposable local SQL integration cases passed, including the
+narrow SELF deletion transition, final purge, shared-recipient preservation and
+rejection of superseded deletion authority. These checks used synthetic fixtures;
+the new member callable and UI have not been deployed or validated in a hosted
+environment.
 
 On 9 November 2026, validation passed against a disposable local SQL database
 (30 integration cases, including the existing administrator-safety races) and

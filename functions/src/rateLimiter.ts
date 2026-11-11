@@ -19,6 +19,7 @@ export interface RateLimitPolicy {
  */
 export const CALLABLE_RATE_LIMITS = {
   deleteAccount: { limit: 10, windowMs: HOUR_MS },
+  deleteMyAccount: { limit: 5, windowMs: HOUR_MS },
   getMyAuthorizationStatus: { limit: 30, windowMs: 5 * MINUTE_MS },
   getOrganiserGuestList: { limit: 60, windowMs: 5 * MINUTE_MS },
   getManagedEventTickets: { limit: 60, windowMs: 5 * MINUTE_MS },

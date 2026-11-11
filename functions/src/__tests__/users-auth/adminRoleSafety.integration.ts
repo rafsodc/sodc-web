@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import type { DataConnect } from "firebase-admin/data-connect";
 import type { App } from "firebase-admin/app";
 import type * as SecuritySdk from "@dataconnect/security-admin-generated";
-import { deleteInactiveAccountMutation, redactAccountSnapshotMutation } from "../../accountDeletionDatabase";
+import { deleteInactiveAccountMutation, redactAccountSnapshotMutation, deleteMyInactiveAccountMutation, redactMyAccountSnapshotMutation } from "../../accountDeletionDatabase";
 import { pruneAnnouncementSnapshot, withSnapshotErasure, communicationInventoryFilter } from "../../accountCommunicationErasure";
 import { accountDeletionInventory } from "../../accountDeletionInventory";
 
@@ -528,6 +528,72 @@ describe("account deletion against actual disposable SQL", () => {
     return {uid, emailHashes: [emailHash], email: `${uid}@example.test`, operationId: op, targetVersion: (await state(uid)).securityVersion,
       actorId, actorVersion: (await state(actorId)).securityVersion};
   }
+  async function seedSelfErasureMarker(uid: string) {
+    const hash = createHash("sha256").update(`${uid}@example.test`).digest("hex");
+    await dc.executeGraphql(`mutation SeedSelfErasureMarker($uid: String!, $hash: String!) {
+      accountErasure_insert(data: {userId: $uid, emailHash: $hash, startedAt: "2026-01-01T00:00:00Z"})
+    }`, {variables: {uid, hash}});
+    return hash;
+  }
+  async function selfDeletionFixture() {
+    const [adminId, uid] = await initialize(1, 1);
+    const hash = await seedSelfErasureMarker(uid);
+    const hold = await begin(uid, uid, {actorKind: "SELF", reason: "ACCOUNT_DELETION", membershipStatus: "RESIGNED",
+      desiredEnabled: false, desiredAdmin: false, authDisabled: true});
+    await sdk.beginSecurityTransition(security, hold.variables as unknown as SecuritySdk.BeginSecurityTransitionVariables);
+    const finish = await complete(uid);
+    await sdk.completeSecurityTransition(security, finish.variables as unknown as SecuritySdk.CompleteSecurityTransitionVariables);
+    return {uid, adminId, email: `${uid}@example.test`, emailHashes: [hash], operationId: String(hold.variables.operationId),
+      actorId: uid, actorVersion: 1, targetVersion: (await state(uid)).securityVersion};
+  }
+  it.each([
+    {label: "missing suppression marker", marker: false, overrides: {}},
+    {label: "unrelated disable intent", marker: true, overrides: {reason: "UNRELATED_ACTION"}},
+    {label: "re-enablement", marker: true, overrides: {authDisabled: false}},
+    {label: "membership left active", marker: true, overrides: {membershipStatus: "REGULAR"}},
+  ])("refuses a SELF deletion transition with $label without changing membership", async ({marker, overrides}) => {
+    const [, uid] = await initialize(1, 1);
+    if (marker) await seedSelfErasureMarker(uid);
+    const hold = await begin(uid, uid, {actorKind: "SELF", reason: "ACCOUNT_DELETION", membershipStatus: "RESIGNED",
+      desiredEnabled: false, desiredAdmin: false, authDisabled: true, ...overrides});
+    const before = await control();
+    await expect(sdk.beginSecurityTransition(security, hold.variables as unknown as SecuritySdk.BeginSecurityTransitionVariables)).rejects.toThrow("SECURITY_ACTOR_REVOKED");
+    expect(await state(uid)).toMatchObject({securityVersion: 1, membershipStatus: "REGULAR", accessReady: true});
+    expect(await operation(String(hold.variables.operationId))).toBeNull();
+    expect(await control()).toEqual(before);
+    await assertCount(1);
+  });
+  it("refuses SELF deletion of administrator accounts or another member", async () => {
+    const [adminId, , uid, other] = await initialize(2, 2);
+    await seedSelfErasureMarker(adminId);
+    await seedSelfErasureMarker(uid);
+    for (const [target, actor] of [[adminId, adminId], [uid, other]]) {
+      const hold = await begin(target, actor, {actorKind: "SELF", reason: "ACCOUNT_DELETION", membershipStatus: "RESIGNED",
+        desiredEnabled: false, desiredAdmin: false, authDisabled: true});
+      await expect(sdk.beginSecurityTransition(security, hold.variables as unknown as SecuritySdk.BeginSecurityTransitionVariables)).rejects.toThrow("SECURITY_ACTOR_REVOKED");
+      expect((await state(target)).securityVersion).toBe(1);
+      expect(await operation(String(hold.variables.operationId))).toBeNull();
+    }
+    await assertCount(2);
+  });
+  it("completes the exact SELF erasure hold and removes the profile without affecting the administrator", async () => {
+    const {adminId, ...variables} = await selfDeletionFixture();
+    expect(await state(variables.uid)).toMatchObject({membershipStatus: "RESIGNED", accessReady: false, desiredEnabled: false, syncStatus: "READY"});
+    await dc.executeGraphql(deleteMyInactiveAccountMutation, {variables});
+    const result = await dc.executeGraphql<any, {uid: string}>(`query VerifySelfDeletion($uid: String!) {
+      user(id: $uid) {id}
+      userSecurityStates(where: {userId: {eq: $uid}}) {userId}
+      securityTransitions(where: {userId: {eq: $uid}}) {operationId}
+      accountErasures(where: {userId: {eq: $uid}}) {profileDeletedAt}
+    }`, {variables: {uid: variables.uid}});
+    expect(result.data.user).toBeNull();
+    expect(result.data.userSecurityStates).toEqual([]);
+    expect(result.data.securityTransitions).toEqual([]);
+    expect(result.data.accountErasures).toHaveLength(1);
+    expect(result.data.accountErasures[0].profileDeletedAt).toBeTruthy();
+    expect((await state(adminId)).adminReady).toBe(true);
+    await assertCount(1);
+  });
   it("accepts every inventory selection and primary-key ordering in the real schema", async () => {
     const fixture = await deletionFixture();
     for (const table of accountDeletionInventory) {
@@ -589,6 +655,41 @@ describe("account deletion against actual disposable SQL", () => {
     const result = await dc.executeGraphql<any, {id: string}>("query PreservedSharedSnapshot($id: UUID!) {announcementSend(id: $id) {recipientSnapshot recipientCount skippedCount}}", {variables: {id: shared.send}});
     expect(JSON.parse(result.data.announcementSend.recipientSnapshot)).toEqual({version: 1, tasks: [shared.survivor], skippedRecipients: [], audienceSummary: "keep summary"});
     expect(result.data.announcementSend.recipientCount).toBe(1);
+    await assertCount(1);
+  });
+  it("redacts only the member's shared entry under the SELF hold before deleting the profile", async () => {
+    const {adminId, ...variables} = await selfDeletionFixture();
+    const shared = await sharedSnapshotFixture({...variables, actorId: adminId});
+    await expect(dc.executeGraphql(deleteMyInactiveAccountMutation, {variables})).rejects.toThrow("ERASURE_DRAIN_PENDING");
+    const pruned = pruneAnnouncementSnapshot(shared.snapshot, variables.uid, variables.email);
+    const transaction = withSnapshotErasure(redactMyAccountSnapshotMutation, [{id: shared.send, expected: shared.snapshot,
+      replacement: pruned.replacement, recipientCount: 2, skippedCount: 0, removedTasks: 1, removedSkipped: 0}]);
+    await dc.executeGraphql(transaction.query, {variables: {uid: variables.uid, actorId: variables.actorId, actorVersion: variables.actorVersion, operationId: variables.operationId, targetVersion: variables.targetVersion, ...transaction.variables}});
+    await dc.executeGraphql(deleteMyInactiveAccountMutation, {variables});
+    const observed = await dc.executeGraphql<any, {id: string}>("query PreservedSelfErasureSnapshot($id: UUID!) {announcementSend(id: $id) {recipientSnapshot recipientCount}}", {variables: {id: shared.send}});
+    expect(JSON.parse(observed.data.announcementSend.recipientSnapshot).tasks).toEqual([shared.survivor]);
+    expect(observed.data.announcementSend.recipientCount).toBe(1);
+    expect(await state(variables.uid)).toBeNull();
+    await assertCount(1);
+  });
+  it("refuses superseded SELF snapshot and profile deletion while preserving the current data", async () => {
+    const {adminId, ...variables} = await selfDeletionFixture();
+    const shared = await sharedSnapshotFixture({...variables, actorId: adminId});
+    const pruned = pruneAnnouncementSnapshot(shared.snapshot, variables.uid, variables.email);
+    const transaction = withSnapshotErasure(redactMyAccountSnapshotMutation, [{id: shared.send, expected: shared.snapshot,
+      replacement: pruned.replacement, recipientCount: 2, skippedCount: 0, removedTasks: 1, removedSkipped: 0}]);
+    const replacementOperation = operationId();
+    await dc.executeGraphql(`mutation SupersedeSelfErasure($uid: String!, $operation: String!) {
+      userSecurityState_update(key: {userId: $uid}, data: {operationId: $operation, securityVersion_update: {inc: 1}})
+    }`, {variables: {uid: variables.uid, operation: replacementOperation}});
+    await expect(dc.executeGraphql(transaction.query, {variables: {uid: variables.uid, actorId: variables.actorId, actorVersion: variables.actorVersion, operationId: variables.operationId, targetVersion: variables.targetVersion, ...transaction.variables}})).rejects.toThrow("SELF_ERASURE_AUTHORITY_CHANGED");
+    const observed = await dc.executeGraphql<any, {id: string}>("query UnchangedSelfErasureSnapshot($id: UUID!) {announcementSend(id: $id) {recipientSnapshot}}", {variables: {id: shared.send}});
+    expect(observed.data.announcementSend.recipientSnapshot).toBe(shared.snapshot);
+    // Remove the independent snapshot blocker so this call exercises the stale
+    // self-authority fence rather than stopping at the communication drain.
+    await dc.executeGraphql("mutation SettleSelfSnapshot($id: UUID!) {announcementSend_update(key: {id: $id}, data: {recipientSnapshot: null})}", {variables: {id: shared.send}});
+    await expect(dc.executeGraphql(deleteMyInactiveAccountMutation, {variables})).rejects.toThrow("SELF_ERASURE_AUTHORITY_CHANGED");
+    expect(await state(variables.uid)).toMatchObject({operationId: replacementOperation, securityVersion: variables.targetVersion + 1});
     await assertCount(1);
   });
   it("rejects snapshot CAS drift without overwriting the newer shared value", async () => {

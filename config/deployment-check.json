@@ -64,6 +64,7 @@
     "createOrganiserGuestCheckout",
     "createTicketCheckoutSession",
     "deleteAccount",
+    "deleteMyAccount",
     "deleteSectionFile",
     "finalizeSectionFileReplacement",
     "finalizeSectionFileUpload",
