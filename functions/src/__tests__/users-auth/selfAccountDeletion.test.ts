@@ -114,7 +114,7 @@ it("ends membership, drains communications and verifies deletion using the exact
   expect(query).toContain("fence: userSecurityState_deleteMany");
   expect(options.variables).toMatchObject({uid, actorId: uid, actorVersion: 7, targetVersion: 8, operationId});
   expect(mocks.remove).toHaveBeenCalledWith(uid);
-  expect(mocks.complete).toHaveBeenCalledWith(uid);
+  expect(mocks.complete).toHaveBeenCalledWith(uid, {communicationsQuiesced: true});
 });
 it("rechecks the identity before entering a self hold", async () => {
   mocks.cancel.mockImplementation(async () => {identity.customClaims.admin = true;});

@@ -174,6 +174,16 @@ export interface AbortSectionFileReplacementVariables {
   updatedBy: string;
 }
 
+export interface AccountErasureDisposalPolicy_Key {
+  id: string;
+  __typename?: 'AccountErasureDisposalPolicy_Key';
+}
+
+export interface AccountErasureDisposal_Key {
+  userId: string;
+  __typename?: 'AccountErasureDisposal_Key';
+}
+
 export interface AccountErasure_Key {
   userId: string;
   emailHash: string;
@@ -489,6 +499,7 @@ export interface ConsumeCallableRateLimitVariables {
 }
 
 export interface CreateAnnouncementRecipientData {
+  subjectLock: number;
   announcementRecipient_insert: AnnouncementRecipient_Key;
 }
 
@@ -506,6 +517,7 @@ export interface CreateAnnouncementRecipientVariables {
 }
 
 export interface CreateAnnouncementRecipientWithDeliveryModeData {
+  subjectLock: number;
   announcementRecipient_insert: AnnouncementRecipient_Key;
 }
 
@@ -651,6 +663,8 @@ export interface CreateMigratedUserProfileAndIdentityVariables {
 }
 
 export interface CreateNotificationDeliveryData {
+  subjectLock: number;
+  recipientLock: number;
   notificationDelivery_insert: NotificationDelivery_Key;
 }
 
@@ -671,6 +685,8 @@ export interface CreateNotificationDeliveryVariables {
 }
 
 export interface CreateNotifyDeliveryReceiptData {
+  subjectLock: number;
+  announcementLock: number;
   notifyDeliveryReceipt_insert: NotifyDeliveryReceipt_Key;
 }
 
@@ -680,6 +696,9 @@ export interface CreateNotifyDeliveryReceiptVariables {
   reference?: string | null;
   recipientHash: string;
   userId?: string | null;
+  announcementRecipientId?: UUIDString | null;
+  announcementSendId?: string | null;
+  announcementUserId?: string | null;
   eventAt: TimestampString;
   eventOrderingKey: string;
   affectsBounceState: boolean;
@@ -2129,6 +2148,17 @@ export interface GetNotificationDeliveryByIdData {
 
 export interface GetNotificationDeliveryByIdVariables {
   id: UUIDString;
+}
+
+export interface GetNotifyCallbackNotificationUserData {
+  notificationDeliveries: ({
+    userId?: string | null;
+    recipientUserId?: string | null;
+  })[];
+}
+
+export interface GetNotifyCallbackNotificationUserVariables {
+  providerMessageId: string;
 }
 
 export interface GetNotifyCallbackUserByIdData {
@@ -6617,6 +6647,18 @@ export const getNotifyDeliveryReceiptRef: GetNotifyDeliveryReceiptRef;
 
 export function getNotifyDeliveryReceipt(vars: GetNotifyDeliveryReceiptVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
 export function getNotifyDeliveryReceipt(dc: DataConnect, vars: GetNotifyDeliveryReceiptVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyDeliveryReceiptData, GetNotifyDeliveryReceiptVariables>;
+
+interface GetNotifyCallbackNotificationUserRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetNotifyCallbackNotificationUserVariables): QueryRef<GetNotifyCallbackNotificationUserData, GetNotifyCallbackNotificationUserVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetNotifyCallbackNotificationUserVariables): QueryRef<GetNotifyCallbackNotificationUserData, GetNotifyCallbackNotificationUserVariables>;
+  operationName: string;
+}
+export const getNotifyCallbackNotificationUserRef: GetNotifyCallbackNotificationUserRef;
+
+export function getNotifyCallbackNotificationUser(vars: GetNotifyCallbackNotificationUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyCallbackNotificationUserData, GetNotifyCallbackNotificationUserVariables>;
+export function getNotifyCallbackNotificationUser(dc: DataConnect, vars: GetNotifyCallbackNotificationUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyCallbackNotificationUserData, GetNotifyCallbackNotificationUserVariables>;
 
 interface CreateNotifyDeliveryReceiptRef {
   /* Allow users to create refs without passing in DataConnect */

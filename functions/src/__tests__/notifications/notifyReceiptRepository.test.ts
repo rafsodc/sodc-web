@@ -153,6 +153,21 @@ describe("Data Connect Notify receipt repository", () => {
     expect(applyState).toHaveBeenCalledWith(state);
   });
 
+  it("binds a tracked provider message to its recorded recipient UID only", async () => {
+    const lookup = vi.spyOn(admin, "getNotifyCallbackNotificationUser");
+    lookup.mockResolvedValueOnce({data: {notificationDeliveries: []}} as never)
+      .mockResolvedValueOnce({data: {notificationDeliveries: [{userId: "subject", recipientUserId: "actual-recipient"}]}} as never)
+      .mockResolvedValueOnce({data: {notificationDeliveries: [{userId: "legacy-recipient", recipientUserId: null}]}} as never)
+      .mockResolvedValueOnce({data: {notificationDeliveries: [{userId: "one"}, {userId: "two"}]}} as never)
+      .mockResolvedValueOnce({data: {notificationDeliveries: [{userId: null, recipientUserId: null}]}} as never);
+    await expect(dataConnectNotifyReceiptRepository.findNotificationUserId("missing")).resolves.toBeNull();
+    await expect(dataConnectNotifyReceiptRepository.findNotificationUserId("tracked")).resolves.toBe("actual-recipient");
+    await expect(dataConnectNotifyReceiptRepository.findNotificationUserId("legacy")).resolves.toBe("legacy-recipient");
+    await expect(dataConnectNotifyReceiptRepository.findNotificationUserId("ambiguous")).resolves.toBeNull();
+    await expect(dataConnectNotifyReceiptRepository.findNotificationUserId("unowned")).resolves.toBeNull();
+    expect(lookup).toHaveBeenCalledWith({providerMessageId: "tracked"});
+  });
+
   it("maps announcement recipient reads, latest receipts, and versioned updates", async () => {
     const getRecipient = vi.spyOn(admin, "getAnnouncementRecipientBySendAndUser");
     const getLatest = vi.spyOn(admin, "getLatestNotifyDeliveryReceiptForReference");

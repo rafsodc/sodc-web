@@ -157,7 +157,7 @@ it("previews and removes only the selected member's shared snapshot entries and 
   expect((rows.announcementRecipients as any[])[0].userId).toBe("actor");
   expect(mocks.cancel).toHaveBeenCalled();
   expect(mocks.drain).toHaveBeenCalledOnce();
-  expect(mocks.complete).toHaveBeenCalledWith(uid);
+  expect(mocks.complete).toHaveBeenCalledWith(uid, {communicationsQuiesced: true});
 });
 it("recovers an Auth deletion failure after the database phase without requiring a profile or security row", async () => {
   const {createHash} = await import("node:crypto");
@@ -216,7 +216,7 @@ it("lets an administrator finish an interrupted READY self-deletion through a fr
   expect(query).toContain("ACCOUNT_CHANGED");
   expect(options.variables).toMatchObject({uid, actorId: "actor", actorVersion: 7, operationId: selfOperationId, targetVersion: 8});
   expect(mocks.remove).toHaveBeenCalledWith(uid);
-  expect(mocks.complete).toHaveBeenCalledWith(uid);
+  expect(mocks.complete).toHaveBeenCalledWith(uid, {communicationsQuiesced: true});
   expect(mocks.complete.mock.invocationCallOrder[0]).toBeGreaterThan(mocks.remove.mock.invocationCallOrder[0]);
 });
 it("lets an administrator finish self-deletion after the profile phase using the durable marker", async () => {

@@ -1936,6 +1936,12 @@ mutation CreateNotificationDelivery(
   query @redact @check(expr: "(vars.userId == null || response.query.subject.size() == 0) && (vars.recipientUserId == null || response.query.recipient.size() == 0)", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
     subject: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId} recipient: accountErasures(where: {userId: {eq: $recipientUserId}}, limit: 1) {userId}
   }
+  # An expired suppression marker must not make a stale owned payload valid.
+  # Null ownership remains supported for intentional guest notifications.
+  subjectLock: user_updateMany(where: {id: {eq: $userId}}, data: {emailDeliveryVersion_update: {inc: 0}})
+    @check(expr: "this == (vars.userId != null ? 1 : 0)", message: "NOTIFICATION_SUBJECT_MISSING")
+  recipientLock: user_updateMany(where: {id: {eq: $recipientUserId}}, data: {emailDeliveryVersion_update: {inc: 0}})
+    @check(expr: "this == (vars.recipientUserId != null ? 1 : 0)", message: "NOTIFICATION_SUBJECT_MISSING")
   notificationDelivery_insert(
     data: {
       channel: $channel
@@ -2684,6 +2690,10 @@ mutation CreateAnnouncementRecipient(
   query @redact @check(expr: "response.query.erasures.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
     erasures: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId}
   }
+  # Lock the exact live identity, including its current address, before copying
+  # personal data from a queued payload into this recipient ledger.
+  subjectLock: user_updateMany(where: {id: {eq: $userId}, email: {eq: $email}}, data: {emailDeliveryVersion_update: {inc: 0}})
+    @check(expr: "this == 1", message: "ANNOUNCEMENT_SUBJECT_MISSING")
   announcementRecipient_insert(data: {
     id: $id
     announcementSendId: $announcementSendId
@@ -2718,6 +2728,8 @@ mutation CreateAnnouncementRecipientWithDeliveryMode(
   query @redact @check(expr: "response.query.erasures.size() == 0", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
     erasures: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId}
   }
+  subjectLock: user_updateMany(where: {id: {eq: $userId}, email: {eq: $email}}, data: {emailDeliveryVersion_update: {inc: 0}})
+    @check(expr: "this == 1", message: "ANNOUNCEMENT_SUBJECT_MISSING")
   announcementRecipient_insert(data: {
     id: $id
     announcementSendId: $announcementSendId
@@ -3170,20 +3182,41 @@ query GetNotifyDeliveryReceipt($id: String!) @auth(level: NO_ACCESS) {
   }
 }
 
+# Correlate callbacks to the UID recorded when the provider accepted the message.
+# Email alone must never attach an old callback to a re-registered identity.
+query GetNotifyCallbackNotificationUser($providerMessageId: String!) @auth(level: NO_ACCESS) {
+  notificationDeliveries(where: {providerMessageId: {eq: $providerMessageId}}, limit: 2) {userId recipientUserId}
+}
+
 mutation CreateNotifyDeliveryReceipt(
   $id: String!
   $notifyStatus: String!
   $reference: String
   $recipientHash: String!
   $userId: String = null
+  $announcementRecipientId: UUID = null
+  # Preserve the provider reference's UUID spelling; UUID_Expr filters below
+  # perform typed SQL comparison without changing the reference text.
+  $announcementSendId: String = null
+  $announcementUserId: String = null
   $eventAt: Timestamp!
   $eventOrderingKey: String!
   $affectsBounceState: Boolean!
   $lastAttemptedAt: Timestamp!
 ) @auth(level: NO_ACCESS) @transaction {
-  query @redact @check(expr: "(vars.userId == null || response.query.subject.size() == 0) && response.query.contacts.size() < 10000 && response.query.contacts.all(e, vars.userId != null && e.userId != vars.userId)", message: "ACCOUNT_ERASURE_IN_PROGRESS") {
+  query @redact @check(expr: "(vars.userId == null || response.query.subject.size() == 0) && response.query.announcementSubject.size() == 0 && response.query.contacts.size() < 10000 && response.query.contacts.all(e, vars.userId != null && e.userId != vars.userId)", message: "ACCOUNT_ERASURE_IN_PROGRESS")
+    @check(expr: "vars.announcementRecipientId != null ? (response.query.liveAnnouncements.size() == 1 && response.query.liveAnnouncements[0].userId == vars.announcementUserId && (vars.userId == null || (vars.userId == vars.announcementUserId && response.query.liveUsers.size() == 1))) : (vars.userId != null && response.query.liveUsers.size() == 1 && response.query.deliveries.size() == 1 && (response.query.deliveries[0].recipientUserId != null ? response.query.deliveries[0].recipientUserId : response.query.deliveries[0].userId) == vars.userId)", message: "NOTIFY_CALLBACK_SUBJECT_MISSING_BINDING")
+    @check(expr: "vars.announcementRecipientId == null || vars.reference == 'announcement:' + vars.announcementSendId + ':' + vars.announcementUserId", message: "NOTIFY_CALLBACK_SUBJECT_MISSING_REFERENCE") {
     subject: accountErasures(where: {userId: {eq: $userId}}, limit: 1) {userId} contacts: accountErasures(where: {emailHash: {eq: $recipientHash}}, limit: 10000) {userId}
+    announcementSubject: accountErasures(where: {userId: {eq: $announcementUserId}}, limit: 1) {userId}
+    liveUsers: users(where: {id: {eq: $userId}}, limit: 1) {id}
+    liveAnnouncements: announcementRecipients(where: {id: {eq: $announcementRecipientId}, userId: {eq: $announcementUserId}, announcementSendId: {eq_expr: "vars.announcementSendId"}}, limit: 1) {id userId announcementSendId}
+    deliveries: notificationDeliveries(where: {providerMessageId: {eq: $id}}, limit: 2) {userId recipientUserId}
   }
+  subjectLock: user_updateMany(where: {id: {eq: $userId}}, data: {emailDeliveryVersion_update: {inc: 0}})
+    @check(expr: "this == (vars.userId != null ? 1 : 0)", message: "NOTIFY_CALLBACK_SUBJECT_MISSING_USER_LOCK")
+  announcementLock: announcementRecipient_updateMany(where: {id: {eq: $announcementRecipientId}, userId: {eq: $announcementUserId}, announcementSendId: {eq_expr: "vars.announcementSendId"}}, data: {deliveryVersion_update: {inc: 0}})
+    @check(expr: "this == (vars.announcementRecipientId != null ? 1 : 0)", message: "NOTIFY_CALLBACK_SUBJECT_MISSING_ANNOUNCEMENT_LOCK")
   notifyDeliveryReceipt_insert(
     data: {
       id: $id

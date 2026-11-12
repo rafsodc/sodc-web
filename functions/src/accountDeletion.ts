@@ -21,7 +21,7 @@ const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 const db = () => getDataConnect({connector: "api", serviceId: "sodc-web-service", location: FUNCTIONS_REGION});
 
 export function accountDeletionMatch(name: string, row: any, uid: string, email: string, operationId?: string, emails = new Set([email.trim().toLowerCase()]), knownHashes = new Set<string>()): "none" | "remove" | "block" {
-  if (name === "AccountErasure") return "none";
+  if (["AccountErasure", "AccountErasureDisposal", "AccountErasureDisposalPolicy"].includes(name)) return "none";
   const text = JSON.stringify(row).toLowerCase();
   if (![uid.toLowerCase(), ...emails, ...[...emails].map(sha), ...knownHashes].some(value => text.includes(value))) return "none";
   if (name === "AnnouncementSend") {
@@ -55,7 +55,7 @@ export async function inventoryAccountDeletion(uid: string, email: string, opera
   const snapshots: {id: string}[] = [];
   const taskIds = new Set<string>();
   // Learn historical addresses before checking callback hashes and ledgers.
-  const tables = [...accountDeletionInventory].filter(table => table.name !== "AccountErasure").sort((a, b) => {
+  const tables = [...accountDeletionInventory].filter(table => !["AccountErasure", "AccountErasureDisposal", "AccountErasureDisposalPolicy"].includes(table.name)).sort((a, b) => {
     const rank = (name: string) => name === "AnnouncementSend" ? 0 : name === "AnnouncementRecipient" ? 1 : 2;
     return rank(a.name) - rank(b.name);
   });
@@ -241,7 +241,7 @@ export const deleteAccount = onCall({region: FUNCTIONS_REGION, timeoutSeconds: 5
     await admin.auth().deleteUser(uid).catch((error: any) => {if (error.code !== "auth/user-not-found") throw error;});
     try { await admin.auth().getUser(uid); throw new Error("AUTH_VERIFICATION_FAILED"); }
     catch (error: any) { if (error.code !== "auth/user-not-found") throw error; }
-    await completeAccountErasure(uid);
+    await completeAccountErasure(uid, {communicationsQuiesced: true});
     logger.info("Admin account deletion completed", {actorId: request.auth!.uid, subjectHash, operationId});
     return {deleted: true};
   } catch (error) {

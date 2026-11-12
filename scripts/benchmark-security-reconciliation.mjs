@@ -10,7 +10,8 @@ import { fileURLToPath } from "node:url";
 import { compileFunction, createContext } from "node:vm";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SOURCES = ["securityReconciliation.ts", "securityReconciliationBatch.ts", "currentAuthorizationTransitions.ts", "validation.ts", "constants.ts"];
+const SOURCES = ["securityReconciliation.ts", "securityReconciliationBatch.ts", "currentAuthorizationTransitions.ts", "validation.ts", "constants.ts",
+  "accountErasureDisposal.ts", "accountErasureDisposalDatabase.ts", "accountErasureBackupHorizon.ts"];
 const LATENCIES = ["databaseRead", "databaseWrite", "authRead", "authWrite"];
 
 function integer(value, minimum, maximum, label) {
@@ -34,12 +35,13 @@ export function percentile(values, fraction) {
 }
 
 /** Real production scheduler/coordinator, with local transport boundaries only. No Firebase SDK is loaded. */
-export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize, pendingCount = 0, deniedCount = 0, mirrorDriftCount = 0, transientAuthFailures = 0, latencyMs = {} }) {
+export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize, pendingCount = 0, deniedCount = 0, mirrorDriftCount = 0, transientAuthFailures = 0, latencyMs = {}, disposalPolicy = "missing" }) {
   integer(rosterSize, 2, 100_000, "roster size");
   integer(pendingCount, 0, rosterSize - 2, "pending count");
   integer(deniedCount, 0, rosterSize - pendingCount - 2, "denied count");
   integer(mirrorDriftCount, 0, rosterSize - pendingCount - 2, "mirror drift count");
   integer(transientAuthFailures, 0, pendingCount, "transient failure count");
+  if (!["missing", "disabled"].includes(disposalPolicy)) throw new Error("Invalid disposal policy fixture");
   for (const [kind, value] of Object.entries(latencyMs)) {
     if (!LATENCIES.includes(kind) || !Number.isFinite(value) || value < 0 || value > 60_000) throw new Error("Invalid transport latency model");
   }
@@ -54,8 +56,11 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
   const failures = new Set();
   const control = { status: "READY", version: 1, readyAdminCount: 2 };
   const counts = Object.fromEntries(LATENCIES.map(kind => [kind, 0]));
+  const phaseServiceOperations = Object.fromEntries(["securityReconciliation", "suppressionDisposal"].map(phase => [phase, Object.fromEntries(LATENCIES.map(kind => [kind, 0]))]));
   const operations = {};
   let completion = null;
+  let disposalCompletion = null;
+  let forbiddenBoundaryCalls = 0;
   let warnings = 0;
   let injectedFailures = 0;
   let peak = beforeFixtures;
@@ -64,8 +69,9 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
     const value = memory();
     peak = { heapUsedBytes: Math.max(peak.heapUsedBytes, value.heapUsedBytes), rssBytes: Math.max(peak.rssBytes, value.rssBytes) };
   }
-  function charge(kind, name) {
+  function charge(kind, name, phase = "securityReconciliation") {
     counts[kind]++;
+    phaseServiceOperations[phase][kind]++;
     operations[name] = (operations[name] ?? 0) + 1;
     if (++serviceCalls % 100 === 0) sample();
   }
@@ -126,13 +132,37 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
     async revokeRefreshTokens() { throw new Error("Unexpected token revocation in local scenario"); },
   };
   const logger = {
-    info(message, fields) { if (message === "Security reconciliation completed") completion = clone(fields); },
+    info(message, fields) {
+      if (message === "Security reconciliation completed") completion = clone(fields);
+      if (message === "Suppression disposal sweep completed") disposalCompletion = clone(fields);
+    },
     warn() { warnings++; },
   };
   let scheduleOptions;
   const modules = new Map();
-  // Omit process, credentials, fetch and timer globals from the production module context.
-  const moduleContext = createContext({});
+  const activeTimers = new Set();
+  const forbidden = () => { forbiddenBoundaryCalls++; throw new Error("Cloud, credential and disposal-write access is forbidden in the local benchmark"); };
+  const disposalDatabase = {
+    async executeGraphqlRead(query, options) {
+      if (query !== 'query ErasureDisposalPolicy {accountErasureDisposalPolicy(key: {id: "site-wide"}) {version externalReplayReviewed reviewReference}}' || options !== undefined) return forbidden();
+      charge("databaseRead", "ErasureDisposalPolicy", "suppressionDisposal");
+      return response("accountErasureDisposalPolicy", disposalPolicy === "missing" ? null : {version: 1, externalReplayReviewed: false, reviewReference: "LOCAL_BENCHMARK"});
+    },
+    executeGraphql: forbidden,
+  };
+  // The actual disposal module runs its closed-policy read and deadline logic.
+  // Expose only a fixed non-credential environment and bounded local timers;
+  // fetch, sockets, real Firebase SDKs and Google credentials remain unavailable.
+  const moduleContext = createContext({
+    process: Object.freeze({env: Object.freeze({GCLOUD_PROJECT: "sodc-web"})}),
+    setTimeout(callback, delay) {
+      if (typeof callback !== "function" || !Number.isFinite(delay) || delay < 0 || delay > 30_000) return forbidden();
+      const timer = setTimeout(() => {activeTimers.delete(timer); callback();}, delay);
+      activeTimers.add(timer);
+      return timer;
+    },
+    clearTimeout(timer) {clearTimeout(timer); activeTimers.delete(timer);},
+  });
   function load(name) {
     if (modules.has(name)) return modules.get(name).exports;
     if (!SOURCES.includes(name)) throw new Error("Unapproved benchmark module dependency");
@@ -143,6 +173,12 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
     const restrictedRequire = id => {
       if (id === "node:crypto") return require(id);
       if (id === "firebase-admin") return { auth: () => auth };
+      if (id === "firebase-admin/auth") return {getAuth: () => {forbidden();}};
+      if (id === "firebase-admin/data-connect") return {getDataConnect: options => {
+        if (!sameObject(options, {connector: "api", serviceId: "sodc-web-service", location: "europe-west2"})) return forbidden();
+        return disposalDatabase;
+      }};
+      if (id === "google-auth-library") return {GoogleAuth: class {constructor() {forbidden();}}};
       if (id === "firebase-functions/v2/https") return { HttpsError: class extends Error {} };
       if (id === "firebase-functions/v2/scheduler") return { onSchedule: (options, handler) => { scheduleOptions = clone(options); return handler; } };
       if (id === "firebase-functions/logger") return logger;
@@ -163,11 +199,13 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
   peak = beforeSweep;
   const cpuBefore = process.cpuUsage();
   const started = performance.now();
-  await handler();
+  try {await handler();}
+  finally {for (const timer of activeTimers) clearTimeout(timer);}
   const sweepWallMs = performance.now() - started;
   const cpu = process.cpuUsage(cpuBefore);
   sample();
   if (!completion || completion.stateAttempts !== rosterSize) throw new Error("Actual scheduler did not complete the entire roster");
+  if (forbiddenBoundaryCalls || activeTimers.size || !disposalCompletion || !sameObject(disposalCompletion, {examined: 0, disposed: 0, deferred: 0, failed: 0}) || operations.ErasureDisposalPolicy !== 1) throw new Error("Actual scheduler did not safely complete its closed-policy disposal tail");
   const pendingRemaining = [...transitions.values()].filter(row => row.syncStatus === "PENDING").length;
   const mirrorMismatches = [...states.values()].filter(state => {
     const claims = identities.get(state.userId).customClaims;
@@ -178,8 +216,9 @@ export async function runReconciliationCase({ repositoryRoot = ROOT, rosterSize,
     rosterSize, pendingCount, deniedCount, mirrorDriftCount, transientAuthFailures, actualProductionCode: true, cloudCalls: 0,
     sourceSha256, typescriptVersion: ts.version, scheduleOptions,
     completion, warnings, injectedFailures, pendingRemaining, mirrorMismatches,
+    suppressionDisposal: {policy: disposalPolicy, completion: disposalCompletion, forbiddenBoundaryCalls},
     unrelatedClaimsPreserved: [...identities.values()].every(identity => identity.customClaims.unrelated === "preserved"),
-    simulatedServiceOperations: counts, simulatedOperationCounts: operations, totalSimulatedServiceOperations: serviceCalls,
+    simulatedServiceOperations: counts, phaseServiceOperations, simulatedOperationCounts: operations, totalSimulatedServiceOperations: serviceCalls,
     localMeasurement: { sweepWallMs, cpuMs: (cpu.user + cpu.system) / 1000,
       fixtureHeapDeltaBytes: fixturesMemory.heapUsedBytes - beforeFixtures.heapUsedBytes,
       executionHeapPeakDeltaBytes: Math.max(0, peak.heapUsedBytes - beforeSweep.heapUsedBytes),
@@ -207,9 +246,10 @@ export function scenarioInputs(rosterSize) {
 
 export function summarizeMeasurements(measurements) {
   const first = measurements[0];
-  if (!first || measurements.some(value => !sameObject(value.sourceSha256, first.sourceSha256) || !sameObject(value.simulatedServiceOperations, first.simulatedServiceOperations))) throw new Error("Benchmark runs have different source or operation counts");
+  if (!first || measurements.some(value => !sameObject(value.sourceSha256, first.sourceSha256) || !sameObject(value.simulatedServiceOperations, first.simulatedServiceOperations) ||
+      ["securityReconciliation", "suppressionDisposal"].some(phase => !sameObject(value.phaseServiceOperations?.[phase], first.phaseServiceOperations?.[phase])))) throw new Error("Benchmark runs have different source or operation counts");
   return { rosterSize: first.rosterSize, pendingCount: first.pendingCount, deniedCount: first.deniedCount, mirrorDriftCount: first.mirrorDriftCount, transientAuthFailures: first.transientAuthFailures,
-    runs: measurements.length, simulatedServiceOperations: first.simulatedServiceOperations,
+    runs: measurements.length, simulatedServiceOperations: first.simulatedServiceOperations, phaseServiceOperations: first.phaseServiceOperations,
     totalSimulatedServiceOperations: first.totalSimulatedServiceOperations,
     localSweepWallMs: { median: median(measurements.map(value => value.localMeasurement.sweepWallMs)), p95: percentile(measurements.map(value => value.localMeasurement.sweepWallMs), 0.95), max: Math.max(...measurements.map(value => value.localMeasurement.sweepWallMs)) },
     localCpuMsMedian: median(measurements.map(value => value.localMeasurement.cpuMs)),

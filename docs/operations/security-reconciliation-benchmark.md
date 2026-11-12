@@ -18,8 +18,13 @@ measurement runs in a separate process, transpiles the current production
 scheduler/coordinator, and supplies local Data Connect/Auth transports. The
 restricted loader rejects unexpected dependencies; it does not load Firebase,
 discover credentials, create members, deliver notifications, or contact cloud
-services. Reports contain aggregate data and hashes of the five source files
-(scheduler, read-only batch checker, coordinator, validation and constants).
+services. Reports contain aggregate data and hashes of eight source files
+(scheduler, read-only batch checker, coordinator, validation, constants and the
+three suppression-disposal/database/backup modules). The actual disposal tail
+reads a fixed missing or disabled local policy and exits; that read is counted
+separately from security reconciliation. Credential discovery, metadata reads
+and disposal writes are forbidden. Due-disposal work is outside these benchmark
+scenarios and requires its dedicated safety and provider checks.
 
 The scenarios cover healthy grants; disabled, email-free denied identities;
 the first 100 pending grant retries; and mirror drift with transient Auth
@@ -36,9 +41,11 @@ sweeps. A completed non-admin grant can use the fast path during the later
 state scan after its pending-first repair.
 
 With two administrators and all other members exactly healthy, the local
-production-code benchmark verifies **37 logical service operations at 2,000
-states** (15 Data Connect reads, 22 Auth reads) and **149 at 10,000 states**
-(47 Data Connect reads, 102 Auth reads), with no writes. These are SDK boundary
+production-code benchmark verifies **38 logical service operations at 2,000
+states** (16 Data Connect reads, 22 Auth reads) and **150 at 10,000 states**
+(48 Data Connect reads, 102 Auth reads), with no writes. The original security
+phase remains exactly 37 and 149 operations respectively; the disposal tail adds
+one policy read. These are SDK boundary
 counts, not HTTP request counts or measured cloud speed. Additional admins,
 holds, pending work, missing identities, drift and service failures require
 more fresh coordinator operations. Unrelated custom claims are preserved by

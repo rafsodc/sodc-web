@@ -907,6 +907,12 @@ export function getNotifyDeliveryReceipt(dcOrVarsOrOptions, varsOrOptions, optio
   return dcInstance.executeQuery('GetNotifyDeliveryReceipt', inputVars, inputOpts);
 }
 
+export function getNotifyCallbackNotificationUser(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('GetNotifyCallbackNotificationUser', inputVars, inputOpts);
+}
+
 export function createNotifyDeliveryReceipt(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);

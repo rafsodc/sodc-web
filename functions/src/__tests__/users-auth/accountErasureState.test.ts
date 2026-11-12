@@ -1,5 +1,9 @@
 import { beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({read: vi.fn(), write: vi.fn(), remove: vi.fn()}));
+vi.mock("../../accountErasureDisposal", () => ({
+  withAccountErasureDisposalFence: async (_uid: string, _historical: boolean, write: (decision: unknown) => Promise<void>) => write({generation: "10000000-0000-4000-8000-000000000001", version: 1, holdCode: null}),
+  readAccountErasureDisposal: async () => ({internalQuiescedAt: null}),
+}));
 vi.mock("firebase-admin/data-connect", () => ({getDataConnect: () => ({executeGraphqlRead: mocks.read, executeGraphql: mocks.write})}));
 vi.mock("firebase-admin/functions", () => ({getFunctions: () => ({taskQueue: () => ({delete: mocks.remove})})}));
 import { accountErasureState, cancelErasureTasks, startAccountErasure } from "../../accountErasureState";
@@ -8,15 +12,16 @@ beforeEach(() => vi.resetAllMocks());
 it("preserves the original drain clock when adding an historical address or retrying", async () => {
   const rows = [{emailHash: erasureEmailHash("current@example.invalid"), startedAt: "2026-01-01T00:00:00Z", profileDeletedAt: null, completedAt: null}];
   mocks.read.mockImplementation(async () => ({data: {accountErasures: [...rows]}}));
-  mocks.write.mockImplementation(async (_query, options) => {rows.push({...rows[0], emailHash: options.variables.hash});});
+  mocks.write.mockImplementation(async (_query, options) => {if (options.variables.hash0) rows.push({...rows[0], emailHash: options.variables.hash0});});
   await startAccountErasure("member", ["current@example.invalid", "former@example.invalid"]);
   expect(mocks.write).toHaveBeenCalledOnce();
   expect(mocks.write.mock.calls[0][1].variables.startedAt).toBe(rows[0].startedAt);
   await startAccountErasure("member", ["former@example.invalid"]);
-  expect(mocks.write).toHaveBeenCalledOnce();
+  expect(mocks.write).toHaveBeenCalledTimes(2);
+  expect(mocks.write.mock.calls[1][1].variables).not.toHaveProperty("hash0");
 });
 it("accepts uncertain insertion only after independently observing the matching marker", async () => {
-  const row = {emailHash: erasureEmailHash("member@example.invalid"), startedAt: "2026-01-01T00:00:00Z"};
+  const row = {emailHash: erasureEmailHash("member@example.invalid"), startedAt: "2026-01-01T00:00:00Z", completedAt: null};
   mocks.read.mockResolvedValueOnce({data: {accountErasures: []}}).mockResolvedValue({data: {accountErasures: [row]}});
   mocks.write.mockRejectedValue(new Error("connection lost"));
   await expect(startAccountErasure("member", ["member@example.invalid"])).resolves.toEqual(row);

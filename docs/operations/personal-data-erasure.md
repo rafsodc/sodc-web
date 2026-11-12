@@ -101,18 +101,22 @@ the restricted case system. Do not put the subject's details in Git or tickets.
 ### Suppression record policy
 
 The service-owner-approved retention target for a completed `AccountErasure`
-record is **30 days after `completedAt`**, with a service-owner review by day 25.
+record is **30 days after `completedAt`**, with a service-owner review by day 25
+for held records or unresolved evidence.
 The service owner approved this period on 11 November 2026 and confirmed that
 Notify expires this service's data after 30 days. This is an operational policy
 choice, not a statutory retention period. Disposal remains subject to the
 conditions below: provider retention alone does not establish when every task,
 callback or manual replay source has ended.
 
-**Current implementation:** records have no TTL or automatic purge job. This
-policy requires manual disposition; writing it does not make records expire.
-Do not introduce a blind 30-day TTL while recoverable copies or replay sources
-remain. The service owner must record review and disposal in the restricted case
-record and arrange a separately reviewed purge when all conditions below hold:
+**Automatic disposal:** the existing five-minute security reconciliation worker
+performs bounded retention work after its security repairs. It considers at most
+ten identities within a 30-second tail budget. A completed standard deletion
+records communication quiescence only after task cancellation, the sender drain,
+database erasure and confirmed Auth absence have succeeded. At 30 days, the
+worker removes all of an identity's aliases and its disposal metadata together
+only when all conditions below hold. This is an evidence-checked process rather
+than an unconditional TTL.
 
 - Every marker for the UID has a completed deletion and profile-deletion timestamp;
   Auth, the profile and owned active records remain absent.
@@ -130,14 +134,63 @@ record and arrange a separately reviewed purge when all conditions below hold:
   irreversibly sanitised and verified. An old shared backup with no expiry fails
   this condition.
 
-If a condition is unresolved at day 30, retain only the existing minimal marker
-under a named, documented exception. Record the reason, owner and next review
+The worker reads the actual Standard Cloud SQL backup inventory, including every
+page and manual snapshots, and `instances.getLatestRecoveryTime`. An old
+restorable or deletion-pending backup blocks disposal. The earliest recoverable
+time must be later than profile deletion. Unsupported backup tiers, missing
+metadata, denied access and incomplete inventories all retain suppression. A
+configured seven-day retention period is insufficient evidence on its own.
+
+A restricted `AccountErasureDisposalPolicy` records the service-wide review of
+external exports and replay sources. It defaults to unreviewed. The service owner
+confirmed on 12 November 2026 that there are no known external copies. Activate
+the reviewed policy separately in each deployed environment using the operator
+tool below; any newly discovered export or replay source must suspend the policy
+or place the affected identity on hold before it is used. The application cannot
+inventory files held outside its cloud project.
+
+Pre-existing suppression records and early recovery paths default to
+`HISTORICAL_EVIDENCE_REQUIRED`; completion timestamps alone do not adopt them.
+Record the reviewed task and provider horizons through the operator tool. If
+task cancellation or absence cannot be established, use the full 31-day Cloud
+Tasks horizon, even if that extends disposal beyond the 30-day target.
+
+Begin, completion, hold, adoption and purge share a versioned per-identity SQL
+fence. The purge transaction rechecks the reviewed policy, all aliases, age and
+absence of application records before removing the aliases and disposal decision.
+A newly started erasure or changed hold invalidates a stale purge. Firebase Auth
+absence is checked immediately before the transaction; privileged restores and
+imports must still follow the isolation gate below. Late owned delivery tasks
+and callbacks require a live, correctly bound subject at the database boundary,
+so removal of suppression does not allow orphan records to be recreated.
+
+Worker logs contain counts and fixed reason codes, without UIDs, email hashes or
+case payloads. Holds and unavailable evidence are retried rather than silently
+discarded. Operators should review persistent deferrals and overdue holds.
+
+If a condition is unresolved at day 30, retain only the minimal marker and
+restricted disposal decision under a named, documented exception. Record the reason, owner and next review
 within 30 days; repeat reviews until disposal is possible. Do not treat an open
 exception as approval for indefinite retention. Apply the same disposal decision
 to independent case/ledger copies of the UID and email hashes. Incomplete
 deletions are recovery work, not candidates for retention purging. Do not use the
 ledger for marketing, profiling or preventing a legitimate new registration under
 a different UID.
+
+### Disposal operator tool
+
+Use `functions/scripts/account-erasure-disposal-admin.mjs` from a built checkout.
+It accepts only the fixed Dev, Beta and Production projects. Preview is read-only;
+mutations require explicit apply flags and the exact reviewed policy or decision
+version. Subject operations read a private case file rather than putting an
+identity on the command line. Keep that file outside Git, mode `0600`, and remove
+it with the other restricted case copies when disposal is complete.
+
+The tool supports policy review, explicit holds and historical evidence adoption.
+It does not provide a blind purge command. The scheduled worker always repeats
+Auth, database, time and backup checks before disposal. Use `--help` for the exact
+flags and case-file shape. In a restore or newly discovered export incident,
+suspend the service-wide reviewed policy before reopening writers.
 
 A restore must remain isolated, with writers and callbacks disabled, until the
 current erasure ledger has been reapplied and erased identities removed from the
@@ -179,14 +232,47 @@ Keep restore exclusion in force until then. Do not restore a shared backup merel
 to inspect this member's data.
 
 The bucket-name inventory did not establish that no database exports exist.
-Review export destinations, provider CSV downloads, operator copies and any
-separately retained Auth exports in the restricted case process. No member names,
+The owner confirmed no known external copies on 12 November 2026; record any
+new export destinations, provider CSV downloads, operator copies or separately
+retained Auth exports in the restricted case process and place a disposal hold
+before using them. No member names,
 addresses, UID values or email hashes belong in this document or a public PR.
 
 Sources: [Cloud SQL backup retention](https://docs.cloud.google.com/sql/docs/postgres/backup-recovery/backups),
 [Cloud Tasks retention](https://docs.cloud.google.com/tasks/docs/comp-pub-sub),
+[Cloud SQL recovery horizon](https://docs.cloud.google.com/sql/docs/postgres/admin-api/rest/v1/projects.instances/getLatestRecoveryTime),
 [Notify retention](https://www.notifications.service.gov.uk/using-notify/data-retention-period).
 
+
+## Hosted suppression-disposal validation
+
+Build the committed Functions source and deploy the schema, connector and all
+workers through the guarded release path. Review and activate the service-wide
+external-replay policy separately. The fixed-project runner uses read-only Auth,
+three random synthetic metadata identities and the existing security scheduler;
+it does not create/delete Auth accounts, change the policy or send provider mail.
+
+```sh
+RUN_ACCOUNT_ERASURE_DISPOSAL_VALIDATION=1 \
+ACCOUNT_ERASURE_DISPOSAL_PROJECT=sodc-web \
+ACCOUNT_ERASURE_DISPOSAL_CONFIRM=sodc-web \
+node functions/scripts/validate-account-erasure-disposal-cloud.mjs
+```
+
+Use `sodc-web-production` for both project and confirmation to run the explicitly
+authorized Production smoke test. `--check` verifies targeting without SDK,
+credential, fixture or network access. Beta and caller-supplied resources are
+not supported by this runner.
+
+The Production test requires the actual scheduled runtime to remove both aliases
+and the temporary decision of an eligible synthetic identity using its real SQL
+backup/recovery-horizon reads. Held and incomplete fixtures must remain. Dev's
+disposable SQL configuration is expected to defer removal; the test requires a
+worker version/reason update proving that it processed and retained the fixture.
+Every fixture is ownership-checked and removed afterward, and the original
+administrator roster and policy are verified unchanged. A rejected seed response
+has an uncertain outcome and cannot be reported as confirmed cleanup merely
+because an immediate read is empty. Retain bounded PASS/cleanup output privately.
 
 ## Hosted Dev self-deletion validation
 

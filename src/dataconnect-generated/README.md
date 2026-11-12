@@ -70,6 +70,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetUserByEmail*](#getuserbyemail)
   - [*GetNotifyCallbackUserById*](#getnotifycallbackuserbyid)
   - [*GetNotifyDeliveryReceipt*](#getnotifydeliveryreceipt)
+  - [*GetNotifyCallbackNotificationUser*](#getnotifycallbacknotificationuser)
   - [*GetRecentNotifyDeliveryReceiptsForUser*](#getrecentnotifydeliveryreceiptsforuser)
   - [*GetLatestNotifyDeliveryReceiptForReference*](#getlatestnotifydeliveryreceiptforreference)
   - [*GetCallableInvocation*](#getcallableinvocation)
@@ -7792,6 +7793,118 @@ console.log(data.notifyDeliveryReceipt);
 executeQuery(ref).then((response) => {
   const data = response.data;
   console.log(data.notifyDeliveryReceipt);
+});
+```
+
+## GetNotifyCallbackNotificationUser
+You can execute the `GetNotifyCallbackNotificationUser` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+getNotifyCallbackNotificationUser(vars: GetNotifyCallbackNotificationUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyCallbackNotificationUserData, GetNotifyCallbackNotificationUserVariables>;
+
+interface GetNotifyCallbackNotificationUserRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetNotifyCallbackNotificationUserVariables): QueryRef<GetNotifyCallbackNotificationUserData, GetNotifyCallbackNotificationUserVariables>;
+}
+export const getNotifyCallbackNotificationUserRef: GetNotifyCallbackNotificationUserRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getNotifyCallbackNotificationUser(dc: DataConnect, vars: GetNotifyCallbackNotificationUserVariables, options?: ExecuteQueryOptions): QueryPromise<GetNotifyCallbackNotificationUserData, GetNotifyCallbackNotificationUserVariables>;
+
+interface GetNotifyCallbackNotificationUserRef {
+  ...
+  (dc: DataConnect, vars: GetNotifyCallbackNotificationUserVariables): QueryRef<GetNotifyCallbackNotificationUserData, GetNotifyCallbackNotificationUserVariables>;
+}
+export const getNotifyCallbackNotificationUserRef: GetNotifyCallbackNotificationUserRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getNotifyCallbackNotificationUserRef:
+```typescript
+const name = getNotifyCallbackNotificationUserRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetNotifyCallbackNotificationUser` query requires an argument of type `GetNotifyCallbackNotificationUserVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetNotifyCallbackNotificationUserVariables {
+  providerMessageId: string;
+}
+```
+### Return Type
+Recall that executing the `GetNotifyCallbackNotificationUser` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetNotifyCallbackNotificationUserData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetNotifyCallbackNotificationUserData {
+  notificationDeliveries: ({
+    userId?: string | null;
+    recipientUserId?: string | null;
+  })[];
+}
+```
+### Using `GetNotifyCallbackNotificationUser`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getNotifyCallbackNotificationUser, GetNotifyCallbackNotificationUserVariables } from '@dataconnect/generated';
+
+// The `GetNotifyCallbackNotificationUser` query requires an argument of type `GetNotifyCallbackNotificationUserVariables`:
+const getNotifyCallbackNotificationUserVars: GetNotifyCallbackNotificationUserVariables = {
+  providerMessageId: ..., 
+};
+
+// Call the `getNotifyCallbackNotificationUser()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getNotifyCallbackNotificationUser(getNotifyCallbackNotificationUserVars);
+// Variables can be defined inline as well.
+const { data } = await getNotifyCallbackNotificationUser({ providerMessageId: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getNotifyCallbackNotificationUser(dataConnect, getNotifyCallbackNotificationUserVars);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+getNotifyCallbackNotificationUser(getNotifyCallbackNotificationUserVars).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
+});
+```
+
+### Using `GetNotifyCallbackNotificationUser`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getNotifyCallbackNotificationUserRef, GetNotifyCallbackNotificationUserVariables } from '@dataconnect/generated';
+
+// The `GetNotifyCallbackNotificationUser` query requires an argument of type `GetNotifyCallbackNotificationUserVariables`:
+const getNotifyCallbackNotificationUserVars: GetNotifyCallbackNotificationUserVariables = {
+  providerMessageId: ..., 
+};
+
+// Call the `getNotifyCallbackNotificationUserRef()` function to get a reference to the query.
+const ref = getNotifyCallbackNotificationUserRef(getNotifyCallbackNotificationUserVars);
+// Variables can be defined inline as well.
+const ref = getNotifyCallbackNotificationUserRef({ providerMessageId: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getNotifyCallbackNotificationUserRef(dataConnect, getNotifyCallbackNotificationUserVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.notificationDeliveries);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.notificationDeliveries);
 });
 ```
 
@@ -20429,6 +20542,8 @@ Recall that executing the `CreateNotificationDelivery` mutation returns a `Mutat
 The `data` property is an object of type `CreateNotificationDeliveryData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface CreateNotificationDeliveryData {
+  subjectLock: number;
+  recipientLock: number;
   notificationDelivery_insert: NotificationDelivery_Key;
 }
 ```
@@ -20465,11 +20580,15 @@ const { data } = await createNotificationDelivery({ channel: ..., notificationTy
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await createNotificationDelivery(dataConnect, createNotificationDeliveryVars);
 
+console.log(data.subjectLock);
+console.log(data.recipientLock);
 console.log(data.notificationDelivery_insert);
 
 // Or, you can use the `Promise` API.
 createNotificationDelivery(createNotificationDeliveryVars).then((response) => {
   const data = response.data;
+  console.log(data.subjectLock);
+  console.log(data.recipientLock);
   console.log(data.notificationDelivery_insert);
 });
 ```
@@ -20510,11 +20629,15 @@ const ref = createNotificationDeliveryRef(dataConnect, createNotificationDeliver
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
+console.log(data.subjectLock);
+console.log(data.recipientLock);
 console.log(data.notificationDelivery_insert);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
+  console.log(data.subjectLock);
+  console.log(data.recipientLock);
   console.log(data.notificationDelivery_insert);
 });
 ```
@@ -22959,6 +23082,7 @@ Recall that executing the `CreateAnnouncementRecipient` mutation returns a `Muta
 The `data` property is an object of type `CreateAnnouncementRecipientData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface CreateAnnouncementRecipientData {
+  subjectLock: number;
   announcementRecipient_insert: AnnouncementRecipient_Key;
 }
 ```
@@ -22992,11 +23116,13 @@ const { data } = await createAnnouncementRecipient({ id: ..., announcementSendId
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await createAnnouncementRecipient(dataConnect, createAnnouncementRecipientVars);
 
+console.log(data.subjectLock);
 console.log(data.announcementRecipient_insert);
 
 // Or, you can use the `Promise` API.
 createAnnouncementRecipient(createAnnouncementRecipientVars).then((response) => {
   const data = response.data;
+  console.log(data.subjectLock);
   console.log(data.announcementRecipient_insert);
 });
 ```
@@ -23034,11 +23160,13 @@ const ref = createAnnouncementRecipientRef(dataConnect, createAnnouncementRecipi
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
+console.log(data.subjectLock);
 console.log(data.announcementRecipient_insert);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
+  console.log(data.subjectLock);
   console.log(data.announcementRecipient_insert);
 });
 ```
@@ -23100,6 +23228,7 @@ Recall that executing the `CreateAnnouncementRecipientWithDeliveryMode` mutation
 The `data` property is an object of type `CreateAnnouncementRecipientWithDeliveryModeData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface CreateAnnouncementRecipientWithDeliveryModeData {
+  subjectLock: number;
   announcementRecipient_insert: AnnouncementRecipient_Key;
 }
 ```
@@ -23138,11 +23267,13 @@ const { data } = await createAnnouncementRecipientWithDeliveryMode({ id: ..., an
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await createAnnouncementRecipientWithDeliveryMode(dataConnect, createAnnouncementRecipientWithDeliveryModeVars);
 
+console.log(data.subjectLock);
 console.log(data.announcementRecipient_insert);
 
 // Or, you can use the `Promise` API.
 createAnnouncementRecipientWithDeliveryMode(createAnnouncementRecipientWithDeliveryModeVars).then((response) => {
   const data = response.data;
+  console.log(data.subjectLock);
   console.log(data.announcementRecipient_insert);
 });
 ```
@@ -23185,11 +23316,13 @@ const ref = createAnnouncementRecipientWithDeliveryModeRef(dataConnect, createAn
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
+console.log(data.subjectLock);
 console.log(data.announcementRecipient_insert);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
+  console.log(data.subjectLock);
   console.log(data.announcementRecipient_insert);
 });
 ```
@@ -23741,6 +23874,9 @@ export interface CreateNotifyDeliveryReceiptVariables {
   reference?: string | null;
   recipientHash: string;
   userId?: string | null;
+  announcementRecipientId?: UUIDString | null;
+  announcementSendId?: string | null;
+  announcementUserId?: string | null;
   eventAt: TimestampString;
   eventOrderingKey: string;
   affectsBounceState: boolean;
@@ -23753,6 +23889,8 @@ Recall that executing the `CreateNotifyDeliveryReceipt` mutation returns a `Muta
 The `data` property is an object of type `CreateNotifyDeliveryReceiptData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
 ```typescript
 export interface CreateNotifyDeliveryReceiptData {
+  subjectLock: number;
+  announcementLock: number;
   notifyDeliveryReceipt_insert: NotifyDeliveryReceipt_Key;
 }
 ```
@@ -23769,6 +23907,9 @@ const createNotifyDeliveryReceiptVars: CreateNotifyDeliveryReceiptVariables = {
   reference: ..., // optional
   recipientHash: ..., 
   userId: ..., // optional
+  announcementRecipientId: ..., // optional
+  announcementSendId: ..., // optional
+  announcementUserId: ..., // optional
   eventAt: ..., 
   eventOrderingKey: ..., 
   affectsBounceState: ..., 
@@ -23779,17 +23920,21 @@ const createNotifyDeliveryReceiptVars: CreateNotifyDeliveryReceiptVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createNotifyDeliveryReceipt(createNotifyDeliveryReceiptVars);
 // Variables can be defined inline as well.
-const { data } = await createNotifyDeliveryReceipt({ id: ..., notifyStatus: ..., reference: ..., recipientHash: ..., userId: ..., eventAt: ..., eventOrderingKey: ..., affectsBounceState: ..., lastAttemptedAt: ..., });
+const { data } = await createNotifyDeliveryReceipt({ id: ..., notifyStatus: ..., reference: ..., recipientHash: ..., userId: ..., announcementRecipientId: ..., announcementSendId: ..., announcementUserId: ..., eventAt: ..., eventOrderingKey: ..., affectsBounceState: ..., lastAttemptedAt: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
 const { data } = await createNotifyDeliveryReceipt(dataConnect, createNotifyDeliveryReceiptVars);
 
+console.log(data.subjectLock);
+console.log(data.announcementLock);
 console.log(data.notifyDeliveryReceipt_insert);
 
 // Or, you can use the `Promise` API.
 createNotifyDeliveryReceipt(createNotifyDeliveryReceiptVars).then((response) => {
   const data = response.data;
+  console.log(data.subjectLock);
+  console.log(data.announcementLock);
   console.log(data.notifyDeliveryReceipt_insert);
 });
 ```
@@ -23807,6 +23952,9 @@ const createNotifyDeliveryReceiptVars: CreateNotifyDeliveryReceiptVariables = {
   reference: ..., // optional
   recipientHash: ..., 
   userId: ..., // optional
+  announcementRecipientId: ..., // optional
+  announcementSendId: ..., // optional
+  announcementUserId: ..., // optional
   eventAt: ..., 
   eventOrderingKey: ..., 
   affectsBounceState: ..., 
@@ -23816,7 +23964,7 @@ const createNotifyDeliveryReceiptVars: CreateNotifyDeliveryReceiptVariables = {
 // Call the `createNotifyDeliveryReceiptRef()` function to get a reference to the mutation.
 const ref = createNotifyDeliveryReceiptRef(createNotifyDeliveryReceiptVars);
 // Variables can be defined inline as well.
-const ref = createNotifyDeliveryReceiptRef({ id: ..., notifyStatus: ..., reference: ..., recipientHash: ..., userId: ..., eventAt: ..., eventOrderingKey: ..., affectsBounceState: ..., lastAttemptedAt: ..., });
+const ref = createNotifyDeliveryReceiptRef({ id: ..., notifyStatus: ..., reference: ..., recipientHash: ..., userId: ..., announcementRecipientId: ..., announcementSendId: ..., announcementUserId: ..., eventAt: ..., eventOrderingKey: ..., affectsBounceState: ..., lastAttemptedAt: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -23826,11 +23974,15 @@ const ref = createNotifyDeliveryReceiptRef(dataConnect, createNotifyDeliveryRece
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await executeMutation(ref);
 
+console.log(data.subjectLock);
+console.log(data.announcementLock);
 console.log(data.notifyDeliveryReceipt_insert);
 
 // Or, you can use the `Promise` API.
 executeMutation(ref).then((response) => {
   const data = response.data;
+  console.log(data.subjectLock);
+  console.log(data.announcementLock);
   console.log(data.notifyDeliveryReceipt_insert);
 });
 ```

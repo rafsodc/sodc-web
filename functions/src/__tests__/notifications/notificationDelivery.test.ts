@@ -173,6 +173,22 @@ describe("notificationDelivery", () => {
     expect(records.size).toBe(0);
     expect(send).not.toHaveBeenCalled();
   });
+  it("skips a stale owned notification when its profile is absent after suppression expiry", async () => {
+    const {repository, records} = createRepository();
+    const send = vi.fn();
+    vi.spyOn(repository, "createPending").mockRejectedValueOnce(new Error("NOTIFICATION_SUBJECT_MISSING"));
+    expect(await sendNotificationOnce({channel: NotificationChannel.EMAIL, notificationType: "MEMBERSHIP", deliveryKey: "expired-erasure", recipientUserId: "deleted-user", send}, {repository})).toEqual({outcome: "skipped", reason: "NOTIFICATION_SUBJECT_MISSING"});
+    expect(records.size).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("propagates a transient notification creation failure without calling its provider", async () => {
+    const {repository} = createRepository();
+    const send = vi.fn();
+    const error = new Error("database unavailable");
+    vi.spyOn(repository, "createPending").mockRejectedValueOnce(error);
+    await expect(sendNotificationOnce({channel: NotificationChannel.EMAIL, notificationType: "MEMBERSHIP", deliveryKey: "transient-create", userId: "live-user", send}, {repository})).rejects.toBe(error);
+    expect(send).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(resolveRuntimeGovNotifyDeliveryMode).mockImplementation(async (requestedMode) => ({

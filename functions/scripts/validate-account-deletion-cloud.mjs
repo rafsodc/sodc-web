@@ -154,10 +154,15 @@ async function cleanup() {
       callableInvocation_deleteMany(where: {userId: {eq: $uid}})
       securityTransition_deleteMany(where: {userId: {eq: $uid}})
       accountErasure_deleteMany(where: {userId: {eq: $uid}})
+      accountErasureDisposal_deleteMany(where: {userId: {eq: $uid}})
       user_deleteMany(where: {id: {eq: $uid}})
     }`, {variables: {uid: fixture.uid, expectedStates: retired ? 1 : 0}});
     if (identity) await auth.deleteUser(fixture.uid);
     await assert.rejects(auth.getUser(fixture.uid), {code: "auth/user-not-found"});
+    const removed = await dc.executeGraphql(`query VerifyRemovedDeletionDisposal($uid: String!) {
+      accountErasureDisposals(where: {userId: {eq: $uid}}) {userId}
+    }`, {variables: {uid: fixture.uid}});
+    assert.equal(removed.data.accountErasureDisposals.length, 0, "Owned disposal metadata remained after cleanup");
   }
 }
 try {
