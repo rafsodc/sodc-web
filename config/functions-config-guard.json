@@ -11,7 +11,8 @@
     "lib/gcp/cloudfunctionsv2.js": "5706ca42c746246a109e3938e63519b5dbcbe0e49b3c134f694a6fb84613ddb1",
     "lib/deploy/functions/validate.js": "162e07d3a451221cc902fdb8f9178ed05c8ec076c6de4e81a8ae19a56d1e814b",
     "lib/gcp/cloudscheduler.js": "ee627631734ae491096aa887d7f81b952c28d811750a8d961acade73ffe86ac2",
-    "lib/gcp/proto.js": "461e5b1bf0b223064ed5c4530a8e29a856a9118d40fea5386b099cd9eda02676"
+    "lib/gcp/proto.js": "461e5b1bf0b223064ed5c4530a8e29a856a9118d40fea5386b099cd9eda02676",
+    "lib/deploy/functions/release/fabricator.js": "f65985ce60ce8e97b9a50d4c59ce132a3b0683841ffbb9f49a8499db53f23544"
   },
   "appBaseUrls": {
     "dev": "https://sodc-web.web.app",
@@ -37,5 +38,24 @@
     "GOV_NOTIFY_TEMPLATE_MEMBERSHIP_ACTIVATED", "GOV_NOTIFY_TEMPLATE_PAYMENT_DISPUTE_OPS_ALERT",
     "GOV_NOTIFY_TEMPLATE_PAYMENT_RECONCILIATION_EXCEPTION_ALERT", "GOV_NOTIFY_TEMPLATE_TICKET_ORDER_FAILED",
     "GOV_NOTIFY_TEMPLATE_TICKET_ORDER_PAID", "GOV_NOTIFY_TEMPLATE_TICKET_ORDER_REFUNDED"
-  ]
+  ],
+  "reviewableCallableCreations": {
+    "deleteMyAccount": {
+      "runtime": "nodejs24",
+      "serviceConfiguration": {
+        "availableCpu": "1",
+        "availableMemory": "256Mi",
+        "ingressSettings": "ALLOW_ALL",
+        "minInstanceCount": 0,
+        "maxInstanceCount": 20,
+        "maxInstanceRequestConcurrency": 80,
+        "timeoutSeconds": 540
+      },
+      "identity": "default-compute",
+      "invokers": [
+        "allUsers"
+      ],
+      "secretBindings": []
+    }
+  }
 }

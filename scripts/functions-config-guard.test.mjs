@@ -7,7 +7,7 @@ import {
   GUARD_SCHEMA, REVIEW_SCHEMA, applicationEnvironment, assertScheduledTarget, assertSecretMetadata, assertSupportedManifest,
   bytesDigest, configurationProposal, digest, environmentDelta, environmentProjection, evaluateConfiguration, verifyGuardReceipt,
 } from "./functions-config-guard-lib.mjs";
-import { collectAssessment, guardPath, loadPinnedCli, metadataProvider, runFunctionsConfigGuard } from "./functions-config-guard.mjs";
+import { collectAssessment, guardPath, loadPinnedCli, metadataProvider, runFunctionsConfigGuard, verifyCreatedEndpointContracts } from "./functions-config-guard.mjs";
 import { applyFromStage, createDeploymentPlan, runDeploymentPlan } from "./deploy-environment-lib.mjs";
 import { deployGuardedFunctions } from "./functions-deploy.mjs";
 
@@ -240,6 +240,202 @@ async function fixture({ publicInvoker = true } = {}) {
   return { root, policy, values, files, projectFile, provider, cli, manifestResult, functions,
     assess: (options = {}) => collectAssessment({ root, environment: "dev", cli, provider, manifestResult, ...options }) };
 }
+
+
+async function creationFixture(mode = "preserve-existing") {
+  const f = await fixture();
+  const name = "deleteMyAccount";
+  const serviceConfiguration = { availableCpu: "1", availableMemory: "256Mi", ingressSettings: "ALLOW_ALL", minInstanceCount: 0,
+    maxInstanceCount: 20, maxInstanceRequestConcurrency: 80, timeoutSeconds: 540 };
+  const creationPolicy = { runtime: "nodejs24", serviceConfiguration, identity: "default-compute", invokers: ["allUsers"], secretBindings: [] };
+  f.policy.reviewableCallableCreations = { [name]: creationPolicy };
+  await writeFile(path.join(f.root, "config/functions-config-guard.json"), JSON.stringify(f.policy));
+  await writeFile(path.join(f.root, "config/deployment-check.json"), JSON.stringify({ region, expectedPublicInvokerFunctions: ["example", name] }));
+  execFileSync("git", ["add", "."], {cwd: f.root});
+  execFileSync("git", ["-c", "user.name=Guard Test", "-c", "user.email=guard@synthetic.invalid", "commit", "-qm", "reviewable creation policy"], {cwd: f.root});
+  f.manifestResult.manifest.endpoints[name] = {region: [region], platform: "gcfv2", callableTrigger: {}, entryPoint: name};
+  const convertBackend = f.cli.build.toBackend.getMockImplementation();
+  f.cli.build.toBackend.mockImplementation(() => ({endpoints: [...convertBackend().endpoints,
+    {...f.manifestResult.manifest.endpoints[name], id: name, region, project: projectId, runtime: "nodejs24", entryPoint: name, environmentVariables: {}, secretEnvironmentVariables: []}]}));
+  const convertFunction = f.cli.functions.functionFromEndpoint;
+  f.cli.functions.functionFromEndpoint = (endpoint) => endpoint.id !== name ? convertFunction(endpoint) : {
+    name: `projects/${projectId}/locations/${region}/functions/${name}`, buildConfig: {runtime: "nodejs24", entryPoint: name},
+    serviceConfig: {...serviceConfiguration, serviceAccountEmail: null, environmentVariables: endpoint.environmentVariables, secretEnvironmentVariables: endpoint.secretEnvironmentVariables},
+    labels: {"deployment-callable": "true"},
+  };
+  const options = {cli: f.cli, provider: f.provider, manifestResult: f.manifestResult, mode};
+  async function review() {
+    const proposal = await runFunctionsConfigGuard(f.root, "dev", {...options, propose: true});
+    const reviewPath = path.join(f.root, ".firebase/creation-review.json"); await mkdir(path.dirname(reviewPath), {recursive: true});
+    await writeFile(reviewPath, JSON.stringify({...proposal, reviewedBy: "operator", reason: "Create only the reviewed own-account callable"}));
+    return {proposal, reviewPath};
+  }
+  return {...f, name, options, serviceConfiguration, review};
+}
+
+function materializeCreation(f) {
+  f.functions.push({name: `projects/${projectId}/locations/${region}/functions/${f.name}`, state: "ACTIVE", buildConfig: {runtime: "nodejs24", entryPoint: f.name},
+    labels: {"deployment-callable": "true"}, serviceConfig: {...f.serviceConfiguration, serviceAccountEmail: "123-compute@developer.gserviceaccount.com",
+      environmentVariables: {}, secretEnvironmentVariables: [], allTrafficOnLatestRevision: true,
+      service: `projects/${projectId}/locations/${region}/services/deletemyaccount`, uri: "https://deletemyaccount.run.app", revision: "created"}});
+}
+
+describe("reviewed callable endpoint creation", () => {
+  it("proposes exact empty-env creation without fabricating live state and requires explicit review", async () => {
+    const f = await creationFixture();
+    const {proposal, reviewPath} = await f.review();
+    expect(proposal.endpointCreations).toEqual([{name: f.name, projectId, region, platform: "gcfv2", runtime: "nodejs24", entryPoint: f.name,
+      trigger: "callable", serviceConfiguration: {...f.serviceConfiguration, serviceAccountEmail: "123-compute@developer.gserviceaccount.com"},
+      environment: {}, invokers: ["allUsers"], secretBindings: []}]);
+    expect(proposal.environmentChanges).toEqual([]);
+    expect(proposal.policyDeviations).toEqual([
+      {endpoint: f.name, key: "APP_BASE_URL", reason: "required-nonempty"},
+      {endpoint: f.name, key: "SECTION_FILES_BUCKET", reason: "required-nonempty"},
+    ]);
+    expect(f.provider.invokerPolicy).toHaveBeenCalledTimes(1); // No IAM read for a nonexistent service.
+    await expect(runFunctionsConfigGuard(f.root, "dev", f.options)).rejects.toThrow("endpoint-creations-require-explicit-review");
+    const receipt = await runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath});
+    expect(receipt.baseline.functions.map(value => value.name)).toEqual(["example"]);
+    expect(receipt.outcome.endpointCreations).toEqual(proposal.endpointCreations);
+    await expect(runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath, verify: true})).resolves.toHaveProperty("status", "PASS");
+  });
+  it("binds canonical dotenv creation values without weakening existing preservation", async () => {
+    const f = await creationFixture("dotenv");
+    const {proposal, reviewPath} = await f.review();
+    expect(proposal.endpointCreations[0].environment).toEqual(environmentProjection(f.values));
+    expect(proposal.environmentChanges.every(value => value.endpoint === f.name)).toBe(true);
+    await expect(runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath})).resolves.toHaveProperty("status", "PASS");
+  });
+  it("rejects a review omitting or altering the creation contract", async () => {
+    const f = await creationFixture();
+    const {proposal, reviewPath} = await f.review();
+    for (const endpointCreations of [undefined, [], [{...proposal.endpointCreations[0], invokers: ["allAuthenticatedUsers"]}]]) {
+      await writeFile(reviewPath, JSON.stringify({...proposal, endpointCreations, reviewedBy: "operator", reason: "Invalid creation scope"}));
+      await expect(runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath})).rejects.toThrow("unreviewed-endpoint-creations");
+    }
+  });
+  it.each(["maxInstanceCount", "serviceAccountEmail", "timeoutSeconds", "unexpectedOption"])("blocks an unreviewed creation %s", async key => {
+    const f = await creationFixture(); const convert = f.cli.functions.functionFromEndpoint;
+    f.cli.functions.functionFromEndpoint = endpoint => {
+      const value = convert(endpoint);
+      if (endpoint.id === f.name) value.serviceConfig[key] = key === "maxInstanceCount" ? null : key === "serviceAccountEmail" ? "custom@example.iam.gserviceaccount.com" : 999;
+      return value;
+    };
+    await expect(runFunctionsConfigGuard(f.root, "dev", {...f.options, propose: true})).rejects.toThrow("new-endpoint-runtime-or-identity-not-reviewed");
+  });
+  it.each(["https", "task", "schedule", "private-invoker", "mixed-trigger", "secret"])("blocks unsupported %s creation", async kind => {
+    const f = await creationFixture();
+    const endpoint = f.manifestResult.manifest.endpoints[f.name];
+    if (kind === "private-invoker") endpoint.callableTrigger = {invoker: ["private"]};
+    else if (kind === "mixed-trigger") endpoint.httpsTrigger = {};
+    else if (kind === "secret") {
+      const convert = f.cli.functions.functionFromEndpoint;
+      f.cli.functions.functionFromEndpoint = value => {
+        const result = convert(value); if (value.id === f.name) result.serviceConfig.secretEnvironmentVariables = [{key: "SECRET", secret: "SECRET", projectId}];
+        return result;
+      };
+    } else { delete endpoint.callableTrigger; endpoint[kind === "https" ? "httpsTrigger" : kind === "task" ? "taskQueueTrigger" : "scheduleTrigger"] = kind === "schedule" ? {schedule: "every 5 minutes"} : {}; }
+    await expect(runFunctionsConfigGuard(f.root, "dev", {...f.options, propose: true})).rejects.toThrow();
+  });
+  it("rejects an unrelated missing endpoint and a removed deployed endpoint despite creation allowance", async () => {
+    const f = await creationFixture();
+    f.manifestResult.manifest.endpoints.unreviewed = {region: [region], platform: "gcfv2", callableTrigger: {}};
+    await expect(runFunctionsConfigGuard(f.root, "dev", {...f.options, propose: true})).rejects.toThrow("endpoint-inventory-or-scope-change");
+    delete f.manifestResult.manifest.endpoints.unreviewed;
+    delete f.manifestResult.manifest.endpoints.example;
+    await expect(runFunctionsConfigGuard(f.root, "dev", {...f.options, propose: true})).rejects.toThrow("endpoint-inventory-or-scope-change");
+  });
+  it("rejects the creation review and receipt if the endpoint appears before deployment verification", async () => {
+    const f = await creationFixture(); const {reviewPath} = await f.review();
+    await runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath});
+    materializeCreation(f);
+    await expect(runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath, verify: true})).rejects.toThrow("review-does-not-match-exact-proposal");
+    const fresh = await runFunctionsConfigGuard(f.root, "dev", {...f.options, propose: true});
+    expect(fresh.endpointCreations).toEqual([]);
+  });
+  it("read-only verifies actual creation without accepting the stale pre-creation receipt as a new baseline", async () => {
+    const f = await creationFixture(); const {reviewPath} = await f.review();
+    const receipt = await runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath});
+    await expect(verifyCreatedEndpointContracts(f.root, "dev", receipt, f.options)).rejects.toThrow("reviewed-endpoint-creation-not-complete");
+    materializeCreation(f);
+    f.functions[0].serviceConfig.revision = "expected-new-source-revision";
+    const proof = await verifyCreatedEndpointContracts(f.root, "dev", receipt, f.options);
+    expect(proof).toMatchObject({status: "PASS", providerWrites: false, createdEndpoints: [f.name]});
+    const saved = JSON.parse(await readFile(guardPath(f.root, "dev"), "utf8"));
+    expect(saved.baseline.functions).toHaveLength(1);
+  });
+  it("sanitizes unexpected metadata failures during read-only creation verification", async () => {
+    const f = await creationFixture(); const {reviewPath} = await f.review();
+    const receipt = await runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath});
+    f.provider.functions.mockRejectedValueOnce(new Error("Bearer PRIVATE_PROVIDER_TOKEN"));
+    await expect(verifyCreatedEndpointContracts(f.root, "dev", receipt, f.options)).rejects.toThrow(/^Functions configuration guard blocked: unsupported-creation-verification-input\.$/);
+  });
+  it.each(["created-env", "created-invoker", "prior-env", "source"])("rejects post-creation %s drift", async kind => {
+    const f = await creationFixture(); const {reviewPath} = await f.review();
+    const receipt = await runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath});
+    materializeCreation(f);
+    if (kind === "created-env") f.functions[1].serviceConfig.environmentVariables.OPTIONAL = "unexpected";
+    else if (kind === "created-invoker") {
+      const current = f.provider.invokerPolicy.getMockImplementation();
+      f.provider.invokerPolicy.mockImplementation(async service => service.endsWith("/deletemyaccount") ? {bindings: [{role: "roles/run.invoker", members: ["allUsers", "serviceAccount:extra@example.invalid"]}]} : current(service));
+    } else if (kind === "prior-env") f.functions[0].serviceConfig.environmentVariables.OPTIONAL = "changed";
+    else {
+      execFileSync("git", ["-c", "user.name=Guard Test", "-c", "user.email=guard@synthetic.invalid", "commit", "--allow-empty", "-qm", "different source revision"], {cwd: f.root});
+    }
+    await expect(verifyCreatedEndpointContracts(f.root, "dev", receipt, f.options)).rejects.toThrow();
+  });
+  it("hands the reviewed creation to the actual empty-config deployment path without template injection", async () => {
+    const f = await creationFixture(); const {reviewPath} = await f.review();
+    await runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath});
+    const beforeReceipt = await readFile(guardPath(f.root, "dev"), "utf8");
+    const execute = vi.fn(async (_binary, args) => {
+      const config = JSON.parse(await readFile(args[args.indexOf("--config") + 1], "utf8"));
+      const {readdir} = await import("node:fs/promises");
+      expect(await readdir(config.functions[0].configDir)).toEqual([]);
+      expect(args.slice(0, 5)).toEqual(["deploy", "--only", "functions", "--project", "dev"]);
+      materializeCreation(f);
+      return {status: 0};
+    });
+    const verifyCreations = vi.fn((root, environment, receipt) => verifyCreatedEndpointContracts(root, environment, receipt, f.options));
+    await deployGuardedFunctions(f.root, "dev", {
+      guard: (root, environment, options) => runFunctionsConfigGuard(root, environment, {...f.options, reviewPath, ...options}),
+      cliLoader: () => ({identity: f.cli.identity, executable: "/fake/firebase.js"}),
+      verifyPreflight: vi.fn(async () => {}), verifyMigration: vi.fn(async () => {}), verifyCreations, execute,
+    });
+    expect(execute).toHaveBeenCalledOnce();
+    expect(verifyCreations).toHaveBeenCalledOnce();
+    expect(verifyCreations.mock.invocationCallOrder[0]).toBeGreaterThan(execute.mock.invocationCallOrder[0]);
+    const proof = JSON.parse(await readFile(path.join(f.root, ".firebase/functions-config-guard/dev-creation-verification.json"), "utf8"));
+    expect(proof).toMatchObject({status: "PASS", providerWrites: false, createdEndpoints: [f.name]});
+    expect(JSON.stringify(proof)).not.toContain(f.values.APP_BASE_URL);
+    expect(await readFile(guardPath(f.root, "dev"), "utf8")).toBe(beforeReceipt);
+  });
+  it.each(["refusal", "exception"])("does not report Functions deployment success after post-creation verification %s", async failure => {
+    const f = await creationFixture(); const {reviewPath} = await f.review();
+    await runFunctionsConfigGuard(f.root, "dev", {...f.options, reviewPath});
+    const proofPath = path.join(f.root, ".firebase/functions-config-guard/dev-creation-verification.json");
+    await writeFile(proofPath, JSON.stringify({status: "PASS", stale: true}));
+    let configPath;
+    const execute = vi.fn(async (_binary, args) => {
+      configPath = args[args.indexOf("--config") + 1];
+      await expect(readFile(proofPath)).rejects.toThrow();
+      return {status: 0};
+    });
+    const verifyCreations = vi.fn(async () => {
+      if (failure === "exception") throw new Error("Creation did not match the reviewed provider contract");
+      return {status: "FAIL"};
+    });
+    await expect(deployGuardedFunctions(f.root, "dev", {
+      guard: (root, environment, options) => runFunctionsConfigGuard(root, environment, {...f.options, reviewPath, ...options}),
+      cliLoader: () => ({identity: f.cli.identity, executable: "/fake/firebase.js"}),
+      verifyPreflight: vi.fn(async () => {}), verifyMigration: vi.fn(async () => {}), verifyCreations, execute,
+    })).rejects.toThrow(failure === "refusal" ? "created-endpoint-verification-failed" : "guarded-functions-command-failed");
+    expect(execute).toHaveBeenCalledOnce();
+    expect(verifyCreations).toHaveBeenCalledOnce();
+    await expect(readFile(path.join(f.root, ".firebase/functions-config-guard/dev-creation-verification.json"))).rejects.toThrow();
+    await expect(readFile(configPath)).rejects.toThrow();
+  });
+});
 
 describe("offline actual guard orchestration with injected CLI/provider", () => {
   it("records and freshly verifies sanitized input-bound receipt using numeric same-project secrets", async () => {
@@ -495,7 +691,8 @@ describe("guarded direct Functions mutation boundary", () => {
     await runFunctionsConfigGuard(f.root, "dev", options);
     const dependencies = { guard: (root, environment, args) => runFunctionsConfigGuard(root, environment, { ...options, ...args }),
       cliLoader: () => ({ identity: f.cli.identity, executable: "/fake/firebase.js" }),
-      verifyPreflight: vi.fn(async () => {}), verifyMigration: vi.fn(async () => {}), execute: vi.fn(async () => ({ status: 0 })) };
+      verifyPreflight: vi.fn(async () => {}), verifyMigration: vi.fn(async () => {}),
+      verifyCreations: vi.fn(async () => {throw new Error("Unexpected creation verification for an existing-only release");}), execute: vi.fn(async () => ({ status: 0 })) };
     return { ...f, dependencies };
   }
   it("uses the reviewed project alias, copies its RC, freezes exact dotenv inputs and awaits one Functions-only command", async () => {
@@ -515,6 +712,7 @@ describe("guarded direct Functions mutation boundary", () => {
     });
     await deployGuardedFunctions(f.root, "dev", f.dependencies);
     expect(f.dependencies.execute).toHaveBeenCalledTimes(1); expect(f.dependencies.verifyPreflight).toHaveBeenCalledTimes(1);
+    expect(f.dependencies.verifyCreations).not.toHaveBeenCalled();
     await expect(readFile(path.join(externalDirectory, "firebase.json"))).rejects.toThrow();
   });
   it("preserves via an actually empty configDir without deleting the tracked or ignored inputs", async () => {
