@@ -1997,6 +1997,21 @@ exports.getNotifyDeliveryReceipt = function getNotifyDeliveryReceipt(dcOrVars, v
 }
 ;
 
+const getNotifyCallbackNotificationUserRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetNotifyCallbackNotificationUser', inputVars);
+}
+getNotifyCallbackNotificationUserRef.operationName = 'GetNotifyCallbackNotificationUser';
+exports.getNotifyCallbackNotificationUserRef = getNotifyCallbackNotificationUserRef;
+
+exports.getNotifyCallbackNotificationUser = function getNotifyCallbackNotificationUser(dcOrVars, varsOrOptions, options) {
+
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
+  return executeQuery(getNotifyCallbackNotificationUserRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+;
+
 const createNotifyDeliveryReceiptRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

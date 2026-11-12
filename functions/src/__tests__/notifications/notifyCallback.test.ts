@@ -71,6 +71,8 @@ class InMemoryNotifyReceiptRepository implements NotifyReceiptRepository {
   readonly receipts = new Map<string, TestReceipt>();
   readonly users = new Map<string, TestUser>();
   readonly announcements = new Map<string, TestAnnouncementRecipient>();
+  readonly notificationUsers = new Map<string, string>();
+  readonly authNotificationUsers = new Map<string, string>();
   userStateApplyCount = 0;
   announcementStateApplyCount = 0;
 
@@ -171,6 +173,10 @@ class InMemoryNotifyReceiptRepository implements NotifyReceiptRepository {
 
   async findUserByEmail(email: string) {
     return [...this.users.values()].find((user) => user.email === email) ?? null;
+  }
+
+  async findNotificationUserId(providerMessageId: string, reference?: string) {
+    return this.notificationUsers.get(providerMessageId) ?? (reference ? this.authNotificationUsers.get(reference) : null) ?? null;
   }
 
   async getUserById(userId: string) {
@@ -282,6 +288,12 @@ async function sendReceipt(
   body: NotifyReceipt,
   onMembershipLost: NonNullable<NotifyReceiptProcessorDependencies["onMembershipLost"]> = vi.fn()
 ): Promise<Response> {
+  // Existing delivery-state cases model messages sent through the tracked
+  // notification ledger. Untracked-message cases call the handler directly.
+  if (repository instanceof InMemoryNotifyReceiptRepository && !body.reference?.startsWith("announcement:")) {
+    const user = await repository.findUserByEmail(body.to);
+    if (user && !repository.notificationUsers.has(body.id)) repository.notificationUsers.set(body.id, user.id);
+  }
   const res = makeRes();
   await handleNotifyDelivery(makeReq({ body }), res, BEARER, dependencies(repository, onMembershipLost));
   return res;
@@ -362,6 +374,7 @@ describe("handleNotifyDelivery", () => {
   });
 
   it("persists and ignores temporary and technical failures", async () => {
+    repository.addUser();
     for (const status of ["temporary-failure", "technical-failure"] as const) {
       const id = `notify-${status}`;
       const res = await sendReceipt(repository, receipt({ id, status }));
@@ -372,13 +385,14 @@ describe("handleNotifyDelivery", () => {
   });
 
   it("returns a retryable response while the same receipt has a fresh processing lease", async () => {
+    const user = repository.addUser();
     const pending = receipt({ id: "fresh-pending", status: "temporary-failure" });
     repository.receipts.set(pending.id, {
       id: pending.id,
       notifyStatus: pending.status,
       reference: null,
       recipientHash: recipientHashForEmail(pending.to),
-      userId: null,
+      userId: user.id,
       eventAt: pending.completed_at!,
       eventOrderingKey: `${pending.completed_at}:${pending.id}`,
       affectsBounceState: false,
@@ -405,6 +419,8 @@ describe("handleNotifyDelivery", () => {
   });
 
   it("logs only the error type when processing fails", async () => {
+    const user = repository.addUser();
+    repository.notificationUsers.set("processing-error", user.id);
     const errorLog = vi.spyOn(logger, "error");
     repository.getReceipt = vi.fn().mockRejectedValue(new Error("database failure for alice@example.com"));
     const res = makeRes();
@@ -433,8 +449,8 @@ describe("handleNotifyDelivery", () => {
 
     const serializedLogs = JSON.stringify(info.mock.calls);
     expect(serializedLogs).toContain("pii-safe-log");
-    expect(serializedLogs).toContain("recipientHash");
-    expect(serializedLogs).toContain("referenceHash");
+    expect(serializedLogs).not.toContain("recipientHash");
+    expect(serializedLogs).not.toContain("referenceHash");
     expect(serializedLogs).not.toContain("alice@example.com");
   });
 
@@ -645,11 +661,111 @@ describe("handleNotifyDelivery", () => {
     expect(repository.announcementStateApplyCount).toBe(1);
   });
 
-  it("returns 200 and records the receipt when no user or announcement recipient exists", async () => {
+  it("acknowledges an unknown recipient without retaining a receipt or contact hash", async () => {
+    const info = vi.spyOn(logger, "info");
     const res = await sendReceipt(repository, receipt({ id: "unknown-recipient" }));
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(repository.receipts.get("unknown-recipient")?.outcome).toBe(
-      NotifyDeliveryReceiptOutcome.IGNORED_NO_USER
-    );
+    expect(repository.receipts.size).toBe(0);
+    expect(JSON.stringify(info.mock.calls)).not.toContain("recipientHash");
+  });
+
+  it("ignores an old announcement after erasure markers have expired, even if the email has a new UID", async () => {
+    const user = repository.addUser({id: "new-identity"});
+    const claim = vi.spyOn(repository, "createReceipt");
+    const res = await sendReceipt(repository, receipt({reference: "announcement:10000000-0000-4000-8000-000000000001:old-identity", status: "permanent-failure"}));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(claim).not.toHaveBeenCalled();
+    expect(repository.receipts.size).toBe(0);
+    expect(user.emailBounceCount).toBe(0);
+  });
+
+  it("updates an existing legacy announcement without applying its old receipt to a new UID", async () => {
+    const user = repository.addUser({id: "new-identity"});
+    const sendId = "10000000-0000-4000-8000-000000000001";
+    const announcement = repository.addAnnouncement(sendId, "old-identity");
+    const res = await sendReceipt(repository, receipt({id: "legacy-announcement", reference: `announcement:${sendId}:old-identity`, status: "permanent-failure"}));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(announcement.status).toBe("bounced");
+    expect(repository.receipts.get("legacy-announcement")?.userId).toBeNull();
+    expect(user.emailBounceCount).toBe(0);
+    expect(repository.userStateApplyCount).toBe(0);
+  });
+
+  it("does not attach an old tracked callback to a new UID at the same email", async () => {
+    const user = repository.addUser({id: "new-identity"});
+    repository.notificationUsers.set("old-message", "erased-identity");
+    const res = await sendReceipt(repository, receipt({id: "old-message", status: "permanent-failure"}));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repository.receipts.size).toBe(0);
+    expect(user.emailBounceCount).toBe(0);
+  });
+
+  it("ignores untracked one-off email callbacks rather than matching only by address", async () => {
+    const user = repository.addUser();
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq(), res, BEARER, dependencies(repository));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repository.receipts.size).toBe(0);
+    expect(user.emailBounceCount).toBe(0);
+  });
+
+  it("applies a bound auth bounce before the provider ID is persisted without auto-binding", async () => {
+    const user = repository.addUser();
+    const reference = "AUTH_EMAIL:10000000-0000-4000-8000-000000000001:notify-live";
+    repository.authNotificationUsers.set(reference, user.id);
+    expect(repository.notificationUsers.size).toBe(0);
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq({body: receipt({id: "early-auth-message", reference, status: "permanent-failure"})}), res, BEARER, dependencies(repository));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repository.receipts.get("early-auth-message")?.userId).toBe(user.id);
+    expect(user.emailBounceCount).toBe(1);
+    expect(user.emailDeliveryStatus).toBe("permanent-failure");
+  });
+
+  it("clears a bounced status from a bound delivered auth message without auto-binding", async () => {
+    const user = repository.addUser({emailBounceCount: 2, emailDeliveryStatus: "permanent-failure"});
+    const reference = "AUTH_EMAIL:10000000-0000-4000-8000-000000000001:notify-live";
+    repository.authNotificationUsers.set(reference, user.id);
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq({body: receipt({id: "delivered-auth-message", reference, status: "delivered"})}), res, BEARER, dependencies(repository));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(user.emailBounceCount).toBe(0);
+    expect(user.emailDeliveryStatus).toBe("delivered");
+  });
+
+  it("does not apply an email-change verification bounce to the current or unrelated destination mailbox", async () => {
+    const owner = repository.addUser({id: "auth-owner", email: "old@example.org"});
+    const destination = repository.addUser({id: "other-owner", email: "alice@example.com"});
+    const reference = "AUTH_EMAIL:10000000-0000-4000-8000-000000000001:notify-live";
+    repository.authNotificationUsers.set(reference, owner.id);
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq({body: receipt({id: "new-address-auth-message", reference, status: "permanent-failure"})}), res, BEARER, dependencies(repository));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repository.receipts.size).toBe(0);
+    expect(owner.emailBounceCount).toBe(0);
+    expect(destination.emailBounceCount).toBe(0);
+  });
+
+  it("does not rebind an auth reference to a replacement identity at the same address", async () => {
+    const replacement = repository.addUser({id: "replacement-uid"});
+    const reference = "AUTH_EMAIL:10000000-0000-4000-8000-000000000001:notify-live";
+    repository.authNotificationUsers.set(reference, "deleted-uid");
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq({body: receipt({id: "stale-auth-message", reference, status: "permanent-failure"})}), res, BEARER, dependencies(repository));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repository.receipts.size).toBe(0);
+    expect(replacement.emailBounceCount).toBe(0);
+  });
+
+  it("acknowledges deletion racing receipt creation without recreating an orphan", async () => {
+    repository.addUser();
+    const write = vi.spyOn(repository, "createReceipt").mockImplementation(async () => {
+      repository.users.clear();
+      throw new Error("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    });
+    const res = await sendReceipt(repository, receipt());
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(write).toHaveBeenCalledOnce();
+    expect(repository.receipts.size).toBe(0);
   });
 });

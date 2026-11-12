@@ -1,14 +1,13 @@
 import { onRequest, type Request } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import type { Response } from "express";
 import { FUNCTIONS_REGION } from "./constants.js";
 import {
   isNotifyDeliveryStatus,
   NotifyReceiptConflictError,
   processNotifyReceipt,
-  recipientHashForEmail,
   type NotifyReceipt,
   type NotifyReceiptProcessorDependencies,
 } from "./notifyReceiptProcessor.js";
@@ -55,15 +54,7 @@ export async function handleNotifyDelivery(
     return;
   }
 
-  logger.info("GOV Notify delivery receipt", {
-    receiptId: receipt.id,
-    recipientHash: recipientHashForEmail(receipt.to),
-    status: receipt.status,
-    referenceHash:
-      typeof receipt.reference === "string"
-        ? createHash("sha256").update(receipt.reference).digest("hex")
-        : undefined,
-  });
+  logger.info("GOV Notify delivery receipt", {receiptId: receipt.id, status: receipt.status});
 
   try {
     const result = await processNotifyReceipt(receipt as NotifyReceipt, processorDependencies);

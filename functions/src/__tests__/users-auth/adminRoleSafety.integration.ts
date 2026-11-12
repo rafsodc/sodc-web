@@ -715,11 +715,161 @@ describe("account deletion against actual disposable SQL", () => {
     // Cached pre-erasure writers cannot persist an unlisted audience either.
     await expect(admin.createAnnouncementSendWithDeliveryMode(dc, {id: randomUUID(), sectionId: caseSectionIds[0], templateUuid: "fixture", sentBy: variables.actorId, recipientCount: 1, skippedCount: 0, recipientSnapshot: shared.snapshot, requestedDeliveryMode: "SIMULATION", siteDeliveryMode: "SIMULATION", effectiveDeliveryMode: "SIMULATION"})).rejects.toThrow("ACCOUNT_ERASURE_IN_PROGRESS");
   });
+  const callbackArgs = (userId: string | null, recipientHash = "synthetic-callback-hash") => ({
+    id: randomUUID(), userId, recipientHash, notifyStatus: "delivered", eventAt: "2026-01-01T00:00:00Z",
+    eventOrderingKey: "fixture", affectsBounceState: false, lastAttemptedAt: "2026-01-01T00:00:00Z",
+  });
+  async function seedCallbackNotification(userId: string, providerMessageId: string) {
+    await dc.executeGraphql(`mutation SeedCorrelatedCallback($uid: String!, $providerId: String!, $key: String!) {
+      notificationDelivery_insert(data: {channel: EMAIL, notificationType: "CALLBACK_FIXTURE", deliveryKey: $key,
+        recipientUserId: $uid, providerMessageId: $providerId, status: SENT, createdBy: "fixture", updatedBy: "fixture"})
+    }`, {variables: {uid: userId, providerId: providerMessageId, key: randomUUID()}});
+  }
+  async function seedAuthCallbackNotification(userId: string, reference: string, overrides: {
+    channel?: "EMAIL" | "SMS"; notificationType?: string; provider?: string;
+    status?: "PENDING" | "FAILED" | "SENT" | "SKIPPED"; providerMessageId?: string | null;
+    missingProfile?: boolean;
+  } = {}) {
+    await dc.executeGraphql(`mutation SeedAuthCallbackBinding($uid: String!, $subject: String, $key: String!, $channel: NotificationChannel!, $kind: String!, $provider: String!, $status: NotificationDeliveryStatus!, $providerId: String) {
+      notificationDelivery_insert(data: {channel: $channel, notificationType: $kind, deliveryKey: $key,
+        userId: $subject, recipientUserId: $uid, provider: $provider, providerMessageId: $providerId, status: $status,
+        createdBy: "fixture", updatedBy: "fixture"})
+    }`, {variables: {uid: userId, subject: overrides.missingProfile ? null : userId, key: reference, channel: overrides.channel ?? "EMAIL", kind: overrides.notificationType ?? "AUTH_PASSWORD_RESET",
+      provider: overrides.provider ?? "govuk_notify", status: overrides.status ?? "PENDING", providerId: overrides.providerMessageId ?? null}});
+  }
+  async function createReceiptWithoutReference(args: ReturnType<typeof callbackArgs>) {
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    // Do not replace omission with explicit null: those have different filter
+    // semantics unless the production operation declares its null default.
+    expect(args).not.toHaveProperty("reference");
+    return admin.createNotifyDeliveryReceipt(dc, args);
+  }
+  it("accepts a tracked callback with an omitted reference despite another member's outstanding auth delivery", async () => {
+    const [uid, unrelated] = await initialize(2);
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    const args = callbackArgs(uid);
+    await seedCallbackNotification(uid, args.id);
+    await seedAuthCallbackNotification(unrelated, `AUTH_EMAIL:${randomUUID()}:notify-live`);
+    const lookup = await admin.getNotifyCallbackNotificationUser(dc, {providerMessageId: args.id});
+    expect(lookup.data.notificationDeliveries).toEqual([{userId: null, recipientUserId: uid}]);
+    await expect(createReceiptWithoutReference(args)).resolves.toBeDefined();
+    expect((await admin.getNotifyDeliveryReceipt(dc, {id: args.id})).data.notifyDeliveryReceipt?.userId).toBe(uid);
+  });
+  it("rejects an unknown provider ID with an omitted reference even when the only outstanding auth delivery belongs to that UID", async () => {
+    const [uid] = await initialize(1);
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    const args = callbackArgs(uid);
+    await seedAuthCallbackNotification(uid, `AUTH_EMAIL:${randomUUID()}:notify-live`);
+    expect((await admin.getNotifyCallbackNotificationUser(dc, {providerMessageId: args.id})).data.notificationDeliveries).toEqual([]);
+    await expect(createReceiptWithoutReference(args)).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    expect((await admin.getNotifyDeliveryReceipt(dc, {id: args.id})).data.notifyDeliveryReceipt).toBeNull();
+  });
+  it.each([
+    ["PENDING", "live", "AUTH_PASSWORD_RESET"],
+    ["FAILED", "team_test", "AUTH_EMAIL_VERIFICATION"],
+    ["SENT", "simulation", "AUTH_EMAIL_CHANGE_VERIFICATION"],
+  ] as const)("accepts the exact pre-send auth binding with %s metadata before provider ID persistence", async (status, mode, notificationType) => {
+    const [uid] = await initialize(1);
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    const reference = `AUTH_EMAIL:${randomUUID()}:notify-${mode}`;
+    await seedAuthCallbackNotification(uid, reference, {status, notificationType});
+    const args = {...callbackArgs(uid), reference};
+    const lookup = await admin.getNotifyCallbackNotificationUser(dc, {providerMessageId: args.id, authReference: reference});
+    expect(lookup.data.notificationDeliveries).toEqual([{userId: uid, recipientUserId: uid}]);
+    await expect(admin.createNotifyDeliveryReceipt(dc, args)).resolves.toBeDefined();
+    const observed = await admin.getNotifyDeliveryReceipt(dc, {id: args.id});
+    expect(observed.data.notifyDeliveryReceipt?.userId).toBe(uid);
+  });
+  it.each([
+    {notificationType: "BOOKING_CONFIRMATION"},
+    {channel: "SMS"},
+    {provider: "another-provider"},
+    {status: "SKIPPED"},
+    {providerMessageId: "different-accepted-provider-message"},
+  ] as const)("refuses an auth reference fallback with an incompatible persisted binding: %j", async overrides => {
+    const [uid] = await initialize(1);
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    const reference = `AUTH_EMAIL:${randomUUID()}:notify-live`;
+    await seedAuthCallbackNotification(uid, reference, overrides);
+    const args = {...callbackArgs(uid), reference};
+    const lookup = await admin.getNotifyCallbackNotificationUser(dc, {providerMessageId: args.id, authReference: reference});
+    expect(lookup.data.notificationDeliveries).toEqual([]);
+    await expect(admin.createNotifyDeliveryReceipt(dc, args)).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+  });
+  it("refuses guessed or mode-mismatched auth references at both callback lookup and receipt insertion", async () => {
+    const [uid] = await initialize(1);
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    const reference = `AUTH_EMAIL:${randomUUID()}:notify-live`;
+    await seedAuthCallbackNotification(uid, reference);
+    for (const forged of [`AUTH_EMAIL:${randomUUID()}:notify-live`, reference.replace("notify-live", "notify-simulation")]) {
+      const args = {...callbackArgs(uid), reference: forged};
+      expect((await admin.getNotifyCallbackNotificationUser(dc, {providerMessageId: args.id, authReference: forged})).data.notificationDeliveries).toEqual([]);
+      await expect(admin.createNotifyDeliveryReceipt(dc, args)).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    }
+  });
+  it("refuses a stale auth binding for a missing profile or a replacement identity at the same address", async () => {
+    const variables = await deletionFixture();
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    await dc.executeGraphql(deleteInactiveAccountMutation, {variables});
+    await dc.executeGraphql("mutation ExpireAuthCallbackMarker($uid: String!) {accountErasure_deleteMany(where: {userId: {eq: $uid}})}", {variables: {uid: variables.uid}});
+    const reference = `AUTH_EMAIL:${randomUUID()}:notify-live`;
+    // Deliberate stale legacy fixture: normal owned-delivery insertion refuses
+    // this absent UID, and ordinary erasure removes its existing delivery rows.
+    await seedAuthCallbackNotification(variables.uid, reference, {status: "FAILED", missingProfile: true});
+    await dc.executeGraphql("mutation ReuseErasedAuthAddress($id: String!, $email: String!) {user_update(key: {id: $id}, data: {email: $email})}", {variables: {id: variables.actorId, email: variables.email}});
+    await expect(admin.createNotifyDeliveryReceipt(dc, {...callbackArgs(variables.uid, variables.emailHashes[0]), reference})).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    await expect(admin.createNotifyDeliveryReceipt(dc, {...callbackArgs(variables.actorId, variables.emailHashes[0]), reference})).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+  });
+  it("rejects orphan callback recreation after the profile and its suppression marker have gone", async () => {
+    const variables = await deletionFixture();
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    await dc.executeGraphql(deleteInactiveAccountMutation, {variables});
+    await dc.executeGraphql("mutation ExpireCallbackMarker($uid: String!) {accountErasure_deleteMany(where: {userId: {eq: $uid}})}", {variables: {uid: variables.uid}});
+    const orphan = callbackArgs(null, variables.emailHashes[0]);
+    await expect(admin.createNotifyDeliveryReceipt(dc, orphan)).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    const stale = callbackArgs(variables.uid, variables.emailHashes[0]);
+    await seedCallbackNotification(variables.uid, stale.id);
+    await expect(admin.createNotifyDeliveryReceipt(dc, stale)).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    const observed = await dc.executeGraphql<any, {ids: string[]}>("query NoRecreatedCallbacks($ids: [String!]!) {notifyDeliveryReceipts(where: {id: {in: $ids}}) {id}}", {variables: {ids: [orphan.id, stale.id]}});
+    expect(observed.data.notifyDeliveryReceipts).toEqual([]);
+  });
+  it("rejects a current identity substituted for an old provider UID or deleted announcement reference", async () => {
+    const variables = await deletionFixture();
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    await dc.executeGraphql(deleteInactiveAccountMutation, {variables});
+    await dc.executeGraphql("mutation ExpireStaleCallbackMarker($uid: String!) {accountErasure_deleteMany(where: {userId: {eq: $uid}})}", {variables: {uid: variables.uid}});
+    const tracked = callbackArgs(variables.actorId, variables.emailHashes[0]);
+    await seedCallbackNotification(variables.uid, tracked.id);
+    await expect(admin.createNotifyDeliveryReceipt(dc, tracked)).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    const sendId = randomUUID();
+    await expect(admin.createNotifyDeliveryReceipt(dc, {...callbackArgs(variables.actorId, variables.emailHashes[0]),
+      reference: `announcement:${sendId}:${variables.uid}`, announcementRecipientId: randomUUID(), announcementSendId: sendId, announcementUserId: variables.uid})).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+  });
+  it("accepts a live announcement callback without attaching an unrelated current user", async () => {
+    const variables = await deletionFixture();
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    await dc.executeGraphql(deleteInactiveAccountMutation, {variables});
+    await dc.executeGraphql("mutation ExpireAnnouncementCallbackMarker($uid: String!) {accountErasure_deleteMany(where: {userId: {eq: $uid}})}", {variables: {uid: variables.uid}});
+    const shared = await sharedSnapshotFixture(variables);
+    const recipientId = randomUUID();
+    // Deliberate legacy fixture: current recipient writers refuse a missing UID.
+    await dc.executeGraphql(`mutation SeedLegacyAnnouncementCallback($id: UUID!, $send: UUID!, $uid: String!, $email: String!) {
+      announcementRecipient_insert(data: {id: $id, announcementSendId: $send, userId: $uid, email: $email,
+        firstName: "Synthetic", lastName: "Fixture", status: "sent"})
+    }`, {variables: {id: recipientId, send: shared.send, uid: variables.uid, email: variables.email}});
+    const args = {...callbackArgs(null, variables.emailHashes[0]), reference: `announcement:${shared.send}:${variables.uid}`,
+      announcementRecipientId: recipientId, announcementSendId: shared.send, announcementUserId: variables.uid};
+    await expect(admin.createNotifyDeliveryReceipt(dc, args)).resolves.toBeDefined();
+    await expect(admin.createNotifyDeliveryReceipt(dc, {...args, id: randomUUID(), userId: variables.actorId})).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    await dc.executeGraphql("mutation RemoveAnnouncementCallbackFixture($id: String!) {notifyDeliveryReceipt_delete(key: {id: $id})}", {variables: {id: args.id}});
+  });
   it("permits unrelated notifications and a newly registered identity at the same address", async () => {
     const variables = await deletionFixture();
     const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
     await expect(admin.createNotificationDelivery(dc, {channel: "EMAIL", notificationType: "ERASURE_UNRELATED", deliveryKey: randomUUID(), recipientUserId: variables.actorId, status: "SENT", attemptCount: 1})).resolves.toBeDefined();
-    await expect(admin.createNotifyDeliveryReceipt(dc, {id: randomUUID(), userId: variables.actorId, recipientHash: variables.emailHashes[0], notifyStatus: "delivered", eventAt: "2026-01-01T00:00:00Z", eventOrderingKey: "fixture", affectsBounceState: false, lastAttemptedAt: "2026-01-01T00:00:00Z"})).resolves.toBeDefined();
+    const args = callbackArgs(variables.actorId, variables.emailHashes[0]);
+    await seedCallbackNotification(variables.actorId, args.id);
+    await expect(admin.createNotifyDeliveryReceipt(dc, args)).resolves.toBeDefined();
   });
   it("waits for claimed notification and announcement leases before purging owned records", async () => {
     const variables = await deletionFixture();
@@ -742,6 +892,50 @@ describe("account deletion against actual disposable SQL", () => {
     await dc.executeGraphql("mutation FreshErasureMarker($uid: String!) {accountErasure_updateMany(where: {userId: {eq: $uid}}, data: {startedAt_expr: \"request.time\"})}", {variables: {uid: variables.uid}});
     await expect(dc.executeGraphql(deleteInactiveAccountMutation, {variables})).rejects.toThrow();
     expect(await state(variables.uid)).toBeDefined();
+  });
+
+  it("rejects both announcement creation paths for an absent UID after suppression disposal", async () => {
+    const variables = await deletionFixture();
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    await dc.executeGraphql(deleteInactiveAccountMutation, {variables});
+    await dc.executeGraphql("mutation DisposeLateTaskMarker($uid: String!) {accountErasure_deleteMany(where: {userId: {eq: $uid}})}", {variables: {uid: variables.uid}});
+    const shared = await sharedSnapshotFixture(variables);
+    const base = {announcementSendId: shared.send, userId: variables.uid, email: variables.email, firstName: "Synthetic", lastName: "Fixture", status: "queued"};
+    await expect(admin.createAnnouncementRecipient(dc, {...base, id: randomUUID()})).rejects.toThrow("ANNOUNCEMENT_SUBJECT_MISSING");
+    await expect(admin.createAnnouncementRecipientWithDeliveryMode(dc, {...base, id: randomUUID(), surnameInitial: "F", surnameSortKey: "fixture", firstNameSortKey: "synthetic", searchText: "synthetic fixture", effectiveDeliveryMode: "SIMULATION"})).rejects.toThrow("ANNOUNCEMENT_SUBJECT_MISSING");
+    const observed = await dc.executeGraphql<any, {uid: string}>("query NoLateTaskRecipient($uid: String!) {announcementRecipients(where: {userId: {eq: $uid}}) {id}}", {variables: {uid: variables.uid}});
+    expect(observed.data.announcementRecipients).toEqual([]);
+  });
+  it("binds announcement creation to the current UID and exact email while allowing a new identity at that address", async () => {
+    const variables = await deletionFixture();
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    await dc.executeGraphql(deleteInactiveAccountMutation, {variables});
+    await dc.executeGraphql("mutation DisposeReRegisteredTaskMarker($uid: String!) {accountErasure_deleteMany(where: {userId: {eq: $uid}})}", {variables: {uid: variables.uid}});
+    const uid = await seedUser("re-registered-task-target", false);
+    await dc.executeGraphql("mutation ReRegisterTaskEmail($uid: String!, $email: String!) {user_update(key: {id: $uid}, data: {email: $email})}", {variables: {uid, email: variables.email}});
+    const shared = await sharedSnapshotFixture(variables);
+    const base = {announcementSendId: shared.send, userId: uid, email: variables.email, firstName: "Synthetic", lastName: "Fixture", status: "queued"};
+    await expect(admin.createAnnouncementRecipient(dc, {...base, id: randomUUID(), userId: variables.uid})).rejects.toThrow("ANNOUNCEMENT_SUBJECT_MISSING");
+    await expect(admin.createAnnouncementRecipient(dc, {...base, id: randomUUID(), email: "obsolete@example.invalid"})).rejects.toThrow("ANNOUNCEMENT_SUBJECT_MISSING");
+    await expect(admin.createAnnouncementRecipientWithDeliveryMode(dc, {...base, id: randomUUID(), email: "obsolete@example.invalid", surnameInitial: "F", surnameSortKey: "fixture", firstNameSortKey: "synthetic", searchText: "synthetic fixture", effectiveDeliveryMode: "SIMULATION"})).rejects.toThrow("ANNOUNCEMENT_SUBJECT_MISSING");
+    await expect(admin.createAnnouncementRecipient(dc, {...base, id: randomUUID()})).resolves.toBeDefined();
+    await dc.executeGraphql("mutation ResetCurrentTaskRecipient($uid: String!) {announcementRecipient_deleteMany(where: {userId: {eq: $uid}})}", {variables: {uid}});
+    await expect(admin.createAnnouncementRecipientWithDeliveryMode(dc, {...base, id: randomUUID(), surnameInitial: "F", surnameSortKey: "fixture", firstNameSortKey: "synthetic", searchText: "synthetic fixture", effectiveDeliveryMode: "SIMULATION"})).resolves.toBeDefined();
+  });
+  it("requires live notification ownership after disposal while preserving unowned guest deliveries", async () => {
+    const variables = await deletionFixture();
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    await dc.executeGraphql(deleteInactiveAccountMutation, {variables});
+    await dc.executeGraphql("mutation DisposeNotificationTaskMarker($uid: String!) {accountErasure_deleteMany(where: {userId: {eq: $uid}})}", {variables: {uid: variables.uid}});
+    const base = {channel: "EMAIL" as const, notificationType: "LATE_TASK_FIXTURE", status: "PENDING" as const, attemptCount: 1};
+    for (const ownership of [{userId: variables.uid}, {recipientUserId: variables.uid}, {userId: variables.actorId, recipientUserId: variables.uid}, {userId: variables.uid, recipientUserId: variables.actorId}]) {
+      await expect(admin.createNotificationDelivery(dc, {...base, ...ownership, deliveryKey: randomUUID()})).rejects.toThrow("NOTIFICATION_SUBJECT_MISSING");
+    }
+    await expect(admin.createNotificationDelivery(dc, {...base, userId: variables.actorId, recipientUserId: variables.actorId, deliveryKey: randomUUID()})).resolves.toBeDefined();
+    const guest = await admin.createNotificationDelivery(dc, {...base, deliveryKey: randomUUID()});
+    await dc.executeGraphql("mutation RemoveUnownedLateTaskFixture($id: UUID!) {notificationDelivery_delete(key: {id: $id})}", {variables: {id: guest.data.notificationDelivery_insert.id}});
+    const observed = await dc.executeGraphql<any, {uid: string}>("query NoLateOwnedNotification($uid: String!) {notificationDeliveries(where: {_or: [{userId: {eq: $uid}}, {recipientUserId: {eq: $uid}}]}) {id}}", {variables: {uid: variables.uid}});
+    expect(observed.data.notificationDeliveries).toEqual([]);
   });
 
 });

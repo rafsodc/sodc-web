@@ -36,6 +36,16 @@ export enum SecuritySyncStatus {
   SUPERSEDED = "SUPERSEDED",
 }
 
+export interface AccountErasureDisposalPolicy_Key {
+  id: string;
+  __typename?: 'AccountErasureDisposalPolicy_Key';
+}
+
+export interface AccountErasureDisposal_Key {
+  userId: string;
+  __typename?: 'AccountErasureDisposal_Key';
+}
+
 export interface AccountErasure_Key {
   userId: string;
   emailHash: string;

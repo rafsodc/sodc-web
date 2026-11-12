@@ -77,6 +77,7 @@ You can also follow the instructions from the [Data Connect documentation](https
   - [*GetUserByEmail*](#getuserbyemail)
   - [*GetNotifyCallbackUserById*](#getnotifycallbackuserbyid)
   - [*GetNotifyDeliveryReceipt*](#getnotifydeliveryreceipt)
+  - [*GetNotifyCallbackNotificationUser*](#getnotifycallbacknotificationuser)
   - [*GetRecentNotifyDeliveryReceiptsForUser*](#getrecentnotifydeliveryreceiptsforuser)
   - [*GetLatestNotifyDeliveryReceiptForReference*](#getlatestnotifydeliveryreceiptforreference)
   - [*GetCallableInvocation*](#getcallableinvocation)
@@ -6172,6 +6173,93 @@ export default function GetNotifyDeliveryReceiptComponent() {
   // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
   if (query.isSuccess) {
     console.log(query.data.notifyDeliveryReceipt);
+  }
+  return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
+}
+```
+
+## GetNotifyCallbackNotificationUser
+You can execute the `GetNotifyCallbackNotificationUser` Query using the following Query hook function, which is defined in [dataconnect-generated/react/index.d.ts](./index.d.ts):
+
+```javascript
+useGetNotifyCallbackNotificationUser(dc: DataConnect, vars: GetNotifyCallbackNotificationUserVariables, options?: useDataConnectQueryOptions<GetNotifyCallbackNotificationUserData>): UseDataConnectQueryResult<GetNotifyCallbackNotificationUserData, GetNotifyCallbackNotificationUserVariables>;
+```
+You can also pass in a `DataConnect` instance to the Query hook function.
+```javascript
+useGetNotifyCallbackNotificationUser(vars: GetNotifyCallbackNotificationUserVariables, options?: useDataConnectQueryOptions<GetNotifyCallbackNotificationUserData>): UseDataConnectQueryResult<GetNotifyCallbackNotificationUserData, GetNotifyCallbackNotificationUserVariables>;
+```
+
+### Variables
+The `GetNotifyCallbackNotificationUser` Query requires an argument of type `GetNotifyCallbackNotificationUserVariables`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+
+```javascript
+export interface GetNotifyCallbackNotificationUserVariables {
+  providerMessageId: string;
+  authReference?: string | null;
+}
+```
+### Return Type
+Recall that calling the `GetNotifyCallbackNotificationUser` Query hook function returns a `UseQueryResult` object. This object holds the state of your Query, including whether the Query is loading, has completed, or has succeeded/failed, and any data returned by the Query, among other things.
+
+To check the status of a Query, use the `UseQueryResult.status` field. You can also check for pending / success / error status using the `UseQueryResult.isPending`, `UseQueryResult.isSuccess`, and `UseQueryResult.isError` fields.
+
+To access the data returned by a Query, use the `UseQueryResult.data` field. The data for the `GetNotifyCallbackNotificationUser` Query is of type `GetNotifyCallbackNotificationUserData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
+```javascript
+export interface GetNotifyCallbackNotificationUserData {
+  notificationDeliveries: ({
+    userId?: string | null;
+    recipientUserId?: string | null;
+  })[];
+}
+```
+
+To learn more about the `UseQueryResult` object, see the [TanStack React Query documentation](https://tanstack.com/query/v5/docs/framework/react/reference/useQuery).
+
+### Using `GetNotifyCallbackNotificationUser`'s Query hook function
+
+```javascript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, GetNotifyCallbackNotificationUserVariables } from '@dataconnect/generated';
+import { useGetNotifyCallbackNotificationUser } from '@dataconnect/generated/react'
+
+export default function GetNotifyCallbackNotificationUserComponent() {
+  // The `useGetNotifyCallbackNotificationUser` Query hook requires an argument of type `GetNotifyCallbackNotificationUserVariables`:
+  const getNotifyCallbackNotificationUserVars: GetNotifyCallbackNotificationUserVariables = {
+    providerMessageId: ..., 
+    authReference: ..., // optional
+  };
+
+  // You don't have to do anything to "execute" the Query.
+  // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
+  const query = useGetNotifyCallbackNotificationUser(getNotifyCallbackNotificationUserVars);
+  // Variables can be defined inline as well.
+  const query = useGetNotifyCallbackNotificationUser({ providerMessageId: ..., authReference: ..., });
+
+  // You can also pass in a `DataConnect` instance to the Query hook function.
+  const dataConnect = getDataConnect(connectorConfig);
+  const query = useGetNotifyCallbackNotificationUser(dataConnect, getNotifyCallbackNotificationUserVars);
+
+  // You can also pass in a `useDataConnectQueryOptions` object to the Query hook function.
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotifyCallbackNotificationUser(getNotifyCallbackNotificationUserVars, options);
+
+  // You can also pass both a `DataConnect` instance and a `useDataConnectQueryOptions` object.
+  const dataConnect = getDataConnect(connectorConfig);
+  const options = { staleTime: 5 * 1000 };
+  const query = useGetNotifyCallbackNotificationUser(dataConnect, getNotifyCallbackNotificationUserVars, options);
+
+  // Then, you can render your component dynamically based on the status of the Query.
+  if (query.isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (query.isError) {
+    return <div>Error: {query.error.message}</div>;
+  }
+
+  // If the Query is successful, you can access the data returned using the `UseQueryResult.data` field.
+  if (query.isSuccess) {
+    console.log(query.data.notificationDeliveries);
   }
   return <div>Query execution {query.isSuccess ? 'successful' : 'failed'}!</div>;
 }
@@ -16424,6 +16512,8 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateNotificationDelivery` Mutation is of type `CreateNotificationDeliveryData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface CreateNotificationDeliveryData {
+  subjectLock: number;
+  recipientLock: number;
   notificationDelivery_insert: NotificationDelivery_Key;
 }
 ```
@@ -16496,6 +16586,8 @@ export default function CreateNotificationDeliveryComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
+    console.log(mutation.data.subjectLock);
+    console.log(mutation.data.recipientLock);
     console.log(mutation.data.notificationDelivery_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
@@ -18515,6 +18607,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateAnnouncementRecipient` Mutation is of type `CreateAnnouncementRecipientData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface CreateAnnouncementRecipientData {
+  subjectLock: number;
   announcementRecipient_insert: AnnouncementRecipient_Key;
 }
 ```
@@ -18584,6 +18677,7 @@ export default function CreateAnnouncementRecipientComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
+    console.log(mutation.data.subjectLock);
     console.log(mutation.data.announcementRecipient_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
@@ -18632,6 +18726,7 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateAnnouncementRecipientWithDeliveryMode` Mutation is of type `CreateAnnouncementRecipientWithDeliveryModeData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface CreateAnnouncementRecipientWithDeliveryModeData {
+  subjectLock: number;
   announcementRecipient_insert: AnnouncementRecipient_Key;
 }
 ```
@@ -18706,6 +18801,7 @@ export default function CreateAnnouncementRecipientWithDeliveryModeComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
+    console.log(mutation.data.subjectLock);
     console.log(mutation.data.announcementRecipient_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;
@@ -19156,6 +19252,9 @@ export interface CreateNotifyDeliveryReceiptVariables {
   reference?: string | null;
   recipientHash: string;
   userId?: string | null;
+  announcementRecipientId?: UUIDString | null;
+  announcementSendId?: string | null;
+  announcementUserId?: string | null;
   eventAt: TimestampString;
   eventOrderingKey: string;
   affectsBounceState: boolean;
@@ -19172,6 +19271,8 @@ To execute the Mutation, call `UseMutationResult.mutate()`. This function execut
 To access the data returned by a Mutation, use the `UseMutationResult.data` field. The data for the `CreateNotifyDeliveryReceipt` Mutation is of type `CreateNotifyDeliveryReceiptData`, which is defined in [dataconnect-generated/index.d.ts](../index.d.ts). It has the following fields:
 ```javascript
 export interface CreateNotifyDeliveryReceiptData {
+  subjectLock: number;
+  announcementLock: number;
   notifyDeliveryReceipt_insert: NotifyDeliveryReceipt_Key;
 }
 ```
@@ -19214,6 +19315,9 @@ export default function CreateNotifyDeliveryReceiptComponent() {
     reference: ..., // optional
     recipientHash: ..., 
     userId: ..., // optional
+    announcementRecipientId: ..., // optional
+    announcementSendId: ..., // optional
+    announcementUserId: ..., // optional
     eventAt: ..., 
     eventOrderingKey: ..., 
     affectsBounceState: ..., 
@@ -19221,7 +19325,7 @@ export default function CreateNotifyDeliveryReceiptComponent() {
   };
   mutation.mutate(createNotifyDeliveryReceiptVars);
   // Variables can be defined inline as well.
-  mutation.mutate({ id: ..., notifyStatus: ..., reference: ..., recipientHash: ..., userId: ..., eventAt: ..., eventOrderingKey: ..., affectsBounceState: ..., lastAttemptedAt: ..., });
+  mutation.mutate({ id: ..., notifyStatus: ..., reference: ..., recipientHash: ..., userId: ..., announcementRecipientId: ..., announcementSendId: ..., announcementUserId: ..., eventAt: ..., eventOrderingKey: ..., affectsBounceState: ..., lastAttemptedAt: ..., });
 
   // You can also pass in a `useDataConnectMutationOptions` object to `UseMutationResult.mutate()`.
   const options = {
@@ -19240,6 +19344,8 @@ export default function CreateNotifyDeliveryReceiptComponent() {
 
   // If the Mutation is successful, you can access the data returned using the `UseMutationResult.data` field.
   if (mutation.isSuccess) {
+    console.log(mutation.data.subjectLock);
+    console.log(mutation.data.announcementLock);
     console.log(mutation.data.notifyDeliveryReceipt_insert);
   }
   return <div>Mutation execution {mutation.isSuccess ? 'successful' : 'failed'}!</div>;

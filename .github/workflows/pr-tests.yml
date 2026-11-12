@@ -214,7 +214,7 @@ jobs:
   section-permissions-sql:
     name: Section permissions SQL authorization
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -231,3 +231,8 @@ jobs:
           RUN_SECTION_PERMISSIONS_INTEGRATION: '1'
           SECTION_PERMISSIONS_INTEGRATION_PROJECT: demo-sodc-section-permissions
         run: npx --yes --package firebase-tools@15.22.3 -- npm --prefix functions run test:section-permissions-integration
+      - name: Run erasure disposal and administrator safety SQL transactions
+        env:
+          RUN_ADMIN_SAFETY_INTEGRATION: '1'
+          ADMIN_SAFETY_INTEGRATION_PROJECT: demo-sodc-admin-safety
+        run: npx --yes --package firebase-tools@15.22.3 -- npm --prefix functions run test:admin-safety-integration

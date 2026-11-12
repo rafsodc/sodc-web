@@ -316,8 +316,6 @@ export async function processAnnouncementEmailTask(
   if (await isUserErasing(task.recipientId)) return;
   const repository = dependencies.repository ?? dataConnectAnnouncementDeliveryRepository;
   const effectiveDeliveryMode = task.effectiveDeliveryMode ?? "LIVE";
-  const client = dependencies.client ??
-    new NotifyClient(govNotifyApiKeyForMode(effectiveDeliveryMode));
   const now = (dependencies.now ?? (() => new Date().toISOString()))();
   const leaseMs = dependencies.leaseMs ?? ANNOUNCEMENT_PROCESSING_LEASE_MS;
   const reconciliationDelayMs = dependencies.reconciliationDelayMs ??
@@ -330,11 +328,19 @@ export async function processAnnouncementEmailTask(
   let row = await repository.get(task.sendId, task.recipientId);
   if (!row) {
     try { await repository.createLegacyTaskRow(task); }
-    catch (error) { if (isErasureWriteDenied(error)) return; throw error; }
+    catch (error) {
+      // An old task can outlive its suppression marker. The database locks the
+      // exact live UID/address before recreating a row; a missing or changed
+      // identity is terminal, while transient failures still retry normally.
+      if (isErasureWriteDenied(error) || String(error).includes("ANNOUNCEMENT_SUBJECT_MISSING")) return;
+      throw error;
+    }
     row = await repository.get(task.sendId, task.recipientId);
   }
   if (!row) throw new Error("Announcement recipient row could not be created");
   if (isTerminal(row.status)) return;
+  const client = dependencies.client ??
+    new NotifyClient(govNotifyApiKeyForMode(effectiveDeliveryMode));
 
   if (row.status === "sending" || row.status === "delivery_unknown") {
     const reconciliation = await reconcileAmbiguousAttempt({

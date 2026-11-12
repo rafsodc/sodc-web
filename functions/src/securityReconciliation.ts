@@ -4,6 +4,8 @@ import { getAdminSafetyControl, listPendingSecurityTransitions, listSecurityStat
 import { synchronizeUserSecurity } from "./currentAuthorizationTransitions";
 import { createReconciliationBatchMetrics, healthySecurityMirrorUserIds } from "./securityReconciliationBatch";
 import { FUNCTIONS_REGION } from "./constants";
+import { disposeCompletedAccountErasures } from "./accountErasureDisposal";
+import { inspectAccountErasureBackupHorizon } from "./accountErasureBackupHorizon";
 
 /** Durable retries never infer a grant from Auth claims or an old profile snapshot. */
 export const reconcilePendingSecurityTransitions = onSchedule({region: FUNCTIONS_REGION, schedule: "every 5 minutes", timeoutSeconds: 540, maxInstances: 1}, async () => {
@@ -54,6 +56,10 @@ export const reconcilePendingSecurityTransitions = onSchedule({region: FUNCTIONS
     if (page.length) maxStatePageDurationMs = Math.max(maxStatePageDurationMs, Date.now() - pageStartedAt);
     if (page.length < 500) break;
   }
+  try {
+    const disposal = await disposeCompletedAccountErasures({projectId: process.env.GCLOUD_PROJECT ?? "", inspectRetentionHorizon: inspectAccountErasureBackupHorizon, deadline: startedAt + 510_000});
+    logger.info("Suppression disposal sweep completed", disposal);
+  } catch {logger.warn("Suppression disposal sweep deferred");}
   logger.info("Security reconciliation completed", {pendingAttempts, stateAttempts, failedAttempts, healthyMirrorChecks, durationMs: Date.now() - startedAt,
     phaseMetrics: {statePageReads, statePageReadDurationMs, statePages, maxStatePageDurationMs, pendingRepairs: pendingAttempts, pendingRepairDurationMs,
       stateRepairs: stateRepairAttempts, stateRepairDurationMs, ...batchMetrics}});

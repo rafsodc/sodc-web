@@ -12,6 +12,10 @@ import {
   type TransactionalMailer,
 } from "./mailer";
 import { enforceRateLimit } from "./rateLimiter";
+import { serviceGetUserById, NotificationChannel } from "@dataconnect/admin-generated";
+import { isUserErasing } from "./communicationErasureGuard";
+import { sendNotificationOnce, type SendNotificationOnceDependencies } from "./notificationDelivery";
+import { GOV_NOTIFY_PROVIDER } from "./mailer";
 
 export const AUTH_EMAIL_TEMPLATE_KEYS = [
   "passwordReset",
@@ -31,7 +35,14 @@ export type AuthEmailTemplates = {
   };
 };
 
-export interface PasswordResetDependencies {
+interface AuthEmailDeliveryDependencies {
+  /** Auth establishes this identity; an email lookup must never replace it. */
+  userId?: string;
+  getProfile?: (userId: string) => Promise<{id: string; email: string} | null>;
+  delivery?: SendNotificationOnceDependencies;
+}
+
+export interface PasswordResetDependencies extends AuthEmailDeliveryDependencies {
   generatePasswordResetLink(
     email: string,
     settings: admin.auth.ActionCodeSettings,
@@ -39,7 +50,7 @@ export interface PasswordResetDependencies {
   mailer: TransactionalMailer<AuthEmailTemplates>;
 }
 
-export interface EmailVerificationDependencies {
+export interface EmailVerificationDependencies extends AuthEmailDeliveryDependencies {
   generateEmailVerificationLink(
     email: string,
     settings: admin.auth.ActionCodeSettings,
@@ -47,7 +58,7 @@ export interface EmailVerificationDependencies {
   mailer: TransactionalMailer<AuthEmailTemplates>;
 }
 
-export interface EmailChangeDependencies {
+export interface EmailChangeDependencies extends AuthEmailDeliveryDependencies {
   generateVerifyAndChangeEmailLink(
     email: string,
     newEmail: string,
@@ -57,6 +68,49 @@ export interface EmailChangeDependencies {
 }
 
 const RECENT_AUTH_MAX_AGE_SECONDS = 5 * 60;
+
+async function sendAuthEmail<TTemplateName extends keyof AuthEmailTemplates>(
+  request: {templateName: TTemplateName; to: string; personalisation: AuthEmailTemplates[TTemplateName]},
+  dependencies: AuthEmailDeliveryDependencies & {mailer: TransactionalMailer<AuthEmailTemplates>},
+): Promise<void> {
+  const reference = `AUTH_EMAIL:${randomUUID()}`;
+  const send = (requestedDeliveryMode = "LIVE" as const) => dependencies.mailer.sendEmail({...request, reference, requestedDeliveryMode});
+  const uid = dependencies.userId;
+  if (uid && await isUserErasing(uid)) throw new Error("ACCOUNT_ERASURE_IN_PROGRESS");
+  const profile = uid ? await (dependencies.getProfile ?? (async (id) => {
+    const response = await serviceGetUserById({id});
+    return response.data.user ?? null;
+  }))(uid) : null;
+  if (!profile) {
+    // Auth-only onboarding has no member profile to own a delivery ledger row.
+    // Keep verification available without creating a profile or storing its link.
+    if (uid && await isUserErasing(uid)) throw new Error("ACCOUNT_ERASURE_IN_PROGRESS");
+    await send();
+    return;
+  }
+  // Auth owns the destination address. Its profile may still be catching up
+  // after verification; that lag must not prevent account-recovery email.
+  if (profile.id !== uid) {
+    throw new Error("AUTH_EMAIL_OWNER_CHANGED");
+  }
+  const result = await sendNotificationOnce({
+    channel: NotificationChannel.EMAIL,
+    notificationType: ({passwordReset: "AUTH_PASSWORD_RESET", emailVerification: "AUTH_EMAIL_VERIFICATION", emailChangeVerification: "AUTH_EMAIL_CHANGE_VERIFICATION"} as const)[request.templateName],
+    deliveryKey: reference,
+    userId: uid,
+    recipientUserId: uid,
+    provider: GOV_NOTIFY_PROVIDER,
+    deliveryMode: "LIVE",
+    // Only opaque identity metadata is persisted. Links/personalisation are
+    // deliberately excluded from the recovery payload and delivery ledger.
+    send: async (mode, assertOwnership) => {
+      await assertOwnership?.();
+      const sent = await dependencies.mailer.sendEmail({...request, reference, requestedDeliveryMode: mode});
+      return {providerMessageId: sent.providerNotificationId ?? null, deliveryMode: sent.deliveryMode.effectiveMode};
+    },
+  }, dependencies.delivery);
+  if (result.outcome !== "sent") throw new Error("AUTH_EMAIL_DELIVERY_NOT_SENT");
+}
 
 const APP_BASE_URL = (() => {
   const value = process.env.APP_BASE_URL || "http://localhost:5173";
@@ -153,13 +207,11 @@ export async function requestPasswordResetForEmail(
   });
   const resetLink = applicationPasswordResetLink(firebaseLink, APP_BASE_URL);
 
-  await dependencies.mailer.sendEmail({
+  await sendAuthEmail({
     templateName: "passwordReset",
     to: email,
     personalisation: { resetLink },
-    reference: `PASSWORD_RESET:${randomUUID()}`,
-    requestedDeliveryMode: "LIVE",
-  });
+  }, dependencies);
 }
 
 export async function requestEmailVerificationForUser(
@@ -172,13 +224,11 @@ export async function requestEmailVerificationForUser(
   });
   const verificationLink = applicationEmailVerificationLink(firebaseLink, APP_BASE_URL);
 
-  await dependencies.mailer.sendEmail({
+  await sendAuthEmail({
     templateName: "emailVerification",
     to: email,
     personalisation: { verificationLink },
-    reference: `EMAIL_VERIFICATION:${randomUUID()}`,
-    requestedDeliveryMode: "LIVE",
-  });
+  }, dependencies);
 }
 
 export async function requestEmailChangeForUser(
@@ -193,13 +243,11 @@ export async function requestEmailChangeForUser(
   );
   const verificationLink = applicationEmailChangeLink(firebaseLink, APP_BASE_URL);
 
-  await dependencies.mailer.sendEmail({
+  await sendAuthEmail({
     templateName: "emailChangeVerification",
     to: newEmail,
     personalisation: { verificationLink },
-    reference: `EMAIL_CHANGE:${randomUUID()}`,
-    requestedDeliveryMode: "LIVE",
-  });
+  }, dependencies);
 }
 
 export function requireRecentAuthentication(authTime: unknown, nowSeconds = Date.now() / 1000): void {
@@ -235,7 +283,9 @@ export const requestPasswordReset = onCall(
     await enforceRateLimit("requestPasswordReset", rateLimitKey);
 
     try {
+      const user = await admin.auth().getUserByEmail(email);
       await requestPasswordResetForEmail(email, {
+        userId: user.uid,
         generatePasswordResetLink: (address, settings) =>
           admin.auth().generatePasswordResetLink(address, settings),
         mailer: createAuthEmailMailer(),
@@ -271,6 +321,7 @@ export const requestEmailVerification = onCall(
     }
 
     await requestEmailVerificationForUser(user.email, {
+      userId: user.uid,
       generateEmailVerificationLink: (address, settings) =>
         admin.auth().generateEmailVerificationLink(address, settings),
       mailer: createAuthEmailMailer(),
@@ -299,6 +350,7 @@ export const requestEmailChange = onCall(
 
     try {
       await requestEmailChangeForUser(currentEmail, newEmail, {
+        userId: user.uid,
         generateVerifyAndChangeEmailLink: (email, replacement, settings) =>
           admin.auth().generateVerifyAndChangeEmailLink(email, replacement, settings),
         mailer: createAuthEmailMailer(),

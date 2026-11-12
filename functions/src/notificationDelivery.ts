@@ -521,7 +521,11 @@ export async function sendNotificationOnce(
     attemptStartedAt,
     leaseMs,
     recoveryPayload
-  ).catch(error => { if (isErasureWriteDenied(error)) return {outcome: "skipped" as const, reason: "ACCOUNT_ERASURE_IN_PROGRESS"}; throw error; });
+  ).catch(error => {
+    if (isErasureWriteDenied(error)) return {outcome: "skipped" as const, reason: "ACCOUNT_ERASURE_IN_PROGRESS"};
+    if (String(error).includes("NOTIFICATION_SUBJECT_MISSING")) return {outcome: "skipped" as const, reason: "NOTIFICATION_SUBJECT_MISSING"};
+    throw error;
+  });
 
   if ("outcome" in claimResult) {
     return claimResult;

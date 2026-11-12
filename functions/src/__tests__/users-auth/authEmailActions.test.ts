@@ -1,5 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TransactionalMailer } from "../../mailer";
+import { NotificationDeliveryStatus, type UUIDString } from "@dataconnect/admin-generated";
+import type { NotificationDeliveryRepository } from "../../notificationDelivery";
+import { isUserErasing } from "../../communicationErasureGuard";
+import { resolveRuntimeGovNotifyDeliveryMode } from "../../govNotifyDeliveryConfiguration";
 import {
   applicationEmailChangeLink,
   applicationEmailVerificationLink,
@@ -12,10 +16,15 @@ import {
   type AuthEmailTemplates,
 } from "../../authEmailActions";
 
+vi.mock("../../govNotifyDeliveryConfiguration", () => ({
+  resolveRuntimeGovNotifyDeliveryMode: vi.fn(async (requestedMode: string) => ({requestedMode, siteMode: "LIVE", effectiveMode: requestedMode})),
+}));
+
 function mailer(): TransactionalMailer<AuthEmailTemplates> {
   return {
     sendEmail: vi.fn(async () => ({
       provider: "govuk_notify" as const,
+      providerNotificationId: "auth-provider-message",
       deliveryMode: {
         requestedMode: "LIVE" as const,
         siteMode: "LIVE" as const,
@@ -26,6 +35,11 @@ function mailer(): TransactionalMailer<AuthEmailTemplates> {
 }
 
 describe("auth email actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isUserErasing).mockResolvedValue(false);
+    vi.mocked(resolveRuntimeGovNotifyDeliveryMode).mockImplementation(async (requestedMode) => ({requestedMode, siteMode: "LIVE", effectiveMode: requestedMode}));
+  });
   it("rewrites Firebase's generated reset link to the application handler", () => {
     const result = applicationPasswordResetLink(
       "https://example.firebaseapp.com/__/auth/action?mode=resetPassword&oobCode=secret-code&apiKey=public-key&continueUrl=https%3A%2F%2Fevil.example&lang=en",
@@ -85,7 +99,7 @@ describe("auth email actions", () => {
       }),
     );
     const request = vi.mocked(sendMailer.sendEmail).mock.calls[0][0];
-    expect(request.reference).toMatch(/^PASSWORD_RESET:[0-9a-f-]{36}$/);
+    expect(request.reference).toMatch(/^AUTH_EMAIL:[0-9a-f-]{36}$/);
   });
 
   it("generates and sends an application-owned email verification link", async () => {
@@ -171,5 +185,157 @@ describe("auth email actions", () => {
       "Please confirm your password again",
     );
     expect(() => requireRecentAuthentication(undefined, 1_000)).toThrow();
+  });
+
+  function trackedDelivery(afterClaim?: () => void) {
+    type Pending = Parameters<NotificationDeliveryRepository["createPending"]>[0];
+    let row: (Pending & {id: UUIDString; status: NotificationDeliveryStatus; providerMessageId?: string | null}) | null = null;
+    const repository: NotificationDeliveryRepository = {
+      getByChannelAndKey: vi.fn(async () => row),
+      createPending: vi.fn(async args => {
+        const claimed = {...args, id: "10000000-0000-4000-8000-000000000001" as UUIDString, status: NotificationDeliveryStatus.PENDING};
+        row = claimed;
+        afterClaim?.();
+        return claimed;
+      }),
+      tryMarkPending: vi.fn(async () => false),
+      tryMarkPendingForRecovery: vi.fn(async () => false),
+      markSent: vi.fn(async args => {
+        if (!row) return false;
+        row = {...row, status: NotificationDeliveryStatus.SENT, providerMessageId: args.providerMessageId};
+        return true;
+      }),
+      markSkipped: vi.fn(async () => false),
+      markFailed: vi.fn(async () => {
+        if (!row) return false;
+        row = {...row, status: NotificationDeliveryStatus.FAILED};
+        return true;
+      }),
+    };
+    return {repository, current: () => row, replaceLease: () => {
+      if (!row) throw new Error("No claimed fixture delivery");
+      row = {...row, attemptCount: row.attemptCount + 1};
+    }};
+  }
+
+  const authKinds = [
+    ["passwordReset", "AUTH_PASSWORD_RESET"],
+    ["emailVerification", "AUTH_EMAIL_VERIFICATION"],
+    ["emailChangeVerification", "AUTH_EMAIL_CHANGE_VERIFICATION"],
+  ] as const;
+  async function sendTracked(kind: typeof authKinds[number][0], repository: NotificationDeliveryRepository, sendMailer = mailer(), profile: {id: string; email: string} | null = {id: "auth-user", email: "member@example.org"}) {
+    const dependencies = {
+      userId: "auth-user", getProfile: vi.fn(async () => profile), mailer: sendMailer, delivery: {repository},
+      generatePasswordResetLink: vi.fn(async () => "https://example.firebaseapp.com/__/auth/action?mode=resetPassword&oobCode=secret-code"),
+      generateEmailVerificationLink: vi.fn(async () => "https://example.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=secret-code"),
+      generateVerifyAndChangeEmailLink: vi.fn(async () => "https://example.firebaseapp.com/__/auth/action?mode=verifyAndChangeEmail&oobCode=secret-code"),
+    };
+    if (kind === "passwordReset") return requestPasswordResetForEmail("member@example.org", dependencies);
+    if (kind === "emailVerification") return requestEmailVerificationForUser("member@example.org", dependencies);
+    return requestEmailChangeForUser("member@example.org", "replacement@example.org", dependencies);
+  }
+
+  it.each(authKinds)("binds %s to its immutable UID before submitting to Notify", async (kind, notificationType) => {
+    const delivery = trackedDelivery();
+    const sendMailer = mailer();
+    vi.mocked(sendMailer.sendEmail).mockImplementation(async request => {
+      expect(delivery.current()).toMatchObject({userId: "auth-user", recipientUserId: "auth-user", notificationType, status: "PENDING", deliveryKey: `${request.reference}:notify-live`});
+      expect(delivery.current()).not.toHaveProperty("providerMessageId");
+      return {provider: "govuk_notify", providerNotificationId: "auth-provider-message", deliveryMode: {requestedMode: "LIVE", siteMode: "LIVE", effectiveMode: "LIVE"}};
+    });
+    await sendTracked(kind, delivery.repository, sendMailer);
+    expect(delivery.current()).toMatchObject({status: "SENT", providerMessageId: "auth-provider-message"});
+    const persisted = JSON.stringify(vi.mocked(delivery.repository.createPending).mock.calls);
+    expect(persisted).not.toContain("secret-code");
+    expect(persisted).not.toContain("@example.org");
+    expect(persisted).not.toContain("resetLink");
+    expect(persisted).not.toContain("verificationLink");
+    expect(delivery.current()?.recoveryPayload).toBeNull();
+  });
+
+  it.each(["LIVE", "TEAM_TEST", "SIMULATION"] as const)("uses the same opaque delivery key and provider reference in %s mode", async mode => {
+    vi.mocked(resolveRuntimeGovNotifyDeliveryMode).mockResolvedValue({requestedMode: "LIVE", siteMode: mode, effectiveMode: mode});
+    const delivery = trackedDelivery();
+    const sendMailer = mailer();
+    await sendTracked("emailVerification", delivery.repository, sendMailer);
+    const sent = vi.mocked(sendMailer.sendEmail).mock.calls[0][0];
+    expect(sent.requestedDeliveryMode).toBe(mode);
+    expect(delivery.current()?.deliveryKey).toBe(`${sent.reference}:notify-${mode.toLowerCase()}`);
+  });
+
+  it("keeps Auth-only onboarding verification available without creating a member delivery", async () => {
+    const delivery = trackedDelivery();
+    const sendMailer = mailer();
+    await sendTracked("emailVerification", delivery.repository, sendMailer, null);
+    expect(sendMailer.sendEmail).toHaveBeenCalledOnce();
+    expect(delivery.repository.createPending).not.toHaveBeenCalled();
+  });
+
+  it("refuses a substituted profile owner before sending", async () => {
+    const delivery = trackedDelivery();
+    const sendMailer = mailer();
+    await expect(sendTracked("passwordReset", delivery.repository, sendMailer, {id: "reused-identity", email: "member@example.org"})).rejects.toThrow("AUTH_EMAIL_OWNER_CHANGED");
+    expect(sendMailer.sendEmail).not.toHaveBeenCalled();
+    expect(delivery.repository.createPending).not.toHaveBeenCalled();
+  });
+
+  it("preserves Auth-owned delivery when the same UID's profile address has not caught up", async () => {
+    const delivery = trackedDelivery();
+    const sendMailer = mailer();
+    await sendTracked("passwordReset", delivery.repository, sendMailer, {id: "auth-user", email: "previous@example.org"});
+    expect(sendMailer.sendEmail).toHaveBeenCalledWith(expect.objectContaining({to: "member@example.org"}));
+    expect(delivery.current()).toMatchObject({userId: "auth-user", recipientUserId: "auth-user", status: "SENT"});
+  });
+
+  it("retains its pre-send binding and redacts a lost provider response containing an action link", async () => {
+    const delivery = trackedDelivery();
+    const sendMailer = mailer();
+    vi.mocked(sendMailer.sendEmail).mockRejectedValue(new Error("https://example.org/auth/action?oobCode=secret-code member@example.org"));
+    await expect(sendTracked("passwordReset", delivery.repository, sendMailer)).rejects.toThrow("AUTH_EMAIL_DELIVERY_NOT_SENT");
+    expect(delivery.current()).toMatchObject({status: "FAILED", userId: "auth-user", recipientUserId: "auth-user", notificationType: "AUTH_PASSWORD_RESET"});
+    expect(delivery.current()?.providerMessageId).toBeUndefined();
+    const failed = JSON.stringify(vi.mocked(delivery.repository.markFailed).mock.calls);
+    expect(failed).not.toContain("secret-code");
+    expect(failed).not.toContain("member@example.org");
+  });
+
+  it("stops an erasing identity and a deleted-profile race before invoking Notify", async () => {
+    const delivery = trackedDelivery();
+    const sendMailer = mailer();
+    vi.mocked(isUserErasing).mockResolvedValueOnce(true);
+    await expect(sendTracked("passwordReset", delivery.repository, sendMailer)).rejects.toThrow("ACCOUNT_ERASURE_IN_PROGRESS");
+    expect(sendMailer.sendEmail).not.toHaveBeenCalled();
+    vi.mocked(delivery.repository.createPending).mockRejectedValueOnce(new Error("NOTIFICATION_SUBJECT_MISSING"));
+    await expect(sendTracked("passwordReset", delivery.repository, sendMailer)).rejects.toThrow("AUTH_EMAIL_DELIVERY_NOT_SENT");
+    expect(sendMailer.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("stops an erasure that begins after the auth delivery is claimed and before Notify is invoked", async () => {
+    const delivery = trackedDelivery(() => {
+      vi.mocked(isUserErasing).mockResolvedValue(true);
+    });
+    const sendMailer = mailer();
+
+    await expect(sendTracked("passwordReset", delivery.repository, sendMailer)).rejects.toThrow("AUTH_EMAIL_DELIVERY_NOT_SENT");
+
+    expect(delivery.repository.createPending).toHaveBeenCalledOnce();
+    expect(sendMailer.sendEmail).not.toHaveBeenCalled();
+    expect(delivery.repository.markSent).not.toHaveBeenCalled();
+    expect(delivery.repository.markFailed).toHaveBeenCalledWith(expect.objectContaining({lastErrorCode: "ACCOUNT_ERASURE_IN_PROGRESS"}));
+    expect(delivery.current()).toMatchObject({status: "FAILED", recoveryPayload: null});
+  });
+
+  it("preserves a replacement delivery lease without sending the stale auth email", async () => {
+    const delivery = trackedDelivery(() => delivery.replaceLease());
+    const sendMailer = mailer();
+
+    await expect(sendTracked("emailVerification", delivery.repository, sendMailer)).rejects.toThrow("AUTH_EMAIL_DELIVERY_NOT_SENT");
+
+    expect(delivery.repository.createPending).toHaveBeenCalledOnce();
+    expect(sendMailer.sendEmail).not.toHaveBeenCalled();
+    expect(delivery.repository.markSent).not.toHaveBeenCalled();
+    expect(delivery.repository.markFailed).not.toHaveBeenCalled();
+    expect(delivery.current()).toMatchObject({status: "PENDING", attemptCount: 2, recoveryPayload: null});
+    expect(delivery.current()).not.toHaveProperty("providerMessageId");
   });
 });

@@ -88,6 +88,23 @@ describe("processAnnouncementEmailTask", () => {
     await processAnnouncementEmailTask(task, {retryCount: 0}, {repository: test.repository, client: test.client});
     expect(test.sendEmail).not.toHaveBeenCalled();
   });
+  it("acknowledges a late task after suppression expiry when its exact live identity is absent", async () => {
+    const test = harness();
+    vi.mocked(test.repository.get).mockResolvedValueOnce(null);
+    vi.mocked(test.repository.createLegacyTaskRow).mockRejectedValueOnce(new Error("ANNOUNCEMENT_SUBJECT_MISSING"));
+    await expect(processAnnouncementEmailTask(task, {retryCount: 3}, {repository: test.repository})).resolves.toBeUndefined();
+    expect(test.repository.createLegacyTaskRow).toHaveBeenCalledWith(task);
+    expect(test.repository.tryUpdate).not.toHaveBeenCalled();
+    expect(test.sendEmail).not.toHaveBeenCalled();
+  });
+  it("retries a transient failure while recreating a legitimate legacy task row", async () => {
+    const test = harness();
+    const error = new Error("database unavailable");
+    vi.mocked(test.repository.get).mockResolvedValueOnce(null);
+    vi.mocked(test.repository.createLegacyTaskRow).mockRejectedValueOnce(error);
+    await expect(processAnnouncementEmailTask(task, {retryCount: 0}, {repository: test.repository, client: test.client})).rejects.toBe(error);
+    expect(test.sendEmail).not.toHaveBeenCalled();
+  });
   it("sends attendee messages without a one-click unsubscribe header", async () => {
     const test = harness();
     const attendeeTask = { ...task };

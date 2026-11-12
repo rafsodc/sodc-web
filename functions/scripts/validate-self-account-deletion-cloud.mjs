@@ -352,6 +352,7 @@ export async function runSelfAccountDeletionValidation(env = process.env, args =
           callableInvocation_deleteMany(where: {userId: {eq: $uid}})
           securityTransition_deleteMany(where: {userId: {eq: $uid}})
           accountErasure_deleteMany(where: {userId: {eq: $uid}})
+          accountErasureDisposal_deleteMany(where: {userId: {eq: $uid}})
           user_deleteMany(where: {id: {eq: $uid}})
         }`, {variables: {uid: fixture.uid, expectedStates: retired ? 1 : 0, type: TYPE}});
         if (identity) await auth.deleteUser(fixture.uid);
@@ -361,12 +362,13 @@ export async function runSelfAccountDeletionValidation(env = process.env, args =
           userSecurityStates(where: {userId: {eq: $uid}}) {userId}
           securityTransitions(where: {userId: {eq: $uid}}) {operationId}
           accountErasures(where: {userId: {eq: $uid}}) {userId}
+          accountErasureDisposals(where: {userId: {eq: $uid}}) {userId}
           notificationDeliveries(where: {userId: {eq: $uid}}) {id}
           callableInvocations(where: {userId: {eq: $uid}}) {userId}
           callableRateLimitBuckets(where: {userId: {eq: $uid}}) {userId}
         }`, {variables: {uid: fixture.uid}});
         assert.equal(observed.data.user, null, "Fixture profile remained after cleanup");
-        for (const name of ["userSecurityStates", "securityTransitions", "accountErasures", "notificationDeliveries", "callableInvocations", "callableRateLimitBuckets"]) assert.equal(observed.data[name].length, 0, "Owned fixture metadata remained after cleanup");
+        for (const name of ["userSecurityStates", "securityTransitions", "accountErasures", "accountErasureDisposals", "notificationDeliveries", "callableInvocations", "callableRateLimitBuckets"]) assert.equal(observed.data[name].length, 0, "Owned fixture metadata remained after cleanup");
       } catch {incomplete = true;}
     }
     if (baselineCount !== undefined) {

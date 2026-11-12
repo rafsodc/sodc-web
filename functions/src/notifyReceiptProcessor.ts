@@ -7,6 +7,7 @@ import {
   getAnnouncementRecipientBySendAndUser,
   getLatestNotifyDeliveryReceiptForReference,
   getNotifyCallbackUserById,
+  getNotifyCallbackNotificationUser,
   getNotifyDeliveryReceipt,
   getRecentNotifyDeliveryReceiptsForUser,
   getUserByEmail,
@@ -97,6 +98,9 @@ export interface NotifyReceiptRepository {
     eventOrderingKey: string;
     affectsBounceState: boolean;
     lastAttemptedAt: string;
+    announcementRecipientId?: UUIDString | null;
+    announcementSendId?: UUIDString | null;
+    announcementUserId?: string | null;
   }): Promise<ReceiptRecord>;
   tryClaimReceipt(args: {
     id: string;
@@ -117,6 +121,7 @@ export interface NotifyReceiptRepository {
     lastErrorMessage: string | null;
   }): Promise<boolean>;
   findUserByEmail(email: string): Promise<NotifyCallbackUser | null>;
+  findNotificationUserId(providerMessageId: string, reference?: string): Promise<string | null>;
   getUserById(userId: string): Promise<NotifyCallbackUser | null>;
   getRecentStateReceiptsForUser(userId: string): Promise<OrderedReceipt[]>;
   tryApplyUserState(args: {
@@ -218,6 +223,9 @@ export const dataConnectNotifyReceiptRepository: NotifyReceiptRepository = {
       eventOrderingKey: args.eventOrderingKey,
       affectsBounceState: args.affectsBounceState,
       lastAttemptedAt: args.lastAttemptedAt,
+      announcementRecipientId: args.announcementRecipientId ?? null,
+      announcementSendId: args.announcementSendId ?? null,
+      announcementUserId: args.announcementUserId ?? null,
     });
     return {
       ...args,
@@ -245,6 +253,14 @@ export const dataConnectNotifyReceiptRepository: NotifyReceiptRepository = {
     const result = await getUserByEmail({ email });
     const row = result.data?.users?.[0];
     return row ? mapUser(row) : null;
+  },
+
+  async findNotificationUserId(providerMessageId, reference) {
+    const authReference = typeof reference === "string" && /^AUTH_EMAIL:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}:notify-(?:live|team_test|simulation)$/.test(reference) ? reference : null;
+    const result = await getNotifyCallbackNotificationUser({providerMessageId, authReference});
+    const rows = result.data.notificationDeliveries;
+    if (rows.length !== 1) return null;
+    return rows[0].recipientUserId ?? rows[0].userId ?? null;
   },
 
   async getUserById(userId) {
@@ -385,6 +401,7 @@ async function claimReceipt(args: {
   userId: string | null;
   receivedAt: string;
   leaseMs: number;
+  announcement?: {id: UUIDString; sendId: UUIDString; userId: string};
 }): Promise<
   | { outcome: "claimed"; record: ReceiptRecord }
   | { outcome: "duplicate" | "in_progress"; record: ReceiptRecord }
@@ -411,6 +428,9 @@ async function claimReceipt(args: {
           eventAt,
           eventOrderingKey: `${eventAt}:${receipt.id}`,
           lastAttemptedAt: receivedAt,
+          announcementRecipientId: args.announcement?.id ?? null,
+          announcementSendId: args.announcement?.sendId ?? null,
+          announcementUserId: args.announcement?.userId ?? null,
         });
         return { outcome: "claimed", record: created };
       } catch (error) {
@@ -592,8 +612,17 @@ export async function processNotifyReceipt(
   const erasedReference = parseAnnouncementReference(receipt.reference);
   if (erasedReference && await isUserErasing(erasedReference.recipientId)) return {outcome: "processed", attemptCount: 0};
   const affectsState = affectsBounceState(receipt.status);
-  const initialUser = await repository.findUserByEmail(receipt.to);
-  if (await isErasedContact(receipt.to, initialUser?.id)) return {outcome: "processed", attemptCount: 0};
+  const emailUser = await repository.findUserByEmail(receipt.to);
+  if (await isErasedContact(receipt.to, emailUser?.id)) return {outcome: "processed", attemptCount: 0};
+  const announcement = erasedReference
+    ? await repository.findAnnouncementRecipient(erasedReference.sendId, erasedReference.recipientId)
+    : null;
+  // Email addresses can be registered again after erasure. A callback belongs
+  // only to the UID bound at sending, never whichever identity now has that email.
+  const boundUserId = erasedReference?.recipientId ?? await repository.findNotificationUserId(receipt.id, receipt.reference);
+  const initialUser = emailUser?.id === boundUserId ? emailUser : null;
+  if (!initialUser && !announcement) return {outcome: "processed", attemptCount: 0};
+  if (erasedReference && !announcement) return {outcome: "processed", attemptCount: 0};
   let claim;
   try { claim = await claimReceipt({
     repository,
@@ -601,7 +630,11 @@ export async function processNotifyReceipt(
     userId: initialUser?.id ?? null,
     receivedAt,
     leaseMs,
-  }); } catch (error) { if (isErasureWriteDenied(error)) return {outcome: "processed", attemptCount: 0}; throw error; }
+    announcement: announcement && erasedReference ? {id: announcement.id, sendId: erasedReference.sendId as UUIDString, userId: erasedReference.recipientId} : undefined,
+  }); } catch (error) {
+    if (isErasureWriteDenied(error) || String(error).includes("NOTIFY_CALLBACK_SUBJECT_MISSING")) return {outcome: "processed", attemptCount: 0};
+    throw error;
+  }
   if (claim.outcome !== "claimed") {
     return { outcome: claim.outcome, attemptCount: claim.record.attemptCount };
   }

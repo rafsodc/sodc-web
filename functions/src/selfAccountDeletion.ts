@@ -130,7 +130,7 @@ export const deleteMyAccount = onCall(selfDeletionOptions, async request => {
     await admin.auth().getUser(uid).then(() => {throw new Error("AUTH_VERIFICATION_FAILED");}, (error: unknown) => {
       if (!error || typeof error !== "object" || !("code" in error) || error.code !== "auth/user-not-found") throw error;
     });
-    await completeAccountErasure(uid);
+    await completeAccountErasure(uid, {communicationsQuiesced: true});
     logger.info("Self-service account deletion completed", {operationId});
     return {deleted: true};
   } catch (error) {
