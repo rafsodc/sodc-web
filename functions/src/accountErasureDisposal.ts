@@ -201,7 +201,7 @@ export async function disposeCompletedAccountErasures(dependencies: AccountErasu
   for (const decision of candidates as AccountErasureDisposalDecision[]) {
     if (now() >= deadline) break;
     summary.examined++;
-    let reason = "RETRY";
+    let reason: string;
     try {
       const markersResponse = await bounded(db().executeGraphqlRead<any, {uid: string}>("query DisposalMarkers($uid: String!) {accountErasures(where: {userId: {eq: $uid}}, limit: 1001) {emailHash startedAt completedAt profileDeletedAt}}", {variables: {uid: decision.userId}}));
       const result = accountErasureDisposalEligibility({decision, markers: markersResponse.data?.accountErasures}, policy, now());
