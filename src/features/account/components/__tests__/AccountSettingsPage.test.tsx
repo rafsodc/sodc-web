@@ -141,6 +141,8 @@ describe("AccountSettingsPage", () => {
       "href",
       "/profile"
     );
+    expect(screen.getByRole("button", { name: "Delete my account" })).toBeEnabled();
+    expect(screen.getByText(/Deleting your account ends your SODC membership/)).toBeInTheDocument();
   });
 
   it("defaults the Appearance selector to System", () => {

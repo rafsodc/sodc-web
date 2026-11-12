@@ -40,6 +40,10 @@ describe("function entry guard contracts", () => {
     assertOnCallGuard(users, "listUsersPendingApproval", "requireAdmin(request);");
     assertOnCallGuard(users, "syncPendingUserClaims", "requireAuth(request);");
 
+    const selfDeletion = readSource("selfAccountDeletion.ts");
+    assertOnCallGuard(selfDeletion, "deleteMyAccount", "requireEnabled(request);");
+    assertOnCallGuard(selfDeletion, "deleteMyAccount", "enforceRateLimit(\"deleteMyAccount\"", 300);
+
     const membership = readSource("membershipStatus.ts");
     assertOnCallGuard(membership, "updateMembershipStatus", "requireEnabled(request);");
     assertOnCallGuard(membership, "resignMembership", "requireEnabled(request);");

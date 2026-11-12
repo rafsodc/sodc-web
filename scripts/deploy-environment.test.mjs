@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { verifyCreationsBeforeHosting } from "./functions-deploy.mjs";
 import {
   applyFromStage,
   assertRequiredApisEnabled,
@@ -79,6 +80,7 @@ describe("environment deployment configuration", () => {
       "functions-config-before-first-deploy",
       "deploy-dataconnect",
       "deploy-functions",
+      "functions-creation-before-hosting",
       "deploy-hosting",
       "deployment-audit",
     ]);
@@ -121,6 +123,7 @@ describe("resuming a deployment with --from", () => {
     expect(resumed.map(({ id }) => id)).toEqual([
       "clean-checkout",
       "verify-preflight-attestation",
+      "functions-creation-before-hosting",
       "deploy-hosting",
       "deployment-audit",
     ]);
@@ -275,5 +278,45 @@ describe("environment config check", () => {
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
+  });
+});
+
+
+describe("reviewed Function creation before Hosting", () => {
+  it.each(["dev", "prod"])("blocks %s Hosting resume if the reviewed callable is absent or its live contract is wrong", async environment => {
+    const directory = await mkdtemp(path.join(tmpdir(), "hosting-creation-gate-"));
+    const receipt = {schemaVersion: "sodc-functions-config-guard/v1", status: "PASS", binding: {environment}, outcome: {endpointCreations: [{name: "deleteMyAccount"}]}};
+    try {
+      await mkdir(path.join(directory, ".firebase/functions-config-guard"), {recursive: true});
+      await writeFile(path.join(directory, `.firebase/functions-config-guard/${environment}.json`), JSON.stringify(receipt));
+      const verifyCreations = vi.fn(async () => {throw new Error("reviewed endpoint missing or changed");});
+      const visited = [];
+      const resumed = applyFromStage(createDeploymentPlan(environment, "reviewed-sha"), "hosting");
+      await expect(runDeploymentPlan(resumed, async step => {
+        visited.push(step.id);
+        if (step.kind === "functions-creation-verify") await verifyCreationsBeforeHosting(directory, environment, {verifyCreations});
+        return {stdout: ""};
+      })).rejects.toThrow("reviewed endpoint missing or changed");
+      expect(verifyCreations).toHaveBeenCalledWith(directory, environment, receipt);
+      expect(visited).not.toContain("deploy-hosting");
+      expect(visited).not.toContain("deployment-audit");
+    } finally {await rm(directory, {recursive: true, force: true});}
+  });
+
+  it("requires a fresh PASS proof for creations and skips the creation-only verifier for ordinary releases", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "hosting-creation-proof-"));
+    const receipt = {schemaVersion: "sodc-functions-config-guard/v1", status: "PASS", binding: {environment: "dev"}, outcome: {endpointCreations: [{name: "deleteMyAccount"}]}};
+    const receiptFile = path.join(directory, ".firebase/functions-config-guard/dev.json");
+    try {
+      await mkdir(path.dirname(receiptFile), {recursive: true});
+      await writeFile(receiptFile, JSON.stringify(receipt));
+      const verifyCreations = vi.fn().mockResolvedValueOnce({status: "FAIL"}).mockResolvedValueOnce({status: "PASS"});
+      await expect(verifyCreationsBeforeHosting(directory, "dev", {verifyCreations})).rejects.toThrow("created-endpoint-verification-failed");
+      await expect(verifyCreationsBeforeHosting(directory, "dev", {verifyCreations})).resolves.toEqual({status: "PASS"});
+      await writeFile(receiptFile, JSON.stringify({...receipt, outcome: {endpointCreations: []}}));
+      await expect(verifyCreationsBeforeHosting(directory, "dev", {verifyCreations})).resolves.toEqual({status: "NOT_REQUIRED"});
+      expect(verifyCreations).toHaveBeenCalledTimes(2);
+      await expect(verifyCreationsBeforeHosting(directory, "prod", {verifyCreations})).rejects.toThrow("missing-functions-guard-before-hosting");
+    } finally {await rm(directory, {recursive: true, force: true});}
   });
 });

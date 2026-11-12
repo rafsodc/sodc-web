@@ -1,5 +1,40 @@
 # Personal data erasure
 
+## Member account settings
+
+Enabled members can choose **Delete account** in Account Settings. The screen
+warns that deletion ends membership, permanently removes sign-in access and
+cannot be undone. A read-only eligibility check precedes typed-email confirmation,
+explicit acknowledgement that membership ends and recent authentication.
+
+The `deleteMyAccount` callable derives the target from the authenticated member;
+callers cannot select another account or certify that retention obligations do
+not apply. Financial, shared-content and administrator-audit blockers are checked
+on the server. Ineligible members are directed to contact an administrator;
+checking eligibility or cancelling the dialog does not end membership.
+Administrator accounts require another administrator's help and cannot use
+self-service deletion.
+
+Eligible deletion uses the same communication suppression, task cancellation,
+sender drain, shared-snapshot redaction and database fences as administrator
+erasure. Membership is ended and sign-in is disabled before the final erasure.
+Completion signs out the member and clears the private session. A confirmed
+refusal before suppression begins leaves the dialog cancellable and restores
+private reads; existing access-revocation or stale-session recovery still applies.
+An unconfirmed write or interrupted operation requires administrator review; do
+not promise deletion is complete after an unconfirmed response. After the deletion
+hold is established, leave the account disabled and suppressed and finish through
+Manage Users. Provider-held data and recoverable copies remain subject to the
+retention and restore procedures below.
+
+Suppression is established before access is disabled. If task cancellation or the
+identity re-check fails at that point, the account may remain enabled and still
+a member while its messages are suppressed. Keep the marker and have
+an operator inspect the current identity and security state. Resume Manage Users
+deletion for an eligible non-admin account; a concurrently promoted administrator
+needs operator review. Do not remove suppression or change privileges as an
+automatic rollback.
+
 ## Admin screen
 
 Manage Users now offers **Delete account** for non-admin accounts. The callable
@@ -37,10 +72,20 @@ still require separate operational review; the screen does not claim complete
 GDPR erasure.
 
 
-Roll out the schema and guarded connector operations first, then all announcement,
+Roll out the schema and guarded connector operations (including the narrowly
+scoped self-deletion security transition) first, then all announcement,
 notification, callback and security writers, then the new deletion callable and
-frontend. Do not enable deletion before those workers are updated. The deletion runtime
-identity must have `cloudtasks.tasks.delete` for the announcement queue; verify
+frontend. Do not enable deletion before those workers are updated.
+Adding `deleteMyAccount` changes the deployed endpoint inventory. Use the
+[reviewed endpoint-creation contract](./functions-runtime-config-guard.md) and
+explicit runtime limits; an unreviewed creation still fails closed. In preservation
+mode the new callable intentionally receives no application environment variables
+or secret bindings; its Firebase project context is platform-managed. After the
+guarded Functions deployment, run the read-only `--verify-creations` check and the
+hosted Dev validation below before publishing the member UI. Do not bypass the
+guard. A completed creation invalidates the old review and preflight baseline for
+later deployments; collect a fresh proposal when starting another release.
+The deletion runtime identity must have `cloudtasks.tasks.delete` for the announcement queue; verify
 that permission before release. Cancellation failure stops the erasure. After the first
 erasure, old snapshot writers without the complete recipient-ID list fail closed.
 Do not roll back suppression guards or restore a deleted UID without operator
@@ -133,6 +178,49 @@ Sources: [Cloud SQL backup retention](https://docs.cloud.google.com/sql/docs/pos
 [Notify retention](https://www.notifications.service.gov.uk/using-notify/data-retention-period).
 
 
+## Hosted Dev self-deletion validation
+
+Deploy the authorization connector first, then the new callable through the
+guarded Functions path. Use a clean, reviewed Node 24 checkout, its matching Dev
+web configuration and the existing project authorization-migration receipt. The
+runner accepts only the fixed `sodc-web` Dev project, explicit opt-ins and hosted
+callable URLs; production, emulator and caller-supplied endpoint overrides fail
+before SDK or credential access.
+
+```sh
+RUN_SELF_ACCOUNT_DELETION_VALIDATION=1 \
+SELF_ACCOUNT_DELETION_PROJECT=sodc-web SELF_ACCOUNT_DELETION_CONFIRM=sodc-web \
+node --env-file=.env.development.local functions/scripts/validate-self-account-deletion-cloud.mjs
+```
+
+Add `--check` for a local targeting-only check with no SDK, credential, network or
+fixture access. Build Functions before a real run. Existing baseline administrator
+health and a non-live Dev email mode are checked before fixture creation. The
+runner uses random synthetic identities, real password sign-ins and verified
+Firebase ID tokens; it never prints passwords, tokens or baseline identities.
+Task fixtures use a separate task-only app bound to the active, fixed Dev worker's
+verified service account; the operator's credential permissions remain unchanged.
+Long callable requests use an explicit 540-second HTTPS/socket deadline so a
+shorter default fetch header timeout cannot cut off the required sender drain.
+
+The hosted checks cover NOT_STARTED refusal details, authorization changes,
+retention review, rate limiting and an actually aged sign-in refreshed without
+resetting its authentication time. Successful deletion preserves another synthetic
+recipient and proves runtime task-delete permission by independently reading that
+a known queued SIMULATION task has disappeared. A second request encounters an
+owned active delivery lease after the 330-second drain, leaving a genuine disabled
+SELF hold. The runner settles only that synthetic lease and completes deletion
+through the hosted administrator callable.
+
+The active notification fixture has no recovery payload and cannot send mail.
+Both long requests settle before cleanup; an uncertain transport outcome waits
+out the server budget before owned state is changed. All temporary roles, records,
+markers and tasks are removed and the baseline administrator count is verified.
+Retain the bounded PASS/stage/cleanup output as private release evidence. Any
+cleanup failure requires review of only the printed synthetic run prefix. Do not
+promote to production until the hosted run, creation-contract verification and
+ordinary deployment audit pass.
+
 ## Legacy operator tool scope
 
 Use the admin screen for supported communication erasure and retries. The legacy
@@ -200,6 +288,15 @@ and do not establish compatibility with a deployed service.
    the requester only when these obligations are satisfied.
 
 ## Checks
+
+On 11 November 2026, member self-service deletion passed local UI tests for
+membership warnings, confirmations, sign-in checks and session replacement, plus
+backend tests for own-account authorization, retention blockers and interrupted
+recovery. All 71 disposable local SQL integration cases passed, including the
+narrow SELF deletion transition, final purge, shared-recipient preservation and
+rejection of superseded deletion authority. These checks used synthetic fixtures;
+the new member callable and UI have not been deployed or validated in a hosted
+environment.
 
 On 9 November 2026, validation passed against a disposable local SQL database
 (30 integration cases, including the existing administrator-safety races) and

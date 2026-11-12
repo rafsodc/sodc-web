@@ -18,7 +18,7 @@ import {
 } from "./deploy-environment-lib.mjs";
 import { parseJsonOutput } from "./deployment-check-lib.mjs";
 import { runFunctionsConfigGuard } from "./functions-config-guard.mjs";
-import { deployGuardedFunctions } from "./functions-deploy.mjs";
+import { deployGuardedFunctions, verifyCreationsBeforeHosting } from "./functions-deploy.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -60,6 +60,10 @@ async function main() {
     console.log(`\n==> ${step.label}`);
     if (step.kind === "functions-config-record" || step.kind === "functions-config-verify") {
       await runFunctionsConfigGuard(repositoryRoot, environment, { verify: step.kind === "functions-config-verify" });
+      return { stdout: "" };
+    }
+    if (step.kind === "functions-creation-verify") {
+      await verifyCreationsBeforeHosting(repositoryRoot, environment);
       return { stdout: "" };
     }
     if (step.kind === "guarded-functions-deploy") {

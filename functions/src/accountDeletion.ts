@@ -46,7 +46,7 @@ export function accountDeletionMatch(name: string, row: any, uid: string, email:
   return "block";
 }
 
-async function inventory(uid: string, email: string, operationId?: string, pendingOperation?: string, knownHashes = new Set<string>(), knownEmails: Iterable<string> = [email], aliasPass = 0) {
+export async function inventoryAccountDeletion(uid: string, email: string, operationId?: string, pendingOperation?: string, knownHashes = new Set<string>(), knownEmails: Iterable<string> = [email], aliasPass = 0) {
   const blockers: Record<string, number> = {};
   let profile = false, state = false, records = 0, communications = 0, activeDeliveryUntil = 0;
   let profileEmail: string | undefined;
@@ -110,7 +110,7 @@ async function inventory(uid: string, email: string, operationId?: string, pendi
   // historical address and offset pagination cannot omit newly matched rows.
   if (emails.size > initialAliasCount) {
     if (aliasPass >= 10) throw new HttpsError("resource-exhausted", "Account aliases need operator review.");
-    return inventory(uid, email, operationId, pendingOperation, knownHashes, emails, aliasPass + 1);
+    return inventoryAccountDeletion(uid, email, operationId, pendingOperation, knownHashes, emails, aliasPass + 1);
   }
   return {blockers, profile, state, records, communications, snapshots, taskIds, emails, activeDeliveryUntil, profileEmail, hashes: new Set([...knownHashes, ...[...emails].map(sha)])};
 }
@@ -122,9 +122,10 @@ async function assertErasureActor(actorId: string, securityVersion: number): Pro
   }
 }
 
-async function redactSnapshots(snapshots: {id: string}[], uid: string, email: string, actorId: string, actorVersion: number) {
+export async function redactSnapshots(snapshots: {id: string}[], uid: string, email: string, actorId: string, actorVersion: number, authority?: {assert: () => Promise<unknown>; mutation: string; operationId: string; targetVersion: number}) {
   for (const reference of snapshots) {
-    await assertErasureActor(actorId, actorVersion);
+    if (authority) await authority.assert();
+    else await assertErasureActor(actorId, actorVersion);
     const read = await db().executeGraphqlRead<any, {id: string}>(`query SnapshotForErasure($id: UUID!) {
       announcementSend(id: $id) {id recipientSnapshot recipientCount skippedCount}
     }`, {variables: {id: reference.id}});
@@ -134,8 +135,9 @@ async function redactSnapshots(snapshots: {id: string}[], uid: string, email: st
     if (!pruned.removed) continue;
     const snapshot: SnapshotErasureUpdate = {id: row.id, expected: row.recipientSnapshot, replacement: pruned.replacement,
       recipientCount: row.recipientCount, skippedCount: row.skippedCount, removedTasks: pruned.removedTasks, removedSkipped: pruned.removedSkipped};
-    const transaction = withSnapshotErasure(redactAccountSnapshotMutation, [snapshot]);
-    const result = await db().executeGraphql(transaction.query, {variables: {uid, actorId, actorVersion, ...transaction.variables}});
+    const transaction = withSnapshotErasure(authority?.mutation ?? redactAccountSnapshotMutation, [snapshot]);
+    const result = await db().executeGraphql(transaction.query, {variables: {uid, actorId, actorVersion,
+      ...(authority ? {operationId: authority.operationId, targetVersion: authority.targetVersion} : {}), ...transaction.variables}});
     if (!result.data) throw new Error("SNAPSHOT_ERASURE_UNCONFIRMED");
   }
 }
@@ -171,7 +173,7 @@ export const deleteAccount = onCall({region: FUNCTIONS_REGION, timeoutSeconds: 5
     }
   }
   const knownHashes = new Set(markers.map(marker => marker.emailHash));
-  const plan = await inventory(uid, email, operationId, pendingOperation, knownHashes);
+  const plan = await inventoryAccountDeletion(uid, email, operationId, pendingOperation, knownHashes);
   const canResume = markers.length > 0 && (!target || resumedProfileDeletion);
   const needsOperator = (plan.profile && !plan.state) || (!plan.profile && (Boolean(target) || plan.records > 0) && !canResume);
   const blocked = Object.keys(plan.blockers).length > 0 || needsOperator;
@@ -194,7 +196,7 @@ export const deleteAccount = onCall({region: FUNCTIONS_REGION, timeoutSeconds: 5
       await redactSnapshots(plan.snapshots, uid, email, request.auth!.uid, authority.actorSecurityVersion!);
       const purged = await db().executeGraphql(deleteErasedCommunicationMutation, {variables: {uid, actorId: request.auth!.uid, actorVersion: authority.actorSecurityVersion!, emailHashes: [...plan.hashes]}});
       if (!purged.data) throw new Error("COMMUNICATION_RECOVERY_UNCONFIRMED");
-      const remaining = await inventory(uid, email, operationId, undefined, plan.hashes, plan.emails);
+      const remaining = await inventoryAccountDeletion(uid, email, operationId, undefined, plan.hashes, plan.emails);
       if (remaining.records || Object.keys(remaining.blockers).length) throw new Error("DATABASE_VERIFICATION_FAILED");
       const identity = await admin.auth().getUser(uid).catch((error: any) => {if (error.code === "auth/user-not-found") return null; throw error;});
       if (identity && (!identity.disabled || identity.customClaims?.admin || identity.email?.toLowerCase() !== email.toLowerCase())) throw new Error("AUTH_CHANGED");
@@ -216,7 +218,7 @@ export const deleteAccount = onCall({region: FUNCTIONS_REGION, timeoutSeconds: 5
       throw new HttpsError("aborted", "The account changed during deletion. Ask an operator to review it.");
     }
     await requireAdmin(request);
-    const fresh = await inventory(uid, email, operationId, undefined, knownHashes, plan.emails);
+    const fresh = await inventoryAccountDeletion(uid, email, operationId, undefined, knownHashes, plan.emails);
     if (fresh.activeDeliveryUntil > Date.now()) throw new HttpsError("aborted", "A delivery is still settling. Retry to finish deletion shortly.");
     if (Object.keys(fresh.blockers).length) throw new HttpsError("failed-precondition", "Linked records appeared during deletion. The account remains disabled; request operator review.");
     // State deletion is a compare-and-swap fence against concurrent promotion,
@@ -232,7 +234,7 @@ export const deleteAccount = onCall({region: FUNCTIONS_REGION, timeoutSeconds: 5
       actorVersion: authority.actorSecurityVersion!, emailHashes: [...fresh.hashes], ...transaction.variables,
     }});
     if (!result.data) throw new Error("DATABASE_DELETE_FAILED");
-    const remaining = await inventory(uid, email, operationId, undefined, fresh.hashes, fresh.emails);
+    const remaining = await inventoryAccountDeletion(uid, email, operationId, undefined, fresh.hashes, fresh.emails);
     if (remaining.records || Object.keys(remaining.blockers).length) throw new Error("DATABASE_VERIFICATION_FAILED");
     const finalAuth = await admin.auth().getUser(uid);
     if (!finalAuth.disabled || finalAuth.customClaims?.admin || finalAuth.email?.toLowerCase() !== email.toLowerCase()) throw new Error("AUTH_CHANGED");

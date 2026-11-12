@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 const mocks = vi.hoisted(() => ({getUser: vi.fn(), get: vi.fn(), write: vi.fn(), transition: vi.fn(), remove: vi.fn(), revoke: vi.fn(), requireAdmin: vi.fn(), marker: vi.fn(), start: vi.fn(), drain: vi.fn(), cancel: vi.fn(), complete: vi.fn(), sync: vi.fn()}));
 vi.mock("firebase-admin", () => ({auth: () => ({getUser: mocks.getUser, deleteUser: mocks.remove, revokeRefreshTokens: mocks.revoke})}));
 vi.mock("firebase-admin/data-connect", () => ({getDataConnect: () => ({executeGraphqlRead: mocks.get, executeGraphql: mocks.write})}));
@@ -172,6 +173,77 @@ it("recovers an Auth deletion failure after the database phase without requiring
   expect(mocks.complete).not.toHaveBeenCalled();
   await expect(deleteAccount.run(request({apply: true, noRetention: true}))).resolves.toEqual({deleted: true});
   expect(mocks.complete).toHaveBeenCalledWith(uid);
+});
+it("lets an administrator finish an interrupted READY self-deletion through a fresh no-op receipt", async () => {
+  const selfOperationId = "interrupted-self-deletion-operation";
+  const selfState = {user: {id: uid, membershipStatus: "RESIGNED"}, operationId: selfOperationId, securityVersion: 8,
+    membershipStatus: "RESIGNED", desiredEnabled: false, desiredAdmin: false, accessReady: false, adminReady: false, syncStatus: "READY"};
+  const selfIntent = {userId: uid, actorId: uid, actorKind: "SELF", actorSecurityVersion: 7, operationId: selfOperationId,
+    securityVersion: 8, membershipStatus: "RESIGNED", desiredEnabled: false, desiredAdmin: false,
+    authDisabled: true, reason: "ACCOUNT_DELETION", syncStatus: "READY"};
+  const marker = {emailHash: createHash("sha256").update(email).digest("hex"), startedAt: "2026-01-01T00:00:00Z", profileDeletedAt: null, completedAt: null};
+  rows = {users: [{id: uid, email, membershipStatus: "RESIGNED"}], userSecurityStates: [selfState], securityTransitions: [selfIntent],
+    notificationDeliveries: [{user: {id: uid}, status: "PENDING", lastAttemptedAt: "2026-01-01T00:00:00Z"}]};
+  const getUser = mocks.getUser.getMockImplementation()!;
+  mocks.getUser.mockImplementation(async (id: string) => {
+    const identity = await getUser(id);
+    return id === uid ? {...identity, emailVerified: true, customClaims: {enabled: false, admin: false, securityVersion: 8}} : identity;
+  });
+  mocks.marker.mockResolvedValue([marker]);
+  vi.mocked(getUserSecurityState).mockResolvedValue({data: {userSecurityState: selfState}} as never);
+  const adminReceipt = {userId: uid, actorId: "actor", actorKind: "ADMIN", operationId, securityVersion: 8,
+    membershipStatus: "RESIGNED", desiredEnabled: false, desiredAdmin: false, authDisabled: null,
+    reason: "ACCOUNT_DELETION", syncStatus: "READY", noOp: true};
+  vi.mocked(getSecurityTransition).mockResolvedValue({data: {securityTransition: adminReceipt}} as never);
+  mocks.transition.mockImplementation(async () => {rows.securityTransitions.push(adminReceipt);});
+  const remove = mocks.remove.getMockImplementation()!;
+  mocks.remove.mockImplementation(async () => {
+    expect(rows).toEqual({});
+    expect(mocks.write).toHaveBeenCalledOnce();
+    await remove();
+  });
+
+  await expect(deleteAccount.run(request())).resolves.toMatchObject({eligible: true, needsOperator: false});
+  expect(mocks.transition).not.toHaveBeenCalled();
+  await expect(deleteAccount.run(request({apply: true, noRetention: true}))).resolves.toEqual({deleted: true});
+
+  expect(mocks.transition).toHaveBeenCalledWith(expect.objectContaining({userId: uid, actorId: "actor", actorKind: "ADMIN",
+    actorSecurityVersion: 7, operationId, authDisabled: true, reason: "ACCOUNT_DELETION"}));
+  expect(mocks.sync).not.toHaveBeenCalled();
+  expect(mocks.drain).toHaveBeenCalledWith(marker.startedAt);
+  const [query, options] = mocks.write.mock.calls[0];
+  expect(query).toContain("SECURITY_ACTOR_REVOKED");
+  expect(query).toContain("ACCOUNT_CHANGED");
+  expect(options.variables).toMatchObject({uid, actorId: "actor", actorVersion: 7, operationId: selfOperationId, targetVersion: 8});
+  expect(mocks.remove).toHaveBeenCalledWith(uid);
+  expect(mocks.complete).toHaveBeenCalledWith(uid);
+  expect(mocks.complete.mock.invocationCallOrder[0]).toBeGreaterThan(mocks.remove.mock.invocationCallOrder[0]);
+});
+it("lets an administrator finish self-deletion after the profile phase using the durable marker", async () => {
+  rows = {notifyDeliveryReceipts: [{user: null, recipientHash: createHash("sha256").update(email).digest("hex"), processingStatus: "PROCESSED"}]};
+  mocks.marker.mockResolvedValue([{emailHash: createHash("sha256").update(email).digest("hex"), startedAt: "2026-01-01T00:00:00Z",
+    profileDeletedAt: "2026-01-02T00:00:00Z", completedAt: null}]);
+  vi.mocked(getUserSecurityState).mockResolvedValue({data: {userSecurityState: null}} as never);
+  const remove = mocks.remove.getMockImplementation()!;
+  mocks.remove.mockImplementation(async () => {
+    expect(rows).toEqual({});
+    expect(mocks.write).toHaveBeenCalledOnce();
+    await remove();
+  });
+
+  await expect(deleteAccount.run(request())).resolves.toMatchObject({eligible: true, needsOperator: false});
+  await expect(deleteAccount.run(request({apply: true, noRetention: true}))).resolves.toEqual({deleted: true});
+
+  expect(mocks.transition).not.toHaveBeenCalled();
+  expect(mocks.sync).not.toHaveBeenCalled();
+  const [query, options] = mocks.write.mock.calls[0];
+  expect(query).toContain("mutation DeleteErasedCommunication");
+  expect(query).toContain("ERASURE_RECOVERY_NOT_READY");
+  expect(query).toContain("SECURITY_ACTOR_REVOKED");
+  expect(options.variables).toMatchObject({uid, actorId: "actor", actorVersion: 7, emailHashes: [createHash("sha256").update(email).digest("hex")]});
+  expect(mocks.remove).toHaveBeenCalledWith(uid);
+  expect(mocks.complete).toHaveBeenCalledWith(uid);
+  expect(mocks.complete.mock.invocationCallOrder[0]).toBeGreaterThan(mocks.remove.mock.invocationCallOrder[0]);
 });
 it("does not continue after the acting administrator is disabled during the drain", async () => {
   let disabled = false;

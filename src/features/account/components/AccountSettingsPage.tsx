@@ -62,6 +62,7 @@ import {
 import FailureState from "../../../shared/components/FailureState";
 import { invalidateAnnouncementPreferences, retireAnnouncementPreferences } from "../../../shared/query/invalidation";
 import { usePreferenceSaveGuard } from "../hooks/usePreferenceSaveGuard";
+import DeleteMyAccountSection from "./DeleteMyAccountSection";
 
 export interface AccountSettingsPageProps {
   user: User;
@@ -757,6 +758,8 @@ export default function AccountSettingsPage({
             </Box>
           </>
         )}
+        <Divider />
+        <DeleteMyAccountSection key={`delete-account-${user.uid}`} user={user} isAdmin={isAdmin} />
       </Stack>
 
       {onBack && (
