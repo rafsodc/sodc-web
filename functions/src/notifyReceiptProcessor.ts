@@ -121,7 +121,7 @@ export interface NotifyReceiptRepository {
     lastErrorMessage: string | null;
   }): Promise<boolean>;
   findUserByEmail(email: string): Promise<NotifyCallbackUser | null>;
-  findNotificationUserId(providerMessageId: string): Promise<string | null>;
+  findNotificationUserId(providerMessageId: string, reference?: string): Promise<string | null>;
   getUserById(userId: string): Promise<NotifyCallbackUser | null>;
   getRecentStateReceiptsForUser(userId: string): Promise<OrderedReceipt[]>;
   tryApplyUserState(args: {
@@ -255,8 +255,9 @@ export const dataConnectNotifyReceiptRepository: NotifyReceiptRepository = {
     return row ? mapUser(row) : null;
   },
 
-  async findNotificationUserId(providerMessageId) {
-    const result = await getNotifyCallbackNotificationUser({providerMessageId});
+  async findNotificationUserId(providerMessageId, reference) {
+    const authReference = typeof reference === "string" && /^AUTH_EMAIL:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}:notify-(?:live|team_test|simulation)$/.test(reference) ? reference : null;
+    const result = await getNotifyCallbackNotificationUser({providerMessageId, authReference});
     const rows = result.data.notificationDeliveries;
     if (rows.length !== 1) return null;
     return rows[0].recipientUserId ?? rows[0].userId ?? null;
@@ -618,7 +619,7 @@ export async function processNotifyReceipt(
     : null;
   // Email addresses can be registered again after erasure. A callback belongs
   // only to the UID bound at sending, never whichever identity now has that email.
-  const boundUserId = erasedReference?.recipientId ?? await repository.findNotificationUserId(receipt.id);
+  const boundUserId = erasedReference?.recipientId ?? await repository.findNotificationUserId(receipt.id, receipt.reference);
   const initialUser = emailUser?.id === boundUserId ? emailUser : null;
   if (!initialUser && !announcement) return {outcome: "processed", attemptCount: 0};
   if (erasedReference && !announcement) return {outcome: "processed", attemptCount: 0};

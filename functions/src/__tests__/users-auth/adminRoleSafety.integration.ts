@@ -725,6 +725,74 @@ describe("account deletion against actual disposable SQL", () => {
         recipientUserId: $uid, providerMessageId: $providerId, status: SENT, createdBy: "fixture", updatedBy: "fixture"})
     }`, {variables: {uid: userId, providerId: providerMessageId, key: randomUUID()}});
   }
+  async function seedAuthCallbackNotification(userId: string, reference: string, overrides: {
+    channel?: "EMAIL" | "SMS"; notificationType?: string; provider?: string;
+    status?: "PENDING" | "FAILED" | "SENT" | "SKIPPED"; providerMessageId?: string | null;
+    missingProfile?: boolean;
+  } = {}) {
+    await dc.executeGraphql(`mutation SeedAuthCallbackBinding($uid: String!, $subject: String, $key: String!, $channel: NotificationChannel!, $kind: String!, $provider: String!, $status: NotificationDeliveryStatus!, $providerId: String) {
+      notificationDelivery_insert(data: {channel: $channel, notificationType: $kind, deliveryKey: $key,
+        userId: $subject, recipientUserId: $uid, provider: $provider, providerMessageId: $providerId, status: $status,
+        createdBy: "fixture", updatedBy: "fixture"})
+    }`, {variables: {uid: userId, subject: overrides.missingProfile ? null : userId, key: reference, channel: overrides.channel ?? "EMAIL", kind: overrides.notificationType ?? "AUTH_PASSWORD_RESET",
+      provider: overrides.provider ?? "govuk_notify", status: overrides.status ?? "PENDING", providerId: overrides.providerMessageId ?? null}});
+  }
+  it.each([
+    ["PENDING", "live", "AUTH_PASSWORD_RESET"],
+    ["FAILED", "team_test", "AUTH_EMAIL_VERIFICATION"],
+    ["SENT", "simulation", "AUTH_EMAIL_CHANGE_VERIFICATION"],
+  ] as const)("accepts the exact pre-send auth binding with %s metadata before provider ID persistence", async (status, mode, notificationType) => {
+    const [uid] = await initialize(1);
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    const reference = `AUTH_EMAIL:${randomUUID()}:notify-${mode}`;
+    await seedAuthCallbackNotification(uid, reference, {status, notificationType});
+    const args = {...callbackArgs(uid), reference};
+    const lookup = await admin.getNotifyCallbackNotificationUser(dc, {providerMessageId: args.id, authReference: reference});
+    expect(lookup.data.notificationDeliveries).toEqual([{userId: uid, recipientUserId: uid}]);
+    await expect(admin.createNotifyDeliveryReceipt(dc, args)).resolves.toBeDefined();
+    const observed = await admin.getNotifyDeliveryReceipt(dc, {id: args.id});
+    expect(observed.data.notifyDeliveryReceipt?.userId).toBe(uid);
+  });
+  it.each([
+    {notificationType: "BOOKING_CONFIRMATION"},
+    {channel: "SMS"},
+    {provider: "another-provider"},
+    {status: "SKIPPED"},
+    {providerMessageId: "different-accepted-provider-message"},
+  ] as const)("refuses an auth reference fallback with an incompatible persisted binding: %j", async overrides => {
+    const [uid] = await initialize(1);
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    const reference = `AUTH_EMAIL:${randomUUID()}:notify-live`;
+    await seedAuthCallbackNotification(uid, reference, overrides);
+    const args = {...callbackArgs(uid), reference};
+    const lookup = await admin.getNotifyCallbackNotificationUser(dc, {providerMessageId: args.id, authReference: reference});
+    expect(lookup.data.notificationDeliveries).toEqual([]);
+    await expect(admin.createNotifyDeliveryReceipt(dc, args)).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+  });
+  it("refuses guessed or mode-mismatched auth references at both callback lookup and receipt insertion", async () => {
+    const [uid] = await initialize(1);
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    const reference = `AUTH_EMAIL:${randomUUID()}:notify-live`;
+    await seedAuthCallbackNotification(uid, reference);
+    for (const forged of [`AUTH_EMAIL:${randomUUID()}:notify-live`, reference.replace("notify-live", "notify-simulation")]) {
+      const args = {...callbackArgs(uid), reference: forged};
+      expect((await admin.getNotifyCallbackNotificationUser(dc, {providerMessageId: args.id, authReference: forged})).data.notificationDeliveries).toEqual([]);
+      await expect(admin.createNotifyDeliveryReceipt(dc, args)).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    }
+  });
+  it("refuses a stale auth binding for a missing profile or a replacement identity at the same address", async () => {
+    const variables = await deletionFixture();
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    await dc.executeGraphql(deleteInactiveAccountMutation, {variables});
+    await dc.executeGraphql("mutation ExpireAuthCallbackMarker($uid: String!) {accountErasure_deleteMany(where: {userId: {eq: $uid}})}", {variables: {uid: variables.uid}});
+    const reference = `AUTH_EMAIL:${randomUUID()}:notify-live`;
+    // Deliberate stale legacy fixture: normal owned-delivery insertion refuses
+    // this absent UID, and ordinary erasure removes its existing delivery rows.
+    await seedAuthCallbackNotification(variables.uid, reference, {status: "FAILED", missingProfile: true});
+    await dc.executeGraphql("mutation ReuseErasedAuthAddress($id: String!, $email: String!) {user_update(key: {id: $id}, data: {email: $email})}", {variables: {id: variables.actorId, email: variables.email}});
+    await expect(admin.createNotifyDeliveryReceipt(dc, {...callbackArgs(variables.uid, variables.emailHashes[0]), reference})).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    await expect(admin.createNotifyDeliveryReceipt(dc, {...callbackArgs(variables.actorId, variables.emailHashes[0]), reference})).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+  });
   it("rejects orphan callback recreation after the profile and its suppression marker have gone", async () => {
     const variables = await deletionFixture();
     const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");

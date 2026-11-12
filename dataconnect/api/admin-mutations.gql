@@ -3182,10 +3182,15 @@ query GetNotifyDeliveryReceipt($id: String!) @auth(level: NO_ACCESS) {
   }
 }
 
-# Correlate callbacks to the UID recorded when the provider accepted the message.
+# Correlate callbacks to the UID recorded when the message was submitted.
 # Email alone must never attach an old callback to a re-registered identity.
-query GetNotifyCallbackNotificationUser($providerMessageId: String!) @auth(level: NO_ACCESS) {
-  notificationDeliveries(where: {providerMessageId: {eq: $providerMessageId}}, limit: 2) {userId recipientUserId}
+# Auth mail has an opaque, pre-send delivery key, so a callback can bind even
+# before the response carrying the provider ID has been persisted (or is lost).
+query GetNotifyCallbackNotificationUser($providerMessageId: String!, $authReference: String = null) @auth(level: NO_ACCESS) {
+  notificationDeliveries(where: {_or: [
+    {providerMessageId: {eq: $providerMessageId}},
+    {deliveryKey: {eq: $authReference}, providerMessageId: {isNull: true}, channel: {eq: EMAIL}, provider: {eq: "govuk_notify"}, notificationType: {in: ["AUTH_PASSWORD_RESET", "AUTH_EMAIL_VERIFICATION", "AUTH_EMAIL_CHANGE_VERIFICATION"]}, status: {ne: SKIPPED}}
+  ]}, limit: 2) {userId recipientUserId}
 }
 
 mutation CreateNotifyDeliveryReceipt(
@@ -3211,7 +3216,10 @@ mutation CreateNotifyDeliveryReceipt(
     announcementSubject: accountErasures(where: {userId: {eq: $announcementUserId}}, limit: 1) {userId}
     liveUsers: users(where: {id: {eq: $userId}}, limit: 1) {id}
     liveAnnouncements: announcementRecipients(where: {id: {eq: $announcementRecipientId}, userId: {eq: $announcementUserId}, announcementSendId: {eq_expr: "vars.announcementSendId"}}, limit: 1) {id userId announcementSendId}
-    deliveries: notificationDeliveries(where: {providerMessageId: {eq: $id}}, limit: 2) {userId recipientUserId}
+    deliveries: notificationDeliveries(where: {_or: [
+      {providerMessageId: {eq: $id}},
+      {deliveryKey: {eq: $reference}, providerMessageId: {isNull: true}, channel: {eq: EMAIL}, provider: {eq: "govuk_notify"}, notificationType: {in: ["AUTH_PASSWORD_RESET", "AUTH_EMAIL_VERIFICATION", "AUTH_EMAIL_CHANGE_VERIFICATION"]}, status: {ne: SKIPPED}}
+    ]}, limit: 2) {userId recipientUserId}
   }
   subjectLock: user_updateMany(where: {id: {eq: $userId}}, data: {emailDeliveryVersion_update: {inc: 0}})
     @check(expr: "this == (vars.userId != null ? 1 : 0)", message: "NOTIFY_CALLBACK_SUBJECT_MISSING_USER_LOCK")

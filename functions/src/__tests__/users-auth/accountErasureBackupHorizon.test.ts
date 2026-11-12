@@ -22,9 +22,20 @@ it.each(["FAILED", "SKIPPED", "DELETED"])("ignores a known non-restorable %s run
   const evidence = fixture(); evidence.backups.push({type: "ON_DEMAND", status, startTime: "2025-01-01T00:00:00Z"});
   expect(evaluateAccountErasureBackupHorizon(input, evidence).safe).toBe(true);
 });
-it.each(["2026-01-01T11:59:59Z", input.profileDeletedAt])("blocks recovery at or before deletion: %s", earliestRecoveryTime => {
+it.each(["2026-01-01T11:59:59Z", input.profileDeletedAt, "2026-01-01T12:00:30Z", input.completedAt])("blocks recovery at or before completed erasure: %s", earliestRecoveryTime => {
   const evidence = fixture(); evidence.recovery.earliestRecoveryTime = earliestRecoveryTime;
   expect(evaluateAccountErasureBackupHorizon(input, evidence).reason).toBe("PRE_ERASURE_RECOVERY_AVAILABLE");
+});
+it.each(["2026-01-01T12:00:30Z", input.completedAt])("blocks a backup taken after profile deletion but at or before completed erasure: %s", startTime => {
+  const evidence = fixture(); evidence.backups.push({type: "ON_DEMAND", status: "SUCCESSFUL", startTime});
+  expect(evaluateAccountErasureBackupHorizon(input, evidence)).toEqual({safe: false, reason: "PRE_ERASURE_BACKUP_AVAILABLE"});
+});
+it("accepts a recovery horizon and backup strictly after completed erasure", () => {
+  const evidence = fixture();
+  const afterCompletion = "2026-01-01T12:01:00.001Z";
+  evidence.recovery.earliestRecoveryTime = afterCompletion;
+  evidence.backups = [{type: "AUTOMATED", status: "SUCCESSFUL", startTime: afterCompletion}];
+  expect(evaluateAccountErasureBackupHorizon(input, evidence)).toEqual({safe: true, reason: "RESTORE_HORIZON_CLEAR"});
 });
 it("refuses disabled PITR or an unsupported backup tier rather than inferring expiry", () => {
   const evidence = fixture(); evidence.configuration.settings.backupConfiguration.pointInTimeRecoveryEnabled = false;
@@ -33,7 +44,14 @@ it("refuses disabled PITR or an unsupported backup tier rather than inferring ex
   evidence.configuration.settings.backupConfiguration.backupTier = "ENHANCED";
   expect(evaluateAccountErasureBackupHorizon(input, evidence).safe).toBe(false);
 });
-it.each([[], [{}], [{status: "UNKNOWN"}], [{status: "SUCCESSFUL", type: "ON_DEMAND", startTime: "invalid"}], [{status: "SUCCESSFUL", type: "UNKNOWN", startTime: input.now}]])("refuses missing or ambiguous backup evidence %#", backups => {
+it.each([
+  {backups: []},
+  {backups: [{}]},
+  {backups: [{status: "UNKNOWN", type: "ON_DEMAND", startTime: input.profileDeletedAt}]},
+  {backups: [{status: "UNKNOWN", type: "ON_DEMAND", startTime: input.now}]},
+  {backups: [{status: "SUCCESSFUL", type: "ON_DEMAND", startTime: "invalid"}]},
+  {backups: [{status: "SUCCESSFUL", type: "UNKNOWN", startTime: input.now}]},
+])("refuses missing or ambiguous backup evidence %#", ({backups}) => {
   expect(evaluateAccountErasureBackupHorizon(input, {...fixture(), backups}).safe).toBe(false);
 });
 it.each([{projectId: "other-project"}, {profileDeletedAt: "bad"}, {completedAt: "2025-01-01T00:00:00Z"}, {now: "2025-01-01T00:00:00Z"}])("rejects invalid scope or timestamps before consulting provider evidence %#", override => {
@@ -55,8 +73,18 @@ it("follows all backup pages so an old manual snapshot on a later page blocks di
   expect(mocks.request.mock.calls).toHaveLength(4);
   for (const [request] of mocks.request.mock.calls) {
     expect(request).toMatchObject({method: "GET", timeout: 4000, retry: false, maxRedirects: 0});
-    expect(request.url).toMatch(/^https:\/\/sqladmin.googleapis.com\/v1\/projects\/sodc-web-production\/instances\/sodc-web-instance/);
+    expect(request.url).toMatch(/^https:\/\/sqladmin\.googleapis\.com\/v1\/projects\/sodc-web-production\/instances\/sodc-web-instance/);
   }
+});
+it.each([
+  {name: "an empty complete inventory", backups: []},
+  {name: "an unknown old backup status", backups: [{type: "ON_DEMAND", status: "UNKNOWN", startTime: input.profileDeletedAt}]},
+  {name: "an unknown recent backup status", backups: [{type: "ON_DEMAND", status: "UNKNOWN", startTime: input.now}]},
+])("retains suppression when the provider returns $name", async ({backups}) => {
+  const evidence = fixture();
+  mocks.request.mockImplementation(async ({url}) => ({data: url.endsWith("getLatestRecoveryTime") ? evidence.recovery : url.includes("backupRuns") ? {kind: "sql#backupRunsList", items: backups} : evidence.configuration}));
+  expect(await inspectAccountErasureBackupHorizon(input)).toEqual({safe: false, reason: "BACKUP_INVENTORY_UNAVAILABLE"});
+  expect(mocks.request.mock.calls).toHaveLength(3);
 });
 it("fails closed on permission errors, repeated pagination and incomplete pages", async () => {
   mocks.getClient.mockRejectedValueOnce(new Error("denied"));

@@ -6195,6 +6195,7 @@ The `GetNotifyCallbackNotificationUser` Query requires an argument of type `GetN
 ```javascript
 export interface GetNotifyCallbackNotificationUserVariables {
   providerMessageId: string;
+  authReference?: string | null;
 }
 ```
 ### Return Type
@@ -6225,13 +6226,14 @@ export default function GetNotifyCallbackNotificationUserComponent() {
   // The `useGetNotifyCallbackNotificationUser` Query hook requires an argument of type `GetNotifyCallbackNotificationUserVariables`:
   const getNotifyCallbackNotificationUserVars: GetNotifyCallbackNotificationUserVariables = {
     providerMessageId: ..., 
+    authReference: ..., // optional
   };
 
   // You don't have to do anything to "execute" the Query.
   // Call the Query hook function to get a `UseQueryResult` object which holds the state of your Query.
   const query = useGetNotifyCallbackNotificationUser(getNotifyCallbackNotificationUserVars);
   // Variables can be defined inline as well.
-  const query = useGetNotifyCallbackNotificationUser({ providerMessageId: ..., });
+  const query = useGetNotifyCallbackNotificationUser({ providerMessageId: ..., authReference: ..., });
 
   // You can also pass in a `DataConnect` instance to the Query hook function.
   const dataConnect = getDataConnect(connectorConfig);

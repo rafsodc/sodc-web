@@ -7831,6 +7831,7 @@ The `GetNotifyCallbackNotificationUser` query requires an argument of type `GetN
 ```typescript
 export interface GetNotifyCallbackNotificationUserVariables {
   providerMessageId: string;
+  authReference?: string | null;
 }
 ```
 ### Return Type
@@ -7854,13 +7855,14 @@ import { connectorConfig, getNotifyCallbackNotificationUser, GetNotifyCallbackNo
 // The `GetNotifyCallbackNotificationUser` query requires an argument of type `GetNotifyCallbackNotificationUserVariables`:
 const getNotifyCallbackNotificationUserVars: GetNotifyCallbackNotificationUserVariables = {
   providerMessageId: ..., 
+  authReference: ..., // optional
 };
 
 // Call the `getNotifyCallbackNotificationUser()` function to execute the query.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await getNotifyCallbackNotificationUser(getNotifyCallbackNotificationUserVars);
 // Variables can be defined inline as well.
-const { data } = await getNotifyCallbackNotificationUser({ providerMessageId: ..., });
+const { data } = await getNotifyCallbackNotificationUser({ providerMessageId: ..., authReference: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -7884,12 +7886,13 @@ import { connectorConfig, getNotifyCallbackNotificationUserRef, GetNotifyCallbac
 // The `GetNotifyCallbackNotificationUser` query requires an argument of type `GetNotifyCallbackNotificationUserVariables`:
 const getNotifyCallbackNotificationUserVars: GetNotifyCallbackNotificationUserVariables = {
   providerMessageId: ..., 
+  authReference: ..., // optional
 };
 
 // Call the `getNotifyCallbackNotificationUserRef()` function to get a reference to the query.
 const ref = getNotifyCallbackNotificationUserRef(getNotifyCallbackNotificationUserVars);
 // Variables can be defined inline as well.
-const ref = getNotifyCallbackNotificationUserRef({ providerMessageId: ..., });
+const ref = getNotifyCallbackNotificationUserRef({ providerMessageId: ..., authReference: ..., });
 
 // You can also pass in a `DataConnect` instance to the `QueryRef` function.
 const dataConnect = getDataConnect(connectorConfig);

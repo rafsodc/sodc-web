@@ -2136,6 +2136,7 @@ export interface GetNotifyCallbackNotificationUserData {
 
 export interface GetNotifyCallbackNotificationUserVariables {
   providerMessageId: string;
+  authReference?: string | null;
 }
 
 export interface GetNotifyCallbackUserByIdData {

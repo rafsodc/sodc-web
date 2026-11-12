@@ -165,7 +165,20 @@ describe("Data Connect Notify receipt repository", () => {
     await expect(dataConnectNotifyReceiptRepository.findNotificationUserId("legacy")).resolves.toBe("legacy-recipient");
     await expect(dataConnectNotifyReceiptRepository.findNotificationUserId("ambiguous")).resolves.toBeNull();
     await expect(dataConnectNotifyReceiptRepository.findNotificationUserId("unowned")).resolves.toBeNull();
-    expect(lookup).toHaveBeenCalledWith({providerMessageId: "tracked"});
+    expect(lookup).toHaveBeenCalledWith({providerMessageId: "tracked", authReference: null});
+  });
+
+  it.each(["live", "team_test", "simulation"])("allows only a well-formed opaque auth reference in %s mode", async mode => {
+    const lookup = vi.spyOn(admin, "getNotifyCallbackNotificationUser").mockResolvedValue({data: {notificationDeliveries: [{recipientUserId: "auth-user"}]}} as never);
+    const reference = `AUTH_EMAIL:10000000-0000-4000-8000-000000000001:notify-${mode}`;
+    await expect(dataConnectNotifyReceiptRepository.findNotificationUserId("early-message", reference)).resolves.toBe("auth-user");
+    expect(lookup).toHaveBeenCalledWith({providerMessageId: "early-message", authReference: reference});
+  });
+
+  it.each(["AUTH_EMAIL:forged:notify-live", "PASSWORD_RESET:10000000-0000-4000-8000-000000000001:notify-live", "AUTH_EMAIL:10000000-0000-4000-8000-000000000001", "AUTH_EMAIL:10000000-0000-4000-8000-000000000001:notify-unknown"])("never passes an invalid reference to the auth binding fallback", async reference => {
+    const lookup = vi.spyOn(admin, "getNotifyCallbackNotificationUser").mockResolvedValue({data: {notificationDeliveries: []}} as never);
+    await expect(dataConnectNotifyReceiptRepository.findNotificationUserId("unbound", reference)).resolves.toBeNull();
+    expect(lookup).toHaveBeenCalledWith({providerMessageId: "unbound", authReference: null});
   });
 
   it("maps announcement recipient reads, latest receipts, and versioned updates", async () => {

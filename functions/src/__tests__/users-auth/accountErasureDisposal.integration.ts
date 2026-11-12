@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { initializeApp, deleteApp, type App } from "firebase-admin/app";
 import { getDataConnect, type DataConnect } from "firebase-admin/data-connect";
 import { startAccountErasure, completeAccountErasure } from "../../accountErasureState";
-import { readAccountErasureDisposal, setAccountErasureDisposalHold, setAccountErasureDisposalPolicy } from "../../accountErasureDisposal";
+import { disposeCompletedAccountErasures, readAccountErasureDisposal, setAccountErasureDisposalHold, setAccountErasureDisposalPolicy } from "../../accountErasureDisposal";
 import { purgeAccountErasureMutation } from "../../accountErasureDisposalDatabase";
 
 // Real SQL only in the runner-owned fresh demo database. Auth/cloud/provider
@@ -126,6 +126,18 @@ describe("suppression disposal transactions", () => {
     expect(retained.accountErasures).toHaveLength(2);
     expect(retained.accountErasureDisposal.version).toBe(7);
   });
+  it("independently refuses a recently deleted profile even when completion and provider evidence are old", async () => {
+    const own = await fixture(), recentDeletion = new Date().toISOString();
+    // Deliberately inconsistent legacy/corrupt metadata isolates the database
+    // age guard: normal lifecycle writers complete after profile deletion, so
+    // providerSafeAt's completion floor otherwise masks this independent check.
+    await dc.executeGraphql("mutation RecentProfileDeletionOnly($uid: String!, $hash: String!, $at: Timestamp!) {accountErasure_update(key: {userId: $uid, emailHash: $hash}, data: {profileDeletedAt: $at})}", {variables: {uid: own.uid, hash: own.hashes[1], at: recentDeletion}});
+    await expect(dc.executeGraphql(purgeAccountErasureMutation, {variables: {...variables(own), profileDeletedAt: recentDeletion}})).rejects.toThrow(/ERASURE_DISPOSAL_NOT_READY/);
+    const retained = await state(own.uid);
+    expect(retained.accountErasures).toHaveLength(2);
+    expect(retained.accountErasures.some((row: any) => Date.parse(row.profileDeletedAt) === Date.parse(recentDeletion))).toBe(true);
+    expect(retained.accountErasureDisposal.version).toBe(7);
+  });
   it("refuses a selected subset, changed generation, incomplete evidence and a closed global policy", async () => {
     const own = await fixture();
     await expect(dc.executeGraphql(purgeAccountErasureMutation, {variables: {...variables(own), hashes: [own.hashes[0]], count: 1}})).rejects.toThrow(/ERASURE_DISPOSAL_NOT_READY/);
@@ -179,6 +191,56 @@ describe("suppression disposal transactions", () => {
     expect(hold.status).toBe("fulfilled");
     if (disposal.status === "fulfilled") expect((await state(own.uid)).accountErasures).toHaveLength(0);
     else expect((await state(own.uid)).accountErasures).toHaveLength(2);
+  });
+  it("rechecks a policy withdrawn after the initial snapshot and rolls the entire purge back", async () => {
+    const own = await fixture();
+    // PGlite uses one database backend, so an unfenced Promise.all race cannot
+    // prove an independent-session row lock. Force the stale-snapshot ordering
+    // by adding only a test-owned withdrawal immediately before the exact
+    // production write fence; the production read and all purge writes remain
+    // intact. Removing policyFence must make this assertion fail.
+    const boundary = "\n  }\n";
+    const interleaved = purgeAccountErasureMutation.replace(boundary, `
+  }
+  testWithdrawPolicy: accountErasureDisposalPolicy_updateMany(where: {id: {eq: "site-wide"}, version: {eq: $policyVersion}}, data: {version_update: {inc: 1}, externalReplayReviewed: false}) @check(expr: "this == 1", message: "LOCAL_SQL_WITHDRAWAL_MISSING")
+`);
+    await expect(dc.executeGraphql(interleaved, {variables: variables(own)})).rejects.toThrow(/ERASURE_DISPOSAL_CONFLICT/);
+    const retained = await state(own.uid);
+    expect(retained.accountErasures).toHaveLength(2);
+    expect(retained.accountErasureDisposal.version).toBe(7);
+    const policy = await dc.executeGraphql<any, Record<string, never>>("query PolicyAfterPurgeRollback {accountErasureDisposalPolicy(key: {id: \"site-wide\"}) {version externalReplayReviewed}}");
+    expect(policy.data.accountErasureDisposalPolicy).toEqual({version: 1, externalReplayReviewed: true});
+  });
+  it("selects the actual due-query's oldest ten records and excludes held, future and unquiesced records", async () => {
+    const now = Date.now(), dueAt = new Date(now - 60_000).toISOString();
+    const due: Fixture[] = [];
+    for (let index = 0; index < 12; index++) due.push(await fixture());
+    const oldest = due.map(item => item.uid).sort().slice(-2);
+    const held = await fixture({hold: "EXTERNAL_COPY"}), future = await fixture(), unquiesced = await fixture();
+    await dc.executeGraphql(`mutation PrepareActualDueQuery($uids: [String!]!, $dueAt: Timestamp!, $futureAt: Timestamp!, $held: String!, $future: String!, $unquiesced: String!) @transaction {
+      accountErasureDisposal_updateMany(where: {userId: {in: $uids}}, data: {taskSafeAt: null, nextAttemptAt: $dueAt})
+      held: accountErasureDisposal_update(key: {userId: $held}, data: {nextAttemptAt: $dueAt})
+      future: accountErasureDisposal_update(key: {userId: $future}, data: {nextAttemptAt: $futureAt})
+      unquiesced: accountErasureDisposal_update(key: {userId: $unquiesced}, data: {internalQuiescedAt: null, nextAttemptAt: $dueAt})
+    }`, {variables: {uids: due.map(item => item.uid), dueAt, futureAt: new Date(now + 60_000).toISOString(), held: held.uid, future: future.uid, unquiesced: unquiesced.uid}});
+    const oldestAt = new Date(now - 120_000).toISOString();
+    await dc.executeGraphql("mutation PrioritizeActualDueQueryFixtures($uids: [String!]!, $at: Timestamp!) {accountErasureDisposal_updateMany(where: {userId: {in: $uids}}, data: {nextAttemptAt: $at})}", {variables: {uids: oldest, at: oldestAt}});
+    for (const uid of oldest) expect(Date.parse((await readAccountErasureDisposal(uid))!.nextAttemptAt)).toBe(Date.parse(oldestAt));
+    let horizonCalls = 0;
+    // The actual selector and deferral mutations run against SQL. Missing task
+    // evidence stops before any Auth/provider operation, with no mocks needed.
+    const result = await disposeCompletedAccountErasures({projectId: "sodc-web", now: () => now, inspectRetentionHorizon: async () => {horizonCalls++; return {safe: false, reason: "LOCAL_SQL_UNEXPECTED_HORIZON"};}});
+    expect(result).toEqual({examined: 10, disposed: 0, deferred: 10, failed: 0});
+    expect(horizonCalls).toBe(0);
+    const expected = new Set([...oldest, ...due.map(item => item.uid).filter(uid => !oldest.includes(uid)).sort().slice(0, 8)]);
+    for (const item of [...due, held, future, unquiesced]) {
+      const decision = await readAccountErasureDisposal(item.uid);
+      if (expected.has(item.uid)) {
+        expect(decision).toMatchObject({version: 8, lastReason: "EVIDENCE_REQUIRED"});
+        expect(Date.parse(decision!.nextAttemptAt)).toBe(now + 24 * 60 * 60 * 1000);
+      } else expect(decision!.version).toBe(7);
+      expect((await state(item.uid)).accountErasures).toHaveLength(2);
+    }
   });
   it("captures task/provider quiescence only for a verified new completion", async () => {
     const own = await fixture();

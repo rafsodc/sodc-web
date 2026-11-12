@@ -137,7 +137,8 @@ than an unconditional TTL.
 The worker reads the actual Standard Cloud SQL backup inventory, including every
 page and manual snapshots, and `instances.getLatestRecoveryTime`. An old
 restorable or deletion-pending backup blocks disposal. The earliest recoverable
-time must be later than profile deletion. Unsupported backup tiers, missing
+time and each restorable backup's start must be later than completed erasure,
+including any work after profile deletion. Unsupported backup tiers, missing
 metadata, denied access and incomplete inventories all retain suppression. A
 configured seven-day retention period is insufficient evidence on its own.
 
@@ -164,9 +165,33 @@ imports must still follow the isolation gate below. Late owned delivery tasks
 and callbacks require a live, correctly bound subject at the database boundary,
 so removal of suppression does not allow orphan records to be recreated.
 
+Member password-reset and verification emails record a minimal, UID-bound
+delivery before contacting Notify. An opaque auth-email reference lets their
+callbacks resolve that same delivery even before the provider ID is saved or
+after a provider-response failure. Action links and personalisation are never
+stored in that delivery. Email-change receipts affect delivery state only when
+the bound member's current address matches the callback recipient. Auth-only
+onboarding without a member profile still permits verification email; there is
+no profile delivery state to update. If the service delivery mode changes between
+the ledger and mailer's separate configuration reads, an early callback with a
+different mode-scoped reference remains ignored until its provider ID is saved.
+
+Other non-announcement callbacks require a recorded provider-ID binding. Unknown
+or untracked callbacks, including a missing binding after an uncertain provider
+response, are acknowledged without recording a receipt or changing a profile.
+Do not recover that association by looking up the current owner of an email
+address; the address may belong to a new identity after erasure.
+
 Worker logs contain counts and fixed reason codes, without UIDs, email hashes or
-case payloads. Holds and unavailable evidence are retried rather than silently
-discarded. Operators should review persistent deferrals and overdue holds.
+case payloads. Unheld records with unavailable evidence are deferred and retried.
+Held records are excluded from the automatic queue: `reviewDueAt` is an operator
+review date, not an automatic release or an alert. The service owner must review
+the restricted hold/deferral register at least weekly and review unresolved
+evidence by day 25 after completion. A later hold needs prompt review; subsequent
+reviews must finish by the recorded due date. Record the
+owner, evidence and next review in the restricted case system. A missed review
+never permits disposal; retain the hold until its evidence is explicitly adopted
+or its reason has been resolved through the operator tool.
 
 If a condition is unresolved at day 30, retain only the minimal marker and
 restricted disposal decision under a named, documented exception. Record the reason, owner and next review

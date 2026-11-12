@@ -72,6 +72,7 @@ class InMemoryNotifyReceiptRepository implements NotifyReceiptRepository {
   readonly users = new Map<string, TestUser>();
   readonly announcements = new Map<string, TestAnnouncementRecipient>();
   readonly notificationUsers = new Map<string, string>();
+  readonly authNotificationUsers = new Map<string, string>();
   userStateApplyCount = 0;
   announcementStateApplyCount = 0;
 
@@ -174,8 +175,8 @@ class InMemoryNotifyReceiptRepository implements NotifyReceiptRepository {
     return [...this.users.values()].find((user) => user.email === email) ?? null;
   }
 
-  async findNotificationUserId(providerMessageId: string) {
-    return this.notificationUsers.get(providerMessageId) ?? null;
+  async findNotificationUserId(providerMessageId: string, reference?: string) {
+    return this.notificationUsers.get(providerMessageId) ?? (reference ? this.authNotificationUsers.get(reference) : null) ?? null;
   }
 
   async getUserById(userId: string) {
@@ -706,6 +707,54 @@ describe("handleNotifyDelivery", () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(repository.receipts.size).toBe(0);
     expect(user.emailBounceCount).toBe(0);
+  });
+
+  it("applies a bound auth bounce before the provider ID is persisted without auto-binding", async () => {
+    const user = repository.addUser();
+    const reference = "AUTH_EMAIL:10000000-0000-4000-8000-000000000001:notify-live";
+    repository.authNotificationUsers.set(reference, user.id);
+    expect(repository.notificationUsers.size).toBe(0);
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq({body: receipt({id: "early-auth-message", reference, status: "permanent-failure"})}), res, BEARER, dependencies(repository));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repository.receipts.get("early-auth-message")?.userId).toBe(user.id);
+    expect(user.emailBounceCount).toBe(1);
+    expect(user.emailDeliveryStatus).toBe("permanent-failure");
+  });
+
+  it("clears a bounced status from a bound delivered auth message without auto-binding", async () => {
+    const user = repository.addUser({emailBounceCount: 2, emailDeliveryStatus: "permanent-failure"});
+    const reference = "AUTH_EMAIL:10000000-0000-4000-8000-000000000001:notify-live";
+    repository.authNotificationUsers.set(reference, user.id);
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq({body: receipt({id: "delivered-auth-message", reference, status: "delivered"})}), res, BEARER, dependencies(repository));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(user.emailBounceCount).toBe(0);
+    expect(user.emailDeliveryStatus).toBe("delivered");
+  });
+
+  it("does not apply an email-change verification bounce to the current or unrelated destination mailbox", async () => {
+    const owner = repository.addUser({id: "auth-owner", email: "old@example.org"});
+    const destination = repository.addUser({id: "other-owner", email: "alice@example.com"});
+    const reference = "AUTH_EMAIL:10000000-0000-4000-8000-000000000001:notify-live";
+    repository.authNotificationUsers.set(reference, owner.id);
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq({body: receipt({id: "new-address-auth-message", reference, status: "permanent-failure"})}), res, BEARER, dependencies(repository));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repository.receipts.size).toBe(0);
+    expect(owner.emailBounceCount).toBe(0);
+    expect(destination.emailBounceCount).toBe(0);
+  });
+
+  it("does not rebind an auth reference to a replacement identity at the same address", async () => {
+    const replacement = repository.addUser({id: "replacement-uid"});
+    const reference = "AUTH_EMAIL:10000000-0000-4000-8000-000000000001:notify-live";
+    repository.authNotificationUsers.set(reference, "deleted-uid");
+    const res = makeRes();
+    await handleNotifyDelivery(makeReq({body: receipt({id: "stale-auth-message", reference, status: "permanent-failure"})}), res, BEARER, dependencies(repository));
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repository.receipts.size).toBe(0);
+    expect(replacement.emailBounceCount).toBe(0);
   });
 
   it("acknowledges deletion racing receipt creation without recreating an orphan", async () => {

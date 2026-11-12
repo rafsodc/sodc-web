@@ -18,7 +18,8 @@ function object(value: unknown): Record<string, unknown> | undefined {
 const blocked = (reason: string): AccountErasureBackupResult => ({safe: false, reason});
 
 /** Provider metadata is evidence of recoverability, never proof inferred from a
- * configured retention duration. Unknown tiers and incomplete lists fail closed. */
+ * configured retention duration. Require recovery sources to start after the
+ * whole erasure completed. Unknown tiers and incomplete lists fail closed. */
 export function evaluateAccountErasureBackupHorizon(input: AccountErasureBackupInput, evidence: AccountErasureBackupEvidence): AccountErasureBackupResult {
   const deleted = timestamp(input.profileDeletedAt), completed = timestamp(input.completedAt), now = timestamp(input.now);
   if (!projects.has(input.projectId) || !Number.isFinite(deleted) || !Number.isFinite(completed) || !Number.isFinite(now) || deleted > completed || completed > now) return blocked("INVALID_RETENTION_INPUT");
@@ -28,7 +29,7 @@ export function evaluateAccountErasureBackupHorizon(input: AccountErasureBackupI
       backupConfiguration?.backupTier !== "STANDARD" || backupConfiguration?.pointInTimeRecoveryEnabled !== true) return blocked("BACKUP_CONFIGURATION_UNSUPPORTED");
   const earliest = timestamp(recovery?.earliestRecoveryTime), latest = timestamp(recovery?.latestRecoveryTime);
   if (!Number.isFinite(earliest) || !Number.isFinite(latest) || earliest > latest || latest > now + 60000) return blocked("RECOVERY_HORIZON_UNAVAILABLE");
-  if (earliest <= deleted) return blocked("PRE_ERASURE_RECOVERY_AVAILABLE");
+  if (earliest <= completed) return blocked("PRE_ERASURE_RECOVERY_AVAILABLE");
   if (!Array.isArray(evidence.backups) || !evidence.backups.length) return blocked("BACKUP_INVENTORY_UNAVAILABLE");
   for (const value of evidence.backups) {
     const backup = object(value);
@@ -37,7 +38,7 @@ export function evaluateAccountErasureBackupHorizon(input: AccountErasureBackupI
     if (!restorableStatuses.has(backup.status) || typeof backup.type !== "string" || !["AUTOMATED", "ON_DEMAND"].includes(backup.type)) return blocked("BACKUP_INVENTORY_UNAVAILABLE");
     const start = timestamp(backup.startTime);
     if (!Number.isFinite(start) || start > now + 60000 || (backup.instance !== undefined && backup.instance !== instance)) return blocked("BACKUP_INVENTORY_UNAVAILABLE");
-    if (start <= deleted) return blocked("PRE_ERASURE_BACKUP_AVAILABLE");
+    if (start <= completed) return blocked("PRE_ERASURE_BACKUP_AVAILABLE");
   }
   return {safe: true, reason: "RESTORE_HORIZON_CLEAR"};
 }
