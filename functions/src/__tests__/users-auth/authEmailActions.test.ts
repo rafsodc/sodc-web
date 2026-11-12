@@ -187,14 +187,16 @@ describe("auth email actions", () => {
     expect(() => requireRecentAuthentication(undefined, 1_000)).toThrow();
   });
 
-  function trackedDelivery() {
+  function trackedDelivery(afterClaim?: () => void) {
     type Pending = Parameters<NotificationDeliveryRepository["createPending"]>[0];
     let row: (Pending & {id: UUIDString; status: NotificationDeliveryStatus; providerMessageId?: string | null}) | null = null;
     const repository: NotificationDeliveryRepository = {
       getByChannelAndKey: vi.fn(async () => row),
       createPending: vi.fn(async args => {
-        row = {...args, id: "10000000-0000-4000-8000-000000000001" as UUIDString, status: NotificationDeliveryStatus.PENDING};
-        return row;
+        const claimed = {...args, id: "10000000-0000-4000-8000-000000000001" as UUIDString, status: NotificationDeliveryStatus.PENDING};
+        row = claimed;
+        afterClaim?.();
+        return claimed;
       }),
       tryMarkPending: vi.fn(async () => false),
       tryMarkPendingForRecovery: vi.fn(async () => false),
@@ -210,7 +212,10 @@ describe("auth email actions", () => {
         return true;
       }),
     };
-    return {repository, current: () => row};
+    return {repository, current: () => row, replaceLease: () => {
+      if (!row) throw new Error("No claimed fixture delivery");
+      row = {...row, attemptCount: row.attemptCount + 1};
+    }};
   }
 
   const authKinds = [
@@ -303,5 +308,34 @@ describe("auth email actions", () => {
     vi.mocked(delivery.repository.createPending).mockRejectedValueOnce(new Error("NOTIFICATION_SUBJECT_MISSING"));
     await expect(sendTracked("passwordReset", delivery.repository, sendMailer)).rejects.toThrow("AUTH_EMAIL_DELIVERY_NOT_SENT");
     expect(sendMailer.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("stops an erasure that begins after the auth delivery is claimed and before Notify is invoked", async () => {
+    const delivery = trackedDelivery(() => {
+      vi.mocked(isUserErasing).mockResolvedValue(true);
+    });
+    const sendMailer = mailer();
+
+    await expect(sendTracked("passwordReset", delivery.repository, sendMailer)).rejects.toThrow("AUTH_EMAIL_DELIVERY_NOT_SENT");
+
+    expect(delivery.repository.createPending).toHaveBeenCalledOnce();
+    expect(sendMailer.sendEmail).not.toHaveBeenCalled();
+    expect(delivery.repository.markSent).not.toHaveBeenCalled();
+    expect(delivery.repository.markFailed).toHaveBeenCalledWith(expect.objectContaining({lastErrorCode: "ACCOUNT_ERASURE_IN_PROGRESS"}));
+    expect(delivery.current()).toMatchObject({status: "FAILED", recoveryPayload: null});
+  });
+
+  it("preserves a replacement delivery lease without sending the stale auth email", async () => {
+    const delivery = trackedDelivery(() => delivery.replaceLease());
+    const sendMailer = mailer();
+
+    await expect(sendTracked("emailVerification", delivery.repository, sendMailer)).rejects.toThrow("AUTH_EMAIL_DELIVERY_NOT_SENT");
+
+    expect(delivery.repository.createPending).toHaveBeenCalledOnce();
+    expect(sendMailer.sendEmail).not.toHaveBeenCalled();
+    expect(delivery.repository.markSent).not.toHaveBeenCalled();
+    expect(delivery.repository.markFailed).not.toHaveBeenCalled();
+    expect(delivery.current()).toMatchObject({status: "PENDING", attemptCount: 2, recoveryPayload: null});
+    expect(delivery.current()).not.toHaveProperty("providerMessageId");
   });
 });

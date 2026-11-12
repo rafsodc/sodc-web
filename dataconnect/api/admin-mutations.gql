@@ -3196,7 +3196,8 @@ query GetNotifyCallbackNotificationUser($providerMessageId: String!, $authRefere
 mutation CreateNotifyDeliveryReceipt(
   $id: String!
   $notifyStatus: String!
-  $reference: String
+  # Omission must not remove the auth delivery-key filter.
+  $reference: String = null
   $recipientHash: String!
   $userId: String = null
   $announcementRecipientId: UUID = null

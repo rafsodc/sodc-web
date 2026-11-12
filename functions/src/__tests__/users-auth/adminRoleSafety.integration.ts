@@ -737,6 +737,33 @@ describe("account deletion against actual disposable SQL", () => {
     }`, {variables: {uid: userId, subject: overrides.missingProfile ? null : userId, key: reference, channel: overrides.channel ?? "EMAIL", kind: overrides.notificationType ?? "AUTH_PASSWORD_RESET",
       provider: overrides.provider ?? "govuk_notify", status: overrides.status ?? "PENDING", providerId: overrides.providerMessageId ?? null}});
   }
+  async function createReceiptWithoutReference(args: ReturnType<typeof callbackArgs>) {
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    // Do not replace omission with explicit null: those have different filter
+    // semantics unless the production operation declares its null default.
+    expect(args).not.toHaveProperty("reference");
+    return admin.createNotifyDeliveryReceipt(dc, args);
+  }
+  it("accepts a tracked callback with an omitted reference despite another member's outstanding auth delivery", async () => {
+    const [uid, unrelated] = await initialize(2);
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    const args = callbackArgs(uid);
+    await seedCallbackNotification(uid, args.id);
+    await seedAuthCallbackNotification(unrelated, `AUTH_EMAIL:${randomUUID()}:notify-live`);
+    const lookup = await admin.getNotifyCallbackNotificationUser(dc, {providerMessageId: args.id});
+    expect(lookup.data.notificationDeliveries).toEqual([{userId: null, recipientUserId: uid}]);
+    await expect(createReceiptWithoutReference(args)).resolves.toBeDefined();
+    expect((await admin.getNotifyDeliveryReceipt(dc, {id: args.id})).data.notifyDeliveryReceipt?.userId).toBe(uid);
+  });
+  it("rejects an unknown provider ID with an omitted reference even when the only outstanding auth delivery belongs to that UID", async () => {
+    const [uid] = await initialize(1);
+    const admin = require("@dataconnect/admin-generated") as typeof import("@dataconnect/admin-generated");
+    const args = callbackArgs(uid);
+    await seedAuthCallbackNotification(uid, `AUTH_EMAIL:${randomUUID()}:notify-live`);
+    expect((await admin.getNotifyCallbackNotificationUser(dc, {providerMessageId: args.id})).data.notificationDeliveries).toEqual([]);
+    await expect(createReceiptWithoutReference(args)).rejects.toThrow("NOTIFY_CALLBACK_SUBJECT_MISSING");
+    expect((await admin.getNotifyDeliveryReceipt(dc, {id: args.id})).data.notifyDeliveryReceipt).toBeNull();
+  });
   it.each([
     ["PENDING", "live", "AUTH_PASSWORD_RESET"],
     ["FAILED", "team_test", "AUTH_EMAIL_VERIFICATION"],
