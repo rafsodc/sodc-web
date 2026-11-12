@@ -65,6 +65,38 @@ afterEach(async () => {
 afterAll(async () => {if (app) await deleteApp(app);});
 
 describe("suppression disposal transactions", () => {
+  it("executes the hosted runner's exact exported seed and cleanup against real SQL", async () => {
+    const root = path.resolve(__dirname, "../../..");
+    const runner = await import(pathToFileURL(path.join(root, "scripts/validate-account-erasure-disposal-cloud.mjs")).href);
+    const set = runner.createAccountErasureDisposalFixtures();
+    const read = async (item: any) => (await dc.executeGraphqlRead<any, {uid: string}>(`query ExactHostedRunnerSqlFixture($uid: String!) {
+      profile: user(id: $uid) {id}
+      markers: accountErasures(where: {userId: {eq: $uid}}, limit: 3) {userId emailHash startedAt profileDeletedAt completedAt}
+      decision: accountErasureDisposal(key: {userId: $uid}) {userId generation version internalQuiescedAt taskSafeAt providerSafeAt evidenceReference holdCode reviewDueAt nextAttemptAt lastReason updatedAt}
+    }`, {variables: {uid: item.uid}})).data;
+    try {
+      const seed = runner.accountErasureDisposalSeed(set);
+      await dc.executeGraphql(seed.query, {variables: seed.variables});
+      for (const item of set.fixtures) {
+        const current = await read(item);
+        expect(current.profile).toBeNull(); expect(current.markers).toHaveLength(2);
+        expect(current.decision.version).toBe(1);
+        const completed = Date.parse(current.markers[0].profileDeletedAt);
+        expect(Date.parse(current.decision.providerSafeAt) - completed).toBe(30 * 24 * 60 * 60 * 1000);
+        expect(Date.parse(current.decision.taskSafeAt)).toBe(completed);
+        expect(current.markers.filter((row: any) => row.completedAt === null)).toHaveLength(item.role === "incomplete" ? 1 : 0);
+        expect(current.decision.holdCode).toBe(item.role === "held" ? "OPERATOR_REVIEW" : null);
+      }
+      const eligible = set.fixtures[0], observed = await read(eligible);
+      await dc.executeGraphql(purgeAccountErasureMutation, {variables: {uid: eligible.uid, generation: eligible.generation, version: 1, policyVersion: 1, hashes: eligible.hashes, count: 2, completedAt: observed.markers[0].completedAt, profileDeletedAt: observed.markers[0].profileDeletedAt}});
+    } finally {
+      for (const item of set.fixtures) {
+        const cleanup = runner.accountErasureDisposalCleanup(set, item, await read(item));
+        await dc.executeGraphql(cleanup.query, {variables: cleanup.variables});
+        expect(await read(item)).toEqual({profile: null, markers: [], decision: null});
+      }
+    }
+  });
   it("normalizes a real SQL UUID response to the exact reviewed lifecycle generation", async () => {
     const own = await fixture();
     await expect(readAccountErasureDisposal(own.uid)).resolves.toMatchObject({generation: own.generation, version: own.version, holdCode: null, reviewDueAt: null, lastReason: null});
