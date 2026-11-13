@@ -184,6 +184,45 @@ describe("EventBookingWizard", () => {
     expect(screen.queryByText("Pay")).not.toBeInTheDocument();
   });
 
+  it("keeps the current phone step, validation and draft visible through Next and Back", async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn((query) => ({
+      ...originalMatchMedia(query),
+      matches: query.includes("max-width"),
+    }));
+    try {
+      const user = userEvent.setup();
+      renderWizard();
+
+      expect(screen.getByRole("status", { name: "Booking progress" })).toHaveTextContent("Step 1 of 3");
+      expect(screen.getByText("Your details")).toHaveAttribute("aria-current", "step");
+      expect(screen.queryByText("Review and submit")).not.toBeInTheDocument();
+      await user.type(screen.getByLabelText("Dietary requirements"), "Vegetarian");
+      await user.click(screen.getByRole("button", { name: "Next" }));
+
+      expect(screen.getByRole("status", { name: "Booking progress" })).toHaveTextContent("Step 2 of 3");
+      expect(screen.getByText("Guests")).toHaveAttribute("aria-current", "step");
+      await user.click(screen.getByRole("button", { name: "Add guest" }));
+      await user.click(screen.getByRole("button", { name: "Next" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("Enter a name for guest 1.");
+      expect(screen.getByRole("status", { name: "Booking progress" })).toHaveTextContent("Step 2 of 3");
+
+      await user.type(screen.getByLabelText("Guest name"), "Alex Guest");
+      await user.click(screen.getByRole("button", { name: "Next" }));
+      expect(screen.getByRole("status", { name: "Booking progress" })).toHaveTextContent("Step 3 of 3");
+      expect(screen.getByText("Review and submit")).toHaveAttribute("aria-current", "step");
+      expect(screen.getByText(/Dietary: Vegetarian/)).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Back" }));
+      expect(screen.getByLabelText("Guest name")).toHaveValue("Alex Guest");
+      await user.click(screen.getByRole("button", { name: "Back" }));
+      expect(screen.getByLabelText("Dietary requirements")).toHaveValue("Vegetarian");
+      expect(firebaseFunctions.submitEventBooking).not.toHaveBeenCalled();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
   it("explains the late-booking exception to an authorised section moderator", () => {
     renderWizard({
       sectionOverride: {

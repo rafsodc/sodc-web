@@ -10,6 +10,8 @@ import {
   TableHead,
   TableRow,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import type { GetMyBookingsForEventData } from "@dataconnect/generated";
@@ -26,6 +28,19 @@ import {
 } from "../utils/eventBookingStatusSummary";
 
 type TerminalBooking = NonNullable<GetMyBookingsForEventData["user"]>["bookings"][number];
+type TicketRow = ReturnType<typeof buildBookingTicketRowsWithPaymentStatus>[number];
+
+function TicketPaymentStatus({ row }: { row: TicketRow }) {
+  return (
+    <Chip
+      size="small"
+      label={row.paymentStatusLabel}
+      color={bookingTicketPaymentChipColor(row.paymentStatus)}
+      variant={row.paymentStatus === "awaiting_approval" ? "outlined" : "filled"}
+      sx={{ maxWidth: "100%", height: "auto", minHeight: 24, "& .MuiChip-label": { whiteSpace: "normal", overflowWrap: "anywhere", py: 0.5 } }}
+    />
+  );
+}
 
 export interface EventBookingStatusSummaryProps {
   booking: TerminalBooking;
@@ -112,6 +127,8 @@ export default function EventBookingStatusSummary({
   onPayNow,
   payingTicketTypeId,
 }: EventBookingStatusSummaryProps) {
+  const theme = useTheme();
+  const compactLayout = useMediaQuery(theme.breakpoints.down("sm"));
   const effectivePaymentBooking = paymentBooking ?? (
     booking.approvalStatus === "NOT_REQUIRED" || booking.approvalStatus === "APPROVED"
       ? booking
@@ -144,8 +161,8 @@ export default function EventBookingStatusSummary({
     paymentSummary.kind !== "adjustment_refund";
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, mt: 3 }}>
-      <Typography variant="h6" sx={{ mb: 0.5, fontWeight: 600 }}>
+    <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, mt: 3, minWidth: 0, overflowWrap: "anywhere" }}>
+      <Typography component="h3" variant="h6" sx={{ mb: 0.5, fontWeight: 600 }}>
         {statusCard.heading}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -159,11 +176,28 @@ export default function EventBookingStatusSummary({
       {ticketRows.length > 0 ? (
         <>
           {hasSeparatePaymentBooking ? (
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            <Typography component="p" variant="subtitle2" sx={{ mb: 1 }}>
               Current active booking
             </Typography>
           ) : null}
-          <Table size="small" sx={{ mb: 2 }}>
+          {compactLayout ? (
+            <Box component="ul" role="list" aria-label="Booking tickets" sx={{ listStyle: "none", p: 0, m: 0, mb: 2, display: "grid", gap: 1.25 }}>
+              {ticketRows.map((row) => (
+                <Box component="li" key={row.id} sx={{ minWidth: 0, border: 1, borderColor: "divider", borderRadius: 1, p: 1.5 }}>
+                  <Typography component="h4" variant="subtitle2" sx={{ mb: 1 }}>{row.ticketTitle}</Typography>
+                  <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: 0.75, alignItems: "start", "& dt": { fontWeight: 600 }, "& dd": { m: 0, minWidth: 0 } }}>
+                    <Typography component="dt" variant="body2">Guest</Typography>
+                    <Typography component="dd" variant="body2">{row.guestName ?? "—"}</Typography>
+                    <Typography component="dt" variant="body2">Price</Typography>
+                    <Typography component="dd" variant="body2">{formatGbpMajorAmount(row.price)}</Typography>
+                    <Typography component="dt" variant="body2">Payment</Typography>
+                    <Box component="dd"><TicketPaymentStatus row={row} /></Box>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+          <Table size="small" sx={{ mb: 2, tableLayout: "fixed", width: "100%", "& th, & td": { px: { sm: 1, md: 2 }, overflowWrap: "anywhere", verticalAlign: "top" } }}>
           <TableHead>
             <TableRow>
               <TableCell>Ticket</TableCell>
@@ -181,21 +215,17 @@ export default function EventBookingStatusSummary({
                 <TableCell>{row.guestName ?? "—"}</TableCell>
                 <TableCell>{formatGbpMajorAmount(row.price)}</TableCell>
                 <TableCell>
-                  <Chip
-                    size="small"
-                    label={row.paymentStatusLabel}
-                    color={bookingTicketPaymentChipColor(row.paymentStatus)}
-                    variant={row.paymentStatus === "awaiting_approval" ? "outlined" : "filled"}
-                  />
+                  <TicketPaymentStatus row={row} />
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
           </Table>
+          )}
         </>
       ) : null}
 
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+      <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, flexWrap: "wrap", gap: 1, "& .MuiButton-root": { minHeight: { xs: 44, sm: 36 } } }}>
         {showPayNow ? (
           <Button
             variant="contained"

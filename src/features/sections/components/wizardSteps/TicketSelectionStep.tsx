@@ -56,7 +56,7 @@ export default function TicketSelectionStep({
   canRequestAccommodation,
 }: TicketSelectionStepProps) {
   return (
-    <FormControl component="fieldset" fullWidth>
+    <FormControl component="fieldset" fullWidth sx={{ minWidth: 0 }}>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         Select your member ticket category.
       </Typography>
@@ -69,12 +69,13 @@ export default function TicketSelectionStep({
             key={tt.id}
             value={tt.id}
             control={<Radio />}
+            sx={{ mr: 0, alignItems: "flex-start", "& .MuiFormControlLabel-label": { minWidth: 0, overflowWrap: "anywhere" } }}
             label={
-              <Box>
+              <Box sx={{ minWidth: 0 }}>
                 <Typography variant="body2" component="span">
                   {tt.title}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 1, display: "inline-block", whiteSpace: "nowrap" }}>
                   {formatGbpMajorAmount(tt.price)}
                 </Typography>
               </Box>
@@ -100,7 +101,7 @@ export default function TicketSelectionStep({
         onSitNextToUserIdsChange={onSitNextToUserIdsChange}
       />
       <FormControlLabel
-        sx={{ mt: 1 }}
+        sx={{ mt: 1, mr: 0, alignItems: "flex-start", "& .MuiFormControlLabel-label": { minWidth: 0, overflowWrap: "anywhere" } }}
         control={
           <Checkbox
             checked={accommodationRequested}

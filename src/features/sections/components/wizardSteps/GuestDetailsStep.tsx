@@ -42,7 +42,7 @@ export default function GuestDetailsStep({
   onRemoveGuest,
 }: GuestDetailsStepProps) {
   return (
-    <Box>
+    <Box sx={{ minWidth: 0 }}>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {formatEventGuestPolicy(maxGuestsWithoutModeratorApproval)}
       </Typography>
@@ -68,7 +68,7 @@ export default function GuestDetailsStep({
             }
           }}
           helperText="Include every guest in this booking."
-          sx={{ minWidth: 240, mb: 3 }}
+          sx={{ width: { xs: "100%", sm: 240 }, minWidth: 0, maxWidth: "100%", mb: 3 }}
         />
       )}
 
@@ -79,13 +79,14 @@ export default function GuestDetailsStep({
           sx={{
             m: 0,
             mb: 2,
-            p: 2,
+            p: { xs: 1.5, sm: 2 },
+            minWidth: 0,
             border: 1,
             borderColor: "divider",
             borderRadius: 1,
           }}
         >
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, mb: 1 }}>
+          <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1, mb: 1 }}>
             <Typography component="legend" variant="subtitle2">Guest {index + 1}</Typography>
             {guest.paid ? <Chip label="Paid ticket" color="success" size="small" /> : null}
           </Box>
@@ -101,7 +102,15 @@ export default function GuestDetailsStep({
                   value={ticketType.id}
                   disabled={guest.paid && ticketType.id !== guest.ticketTypeId}
                   control={<Radio size="small" />}
-                  label={`${ticketType.title} (${formatGbpMajorAmount(ticketType.price)})`}
+                  label={
+                    <>
+                      {ticketType.title}{" "}
+                      <Box component="span" sx={{ display: "inline-block", whiteSpace: "nowrap" }}>
+                        ({formatGbpMajorAmount(ticketType.price)})
+                      </Box>
+                    </>
+                  }
+                  sx={{ mr: 0, alignItems: "flex-start", "& .MuiFormControlLabel-label": { minWidth: 0, overflowWrap: "anywhere" } }}
                 />
               ))}
             </RadioGroup>
@@ -128,7 +137,7 @@ export default function GuestDetailsStep({
             color="error"
             disabled={guest.paid}
             onClick={() => onRemoveGuest(index)}
-            sx={{ mt: 1 }}
+            sx={{ mt: 1, minHeight: { xs: 44, sm: 30 } }}
           >
             Remove guest
           </Button>
@@ -141,7 +150,7 @@ export default function GuestDetailsStep({
       ))}
 
       {guestTicketTypes.length > 0 ? (
-        <Button variant="outlined" onClick={() => onGuestCountChange(guests.length + 1)}>
+        <Button variant="outlined" onClick={() => onGuestCountChange(guests.length + 1)} sx={{ width: { xs: "100%", sm: "auto" }, minHeight: { xs: 44, sm: 36 } }}>
           Add guest
         </Button>
       ) : null}

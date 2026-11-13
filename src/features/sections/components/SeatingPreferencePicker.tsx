@@ -15,6 +15,7 @@ export default function SeatingPreferencePicker({
 }) {
   return <Autocomplete
         multiple
+        sx={{ minWidth: 0, "& .MuiAutocomplete-tag": { maxWidth: "100%" } }}
         disabled={disabled}
         getOptionDisabled={(option) => sitNextToUserIds.length >= 10 && !sitNextToUserIds.includes(option.id)}
         filterOptions={(x) => x}
