@@ -1147,7 +1147,7 @@ export default function SectionEventsManager({
     const mg = maxGuestsStr.trim();
     const n = Number(mg);
     if (mg === "" || !Number.isInteger(n) || n < 0) {
-      setError("Max guests without moderator approval is required and must be a non-negative integer");
+      setError("Guests before approval is required and must be a non-negative integer");
       return;
     }
     const dates = validateEventDateTimes({ startDateTime, endDateTime, bookingStartDateTime, bookingEndDateTime });

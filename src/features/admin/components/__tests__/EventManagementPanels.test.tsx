@@ -28,6 +28,16 @@ function panelProps() {
 }
 
 describe("event management task panels", () => {
+  it("uses the editor's guest approval label for the saved booking setting", () => {
+    render(<TicketAdminSurface {...panelProps()} selectedTask="details" event={{
+      id: "event-1", title: "Dinner", startDateTime: "2026-11-20T13:00:00Z", endDateTime: "2026-11-20T22:30:00Z",
+      bookingStartDateTime: "2026-10-01T09:00:00Z", bookingEndDateTime: "2026-11-12T17:00:00Z", maxGuestsWithoutModeratorApproval: 2,
+    }} />);
+    const settings = screen.getByRole("heading", { name: "Booking settings" }).parentElement!;
+    const guestLimit = within(settings).getByText("Guests before approval", { selector: "dt" });
+    expect(guestLimit.nextElementSibling).toHaveTextContent(/^2$/);
+  });
+
   it("renders only the selected panel with linkable local attendee and ticket navigation", () => {
     render(<MemoryRouter><TicketAdminSurface {...panelProps()} selectedTask="tickets" taskHref={(task) => `/event?task=${task}`} /></MemoryRouter>);
     expect(screen.getByRole("heading", { name: "Tickets & attendees", level: 2 })).toBeInTheDocument();

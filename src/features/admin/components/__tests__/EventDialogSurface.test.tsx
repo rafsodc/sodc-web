@@ -66,7 +66,7 @@ describe("Event details editor presentation", () => {
     ["Guest of honour", "New guest", "onGuestOfHonourChange"], ["Sponsors", "New sponsor", "onSponsorsChange"],
     ["Event details", "New description", "onDetailsChange"], ["Start date/time", "2026-11-21T13:00", "onStartDateTimeChange"],
     ["End date/time", "2026-11-21T22:30", "onEndDateTimeChange"], ["Booking window start", "2026-10-02T09:00", "onBookingStartDateTimeChange"],
-    ["Booking window end", "2026-11-13T17:00", "onBookingEndDateTimeChange"], ["Max guests without moderator approval", "2", "onMaxGuestsChange"],
+    ["Booking window end", "2026-11-13T17:00", "onBookingEndDateTimeChange"], ["Guests before approval", "2", "onMaxGuestsChange"],
   ] as const)("passes inline %s edits to the existing callback", (label, value, callback) => {
     const editor = props({ embedded: true });
     render(<EventDialogSurface {...editor} />);
@@ -97,9 +97,9 @@ describe("Event details editor presentation", () => {
   describe.each([false, true])("non-date feedback (embedded=%s)", (embedded) => {
     it.each([
       ["title", " ", "Title", "Title is required."],
-      ["maxGuestsStr", "", "Max guests without moderator approval", "Max guests without moderator approval is required."],
-      ["maxGuestsStr", "-1", "Max guests without moderator approval", "Enter a whole number of guest places, 0 or more."],
-      ["maxGuestsStr", "1.5", "Max guests without moderator approval", "Enter a whole number of guest places, 0 or more."],
+      ["maxGuestsStr", "", "Guests before approval", "Guests before approval is required."],
+      ["maxGuestsStr", "-1", "Guests before approval", "Enter a whole number of guest places, 0 or more."],
+      ["maxGuestsStr", "1.5", "Guests before approval", "Enter a whole number of guest places, 0 or more."],
     ] as const)("shows actionable feedback after attempting to save invalid %s=%s", async (field, value, label, message) => {
       const user = userEvent.setup();
       const editor = props({ embedded, [field]: value });
@@ -130,7 +130,7 @@ describe("Event details editor presentation", () => {
       expect(screen.getByLabelText("Start date/time", { exact: false, selector: "input" })).toHaveFocus();
       view.rerender(<EventDialogSurface {...editor} title="Corrected title" startDateTime="2026-11-20T13:00" />);
       await user.click(screen.getByRole("button", { name: "Save" }));
-      expect(screen.getByRole("spinbutton", { name: "Max guests without moderator approval" })).toHaveFocus();
+      expect(screen.getByRole("spinbutton", { name: "Guests before approval" })).toHaveFocus();
       expect(editor.onSubmit).not.toHaveBeenCalled();
     });
 

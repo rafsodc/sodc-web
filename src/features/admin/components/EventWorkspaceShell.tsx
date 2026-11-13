@@ -123,7 +123,7 @@ export default function EventWorkspaceShell({
     <Box sx={{ minWidth: 0 }}>
       <Paper variant="outlined" sx={{ overflow: "hidden", mb: 3 }}>
         <Box sx={{ p: { xs: 2, sm: 3 } }}>
-          <Breadcrumbs aria-label="Event breadcrumbs" sx={{ mb: 2, fontSize: "0.8rem" }}>
+          <Breadcrumbs aria-label="Event breadcrumbs" sx={{ mb: 2, fontSize: "0.8rem", "& li": { minWidth: 0, maxWidth: "100%", overflowWrap: "anywhere" } }}>
             <Link component={RouterLink} to="/sections" color="inherit">Sections</Link>
             <Link component={RouterLink} to={sectionPath(sectionId)} color="inherit">{sectionName}</Link>
             <Link component={RouterLink} to={sectionManagementPath(sectionId, "events")} color="inherit">Events</Link>
@@ -139,22 +139,22 @@ export default function EventWorkspaceShell({
                 {event.title}
               </Typography>
               <Stack direction="row" gap={2} flexWrap="wrap" color="text.secondary">
-                <Stack direction="row" gap={0.75} alignItems="flex-start">
-                  <CalendarMonthOutlined fontSize="small" aria-hidden="true" />
-                  <Typography variant="body2">
+                <Stack direction="row" gap={0.75} alignItems="flex-start" sx={{ minWidth: 0 }}>
+                  <CalendarMonthOutlined fontSize="small" aria-hidden="true" sx={{ flexShrink: 0 }} />
+                  <Typography variant="body2" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
                     {formatSectionEventDate(event.startDateTime, event.endDateTime)}
                     {" · "}{formatSectionEventTime(event.startDateTime, event.endDateTime)}
                   </Typography>
                 </Stack>
                 {event.location?.trim() && (
-                  <Stack direction="row" gap={0.75} alignItems="flex-start">
-                    <LocationOnOutlined fontSize="small" aria-hidden="true" />
-                    <Typography variant="body2">{event.location.trim()}</Typography>
+                  <Stack direction="row" gap={0.75} alignItems="flex-start" sx={{ minWidth: 0 }}>
+                    <LocationOnOutlined fontSize="small" aria-hidden="true" sx={{ flexShrink: 0 }} />
+                    <Typography variant="body2" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>{event.location.trim()}</Typography>
                   </Stack>
                 )}
               </Stack>
             </Box>
-            <Stack direction="row" gap={1} alignItems="flex-start" flexWrap="wrap" sx={{ flexShrink: 0 }}>
+            <Stack direction="row" gap={1} alignItems="flex-start" flexWrap="wrap" sx={{ flexShrink: 0, "& .MuiButton-root": { minHeight: { xs: 44, sm: 30 } } }}>
               <Button component={RouterLink} to={memberEventPath(sectionId, event.id)} size="small" startIcon={<OpenInNewOutlined />}>
                 View event
               </Button>
@@ -178,22 +178,25 @@ export default function EventWorkspaceShell({
           </Box>
         </Box>
         {narrow ? (
-          <FormControl size="small" fullWidth sx={{ px: 2, pb: 2 }}>
-            <InputLabel id={sectionLabelId} sx={{ left: 16 }}>Event section</InputLabel>
-            <Select
-              labelId={sectionLabelId}
-              id={`${id}-section`}
-              label="Event section"
-              value={selected || "activity"}
-              onChange={(change) => navigate(eventManagementPath(sectionId, event.id, change.target.value as EventManagementTask))}
-              inputProps={{ "aria-controls": panelId }}
-            >
-              {workspaceTabs.map((tab) => (
-                <MenuItem key={tab.task} value={tab.task}>{tab.task === "approvals" ? approvalsLabel : tab.label}</MenuItem>
-              ))}
-              {selected === false && <MenuItem value="activity">Activity</MenuItem>}
-            </Select>
-          </FormControl>
+          <Box sx={{ px: 2, pb: 2 }}>
+            <FormControl size="small" fullWidth>
+              <InputLabel id={sectionLabelId}>Event section</InputLabel>
+              <Select
+                labelId={sectionLabelId}
+                id={`${id}-section`}
+                label="Event section"
+                value={selected || "activity"}
+                onChange={(change) => navigate(eventManagementPath(sectionId, event.id, change.target.value as EventManagementTask))}
+                inputProps={{ "aria-controls": panelId }}
+                sx={{ minHeight: 44 }}
+              >
+                {workspaceTabs.map((tab) => (
+                  <MenuItem key={tab.task} value={tab.task}>{tab.task === "approvals" ? approvalsLabel : tab.label}</MenuItem>
+                ))}
+                {selected === false && <MenuItem value="activity">Activity</MenuItem>}
+              </Select>
+            </FormControl>
+          </Box>
         ) : (
           <Tabs
             value={selected}

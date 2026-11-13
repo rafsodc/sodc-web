@@ -901,7 +901,7 @@ describe("SectionEventsManager", () => {
     expect(screen.getByLabelText(/^sponsors$/i)).toHaveValue("Example Ltd");
     expect(screen.getByLabelText(/^event details$/i)).toHaveValue("## Evening programme\n\nDinner and dancing.");
     expect(screen.getByRole("heading", { name: "Evening programme", level: 4 })).toBeInTheDocument();
-    expect(screen.getByLabelText(/max guests without moderator approval/i)).toHaveValue(2);
+    expect(screen.getByLabelText(/guests before approval/i)).toHaveValue(2);
   }, 10_000);
 
   it("persists cleared optional event content as null", async () => {
@@ -1105,7 +1105,7 @@ describe("SectionEventsManager", () => {
       ["Sponsors", "Sponsor one\nSponsor two"], ["Event details", "## Draft\nKeep these details."],
       ["Start date/time", "2030-03-01T18:00"], ["End date/time", "2030-03-01T22:00"],
       ["Booking window start", "2030-01-01T00:00"], ["Booking window end", "2030-02-28T00:00"],
-      ["Max guests without moderator approval", "2"],
+      ["Guests before approval", "2"],
     ];
     for (const [label, value] of fields) {
       fireEvent.change(editor.getByLabelText(label, { exact: false, selector: "input,textarea" }), { target: { value } });
@@ -1131,7 +1131,7 @@ describe("SectionEventsManager", () => {
     expect(location).toHaveFocus();
     for (const [label, value] of fields) {
       const input = editor.getByLabelText(label, { exact: false, selector: "input,textarea" });
-      expect(input).toHaveValue(label === "Location" ? "Newer hall edit" : label === "Max guests without moderator approval" ? Number(value) : value);
+      expect(input).toHaveValue(label === "Location" ? "Newer hall edit" : label === "Guests before approval" ? Number(value) : value);
     }
     expect(editor.getByRole("button", { name: "Save" })).toBeDisabled();
     expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
