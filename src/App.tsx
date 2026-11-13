@@ -514,6 +514,7 @@ function AppContent() {
         <Box
           sx={{
             flex: 1,
+            minWidth: 0,
             px: { xs: 2, sm: 3 },
             pt: 2,
             display: "flex",
