@@ -89,7 +89,8 @@ describe("EventBookingStatusSummary", () => {
       const tickets = screen.getByRole("list", { name: "Booking tickets" });
       const rows = within(tickets).getAllByRole("listitem");
       expect(rows).toHaveLength(1);
-      expect(within(rows[0]!).getByRole("heading", { name: "Guest standard" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 3, name: "Payment required" })).toBeInTheDocument();
+      expect(within(rows[0]!).getByRole("heading", { level: 4, name: "Guest standard" })).toBeInTheDocument();
       for (const text of ["Guest", "Alex Guest", "Price", "£25.00", "Payment", "Unpaid"]) {
         expect(within(rows[0]!).getByText(text)).toBeInTheDocument();
       }
@@ -101,6 +102,34 @@ describe("EventBookingStatusSummary", () => {
       expect(onPayNow).toHaveBeenCalledExactlyOnceWith("ticket-guest");
       await user.click(screen.getByRole("button", { name: "Edit booking" }));
       expect(onEditBooking).toHaveBeenCalledTimes(1);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it("nests the approved phone ticket under its revised-booking status without an extra heading", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn((query) => ({
+      ...originalMatchMedia(query),
+      matches: query.includes("max-width"),
+    }));
+    try {
+      renderSummary({
+        booking: booking({
+          id: "pending-revision", revisionNumber: 2, approvalStatus: "PENDING",
+          lines: [ticketLine({ ticketType: { id: "requested-ticket", title: "Requested replacement", audience: TicketAudience.MEMBER, price: 60 } })],
+        }),
+        paymentBooking: booking({ id: "approved-revision", approvalStatus: "APPROVED" }),
+      });
+
+      expect(screen.getByRole("heading", { level: 3, name: "Awaiting approval" })).toBeInTheDocument();
+      const tickets = screen.getByRole("list", { name: "Booking tickets" });
+      expect(within(tickets).getByRole("heading", { level: 4, name: "Member standard" })).toBeInTheDocument();
+      expect(screen.getAllByRole("heading").map((heading) => heading.tagName)).toEqual(["H3", "H4"]);
+      expect(screen.getByText("Current active booking").tagName).toBe("P");
+      expect(screen.queryByRole("heading", { name: "Current active booking" })).not.toBeInTheDocument();
+      expect(screen.queryByText("Requested replacement")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
     } finally {
       window.matchMedia = originalMatchMedia;
     }
@@ -139,7 +168,8 @@ describe("EventBookingStatusSummary", () => {
 
   it("directs an approved booking to payment", () => {
     renderSummary();
-    expect(screen.getByRole("heading", { name: "Payment required" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Payment required" })).toBeInTheDocument();
+    expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pay for all tickets" })).toBeInTheDocument();
   });
 

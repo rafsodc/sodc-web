@@ -162,7 +162,7 @@ export default function EventBookingStatusSummary({
 
   return (
     <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, mt: 3, minWidth: 0, overflowWrap: "anywhere" }}>
-      <Typography variant="h6" sx={{ mb: 0.5, fontWeight: 600 }}>
+      <Typography component="h3" variant="h6" sx={{ mb: 0.5, fontWeight: 600 }}>
         {statusCard.heading}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -176,7 +176,7 @@ export default function EventBookingStatusSummary({
       {ticketRows.length > 0 ? (
         <>
           {hasSeparatePaymentBooking ? (
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            <Typography component="p" variant="subtitle2" sx={{ mb: 1 }}>
               Current active booking
             </Typography>
           ) : null}
@@ -184,7 +184,7 @@ export default function EventBookingStatusSummary({
             <Box component="ul" role="list" aria-label="Booking tickets" sx={{ listStyle: "none", p: 0, m: 0, mb: 2, display: "grid", gap: 1.25 }}>
               {ticketRows.map((row) => (
                 <Box component="li" key={row.id} sx={{ minWidth: 0, border: 1, borderColor: "divider", borderRadius: 1, p: 1.5 }}>
-                  <Typography component="h3" variant="subtitle2" sx={{ mb: 1 }}>{row.ticketTitle}</Typography>
+                  <Typography component="h4" variant="subtitle2" sx={{ mb: 1 }}>{row.ticketTitle}</Typography>
                   <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: 0.75, alignItems: "start", "& dt": { fontWeight: 600 }, "& dd": { m: 0, minWidth: 0 } }}>
                     <Typography component="dt" variant="body2">Guest</Typography>
                     <Typography component="dd" variant="body2">{row.guestName ?? "—"}</Typography>
