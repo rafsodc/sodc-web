@@ -5,9 +5,9 @@ import { executeQuery, getDataConnect, queryRef, type DataConnect } from "fireba
 import { TicketAudience, type GetEventByIdData, type GetEventsForSectionData } from "@dataconnect/generated";
 import {
   applyCommittedTicketSave, assertCanonicalCommittedTicket, assertCanonicalCommittedTicketResponse, captureTicketSaveCacheWrite,
-  retireTicketSaveDependencies, type CanonicalCommittedTicket,
+  retireCommittedTicketSave, retireTicketSaveDependencies, type CanonicalCommittedTicket,
 } from "../ticketSaveCache";
-import { captureEventSaveCacheWrite, type CanonicalCommittedEvent } from "../eventSaveCache";
+import { applyCommittedEventSave, captureEventSaveCacheWrite, type CanonicalCommittedEvent } from "../eventSaveCache";
 import { dataConnectQueryKey, dataConnectQueryOptions, DataConnectReadSupersededError, refreshDataConnectQuery } from "../authoritativeDataConnect";
 import { captureSectionEventSummaryRead, rememberSectionEventSummaries } from "../sectionEventSummaryCache";
 import { captureSession, createSessionLifecycle, installSessionRuntime, SessionChangedError, suspendPrivateSession } from "../../appShell/sessionLifecycle";
@@ -291,5 +291,124 @@ describe("read-only ticket dependency retirement", () => {
     await expect(pending).resolves.toBeInstanceOf(DataConnectReadSupersededError);
     expect(client.getQueryData(dataConnectQueryKey(ref))).toEqual(data);
     expect(client.getQueryState(dataConnectQueryKey(ref))?.isInvalidated).toBe(false);
+  });
+});
+
+describe("overlapping committed ticket and event responses", () => {
+  const cases = ["primed", "empty"].flatMap(cache => ["A-first", "B-first"].flatMap(commitOrder =>
+    ["A-first", "B-first"].map(responseOrder => ({ cache, commitOrder, responseOrder }))));
+  it.each(cases)("retires potentially incomplete projections: $cache cache, commits $commitOrder, responses $responseOrder", async ({ cache, commitOrder, responseOrder }) => {
+    let server = old;
+    const read = vi.fn(async () => ({ data: { event: server }, extensions: {} })); transport(read);
+    if (cache === "primed") {
+      for (const id of [EVENT, EVENT.toUpperCase(), compact(EVENT)]) client.setQueryData(detailKey(id), { event: old });
+      client.setQueryData(listKey, { section: { id: SECTION, events: [old] } });
+    }
+    const dependencies = [memberKey, ["ListEventBookingsForAdmin", { eventId: EVENT.toUpperCase() }],
+      ["ListTicketOrdersForAdmin", { eventId: compact(EVENT) }], ["managed-event-tickets", EVENT, "admin-a"],
+      ["eventAttendees", EVENT, "admin-a"], ["GetMyBookings", null], ["GetMyTicketOrders", null],
+      ["organiser-guests", EVENT, "admin-a"]];
+    for (const key of dependencies) client.setQueryData(key, { currentTitle: "Old ticket", paidAmountMinor: 2500 });
+    const untouched = [["GetEventById", { id: OTHER }], ["ListBookingPaymentAdjustmentsForAdmin", { eventId: EVENT }], ["GetUserAccessGroups", null]];
+    for (const key of untouched) client.setQueryData(key, { unchanged: true });
+    const first = captureTicketSaveCacheWrite(client, dc, { ...scope, sectionId: compact(SECTION).toUpperCase(), eventId: EVENT.toUpperCase() });
+    const second = captureEventSaveCacheWrite(client, dc, { sectionId: SECTION, eventId: EVENT });
+    let firstResponse = saved, secondResponse = saved;
+    const commitA = () => { server = { ...server, ticketTypes: saved.ticketTypes }; firstResponse = structuredClone(server); };
+    const commitB = () => { server = { ...server, title: "Event B committed" }; secondResponse = structuredClone(server); };
+    if (commitOrder === "A-first") { commitA(); commitB(); } else { commitB(); commitA(); }
+    const deliverA = () => applyCommittedTicketSave(first, ticket, firstResponse).catch(error => error);
+    const deliverB = () => applyCommittedEventSave(second, secondResponse).catch(error => error);
+    if (responseOrder === "A-first") { await expect(deliverA()).resolves.toBeInstanceOf(DataConnectReadSupersededError); await deliverB(); }
+    else { await deliverB(); await expect(deliverA()).resolves.toBeInstanceOf(DataConnectReadSupersededError); }
+    for (const query of client.getQueryCache().getAll()) {
+      if (query.queryKey[0] === "GetEventById" && idsEqualForTest(query.queryKey[1], EVENT)) expect(query.state.isInvalidated).toBe(true);
+      if (query.queryKey[0] === "GetEventsForSection") expect(query.state.isInvalidated).toBe(true);
+    }
+    for (const key of dependencies) {
+      expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+      expect(client.getQueryData(key)).toEqual({ currentTitle: "Old ticket", paidAmountMinor: 2500 });
+    }
+    for (const key of untouched) expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+    expect(read).not.toHaveBeenCalled();
+    const current = await refreshDataConnectQuery(client, queryRef<GetEventByIdData, { id: string }>(dc, "GetEventById", { id: EVENT }));
+    expect(current.event?.title).toBe("Event B committed");
+    expect(current.event?.ticketTypes).toEqual(saved.ticketTypes);
+    expect(read).toHaveBeenCalledOnce();
+  });
+
+  it("retires parent aliases and joined metadata after its ticket editor has left", async () => {
+    const read = vi.fn(); transport(read);
+    client.setQueryData(detailKey(), { event: old });
+    client.setQueryData(memberKey, { ticketTitle: "Old ticket" });
+    const write = captureTicketSaveCacheWrite(client, dc, scope);
+    await retireCommittedTicketSave(write, ticket, saved);
+    expect(client.getQueryState(detailKey())?.isInvalidated).toBe(true);
+    expect(client.getQueryState(memberKey)?.isInvalidated).toBe(true);
+    expect(client.getQueryData(detailKey())).toEqual({ event: old });
+    expect(read).not.toHaveBeenCalled();
+  });
+});
+
+function idsEqualForTest(variables: unknown, id: string) {
+  return typeof variables === "object" && variables !== null && "id" in variables &&
+    String(variables.id).replaceAll("-", "").toLowerCase() === compact(id);
+}
+
+describe("ticket settlement read ownership", () => {
+  it("preserves a detail read started during dependency cancellation and still retires sibling aliases", async () => {
+    const fresh = { ...saved, title: "Read after confirmed ticket commit" };
+    const delayed = deferred<TransportResult>();
+    const read = vi.fn(() => delayed.promise); transport(read);
+    client.setQueryData(detailKey(), { event: old });
+    client.setQueryData(detailKey(EVENT.toUpperCase()), { event: old });
+    client.setQueryData(listKey, { section: { id: SECTION, events: [old] } });
+    client.setQueryData(memberKey, { title: "Old catalogue metadata" });
+    const write = captureTicketSaveCacheWrite(client, dc, scope);
+    const pause = deferred<void>();
+    vi.spyOn(client, "cancelQueries").mockImplementationOnce(() => pause.promise);
+    const publishing = applyCommittedTicketSave(write, ticket, saved).catch(error => error);
+    const ref = queryRef<GetEventByIdData, {id: string}>(dc, "GetEventById", { id: EVENT });
+    const pending = client.fetchQuery({ ...dataConnectQueryOptions(ref), staleTime: 0 });
+    await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
+    pause.resolve();
+    await expect(publishing).resolves.toBeInstanceOf(DataConnectReadSupersededError);
+    expect(client.getQueryState(detailKey())?.fetchStatus).toBe("fetching");
+    expect(client.getQueryState(detailKey())?.isInvalidated).toBe(false);
+    expect(client.getQueryState(detailKey(EVENT.toUpperCase()))?.isInvalidated).toBe(true);
+    expect(client.getQueryState(listKey)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(memberKey)?.isInvalidated).toBe(true);
+    delayed.resolve({ data: { event: fresh }, extensions: {} });
+    await expect(pending).resolves.toEqual({ event: fresh });
+    expect(client.getQueryState(detailKey())?.isInvalidated).toBe(false);
+    expect(read).toHaveBeenCalledOnce();
+  });
+
+  it("makes an evicted active initial read retryable without fetching hidden panels", async () => {
+    const late = deferred<TransportResult>();
+    const read = vi.fn().mockReturnValueOnce(late.promise).mockResolvedValue({ data: { event: saved }, extensions: {} }); transport(read);
+    client.setQueryData(detailKey(), { event: old });
+    const write = captureTicketSaveCacheWrite(client, dc, scope);
+    client.removeQueries({ queryKey: detailKey(), exact: true });
+    client.setQueryData(memberKey, { title: "Hidden old metadata" });
+    const ref = queryRef<GetEventByIdData, {id: string}>(dc, "GetEventById", { id: EVENT });
+    const observer = new QueryObserver(client, dataConnectQueryOptions(ref));
+    const unsubscribe = observer.subscribe(() => {});
+    try {
+      await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
+      expect(observer.getCurrentResult().isPending).toBe(true);
+      await retireCommittedTicketSave(write, ticket, saved);
+      expect(observer.getCurrentResult().isPending).toBe(false);
+      expect(observer.getCurrentResult().isError).toBe(true);
+      expect(observer.getCurrentResult().fetchStatus).toBe("idle");
+      expect(client.getQueryState(memberKey)?.isInvalidated).toBe(true);
+      expect(read).toHaveBeenCalledOnce();
+      const recovered = await observer.refetch({ throwOnError: true });
+      expect(recovered.data).toEqual({ event: saved });
+      expect(recovered.isError).toBe(false);
+      expect(read).toHaveBeenCalledTimes(2);
+      late.resolve({ data: { event: old }, extensions: {} });
+      await vi.waitFor(() => expect(client.getQueryData(detailKey())).toEqual({ event: saved }));
+    } finally { unsubscribe(); }
   });
 });

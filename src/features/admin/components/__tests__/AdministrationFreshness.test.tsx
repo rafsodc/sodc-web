@@ -12,6 +12,7 @@ import SectionEventsManager from "../SectionEventsManager";
 import type { EventBookingAdminRow, TicketTypeRow } from "../sectionEventsManagerTypes";
 import { reviewBookingRevision, submitEventBooking } from "../../../../shared/utils/firebaseFunctions";
 import { dataConnectQueryOptions, refreshDataConnectQuery } from "../../../../shared/query/authoritativeDataConnect";
+import { captureEventSaveCacheWrite, retireCommittedEventSave } from "../../../../shared/query/eventSaveCache";
 import { useGetMyBookings } from "../../../../shared/query/authoritativeHooks";
 import { guestCall } from "../../../guests/api";
 import { createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
@@ -230,6 +231,135 @@ async function ticketEditor(kind: "create" | "update") {
   }
   return { rendered, user };
 }
+
+describe("overlapping routed catalogue saves", () => {
+  it("turns a retired cold detail read into an explicit retry instead of leaving the editor loading", async () => {
+    const endSession = eventSession();
+    const server = eventServer();
+    const capturedWrite = captureEventSaveCacheWrite(queryClient, context.dc, { sectionId: "section-1", eventId: event.id });
+    const originalRead = read.getMockImplementation()!;
+    let completeOldRead!: () => void;
+    let held = false;
+    read.mockImplementation((name: string, variables: Record<string, unknown>) => {
+      if (name === "GetEventById" && !held) {
+        held = true;
+        const previous = copy(server.current());
+        return new Promise(resolve => { completeOldRead = () => resolve({ data: { event: previous }, extensions: {} }); });
+      }
+      return originalRead(name, variables);
+    });
+    const rendered = render(routedEventView());
+    const user = userEvent.setup();
+    try {
+      await screen.findByText("Loading event details…");
+      await waitFor(() => expect(completeOldRead).toBeTypeOf("function"));
+      const readsBeforeRetirement = read.mock.calls.length;
+      const detailReadsBeforeRetirement = read.mock.calls.filter(([name]) => name === "GetEventById").length;
+      expect(detailReadsBeforeRetirement).toBe(1);
+      server.commit("UpdateEvent", { ...copy(event), title: "Committed while detail was loading" });
+      await act(async () => { await retireCommittedEventSave(capturedWrite, server.current()!); });
+      const retry = await screen.findByRole("button", { name: "Retry loading" });
+      expect(screen.queryByText("Loading event details…")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/^title/i)).not.toBeInTheDocument();
+      const detailKey = dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey;
+      expect(queryClient.getQueryState(detailKey)?.status).toBe("error");
+      expect(queryClient.getQueryState(detailKey)?.fetchStatus).toBe("idle");
+      expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true);
+      expect(read).toHaveBeenCalledTimes(readsBeforeRetirement);
+      expect(write).not.toHaveBeenCalled();
+      await user.click(retry);
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("Committed while detail was loading");
+      expect(screen.getByRole("heading", { level: 1, name: "Committed while detail was loading" })).toBeInTheDocument();
+      expect(read.mock.calls.filter(([name]) => name === "GetEventById")).toHaveLength(2);
+      expect(read).toHaveBeenCalledTimes(readsBeforeRetirement + 1);
+      await act(async () => completeOldRead());
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("Committed while detail was loading");
+      expect(queryClient.getQueryData<{ event: { title: string } }>(detailKey)?.event.title).toBe("Committed while detail was loading");
+      expect(read).toHaveBeenCalledTimes(readsBeforeRetirement + 1);
+      expect(write).not.toHaveBeenCalled();
+    } finally { completeOldRead?.(); rendered.unmount(); endSession(); }
+  });
+
+  it.each(["event", "ticket"] as const)("retires incomplete projections when a confirmed late %s save finishes after changing editor", async firstKind => {
+    const endSession = eventSession();
+    const server = eventServer();
+    const commit = (name: string, variables: Record<string, unknown>) => name === "UpdateTicketType"
+      ? commitTicketCatalog(name, variables, server.current()!)
+      : server.commit(name, variables);
+    let completeFirst!: () => void;
+    write.mockImplementation(async (name: string, variables: Record<string, unknown>) => commit(name, variables));
+    // Hold the first operation before its commit, not merely its response. The
+    // second operation can therefore return a full snapshot missing that save.
+    write.mockImplementationOnce((name: string, variables: Record<string, unknown>) => new Promise(resolve => {
+      completeFirst = () => resolve(commit(name, variables));
+    }));
+    const detailsPath = "/sections/section-1/manage/events/event-1?task=details";
+    const ticketPath = "/sections/section-1/manage/events/event-1?task=tickets&ticket=type-1";
+    const rendered = render(routedEventView(firstKind === "event" ? detailsPath : ticketPath));
+    const user = userEvent.setup();
+    try {
+      await waitFor(() => expect(screen.getByLabelText(/^title/i)).toHaveValue(firstKind === "event" ? event.title : "Dinner"));
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: firstKind === "event" ? "Late event title" : "Late ticket title" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(write).toHaveBeenCalledOnce());
+      await act(async () => navigateManager(firstKind === "event" ? ticketPath : detailsPath));
+      if (firstKind === "ticket") await waitForDialogToClose();
+      await waitFor(() => expect(screen.getByLabelText(/^title/i)).toHaveValue(firstKind === "event" ? "Dinner" : event.title));
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: firstKind === "event" ? "Saved ticket B" : "Saved event B" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(write).toHaveBeenCalledTimes(2));
+      if (firstKind === "event") {
+        await waitForDialogToClose();
+        await user.click(await screen.findByRole("link", { name: "Edit Saved ticket B" }));
+        await waitFor(() => expect(screen.getByLabelText(/^title/i)).toHaveValue("Saved ticket B"));
+        fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Newer unsaved ticket B" } });
+      } else {
+        await waitFor(() => expect(screen.queryByLabelText(/^title/i)).not.toBeInTheDocument());
+        await user.click(screen.getByRole("tab", { name: "Event details" }));
+        await waitFor(() => expect(screen.getByLabelText(/^title/i)).toHaveValue("Saved event B"));
+        fireEvent.change(screen.getByLabelText(/^location/i), { target: { value: "Newer unsaved location B" } });
+      }
+      const detailKey = dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey;
+      const listKey = dataConnectQueryOptions(getEventsForSectionRef(context.dc, { sectionId: "section-1" })).queryKey;
+      const memberKey = dataConnectQueryOptions(getMyBookingsRef(context.dc)).queryKey;
+      const joinedKey = dataConnectQueryOptions(listEventBookingsForAdminRef(context.dc, { eventId: event.id })).queryKey;
+      const historicalKey = ["ListBookingPaymentAdjustmentsForAdmin", { eventId: event.id }];
+      const unrelatedKey = ["GetEventById", { id: "unrelated-event" }];
+      queryClient.setQueryData(memberKey, { user: { id: "admin", bookings: [{
+        ...booking(), event: { ...copy(server.current()!), section: { id: "section-1", name: "Events" } },
+      }] } });
+      queryClient.setQueryData(joinedKey, { event: { id: event.id, bookings: [], bookingTicketOrders: [] } });
+      queryClient.setQueryData(historicalKey, { paidAmountMinor: 2500 });
+      queryClient.setQueryData(unrelatedKey, { event: { id: "unrelated-event", title: "Unrelated" } });
+      expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(false);
+      expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(false);
+      const beforeLateCommit = read.mock.calls.length;
+      await act(async () => completeFirst());
+      await waitFor(() => expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true));
+      expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryState(memberKey)?.isInvalidated).toBe(true);
+      if (firstKind === "ticket") expect(queryClient.getQueryState(joinedKey)?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryState(historicalKey)?.isInvalidated).toBe(false);
+      expect(queryClient.getQueryState(unrelatedKey)?.isInvalidated).toBe(false);
+      expect(read).toHaveBeenCalledTimes(beforeLateCommit);
+      expect(write.mock.calls.map(([name]) => name)).toEqual(firstKind === "event"
+        ? ["UpdateEvent", "UpdateTicketType"] : ["UpdateTicketType", "UpdateEvent"]);
+      if (firstKind === "event") {
+        expect(screen.getByRole("dialog", { name: "Edit ticket type" })).toBeInTheDocument();
+        expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer unsaved ticket B");
+      } else expect(screen.getByLabelText(/^location/i)).toHaveValue("Newer unsaved location B");
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      await act(async () => {
+        const result = await refreshDataConnectQuery(queryClient, getEventByIdRef(context.dc, { id: event.id }));
+        expect(result.event?.title).toBe(firstKind === "event" ? "Late event title" : "Saved event B");
+        expect(result.event?.ticketTypes[0].title).toBe(firstKind === "event" ? "Saved ticket B" : "Late ticket title");
+      });
+      if (firstKind === "event") expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer unsaved ticket B");
+      else expect(screen.getByLabelText(/^location/i)).toHaveValue("Newer unsaved location B");
+      expect(write).toHaveBeenCalledTimes(2);
+    } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+});
 
 describe("canonical committed ticket catalogue saves", () => {
   it.each(["create", "update"] as const)("publishes the canonical %s record and sorted catalogue without any follow-up query", async kind => {

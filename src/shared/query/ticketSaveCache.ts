@@ -1,13 +1,13 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
-import { queryRef, type DataConnect } from "firebase/data-connect";
+import { queryRef, type DataConnect, type QueryRef } from "firebase/data-connect";
 import type { GetEventByIdData, TimestampString } from "@dataconnect/generated";
 import { assertSessionCurrent, captureSession, SessionChangedError } from "../appShell/sessionLifecycle";
 import { authorizationReadEpoch, privateReadsBlocked } from "../auth/authorizationUpdate";
 import { idsEqual } from "../utils/uuid";
-import { supersedeDataConnectQueryReads } from "./authoritativeDataConnect";
+import { DataConnectReadSupersededError, supersedeDataConnectQueryReads } from "./authoritativeDataConnect";
 import { removeSectionEventSummaries } from "./sectionEventSummaryCache";
 import {
-  applyCommittedEventSave, assertCanonicalCommittedEvent, captureEventSaveCacheWrite,
+  assertCanonicalCommittedEvent, captureCommittedEventRetirement, captureEventSaveCacheWrite,
   type CanonicalCommittedEvent,
 } from "./eventSaveCache";
 
@@ -95,7 +95,10 @@ function isTicketMetadataDependency(key: QueryKey, scope: TicketDependencyScope)
  * retire just its dependent metadata after that read, without inventing a ticket
  * timestamp, advancing event write ordering or making any network requests.
  */
-export async function retireTicketSaveDependencies(client: QueryClient, dc: DataConnect, scope: TicketDependencyScope): Promise<void> {
+export async function retireTicketSaveDependencies(
+  client: QueryClient, dc: DataConnect, scope: TicketDependencyScope,
+  trackReadFence?: (ref: QueryRef<unknown, unknown>, fence: () => void) => void,
+): Promise<void> {
   const session = captureSession();
   const epoch = authorizationReadEpoch();
   const capturedScope = { ...scope };
@@ -107,7 +110,12 @@ export async function retireTicketSaveDependencies(client: QueryClient, dc: Data
   const dependencies = client.getQueryCache().getAll().filter(query => isTicketMetadataDependency(query.queryKey, capturedScope));
   const fences = dependencies.filter(query => scopedDataConnectDependencies.has(String(query.queryKey[0])) ||
     aggregateDataConnectDependencies.has(String(query.queryKey[0])))
-    .map(query => supersedeDataConnectQueryReads(queryRef<unknown, unknown>(dc, String(query.queryKey[0]), query.queryKey[1] ?? undefined)));
+    .map(query => {
+      const ref = queryRef<unknown, unknown>(dc, String(query.queryKey[0]), query.queryKey[1] ?? undefined);
+      const fence = supersedeDataConnectQueryReads(ref);
+      trackReadFence?.(ref, fence);
+      return fence;
+    });
   const assertRetirementCurrent = () => { assertCurrentSession(); fences.forEach(assertLatest => assertLatest()); };
   // Retire bundled/member summaries even when a later cancellation fails.
   removeSectionEventSummaries(client);
@@ -120,6 +128,19 @@ export async function retireTicketSaveDependencies(client: QueryClient, dc: Data
   assertRetirementCurrent();
 }
 
+function captureTicketRetirement(write: TicketSaveCacheWrite, event: CanonicalCommittedEvent) {
+  return captureCommittedEventRetirement(write.parent, event, {
+    matches: key => isTicketMetadataDependency(key, write.scope),
+    dataConnectNames: new Set([...scopedDataConnectDependencies, ...aggregateDataConnectDependencies]),
+  });
+}
+
+/** The committed ticket may outlive its editor; invalidate without publishing it. */
+export async function retireCommittedTicketSave(write: TicketSaveCacheWrite, ticket: CanonicalCommittedTicket, event: CanonicalCommittedEvent): Promise<void> {
+  assertCanonicalCommittedTicketResponse(ticket, event, write.scope);
+  await captureTicketRetirement(write, event).retire();
+}
+
 /** Publish the confirmed full parent without fetching hidden panels. The parent
  * writer shares event/sibling-ticket ordering, session and SDK read fences, and
  * retires aggregate/member/guest projections. All later app reads are SERVER_ONLY;
@@ -129,10 +150,18 @@ export async function applyCommittedTicketSave(
   write: TicketSaveCacheWrite, ticket: CanonicalCommittedTicket, event: CanonicalCommittedEvent,
 ): Promise<void> {
   assertCanonicalCommittedTicketResponse(ticket, event, write.scope);
-  assertCurrent(write);
-  const { client, dc } = write.parent;
-  await retireTicketSaveDependencies(client, dc, write.scope);
-  assertCurrent(write);
-  await applyCommittedEventSave(write.parent, event);
-  assertCurrent(write);
+  const retirement = captureTicketRetirement(write, event);
+  try {
+    assertCurrent(write);
+    const { client, dc } = write.parent;
+    await retireTicketSaveDependencies(client, dc, write.scope, retirement.trackReadFence);
+    assertCurrent(write);
+    // Keep the guards captured before dependency cancellation. Recapturing here
+    // could retire an authoritative detail read started during that await.
+    await retirement.publish();
+    assertCurrent(write);
+  } catch (error) {
+    if (error instanceof DataConnectReadSupersededError) await retirement.retire();
+    throw error;
+  }
 }
