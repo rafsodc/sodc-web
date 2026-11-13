@@ -367,8 +367,8 @@ export function SectionEventDetailView({
 
 
   return (
-    <Box sx={{ mt: 2 }}>
-      <Button size="small" component={RouterLink} to={sectionPath(section.id)} sx={{ mb: 2 }}>
+    <Box sx={{ mt: 2, minWidth: 0 }}>
+      <Button size="small" component={RouterLink} to={sectionPath(section.id)} sx={{ mb: 2, minHeight: { xs: 44, sm: 30 } }}>
         Back to events
       </Button>
       {loading && !event ? (
@@ -389,7 +389,7 @@ export function SectionEventDetailView({
             <Tabs
               aria-label="Event information"
               value={activeTab}
-              sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
+              sx={{ mb: 2, borderBottom: 1, borderColor: "divider", "& .MuiTab-root": { minWidth: { xs: 0, sm: 90 }, flex: { xs: 1, sm: "none" }, px: { xs: 1, sm: 2 } } }}
             >
               {(["about", "book", "attendees"] as const).map((tab) => (
                 <Tab component={RouterLink} to={memberEventPath(section.id,event.id,tab)} key={tab} label={eventDetailTabLabel(tab)} value={tab} id={`${tabId}-${tab}-tab`} aria-controls={`${tabId}-${tab}-panel`} />
@@ -411,7 +411,7 @@ export function SectionEventDetailView({
                     variant="contained"
                     component={RouterLink}
                     to={memberEventPath(section.id,event.id,"book")}
-                    sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText" }}
+                    sx={{ backgroundColor: "secondary.main", color: "secondary.contrastText", width: { xs: "100%", sm: "auto" }, minHeight: { xs: 44, sm: 36 } }}
                   >
                     {hasExistingBooking ? "View my booking" : "Book this event"}
                   </Button>

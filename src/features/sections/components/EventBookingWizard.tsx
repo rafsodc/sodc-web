@@ -1,4 +1,4 @@
-import { Alert, Box, Button, CircularProgress, Paper, Step, StepLabel, Stepper, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Paper, Step, StepLabel, Stepper, Typography, useMediaQuery, useTheme } from "@mui/material";
 import type { GetEventByIdData, GetSectionByIdData } from "@dataconnect/generated";
 import { getBookingStatusLabel } from "../../../shared/utils/paymentStatusLabels";
 import FailureState from "../../../shared/components/FailureState";
@@ -37,6 +37,8 @@ export default function EventBookingWizard({
     onBookingComplete,
     onHasExistingBookingChange,
   });
+  const theme = useTheme();
+  const compactLayout = useMediaQuery(theme.breakpoints.down("sm"));
 
   if (wizard.loadingProfile || wizard.loadingBookings) {
     return <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}><CircularProgress size={28} /></Box>;
@@ -71,7 +73,7 @@ export default function EventBookingWizard({
   if (!showClosedBooking && !wizard.showWizard && !wizard.showBookingSummary && !wizard.lastSubmission) return null;
 
   return (
-    <Box sx={{ mt: 1 }}>
+    <Box sx={{ mt: 1, minWidth: 0, overflowWrap: "anywhere" }}>
       {showClosedBooking ? (
         <Alert severity="info" sx={{ mb: 2 }}>Bookings for this event are closed.</Alert>
       ) : null}
@@ -109,12 +111,18 @@ export default function EventBookingWizard({
       {wizard.lastSubmission && !wizard.existingTerminalBooking ? (
         <Alert
           severity={wizard.lastSubmission.paymentReady ? "success" : "warning"}
-          sx={{ mt: 2 }}
+          sx={{
+            mt: 2,
+            flexWrap: "wrap",
+            "& .MuiAlert-message": { minWidth: 0, flex: "1 1 180px" },
+            "& .MuiAlert-action": { ml: { xs: 0, sm: 2 }, mt: { xs: 1, sm: 0 }, width: { xs: "100%", sm: "auto" }, p: 0 },
+          }}
           action={wizard.lastSubmission.paymentReady ? (
             <Button
               color="inherit"
               disabled={wizard.payingAllTickets}
               onClick={() => void wizard.handlePayAllTickets()}
+              sx={{ width: { xs: "100%", sm: "auto" }, minHeight: { xs: 44, sm: 36 } }}
             >
               {wizard.payingAllTickets ? "Starting checkout…" : "Continue to payment"}
             </Button>
@@ -145,13 +153,18 @@ export default function EventBookingWizard({
             </Alert>
           ) : null}
 
-          <Stepper
-            activeStep={wizard.activeStep}
-            alternativeLabel
-            sx={{ mb: 3, overflowX: "auto", pb: 1 }}
-          >
-            {wizard.steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
-          </Stepper>
+          {compactLayout ? (
+            <Box role="status" aria-label="Booking progress" aria-live="polite" sx={{ mb: 2 }}>
+              <Typography variant="caption" component="p" color="text.secondary">
+                Step {wizard.activeStep + 1} of {wizard.steps.length}
+              </Typography>
+              <Typography variant="subtitle2" component="p" aria-current="step">{wizard.steps[wizard.activeStep]}</Typography>
+            </Box>
+          ) : (
+            <Stepper activeStep={wizard.activeStep} alternativeLabel sx={{ mb: 3, pb: 1 }}>
+              {wizard.steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
+            </Stepper>
+          )}
 
           {wizard.submitError ? (
             <Alert severity="error" sx={{ mb: 2 }} onClose={() => wizard.setSubmitError(null)}>
@@ -159,7 +172,7 @@ export default function EventBookingWizard({
             </Alert>
           ) : null}
 
-          <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+          <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, mb: 2, minWidth: 0 }}>
             {wizard.activeStep === 0 ? (
               <TicketSelectionStep
                 memberTicketTypes={wizard.memberTicketTypes}
@@ -208,7 +221,7 @@ export default function EventBookingWizard({
             ) : null}
           </Paper>
 
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "center" }, gap: { xs: 1, sm: 2 }, "& .MuiButton-root": { minHeight: { xs: 44, sm: 36 } } }}>
             <Button onClick={wizard.handleBack} disabled={wizard.activeStep === 0 || wizard.submitting}>Back</Button>
             {wizard.activeStep < wizard.steps.length - 1 ? (
               <Button variant="contained" onClick={wizard.handleNext} disabled={wizard.submitting}>Next</Button>
@@ -224,11 +237,11 @@ export default function EventBookingWizard({
           </Box>
 
           {wizard.editingExistingBooking ? (
-            <Button size="small" onClick={wizard.cancelEditing} disabled={wizard.submitting} sx={{ mt: 1 }}>
+            <Button size="small" onClick={wizard.cancelEditing} disabled={wizard.submitting} sx={{ mt: 1, width: { xs: "100%", sm: "auto" }, minHeight: { xs: 44, sm: 30 } }}>
               Cancel editing
             </Button>
           ) : (
-            <Button size="small" onClick={wizard.closeWizard} disabled={wizard.submitting} sx={{ mt: 1 }}>
+            <Button size="small" onClick={wizard.closeWizard} disabled={wizard.submitting} sx={{ mt: 1, width: { xs: "100%", sm: "auto" }, minHeight: { xs: 44, sm: 30 } }}>
               Cancel
             </Button>
           )}

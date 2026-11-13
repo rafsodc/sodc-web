@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import { render, screen } from "../../../../test-utils";
+import userEvent from "@testing-library/user-event";
+import { render, screen, within } from "../../../../test-utils";
 import {
   BookingPaymentAdjustmentStatus,
   BookingStatus,
@@ -44,6 +45,8 @@ function renderSummary(args: {
   paymentBooking?: ReturnType<typeof booking> | null;
   orders?: unknown[];
   adjustments?: unknown[];
+  onEditBooking?: () => void;
+  onPayNow?: (ticketTypeId: string) => void;
 } = {}) {
   render(
     <MemoryRouter>
@@ -54,14 +57,71 @@ function renderSummary(args: {
         eventTitle="Annual Dinner"
         ticketOrders={(args.orders ?? []) as never}
         paymentAdjustments={(args.adjustments ?? []) as never}
-        onEditBooking={vi.fn()}
-        onPayNow={vi.fn()}
+        onEditBooking={args.onEditBooking ?? vi.fn()}
+        onPayNow={args.onPayNow ?? vi.fn()}
       />
     </MemoryRouter>
   );
 }
 
 describe("EventBookingStatusSummary", () => {
+  it("labels each active phone ticket and preserves its payment and edit actions", async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn((query) => ({
+      ...originalMatchMedia(query),
+      matches: query.includes("max-width"),
+    }));
+    try {
+      const user = userEvent.setup();
+      const onPayNow = vi.fn();
+      const onEditBooking = vi.fn();
+      renderSummary({
+        booking: booking({ lines: [removedLine(), ticketLine({
+          id: "guest-line",
+          guestDisplayName: "Alex Guest",
+          bookingPlace: { id: "guest-place", attendanceRemoved: false, paymentAllocations: [] },
+          ticketType: { id: "ticket-guest", title: "Guest standard", audience: TicketAudience.GUEST, price: 25 },
+        })] }),
+        onPayNow,
+        onEditBooking,
+      });
+
+      const tickets = screen.getByRole("list", { name: "Booking tickets" });
+      const rows = within(tickets).getAllByRole("listitem");
+      expect(rows).toHaveLength(1);
+      expect(within(rows[0]!).getByRole("heading", { name: "Guest standard" })).toBeInTheDocument();
+      for (const text of ["Guest", "Alex Guest", "Price", "£25.00", "Payment", "Unpaid"]) {
+        expect(within(rows[0]!).getByText(text)).toBeInTheDocument();
+      }
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+      expect(screen.queryByText("Member standard")).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "View in My Bookings" })).toHaveAttribute("href", "/bookings");
+
+      await user.click(screen.getByRole("button", { name: "Pay for all tickets" }));
+      expect(onPayNow).toHaveBeenCalledExactlyOnceWith("ticket-guest");
+      await user.click(screen.getByRole("button", { name: "Edit booking" }));
+      expect(onEditBooking).toHaveBeenCalledTimes(1);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it("keeps phone tickets awaiting approval unavailable for payment", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn((query) => ({
+      ...originalMatchMedia(query),
+      matches: query.includes("max-width"),
+    }));
+    try {
+      renderSummary({ booking: booking({ approvalStatus: "PENDING" }) });
+      expect(screen.getByRole("list", { name: "Booking tickets" })).toHaveTextContent("Member standard");
+      expect(screen.getByRole("heading", { name: "Awaiting approval" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /pay/i })).not.toBeInTheDocument();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
   it("shows awaiting approval without offering payment", () => {
     renderSummary({ booking: booking({ approvalStatus: "PENDING" }) });
     expect(screen.getByRole("heading", { name: "Awaiting approval" })).toBeInTheDocument();

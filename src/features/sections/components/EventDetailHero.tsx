@@ -56,6 +56,7 @@ function EventMetaItem({
       sx={{
         display: "flex",
         alignItems: "flex-start",
+        minWidth: 0,
         gap: 1.25,
         p: 1.5,
         borderRadius: 1.5,
@@ -63,10 +64,10 @@ function EventMetaItem({
         gridColumn: fullWidth ? "1 / -1" : undefined,
       }}
     >
-      <Box sx={{ color: "primary.main", display: "flex", mt: 0.25 }} aria-hidden="true">
+      <Box sx={{ color: "primary.main", display: "flex", flexShrink: 0, mt: 0.25 }} aria-hidden="true">
         {icon}
       </Box>
-      <Box>
+      <Box sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
         <Typography
           variant="caption"
           component="div"
@@ -86,8 +87,8 @@ function EventMetaItem({
 
 export default function EventDetailHero({ event }: EventDetailHeroProps) {
   return (
-    <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, mb: 2 }}>
-      <Typography variant="h5" component="h2" fontWeight={600} sx={{ mb: 2 }}>
+    <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 3 }, mb: 2, minWidth: 0 }}>
+      <Typography variant="h5" component="h2" fontWeight={600} sx={{ mb: 2, fontSize: { xs: "1.25rem", sm: "1.5rem" }, overflowWrap: "anywhere" }}>
         {event.title}
       </Typography>
 
@@ -95,7 +96,7 @@ export default function EventDetailHero({ event }: EventDetailHeroProps) {
         aria-label="Event information"
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" },
           gap: 1.25,
         }}
       >

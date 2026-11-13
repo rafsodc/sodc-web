@@ -30,7 +30,7 @@ export default function ReviewStep({
   );
 
   return (
-    <Box>
+    <Box sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
       <Alert severity={needsApproval ? "warning" : "info"} sx={{ mb: 2 }}>
         {needsApproval
           ? `This complete booking will be sent for organiser approval because it has ${guests.length} guest${guests.length === 1 ? "" : "s"}. Payment will become available after approval.`
