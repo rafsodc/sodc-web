@@ -279,7 +279,7 @@ function EventDetailsSection({
           <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2, m: 0 }}>
             <RecordField label="Booking opens">{new Date(event.bookingStartDateTime).toLocaleString()}</RecordField>
             <RecordField label="Booking closes">{new Date(event.bookingEndDateTime).toLocaleString()}</RecordField>
-            <RecordField label="Max guests without moderator approval">{event.maxGuestsWithoutModeratorApproval ?? "—"}</RecordField>
+            <RecordField label="Guests before approval">{event.maxGuestsWithoutModeratorApproval ?? "—"}</RecordField>
           </Box>
         </Box>
         <Box sx={recordCardSx}>

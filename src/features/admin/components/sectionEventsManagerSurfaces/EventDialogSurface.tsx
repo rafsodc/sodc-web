@@ -92,7 +92,7 @@ export function EventDialogSurface({
   const titleError = !title.trim() ? "Title is required." : undefined;
   const maxGuests = Number(maxGuestsStr.trim());
   const maxGuestsError = !maxGuestsStr.trim()
-    ? "Max guests without moderator approval is required."
+    ? "Guests before approval is required."
     : !Number.isInteger(maxGuests) || maxGuests < 0
       ? "Enter a whole number of guest places, 0 or more."
       : undefined;

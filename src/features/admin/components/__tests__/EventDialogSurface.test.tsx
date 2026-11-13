@@ -97,7 +97,7 @@ describe("Event details editor presentation", () => {
   describe.each([false, true])("non-date feedback (embedded=%s)", (embedded) => {
     it.each([
       ["title", " ", "Title", "Title is required."],
-      ["maxGuestsStr", "", "Guests before approval", "Max guests without moderator approval is required."],
+      ["maxGuestsStr", "", "Guests before approval", "Guests before approval is required."],
       ["maxGuestsStr", "-1", "Guests before approval", "Enter a whole number of guest places, 0 or more."],
       ["maxGuestsStr", "1.5", "Guests before approval", "Enter a whole number of guest places, 0 or more."],
     ] as const)("shows actionable feedback after attempting to save invalid %s=%s", async (field, value, label, message) => {
