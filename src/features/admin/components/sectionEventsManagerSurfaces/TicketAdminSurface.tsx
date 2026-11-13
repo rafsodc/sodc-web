@@ -266,7 +266,7 @@ function EventDetailsSection({
       <Stack spacing={3}>
         <Box sx={recordCardSx}>
           <Typography variant="h6" component="h3" sx={{ mb: 2 }}>Event information</Typography>
-          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, m: 0 }}>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2, m: 0 }}>
             <RecordField label="Title">{event.title}</RecordField>
             <RecordField label="Location">{event.location || "—"}</RecordField>
             <RecordField label="Date / time">{new Date(event.startDateTime).toLocaleString()} – {new Date(event.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</RecordField>
@@ -276,7 +276,7 @@ function EventDetailsSection({
         </Box>
         <Box sx={recordCardSx}>
           <Typography variant="h6" component="h3" sx={{ mb: 2 }}>Booking settings</Typography>
-          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, m: 0 }}>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2, m: 0 }}>
             <RecordField label="Booking opens">{new Date(event.bookingStartDateTime).toLocaleString()}</RecordField>
             <RecordField label="Booking closes">{new Date(event.bookingEndDateTime).toLocaleString()}</RecordField>
             <RecordField label="Max guests without moderator approval">{event.maxGuestsWithoutModeratorApproval ?? "—"}</RecordField>
@@ -316,7 +316,7 @@ export function TicketTypesTable({
     {ticketTypes.map((ticketType) => <Box key={ticketType.id} sx={recordCardSx}>
       <Typography component="h3" fontWeight={700}>{ticketType.title}</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ my: 1 }}>{ticketType.description || "No description"}</Typography>
-      <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, m: 0 }}>
+      <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2, m: 0 }}>
         <RecordField label="Price">{money(Math.round(ticketType.price * 100))}</RecordField>
         <RecordField label={TICKET_CATEGORY_LABEL}>{getTicketCategoryLabel(ticketType.audience)}</RecordField>
         <RecordField label="Dinner">{ticketType.includesDinner ? "Yes" : "No"}</RecordField>
@@ -435,7 +435,7 @@ function RevisionFinancialPreview({ previous, proposed, ticketOrdersById }: { pr
   return <Box sx={recordCardSx}>
     <Typography component="h3" variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Financial effect</Typography>
     {estimate.unknownPaymentPlaceCount > 0 && <Alert severity="warning" sx={{ mb: 2 }}>Payment evidence is incomplete for one or more current places. Checkout estimates are unavailable until allocation and order records load.</Alert>}
-    <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, m: 0 }}>
+    <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2, m: 0 }}>
       <RecordField label="Previous ticket total">{previous ? money(total(previous)) : "No previous booking"}</RecordField>
       <RecordField label="Proposed ticket total">{money(total(proposed))}</RecordField>
       <RecordField label="Estimated refund due at checkout">{estimate.refundDueMinor == null ? "Unavailable until payment records load" : money(estimate.refundDueMinor)}</RecordField>
@@ -492,7 +492,7 @@ function BookingApprovalsSection(props: BookingApprovalsProps) {
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           {savedDecision && <Alert severity="info" sx={{ mb: 2 }}>Decision saved. Close this review and use Retry refresh to load the updated list.</Alert>}
           {reviewed.approvalStatus === BookingApprovalStatus.PENDING && !currentPending && <Alert severity="warning" sx={{ mb: 2 }}>This revision has changed or is no longer awaiting review. Close this review and reload the current list before deciding.</Alert>}
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 2, mb: 2 }}>
             <Box><Typography component="h3" variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Previous active booking</Typography>{previous ? <BookingRevisionSnapshot booking={previous} ticketOrdersById={ticketOrdersById} seatingPreferenceUserNamesById={seatingPreferenceUserNamesById} /> : <Alert severity="info">No previous active booking.</Alert>}</Box>
             <Box><Typography component="h3" variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Proposed booking</Typography><BookingRevisionSnapshot booking={reviewed} ticketOrdersById={ticketOrdersById} seatingPreferenceUserNamesById={seatingPreferenceUserNamesById} /></Box>
           </Box>
@@ -748,7 +748,7 @@ export function EventAttendeeTicketsSection({
     {onAnnounce && <Button sx={{ mt: 2 }} variant="contained" onClick={() => onAnnounce({ ...filters })}>Send announcement to attendees</Button>}
   </Box>;
   return (
-    <Box>
+    <Box sx={{ minWidth: 0 }}>
       {copyMessage ? (
         <Alert severity={copyMessage.severity} onClose={() => setCopyMessage(null)} sx={{ mb: 2 }}>
           {copyMessage.text}
@@ -758,7 +758,7 @@ export function EventAttendeeTicketsSection({
         <Typography variant="body2" color="text.secondary">
           Showing {filteredRows.length} of {rows.length} attendees
         </Typography>
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, width: { xs: "100%", sm: "auto" }, minWidth: 0, gap: 1, flexWrap: "wrap", "& .MuiButton-root": { minHeight: { xs: 44, sm: 36 } } }}>
           {onAnnounce && <Button variant="contained" onClick={() => onAnnounce({ ...filters })}>Send announcement to attendees</Button>}
           <Button size="small" disabled={!hasActiveFilters} onClick={() => {
             setFilters(emptyEventAttendeeTicketFilters);
@@ -766,7 +766,7 @@ export function EventAttendeeTicketsSection({
           }}>
             Clear filters
           </Button>
-          <FormControl size="small" sx={{ minWidth: 175 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 175 } }}>
             <InputLabel id={emailSeparatorLabelId}>Email separator</InputLabel>
             <Select
               labelId={emailSeparatorLabelId}
@@ -786,7 +786,7 @@ export function EventAttendeeTicketsSection({
           >
             Copy email addresses ({emails.length})
           </Button>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+          <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { xs: "stretch", sm: "center" }, gap: 1, flexWrap: "wrap" }}>
             <Typography variant="caption" color="text.secondary">CSV includes all attendees</Typography>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>Export full CSV</Button>
           </Box>
@@ -808,7 +808,7 @@ export function EventAttendeeTicketsSection({
       {compact ? filteredRows.length === 0 ? <Alert severity="info">No attendees match the current filters.</Alert> : <Stack spacing={2}>
         {filteredRows.map((row) => <Box key={row.key} sx={recordCardSx}>
           <Typography component="h3" fontWeight={700} sx={{ mb: 2 }}>{row.attendeeName}</Typography>
-          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, m: 0 }}>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2, m: 0 }}>
             <RecordField label="Attendee email">{row.email || "—"}</RecordField>
             {row.bookingOwnerName && <RecordField label="Booked by">{row.bookingOwnerName}{row.bookingOwnerEmail && <Typography variant="caption" display="block">{row.bookingOwnerEmail}</Typography>}</RecordField>}
             <RecordField label="Rank">{row.rank || "—"}</RecordField>
@@ -1029,12 +1029,12 @@ function PaymentActivitySection({
   const orderAmount = (minor: number, currency: string) => `${(minor / 100).toFixed(2)} ${currency.toUpperCase()}`;
   const refundLabel = (order: TicketOrderAdminRow) => order.refundedAmountMinor == null ? "No refund recorded" : `${orderAmount(order.refundedAmountMinor, order.currency)} · ${order.refundedAt ? new Date(order.refundedAt).toLocaleString() : "Time unknown"}`;
   const disputeLabel = (order: TicketOrderAdminRow) => order.stripeDisputeId ? `${titleCaseStatus(order.disputeStatus ?? "OPEN")} · ${order.disputeReason ?? "Reason not supplied"}` : "No dispute recorded";
-  return <Box>
+  return <Box sx={{ minWidth: 0 }}>
     <Tabs value={selectedView} aria-label="Payment views" variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile sx={{ mb: 2 }} onChange={(_, next: EventPaymentView) => { setLocalView(next); onViewChange?.(next); }}>
       <Tab value="required" label="Payment required" /><Tab value="all" label="All payment records" />
     </Tabs>
     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Booking approval and payment are tracked separately. Payment records do not change when an attendee ticket is edited or removed.</Typography>
-    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 3 }}>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 2, mb: 3 }}>
       <Box sx={recordCardSx}>
         <Typography component="h3" variant="subtitle1" fontWeight={700}>Net settled booking orders</Typography>
         {loading ? <Typography variant="body2">Loading settled booking payments…</Typography> : settledPaymentsUnavailable ? <Typography variant="body2" color="text.secondary">Unavailable until payment order records load.</Typography> : settled.bookingOrdersEvidenceIncomplete ? <Typography variant="body2" color="text.secondary">Unavailable until booking refund amounts are complete.</Typography> : settled.bookingOrdersByCurrency.length > 0 ? <Box component="dl" sx={{ display: "flex", flexWrap: "wrap", gap: 3, my: 1 }}>{settled.bookingOrdersByCurrency.map(({ currency, amountMinor }) => <RecordField key={currency} label={currency || "Currency unavailable"}>{(amountMinor / 100).toFixed(2)} {currency}</RecordField>)}</Box> : <Typography variant="body2">No settled booking order payments recorded.</Typography>}
@@ -1056,7 +1056,7 @@ function PaymentActivitySection({
         {summary.requiredPayments.map((payment) => <Box key={payment.key} sx={recordCardSx}>
           <Typography component="h3" fontWeight={700}>{payment.ownerName}</Typography>
           <Typography variant="body2" color="text.secondary">{payment.ownerEmail || "No email recorded"}</Typography>
-          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, my: 2 }}>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2, my: 2 }}>
             <RecordField label="Outstanding">{money(payment.outstandingAmountPence)}</RecordField>
             <RecordField label="Tickets">{payment.ticketCount}</RecordField>
             <RecordField label="Payment">{payment.paymentPending ? "Payment in progress" : "Payment required"}</RecordField>
@@ -1076,7 +1076,7 @@ function PaymentActivitySection({
       {ticketOrders.length === 0 ? <Alert severity="info">No payment orders found for this event.</Alert> : compact ? <Stack spacing={2}>
         {ticketOrders.map((order) => <Box key={order.id} sx={recordCardSx}>
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mb: 1 }}><Typography component="h3" fontWeight={700}>{order.user ? `${order.user.firstName} ${order.user.lastName}` : "Purchaser unavailable"}</Typography><Chip size="small" label={titleCaseStatus(order.status)} color={order.status === "PAID" ? "success" : "default"} /></Stack>
-          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, m: 0 }}>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2, m: 0 }}>
             <RecordField label="Ticket">{order.ticketType?.title || "—"}</RecordField><RecordField label="Quantity">{order.quantity}</RecordField><RecordField label="Amount">{orderAmount(order.totalAmountMinor, order.currency)}</RecordField><RecordField label="Updated">{new Date(order.updatedAt).toLocaleString()}</RecordField><RecordField label="Refund">{refundLabel(order)}</RecordField><RecordField label="Dispute">{disputeLabel(order)}</RecordField><RecordField label="Webhook event ID">{order.webhookEventId || "—"}</RecordField><RecordField label="Updated by">{order.updatedBy || "—"}</RecordField>
           </Box>
         </Box>)}
@@ -1091,7 +1091,7 @@ function PaymentActivitySection({
         {compact ? <Stack spacing={2}>{organiserGuests.map((guest) => <Box key={guest.id} sx={recordCardSx}>
           <Typography component="h4" fontWeight={700}>{guest.firstName} {guest.lastName}</Typography>
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ my: 1 }}><Chip size="small" label={titleCaseStatus(guest.paymentStatus)} />{guest.cancelled && <Chip size="small" label="Cancelled ticket" variant="outlined" />}</Stack>
-          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, m: 0 }}><RecordField label="Ticket">{guest.ticketTitle}</RecordField><RecordField label="Price">{money(guest.priceMinor)}</RecordField><RecordField label="Refunded">{money(guest.refundedAmountMinor)}</RecordField><RecordField label="Contact">{guest.email || "No email recorded"}</RecordField></Box>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2, m: 0 }}><RecordField label="Ticket">{guest.ticketTitle}</RecordField><RecordField label="Price">{money(guest.priceMinor)}</RecordField><RecordField label="Refunded">{money(guest.refundedAmountMinor)}</RecordField><RecordField label="Contact">{guest.email || "No email recorded"}</RecordField></Box>
           {taskHref && <Button size="small" component={RouterLink} to={taskHref("guests")}>Manage guest</Button>}
         </Box>)}</Stack> : <AdminTable minWidth={650}><TableHead><TableRow><TableCell>Organiser guest</TableCell><TableCell>Ticket</TableCell><TableCell>Payment</TableCell><TableCell>Price</TableCell><TableCell>Refunded</TableCell><TableCell>Ticket status</TableCell>{taskHref && <TableCell>Actions</TableCell>}</TableRow></TableHead><TableBody>{organiserGuests.map((guest) => <TableRow key={guest.id}><TableCell>{guest.firstName} {guest.lastName}</TableCell><TableCell>{guest.ticketTitle}</TableCell><TableCell><Chip size="small" label={titleCaseStatus(guest.paymentStatus)} /></TableCell><TableCell>{money(guest.priceMinor)}</TableCell><TableCell>{money(guest.refundedAmountMinor)}</TableCell><TableCell>{guest.cancelled ? "Cancelled" : "Current"}</TableCell>{taskHref && <TableCell><Button size="small" component={RouterLink} to={taskHref("guests")}>Manage guest</Button></TableCell>}</TableRow>)}</TableBody></AdminTable>}
       </Box>}
@@ -1099,7 +1099,7 @@ function PaymentActivitySection({
         <Divider sx={{ mb: 2 }} /><Typography variant="h6" component="h3" sx={{ mb: 2 }}>Booking payment adjustments</Typography>
         {compact ? <Stack spacing={2}>{adjustments.map(({ booking, adjustment }) => <Box key={adjustment.id} sx={recordCardSx}>
           <Typography fontWeight={700}>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "Booker unavailable"}</Typography><Chip size="small" color="warning" label={titleCaseStatus(adjustment.status)} sx={{ my: 1 }} />
-          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, m: 0 }}><RecordField label="Adjustment">{money(adjustment.deltaAmountMinor)}</RecordField><RecordField label="Revision">{booking.revisionNumber}</RecordField><RecordField label="Updated">{new Date(adjustment.updatedAt).toLocaleString()}</RecordField></Box>
+          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2, m: 0 }}><RecordField label="Adjustment">{money(adjustment.deltaAmountMinor)}</RecordField><RecordField label="Revision">{booking.revisionNumber}</RecordField><RecordField label="Updated">{new Date(adjustment.updatedAt).toLocaleString()}</RecordField></Box>
         </Box>)}</Stack> : <AdminTable minWidth={650}>
           <TableHead><TableRow><TableCell>Adjustment</TableCell><TableCell>Booker</TableCell><TableCell align="right">Delta</TableCell><TableCell>Revision</TableCell><TableCell>Updated</TableCell></TableRow></TableHead>
           <TableBody>{adjustments.map(({ booking, adjustment }) => <TableRow key={adjustment.id}><TableCell><Chip size="small" color="warning" label={adjustment.status.replaceAll("_", " ")} /></TableCell><TableCell>{booking.booker ? `${booking.booker.firstName} ${booking.booker.lastName}` : "—"}</TableCell><TableCell align="right">{money(adjustment.deltaAmountMinor)}</TableCell><TableCell>Rev {booking.revisionNumber}</TableCell><TableCell>{new Date(adjustment.updatedAt).toLocaleString()}</TableCell></TableRow>)}</TableBody>

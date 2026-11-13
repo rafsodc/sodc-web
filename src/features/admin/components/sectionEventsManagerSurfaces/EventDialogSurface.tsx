@@ -12,6 +12,7 @@ import {
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
 import SafeMarkdown from "../../../../shared/components/SafeMarkdown";
 import type { EventRow } from "../sectionEventsManagerTypes";
@@ -78,6 +79,7 @@ export function EventDialogSurface({
   onBookingEndDateTimeChange,
   onMaxGuestsChange,
 }: EventDialogSurfaceProps) {
+  const narrow = useMediaQuery("(max-width:599px)");
   const headingId = useId();
   const errorId = useId();
   const [validationAttempted, setValidationAttempted] = useState(false);
@@ -116,6 +118,7 @@ export function EventDialogSurface({
   const errorAlert = error && <Alert id={errorId} severity="error" aria-atomic="true" sx={{ mb: 2 }}>{error}</Alert>;
   const saveLabel = submitting ? "Saving event" : "Save";
   const saveContent = submitting ? <><CircularProgress size={20} aria-hidden="true" sx={{ mr: 1 }} />Saving…</> : null;
+  const dateFieldSx = { minWidth: 0, "& input": { minWidth: 0, px: { xs: 1, sm: 1.75 } } };
   const previewDetails = details.trim();
   const informationFields = (
     <>
@@ -167,6 +170,7 @@ export function EventDialogSurface({
       <TextField
         label="Start date/time"
         type="datetime-local"
+        sx={dateFieldSx}
         fullWidth
         value={startDateTime}
         required
@@ -180,6 +184,7 @@ export function EventDialogSurface({
       <TextField
         label="End date/time"
         type="datetime-local"
+        sx={dateFieldSx}
         fullWidth
         value={endDateTime}
         required
@@ -197,6 +202,7 @@ export function EventDialogSurface({
       <TextField
         label="Booking window start"
         type="datetime-local"
+        sx={dateFieldSx}
         fullWidth
         value={bookingStartDateTime}
         required
@@ -210,6 +216,7 @@ export function EventDialogSurface({
       <TextField
         label="Booking window end"
         type="datetime-local"
+        sx={dateFieldSx}
         fullWidth
         value={bookingEndDateTime}
         required
@@ -221,7 +228,7 @@ export function EventDialogSurface({
         InputLabelProps={{ shrink: true }}
       />
       <TextField
-        label="Max guests without moderator approval"
+        label="Guests before approval"
         type="number"
         fullWidth
         value={maxGuestsStr}
@@ -245,12 +252,13 @@ export function EventDialogSurface({
         aria-labelledby={headingId}
         aria-describedby={error ? errorId : undefined}
         aria-busy={submitting}
+        sx={{ minWidth: 0 }}
         onSubmit={(event) => {
           event.preventDefault();
           submit();
         }}
       >
-        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} sx={{ mb: 2 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between" gap={2} sx={{ mb: 2 }}>
           <Typography id={headingId} component="h2" variant="h5">Event details</Typography>
           <Box role="status" aria-live="polite">
             <Chip size="small" label={dirty ? "Unsaved changes" : "Saved"} color={dirty ? "warning" : "default"} variant="outlined" />
@@ -265,13 +273,13 @@ export function EventDialogSurface({
           </Box>
           <Box component="fieldset" sx={{ m: 0, p: { xs: 2, sm: 3 }, minWidth: 0, border: 1, borderColor: "divider", borderRadius: 2 }}>
             <Typography component="legend" variant="h6" sx={{ px: 0.75 }}>Event schedule</Typography>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>{scheduleFields}</Box>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>{scheduleFields}</Box>
           </Box>
           <Box component="fieldset" sx={{ m: 0, p: { xs: 2, sm: 3 }, minWidth: 0, border: 1, borderColor: "divider", borderRadius: 2 }}>
             <Typography component="legend" variant="h6" sx={{ px: 0.75 }}>Booking window</Typography>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, "& > :last-child": { gridColumn: "1 / -1" } }}>{bookingFields}</Box>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 2, "& > :last-child": { gridColumn: "1 / -1" } }}>{bookingFields}</Box>
           </Box>
-          <Stack direction="row" justifyContent="flex-end" gap={1} flexWrap="wrap">
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1} sx={{ "& .MuiButton-root": { minHeight: { xs: 44, sm: 36 } } }}>
             <Button type="button" onClick={onClose} disabled={submitting}>Discard changes</Button>
             <Button aria-label={saveLabel} aria-busy={submitting} type="submit" variant="contained" disabled={saveIsDisabled}>
               {saveContent ?? "Save"}
@@ -283,16 +291,16 @@ export function EventDialogSurface({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} aria-labelledby={headingId} aria-describedby={error ? errorId : undefined} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} aria-labelledby={headingId} aria-describedby={error ? errorId : undefined} maxWidth="md" fullWidth fullScreen={narrow}>
       <DialogTitle id={headingId}>{editingEvent ? "Edit event" : "Add event"}</DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
         {notice}
         {errorAlert}
         {informationFields}
         {scheduleFields}
         {bookingFields}
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ px: 2, pb: 2, "& .MuiButton-root": { minHeight: { xs: 44, sm: 36 } } }}>
         <Button onClick={onClose}>Cancel</Button>
         <Button aria-label={saveLabel} aria-busy={submitting} variant="contained" onClick={submit} disabled={saveIsDisabled}>
           {saveContent ?? "Save"}
