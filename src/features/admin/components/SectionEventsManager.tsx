@@ -49,6 +49,7 @@ import {
 import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
 import { invalidateMyBookings } from "../../../shared/query/invalidation";
 import { removeSectionEventSummaries } from "../../../shared/query/sectionEventSummaryCache";
+import { assertEventDeleteCurrent, captureEventDeleteCacheWrite, retireDeletedEventDetail } from "../../../shared/query/eventDeleteCache";
 import {
   applyCommittedEventSave,
   assertCanonicalCommittedEvent,
@@ -1216,8 +1217,11 @@ export default function SectionEventsManager({
   const handleDeleteEvent = async (event: EventRow) => {
     setDeletingEventId(event.id);
     setError(null);
+    let deletion: ReturnType<typeof captureEventDeleteCacheWrite>;
     try {
+      deletion = captureEventDeleteCacheWrite(queryClient, dataConnect, event.id);
       removeSectionEventSummaries(queryClient);
+      assertEventDeleteCurrent(deletion);
       await executeDataConnectMutation(
         deleteEventRef(dataConnect, { id: event.id }),
       );
@@ -1235,23 +1239,13 @@ export default function SectionEventsManager({
       if (isCurrentView()) setDeletingEventId(null);
     }
 
-    if (!isCurrentView()) {
-      await refetchEvents();
-      return;
+    if (isCurrentView()) {
+      setDeleteConfirmationOpen(false);
+      if (idsEqual(ticketTypesEventId, event.id)) setTicketTypesEventId(null);
     }
-    setDeleteConfirmationOpen(false);
-    if (idsEqual(ticketTypesEventId, event.id)) setTicketTypesEventId(null);
     await refreshSavedChange(`Event "${event.title}" deleted`, async () => {
-      const deletedEventKey = ["GetEventById", { id: event.id }];
-      await queryClient.cancelQueries({
-        queryKey: deletedEventKey,
-        exact: true,
-      });
-      await queryClient.invalidateQueries({
-        queryKey: deletedEventKey,
-        exact: true,
-        refetchType: "none",
-      });
+      await retireDeletedEventDetail(deletion);
+      assertEventDeleteCurrent(deletion);
       await refetchEvents();
     });
   };

@@ -68,33 +68,43 @@ export function dataConnectQueryOptions<Data, Variables>(ref: QueryRef<Data, Var
 /** Explicit Refresh/post-write read: cancel older work, refresh both caches, and
  * reject failures or superseded results instead of reporting stale success. */
 export async function refreshDataConnectQuery<Data, Variables>(client: QueryClient, ref: QueryRef<Data, Variables>): Promise<Data> {
+  // Cache notifications can synchronously retire the session or finish an own-
+  // authority update. Never recapture that replacement as this refresh's owner.
+  const session = captureSession();
+  const epoch = authorizationReadEpoch();
+  const assertOwner = () => {
+    assertSessionCurrent(session);
+    if (epoch !== authorizationReadEpoch()) throw new SessionChangedError();
+  };
+  assertOwner();
   // Admin event/ticket writes converge on these explicit server refreshes.
   // Retire member summaries first, including when the subsequent read fails.
   if (ref.name === "GetEventsForSection" || ref.name === "GetEventById") {
     removeSectionEventSummaries(client);
   }
-  const session = captureSession();
+  assertOwner();
   let fence: ReadFence | undefined;
   let data: Data;
   try {
     data = await runSessionRead(async () => {
+      assertOwner();
       const assertNotReplaced = nextRead(ref);
       await client.cancelQueries({ queryKey: dataConnectQueryKey(ref), exact: true });
-      assertSessionCurrent(session);
+      assertOwner();
       await client.invalidateQueries({queryKey: dataConnectQueryKey(ref), exact: true, refetchType: "none"});
-      assertSessionCurrent(session);
+      assertOwner();
       assertNotReplaced();
       // Register the real queryFn even for a never-mounted query. Later cached
       // inactive invalidation must have an authoritative function to execute.
-      return client.fetchQuery({...serverQueryOptions(ref, value => { fence = value; }), staleTime: 0});
+      return client.fetchQuery({...serverQueryOptions(ref, value => { assertOwner(); fence = value; }), staleTime: 0});
     }, session);
   } catch (error) {
-    assertSessionCurrent(session);
+    assertOwner();
     if (error instanceof SessionChangedError) throw error;
     fence?.assertLatest();
     throw error;
   }
-  assertSessionCurrent(session);
+  assertOwner();
   if (!fence) throw new DataConnectReadSupersededError();
   if (privateReadsBlocked(session) || fence.epoch !== authorizationReadEpoch()) throw new SessionChangedError();
   fence.assertLatest();

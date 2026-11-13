@@ -525,6 +525,119 @@ describe("SectionEventsManager", () => {
     expect(vi.mocked(firebaseDataConnect.executeQuery).mock.calls.every(([ref]) => ref.name === "GetEventsForSection")).toBe(true);
   });
 
+  it.each([
+    "BBBBBBBBBBBB4BBB8BBBBBBBBBBBBBBB",
+    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB",
+  ])("retires every detail spelling after deleting %s even if its list refresh fails", async id => {
+    const canonicalId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const event = { ...deletionEvent, id };
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [event] } }, isLoading: false, isError: false });
+    vi.mocked(firebaseDataConnect.executeQuery).mockRejectedValue(new Error("List unavailable after commit"));
+    const user = userEvent.setup();
+    render(<SectionEventsManager sectionId={sectionId} sectionName={sectionName} onBack={onBack} />);
+    const keys = [canonicalId, canonicalId.replaceAll("-", ""), canonicalId.toUpperCase()]
+      .map(alias => ["GetEventById", { id: alias }]);
+    for (const key of keys) managerQueryClient.setQueryData(key, { event });
+    const otherKey = ["GetEventById", { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" }];
+    managerQueryClient.setQueryData(otherKey, "unrelated");
+
+    await user.click(screen.getByRole("button", { name: "Delete Annual Dinner" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+
+    await screen.findByText(/The latest event data could not be loaded/);
+    for (const key of keys) expect(managerQueryClient.getQueryState(key)?.isInvalidated).toBe(true);
+    expect(managerQueryClient.getQueryState(otherKey)?.isInvalidated).toBe(false);
+    expect(generated.deleteEventRef).toHaveBeenCalledWith(expect.anything(), { id });
+    expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    expect(vi.mocked(firebaseDataConnect.executeQuery).mock.calls.map(([ref]) => ref.name)).toEqual(["GetEventsForSection"]);
+  });
+
+  it("retires deleted details and mid-delete bundles after the routed list has unmounted", async () => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const id = "bbbbbbbbbbbb4bbb8bbbbbbbbbbbbbbb", canonicalId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const event = { ...deletionEvent, id };
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [event] } }, isLoading: false, isError: false });
+    let finishDelete!: (value: unknown) => void;
+    vi.mocked(firebaseDataConnect.executeMutation).mockImplementationOnce(() => new Promise(resolve => { finishDelete = resolve; }) as never);
+    const view = canonicalManager("/sections/section-1/manage/events");
+    try {
+      const key = ["GetEventById", { id: canonicalId }]; managerQueryClient.setQueryData(key, { event });
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Delete Annual Dinner" }));
+      await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+      const bundle = captureSectionEventSummaryRead(managerQueryClient, sectionId);
+      act(() => managerNavigation("/elsewhere"));
+      expect(await screen.findByText("Elsewhere")).toBeInTheDocument();
+
+      await act(async () => { finishDelete({}); });
+
+      await waitFor(() => expect(managerQueryClient.getQueryState(key)?.isInvalidated).toBe(true));
+      rememberSectionEventSummaries(managerQueryClient, { events: [] }, bundle);
+      expect(managerQueryClient.getQueryData(bundle.queryKey)).toBeUndefined();
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+      expect(vi.mocked(firebaseDataConnect.executeQuery).mock.calls.map(([ref]) => ref.name)).toEqual(["GetEventsForSection"]);
+      expect(screen.getByText("Elsewhere")).toBeInTheDocument();
+    } finally { view.unmount(); owner.retire(); uninstall(); }
+  });
+
+  it("does not dispatch deletion when pre-dispatch summary retirement replaces the session", async () => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const replacement = createSessionLifecycle(); replacement.observe("another-admin");
+    let uninstallReplacement: (() => void) | undefined;
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [deletionEvent] } }, isLoading: false, isError: false });
+    const view = canonicalManager("/sections/section-1/manage/events");
+    let unsubscribe: (() => void) | undefined;
+    try {
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Delete Annual Dinner" }));
+      const summary = captureSectionEventSummaryRead(managerQueryClient, sectionId);
+      rememberSectionEventSummaries(managerQueryClient, { events: [] }, summary);
+      unsubscribe = managerQueryClient.getQueryCache().subscribe(event => {
+        if (event.type !== "removed" || event.query.queryKey[0] !== "sectionEventSummaries") return;
+        unsubscribe?.(); owner.retire();
+        uninstallReplacement = installSessionRuntime({ lifecycle: replacement, retire: () => replacement.retire(), signOut: async () => replacement.retire() });
+      });
+
+      await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+
+      expect(firebaseDataConnect.executeMutation).not.toHaveBeenCalled();
+      expect(firebaseDataConnect.executeQuery).not.toHaveBeenCalled();
+    } finally { unsubscribe?.(); view.unmount(); replacement.retire(); uninstallReplacement?.(); owner.retire(); uninstall(); }
+  });
+
+  it("does not retire or refresh replacement-session cache when an older deletion finishes", async () => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const replacement = createSessionLifecycle(); replacement.observe("another-admin");
+    let uninstallReplacement: (() => void) | undefined;
+    const id = "bbbbbbbbbbbb4bbb8bbbbbbbbbbbbbbb", canonicalId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const event = { ...deletionEvent, id };
+    mockGetEventsForSection({ data: { section: { id: sectionId, events: [event] } }, isLoading: false, isError: false });
+    let finishDelete!: (value: unknown) => void;
+    vi.mocked(firebaseDataConnect.executeMutation).mockImplementationOnce(() => new Promise(resolve => { finishDelete = resolve; }) as never);
+    const view = canonicalManager("/sections/section-1/manage/events");
+    try {
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Delete Annual Dinner" }));
+      await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+      owner.retire();
+      uninstallReplacement = installSessionRuntime({ lifecycle: replacement, retire: () => replacement.retire(), signOut: async () => replacement.retire() });
+      const key = ["GetEventById", { id: canonicalId }], fresh = { event: { id: canonicalId, title: "Replacement account" } };
+      managerQueryClient.setQueryData(key, fresh);
+
+      await act(async () => { finishDelete({}); });
+
+      expect(managerQueryClient.getQueryData(key)).toEqual(fresh);
+      expect(managerQueryClient.getQueryState(key)?.isInvalidated).toBe(false);
+      expect(firebaseDataConnect.executeQuery).not.toHaveBeenCalled();
+      expect(firebaseDataConnect.executeMutation).toHaveBeenCalledOnce();
+    } finally { view.unmount(); replacement.retire(); uninstallReplacement?.(); owner.retire(); uninstall(); }
+  });
+
   it("explains when an event cannot be deleted because tickets exist", async () => {
     const event = { id: "ev-1", title: "Annual Dinner", startDateTime: "2025-03-01T18:00:00Z", endDateTime: "2025-03-01T22:00:00Z", bookingStartDateTime: "2025-02-01T00:00:00Z", bookingEndDateTime: "2025-02-28T23:59:59Z", location: "Main Hall", guestOfHonour: null, sponsors: null, details: null, maxGuestsWithoutModeratorApproval: 0 };
     mockGetEventsForSection({

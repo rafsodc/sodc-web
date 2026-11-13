@@ -182,6 +182,94 @@ describe("authoritative Data Connect reads", () => {
 
     expect(queryClient.getQueryData(summaryKey)).toEqual({ events: [] });
   });
+
+  it.each([
+    ["GetEventsForSection", "session"], ["GetEventById", "session"],
+    ["GetEventsForSection", "epoch"], ["GetEventById", "epoch"],
+  ] as const)("keeps the original %s owner when summary removal changes its %s", async (name, boundary) => {
+    const transport = vi.fn(async () => response("must not be read"));
+    const { dc } = context(transport), queryClient = client(), lifecycle = session(queryClient);
+    const ref = queryRef<Result, Record<string, string>>(dc, name,
+      name === "GetEventsForSection" ? { sectionId: "section-a" } : { id: "event-a" });
+    const summary = captureSectionEventSummaryRead(queryClient, "section-a");
+    rememberSectionEventSummaries(queryClient, { events: [] }, summary);
+    let replacementSummary: ReturnType<typeof captureSectionEventSummaryRead> | undefined;
+    const unsubscribe = queryClient.getQueryCache().subscribe(event => {
+      if (event.type !== "removed" || event.query.queryKey[0] !== "sectionEventSummaries") return;
+      unsubscribe();
+      if (boundary === "session") { lifecycle.retire(); session(queryClient, "member-b"); }
+      else beginAuthorizationUpdate(captureSession()).finish(true);
+      queryClient.setQueryData(dataConnectQueryKey(ref), { value: "new owner" });
+      replacementSummary = captureSectionEventSummaryRead(queryClient, "section-a");
+      rememberSectionEventSummaries(queryClient, { events: [] }, replacementSummary);
+    });
+    try {
+      await expect(refreshDataConnectQuery(queryClient, ref)).rejects.toBeInstanceOf(SessionChangedError);
+
+      expect(transport).not.toHaveBeenCalled();
+      expect(queryClient.getQueryData(dataConnectQueryKey(ref))).toEqual({ value: "new owner" });
+      expect(queryClient.getQueryState(dataConnectQueryKey(ref))?.isInvalidated).toBe(false);
+      expect(replacementSummary).toBeDefined();
+      expect(queryClient.getQueryData(replacementSummary!.queryKey)).toEqual({ events: [] });
+    } finally { unsubscribe(); }
+  });
+
+  it.each(["session", "epoch", "blocked"] as const)("cannot invalidate a new owner after %s changes during cancellation", async boundary => {
+    const transport = vi.fn(async () => response("must not be read"));
+    const { ref } = context(transport), queryClient = client(), lifecycle = session(queryClient);
+    queryClient.setQueryData(dataConnectQueryKey(ref), { value: "before" });
+    const gate = deferred<void>(), cancel = queryClient.cancelQueries.bind(queryClient);
+    const cancelSpy = vi.spyOn(queryClient, "cancelQueries").mockImplementationOnce(async filters => { await cancel(filters); await gate.promise; });
+    const pending = refreshDataConnectQuery(queryClient, ref).catch(error => error);
+    await vi.waitFor(() => expect(cancelSpy).toHaveBeenCalledOnce());
+    if (boundary === "session") { lifecycle.retire(); session(queryClient, "member-b"); }
+    else beginAuthorizationUpdate(captureSession()).finish(true, boundary === "blocked");
+    queryClient.setQueryData(dataConnectQueryKey(ref), { value: "new owner" });
+    gate.resolve();
+    try {
+      await expect(pending).resolves.toBeInstanceOf(SessionChangedError);
+
+      expect(transport).not.toHaveBeenCalled();
+      expect(queryClient.getQueryData(dataConnectQueryKey(ref))).toEqual({ value: "new owner" });
+      expect(queryClient.getQueryState(dataConnectQueryKey(ref))?.isInvalidated).toBe(false);
+    } finally { gate.resolve(); cancelSpy.mockRestore(); }
+  });
+
+  it.each(["session", "epoch"] as const)("cannot dispatch when invalidation notifications change the %s", async boundary => {
+    const transport = vi.fn(async () => response("must not be read"));
+    const { ref } = context(transport), queryClient = client(), lifecycle = session(queryClient);
+    queryClient.setQueryData(dataConnectQueryKey(ref), { value: "before" });
+    const unsubscribe = queryClient.getQueryCache().subscribe(event => {
+      if (event.type !== "updated" || event.query.queryKey[0] !== ref.name || !event.query.state.isInvalidated) return;
+      unsubscribe();
+      if (boundary === "session") { lifecycle.retire(); session(queryClient, "member-b"); }
+      else beginAuthorizationUpdate(captureSession()).finish(true);
+      queryClient.setQueryData(dataConnectQueryKey(ref), { value: "new owner" });
+    });
+    try {
+      await expect(refreshDataConnectQuery(queryClient, ref)).rejects.toBeInstanceOf(SessionChangedError);
+
+      expect(transport).not.toHaveBeenCalled();
+      expect(queryClient.getQueryData(dataConnectQueryKey(ref))).toEqual({ value: "new owner" });
+      expect(queryClient.getQueryState(dataConnectQueryKey(ref))?.isInvalidated).toBe(false);
+    } finally { unsubscribe(); }
+  });
+
+  it.each(["session", "epoch"] as const)("checks the original %s before SDK dispatch after registering a new query", async boundary => {
+    const transport = vi.fn(async () => response("must not be read"));
+    const { ref } = context(transport), queryClient = client(), lifecycle = session(queryClient);
+    const unsubscribe = queryClient.getQueryCache().subscribe(event => {
+      if (event.type !== "added" || event.query.queryKey[0] !== ref.name) return;
+      unsubscribe();
+      if (boundary === "session") { lifecycle.retire(); session(queryClient, "member-b"); }
+      else beginAuthorizationUpdate(captureSession()).finish(true);
+    });
+    try {
+      await expect(refreshDataConnectQuery(queryClient, ref)).rejects.toBeInstanceOf(SessionChangedError);
+      expect(transport).not.toHaveBeenCalled();
+    } finally { unsubscribe(); }
+  });
+
   it("keeps a failed explicit refresh stale so a revisit cannot report the cached old value as success", async () => {
     const transport = vi.fn().mockResolvedValueOnce(response("old")).mockRejectedValueOnce(new Error("offline")).mockResolvedValue(response("confirmed"));
     const { ref } = context(transport), queryClient = client(), options = dataConnectQueryOptions(ref);
