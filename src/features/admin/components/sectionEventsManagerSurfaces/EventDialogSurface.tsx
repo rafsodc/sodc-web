@@ -14,6 +14,7 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
+import type { Theme } from "@mui/material/styles";
 import SafeMarkdown from "../../../../shared/components/SafeMarkdown";
 import type { EventRow } from "../sectionEventsManagerTypes";
 import { EVENT_DATE_TIME_FIELDS, validateEventDateTimes, type EventDateTimeField } from "../../utils/eventDatetime";
@@ -118,7 +119,7 @@ export function EventDialogSurface({
   const errorAlert = error && <Alert id={errorId} severity="error" aria-atomic="true" sx={{ mb: 2 }}>{error}</Alert>;
   const saveLabel = submitting ? "Saving event" : "Save";
   const saveContent = submitting ? <><CircularProgress size={20} aria-hidden="true" sx={{ mr: 1 }} />Saving…</> : null;
-  const dateFieldSx = { minWidth: 0, "& input": { minWidth: 0, px: { xs: 1, sm: 1.75 } } };
+  const dateFieldSx = (theme: Theme) => ({ minWidth: 0, "& input": { minWidth: 0, px: { xs: 1, sm: 1.75 }, colorScheme: theme.palette.mode } });
   const previewDetails = details.trim();
   const informationFields = (
     <>
