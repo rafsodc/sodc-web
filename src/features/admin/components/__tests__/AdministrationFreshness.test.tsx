@@ -15,7 +15,8 @@ import { dataConnectQueryOptions, refreshDataConnectQuery } from "../../../../sh
 import { captureEventSaveCacheWrite, retireCommittedEventSave } from "../../../../shared/query/eventSaveCache";
 import { useGetMyBookings } from "../../../../shared/query/authoritativeHooks";
 import { guestCall } from "../../../guests/api";
-import { createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
+import { captureSession, createSessionLifecycle, installSessionRuntime } from "../../../../shared/appShell/sessionLifecycle";
+import { beginAuthorizationUpdate } from "../../../../shared/auth/authorizationUpdate";
 import { idsEqual } from "../../../../shared/utils/uuid";
 
 // Real installed SDK cache, real query refs, real app hooks and rendered MUI
@@ -232,6 +233,25 @@ async function ticketEditor(kind: "create" | "update") {
   return { rendered, user };
 }
 
+async function pendingDepartedEventSave(kind: "event" | "ticket" = "event") {
+  const server = eventServer();
+  let complete!: () => void;
+  write.mockImplementationOnce((name: string, variables: Record<string, unknown>) => new Promise(resolve => {
+    complete = () => resolve(kind === "event" ? server.commit(name, variables) : commitTicketCatalog(name, variables, server.current()!));
+  }));
+  const rendered = render(routedEventView(kind === "event" ? undefined : "/sections/section-1/manage/events/event-1?task=tickets&ticket=type-1"));
+  const user = userEvent.setup();
+  const title = await screen.findByLabelText(/^title/i);
+  await waitFor(() => expect(title).toHaveValue(kind === "event" ? event.title : "Dinner"));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeEnabled());
+  fireEvent.change(title, { target: { value: "Saved after task change" } });
+  await user.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(write).toHaveBeenCalledOnce());
+  await act(async () => navigateManager(kind === "event" ? "?task=tickets" : "?task=details"));
+  if (kind === "ticket") await waitForDialogToClose();
+  return { server, complete, rendered, user };
+}
+
 describe("overlapping routed catalogue saves", () => {
   it("turns a retired cold detail read into an explicit retry instead of leaving the editor loading", async () => {
     const endSession = eventSession();
@@ -333,6 +353,8 @@ describe("overlapping routed catalogue saves", () => {
       queryClient.setQueryData(unrelatedKey, { event: { id: "unrelated-event", title: "Unrelated" } });
       expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(false);
       expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(false);
+      const activeInput = screen.getByLabelText(firstKind === "event" ? /^title/i : /^location/i);
+      act(() => activeInput.focus());
       const beforeLateCommit = read.mock.calls.length;
       await act(async () => completeFirst());
       await waitFor(() => expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true));
@@ -348,16 +370,254 @@ describe("overlapping routed catalogue saves", () => {
         expect(screen.getByRole("dialog", { name: "Edit ticket type" })).toBeInTheDocument();
         expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer unsaved ticket B");
       } else expect(screen.getByLabelText(/^location/i)).toHaveValue("Newer unsaved location B");
+      expect(activeInput).toHaveFocus();
       expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
-      await act(async () => {
-        const result = await refreshDataConnectQuery(queryClient, getEventByIdRef(context.dc, { id: event.id }));
-        expect(result.event?.title).toBe(firstKind === "event" ? "Late event title" : "Saved event B");
-        expect(result.event?.ticketTypes[0].title).toBe(firstKind === "event" ? "Saved ticket B" : "Late ticket title");
-      });
+      const refresh = await screen.findByRole("button", { name: "Refresh saved change" });
+      if (firstKind === "event") expect(within(screen.getByRole("dialog", { name: "Edit ticket type" })).getByRole("button", { name: "Refresh saved change" })).toBe(refresh);
+      await user.click(refresh);
+      await waitFor(() => expect(screen.queryByRole("button", { name: /^(Refresh|Refreshing|Retry) saved change/ })).not.toBeInTheDocument());
+      expect(read.mock.calls.slice(beforeLateCommit).map(([name]) => name).sort()).toEqual(["GetEventById", "GetEventsForSection"]);
+      const result = queryClient.getQueryData<{ event: { title: string; ticketTypes: TicketTypeRow[] } }>(detailKey)!;
+      expect(result.event.title).toBe(firstKind === "event" ? "Late event title" : "Saved event B");
+      expect(result.event.ticketTypes[0].title).toBe(firstKind === "event" ? "Saved ticket B" : "Late ticket title");
+      expect(queryClient.getQueryData<{ section: { events: Array<{ title: string }> } }>(listKey)?.section.events[0].title).toBe(result.event.title);
+      expect(screen.getByRole("heading", { level: 1, name: result.event.title, hidden: true })).toBeInTheDocument();
+      expect((await executeQuery(getEventByIdRef(context.dc, { id: event.id }))).data.event?.ticketTypes[0].title).toBe(result.event.ticketTypes[0].title);
+      expect(queryClient.getQueryState(memberKey)?.isInvalidated).toBe(true);
+      if (firstKind === "ticket") expect(queryClient.getQueryState(joinedKey)?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryData(historicalKey)).toEqual({ paidAmountMinor: 2500 });
+      expect(queryClient.getQueryState(historicalKey)?.isInvalidated).toBe(false);
+      expect(queryClient.getQueryData(unrelatedKey)).toEqual({ event: { id: "unrelated-event", title: "Unrelated" } });
+      expect(queryClient.getQueryState(unrelatedKey)?.isInvalidated).toBe(false);
       if (firstKind === "event") expect(screen.getByLabelText(/^title/i)).toHaveValue("Newer unsaved ticket B");
       else expect(screen.getByLabelText(/^location/i)).toHaveValue("Newer unsaved location B");
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
       expect(write).toHaveBeenCalledTimes(2);
+      await act(async () => navigateManager(firstKind === "event" ? detailsPath : ticketPath));
+      if (firstKind === "event") await waitForDialogToClose();
+      expect(await screen.findByText(/The previous save completed/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Load saved change" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     } finally { rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it.each(["event", "ticket"] as const)("keeps a failed departed %s refresh retryable in the active editor without changing its draft, focus or saved receipt", async kind => {
+    const endSession = eventSession();
+    const { server, complete, rendered, user } = await pendingDepartedEventSave(kind);
+    let completeDetail!: () => void;
+    try {
+      const beforeConfirmation = read.mock.calls.length;
+      await act(async () => complete());
+      await screen.findByRole("button", { name: "Refresh saved change" });
+      expect(read).toHaveBeenCalledTimes(beforeConfirmation);
+      if (kind === "event") await user.click(screen.getByRole("link", { name: "Edit Dinner" }));
+      const currentDraft = await screen.findByLabelText(kind === "event" ? /^title/i : /^location/i);
+      const newerDraft = kind === "event" ? "Newer ticket draft" : "Newer event location";
+      fireEvent.change(currentDraft, { target: { value: "Draft before refresh" } });
+      act(() => currentDraft.focus());
+      const beforeRefresh = read.mock.calls.length;
+      failingRead = "GetEventById";
+      const originalRead = read.getMockImplementation()!;
+      read.mockImplementation((name: string, variables: Record<string, unknown>) => name === "GetEventById"
+        ? new Promise(resolve => { completeDetail = () => resolve(originalRead(name, variables)); })
+        : originalRead(name, variables));
+      await user.click(screen.getByRole("button", { name: "Refresh saved change" }));
+      await waitFor(() => expect(completeDetail).toBeTypeOf("function"));
+      expect(screen.getByRole("button", { name: "Refreshing saved change…" })).toBeDisabled();
+      fireEvent.change(currentDraft, { target: { value: newerDraft } });
+      act(() => currentDraft.focus());
+      const completeFailure = completeDetail;
+      await act(async () => completeFailure());
+      const retry = await screen.findByRole("button", { name: "Retry saved change refresh" });
+      expect(screen.getByText(/Your change is saved. The latest event data could not be loaded/)).toBeInTheDocument();
+      expect(currentDraft).toHaveFocus();
+      expect(currentDraft).toHaveValue(newerDraft);
+      expect(screen.getByLabelText(kind === "event" ? /^title/i : /^location/i)).toBe(currentDraft);
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      expect(read.mock.calls.slice(beforeRefresh).map(([name]) => name).sort()).toEqual(["GetEventById", "GetEventsForSection"]);
+      expect(write).toHaveBeenCalledOnce();
+
+      failingRead = null;
+      server.commit("UpdateEvent", { ...server.current()!, title: "Newer remote event title" });
+      await user.click(retry);
+      await waitFor(() => expect(completeDetail).not.toBe(completeFailure));
+      expect(screen.getByRole("button", { name: "Refreshing saved change…" })).toBeDisabled();
+      act(() => currentDraft.focus());
+      await act(async () => completeDetail());
+      await waitFor(() => expect(screen.queryByRole("button", { name: /^(Refresh|Refreshing|Retry) saved change/ })).not.toBeInTheDocument());
+      expect(currentDraft).toHaveFocus();
+      expect(currentDraft).toHaveValue(newerDraft);
+      if (kind === "event") expect(screen.getByRole("dialog", { name: "Edit ticket type" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      expect(screen.getByRole("heading", { level: 1, name: "Newer remote event title", hidden: true })).toBeInTheDocument();
+      expect(screen.queryByText(/Your change is saved. The latest event data could not be loaded/)).not.toBeInTheDocument();
+      expect(screen.queryByText("We could not complete the event operation. Please refresh and try again.")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Retry loading" })).not.toBeInTheDocument();
+      expect(read.mock.calls.slice(beforeRefresh).map(([name]) => name).sort()).toEqual(["GetEventById", "GetEventById", "GetEventsForSection", "GetEventsForSection"]);
+      expect(write).toHaveBeenCalledOnce();
+      await act(async () => navigateManager(kind === "event" ? "?task=details" : "?task=tickets&ticket=type-1"));
+      if (kind === "event") await waitForDialogToClose();
+      expect(await screen.findByLabelText(/^title/i)).toHaveValue("Saved after task change");
+      expect(screen.getByText(/The previous save completed/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    } finally { completeDetail?.(); rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it.each(["event", "account", "epoch", "blocked"] as const)("does not offer an old saved change after the %s context changes before confirmation", async change => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const { complete, rendered } = await pendingDepartedEventSave();
+    const replacement = createSessionLifecycle(); replacement.observe("replacement-admin");
+    let uninstallReplacement: (() => void) | undefined;
+    let authority: ReturnType<typeof beginAuthorizationUpdate> | undefined;
+    try {
+      await act(async () => {
+        if (change === "event") navigateManager("/sections/section-1/manage/events/another-event?task=tickets");
+        else if (change === "account") {
+          owner.retire();
+          uninstallReplacement = installSessionRuntime({ lifecycle: replacement, retire: () => replacement.retire(), signOut: async () => replacement.retire() });
+        } else {
+          authority = beginAuthorizationUpdate(captureSession());
+          authority.finish(true, change === "blocked");
+        }
+      });
+      const beforeConfirmation = read.mock.calls.length;
+      await act(async () => complete());
+      expect(screen.queryByRole("button", { name: /^(Refresh|Refreshing|Retry) saved change/ })).not.toBeInTheDocument();
+      expect(screen.queryByText(/Your change was saved after you changed tasks/)).not.toBeInTheDocument();
+      expect(read).toHaveBeenCalledTimes(beforeConfirmation);
+      expect(write).toHaveBeenCalledOnce();
+    } finally { rendered.unmount(); authority?.finish(true); replacement.retire(); uninstallReplacement?.(); owner.retire(); uninstall(); }
+  }, 20_000);
+
+  it.each(["event", "account", "epoch", "blocked"] as const)("discards an in-flight saved-change refresh after its %s context changes", async change => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const { server, complete, rendered, user } = await pendingDepartedEventSave();
+    const replacement = createSessionLifecycle(); replacement.observe("replacement-admin");
+    let uninstallReplacement: (() => void) | undefined;
+    let authority: ReturnType<typeof beginAuthorizationUpdate> | undefined;
+    let completeRead!: () => void;
+    try {
+      await act(async () => complete());
+      const refresh = await screen.findByRole("button", { name: "Refresh saved change" });
+      const originalRead = read.getMockImplementation()!;
+      read.mockImplementation((name: string, variables: Record<string, unknown>) => name === "GetEventById"
+        ? new Promise(resolve => { const response = originalRead(name, variables); completeRead = () => resolve(response); })
+        : originalRead(name, variables));
+      await user.click(refresh);
+      await waitFor(() => expect(completeRead).toBeTypeOf("function"));
+      expect(screen.getByRole("button", { name: "Refreshing saved change…" })).toBeDisabled();
+      await act(async () => {
+        if (change === "event") navigateManager("/sections/section-1/manage/events/another-event?task=tickets");
+        else if (change === "account") {
+          owner.retire();
+          uninstallReplacement = installSessionRuntime({ lifecycle: replacement, retire: () => replacement.retire(), signOut: async () => replacement.retire() });
+        } else {
+          authority = beginAuthorizationUpdate(captureSession());
+          authority.finish(true, change === "blocked");
+        }
+      });
+      const detailKey = dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey;
+      if (change !== "event") queryClient.setQueryData(detailKey, { event: { ...server.current()!, title: "Replacement context data" } });
+      const beforeOldCompletion = read.mock.calls.length;
+      await act(async () => completeRead());
+      expect(screen.queryByRole("button", { name: /^(Refresh|Refreshing|Retry) saved change/ })).not.toBeInTheDocument();
+      expect(screen.queryByText(/Your change was saved after you changed tasks/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Your change is saved. The latest event data could not be loaded/)).not.toBeInTheDocument();
+      if (change !== "event") expect(queryClient.getQueryData<{ event: { title: string } }>(detailKey)?.event.title).toBe("Replacement context data");
+      expect(read).toHaveBeenCalledTimes(beforeOldCompletion);
+      expect(write).toHaveBeenCalledOnce();
+    } finally { completeRead?.(); rendered.unmount(); authority?.finish(true); replacement.retire(); uninstallReplacement?.(); owner.retire(); uninstall(); }
+  }, 20_000);
+
+  it.each(["account", "epoch"] as const)("does not start either saved-change read when summary removal changes the %s owner", async change => {
+    const owner = createSessionLifecycle(); owner.observe("admin");
+    const uninstall = installSessionRuntime({ lifecycle: owner, retire: () => owner.retire(), signOut: async () => owner.retire() });
+    const { server, complete, rendered, user } = await pendingDepartedEventSave();
+    const replacement = createSessionLifecycle(); replacement.observe("replacement-admin");
+    let uninstallReplacement: (() => void) | undefined;
+    let unsubscribe: (() => void) | undefined;
+    try {
+      await act(async () => complete());
+      const refresh = await screen.findByRole("button", { name: "Refresh saved change" });
+      const detailKey = dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey;
+      const listKey = dataConnectQueryOptions(getEventsForSectionRef(context.dc, { sectionId: "section-1" })).queryKey;
+      const replacementEvent = { ...server.current()!, title: "Replacement owner's event" };
+      queryClient.setQueryData(["sectionEventSummaries", "late-save"], { old: true });
+      unsubscribe = queryClient.getQueryCache().subscribe(notification => {
+        if (notification.type !== "removed" || notification.query.queryKey[0] !== "sectionEventSummaries") return;
+        unsubscribe?.();
+        if (change === "account") {
+          owner.retire();
+          uninstallReplacement = installSessionRuntime({ lifecycle: replacement, retire: () => replacement.retire(), signOut: async () => replacement.retire() });
+        } else beginAuthorizationUpdate(captureSession()).finish(true);
+        queryClient.setQueryData(detailKey, { event: replacementEvent });
+        queryClient.setQueryData(listKey, { section: { id: "section-1", events: [replacementEvent] } });
+      });
+      const beforeRefresh = read.mock.calls.length;
+      await user.click(refresh);
+      await waitFor(() => expect(screen.queryByRole("button", { name: /^(Refresh|Refreshing|Retry) saved change/ })).not.toBeInTheDocument());
+      expect(read).toHaveBeenCalledTimes(beforeRefresh);
+      expect(queryClient.getQueryData(detailKey)).toEqual({ event: replacementEvent });
+      expect(queryClient.getQueryData(listKey)).toEqual({ section: { id: "section-1", events: [replacementEvent] } });
+      expect(write).toHaveBeenCalledOnce();
+    } finally { unsubscribe?.(); rendered.unmount(); replacement.retire(); uninstallReplacement?.(); owner.retire(); uninstall(); }
+  }, 20_000);
+
+  it("retains a newer late-save notice when the previous notice's refresh is superseded", async () => {
+    const endSession = eventSession();
+    const server = eventServer();
+    const completeWrites: Array<() => void> = [];
+    write.mockImplementation((name: string, variables: Record<string, unknown>) => new Promise(resolve => {
+      completeWrites.push(() => resolve(name === "UpdateTicketType"
+        ? commitTicketCatalog(name, variables, server.current()!)
+        : server.commit(name, variables)));
+    }));
+    const rendered = render(routedEventView());
+    const user = userEvent.setup();
+    let completeOldRead!: () => void;
+    try {
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "First late event save" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await act(async () => navigateManager("?task=tickets&ticket=type-1"));
+      fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "Second late ticket save" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(completeWrites).toHaveLength(2));
+      await act(async () => navigateManager("?task=details"));
+      await waitForDialogToClose();
+      await act(async () => completeWrites[0]());
+      const firstRefresh = await screen.findByRole("button", { name: "Refresh saved change" });
+      const originalRead = read.getMockImplementation()!;
+      let held = false;
+      read.mockImplementation((name: string, variables: Record<string, unknown>) => {
+        if (name === "GetEventById" && !held) {
+          held = true;
+          const previous = originalRead(name, variables);
+          return new Promise(resolve => { completeOldRead = () => resolve(previous); });
+        }
+        return originalRead(name, variables);
+      });
+      await user.click(firstRefresh);
+      await waitFor(() => expect(completeOldRead).toBeTypeOf("function"));
+      await act(async () => completeWrites[1]());
+      const newerRefresh = await screen.findByRole("button", { name: "Refresh saved change" });
+      const beforeOldCompletion = read.mock.calls.length;
+      await act(async () => completeOldRead());
+      expect(screen.getByRole("button", { name: "Refresh saved change" })).toBe(newerRefresh);
+      expect(screen.queryByRole("button", { name: "Retry saved change refresh" })).not.toBeInTheDocument();
+      expect(read).toHaveBeenCalledTimes(beforeOldCompletion);
+      expect(screen.getByLabelText(/^title/i)).toHaveValue("First late event save");
+      await user.click(newerRefresh);
+      await waitFor(() => expect(screen.queryByRole("button", { name: /^(Refresh|Refreshing|Retry) saved change/ })).not.toBeInTheDocument());
+      const detailKey = dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey;
+      const current = queryClient.getQueryData<{ event: { title: string; ticketTypes: TicketTypeRow[] } }>(detailKey)!;
+      expect(current.event.title).toBe("First late event save");
+      expect(current.event.ticketTypes[0].title).toBe("Second late ticket save");
+      expect(screen.getByText(/The previous save completed/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateEvent", "UpdateTicketType"]);
+    } finally { completeOldRead?.(); rendered.unmount(); endSession(); }
   }, 20_000);
 });
 
