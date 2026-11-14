@@ -53,6 +53,44 @@ export function compareExpected(expected, actual) {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Metadata-only check of the explicit announcement/mode-administration contract.
+ * Match the runtime parser's trim/case rules without reporting environment values.
+ * Unrelated Functions may legitimately have no application environment at all. */
+export function assessGovNotifyDeliveryModeConfiguration(functions, requiredFunctions) {
+  if (!Array.isArray(functions) || !Array.isArray(requiredFunctions) ||
+    !requiredFunctions.every((name) => typeof name === "string" && /^[A-Za-z][A-Za-z0-9]*$/.test(name)) ||
+    new Set(requiredFunctions.map((name) => name.toLowerCase())).size !== requiredFunctions.length) {
+    return { status: RESULT_STATUS.FAIL, summary: "GOV.UK Notify delivery-mode audit contract is invalid.",
+      details: { contractValid: false } };
+  }
+  const required = requiredFunctions.map((name) => name.toLowerCase()).sort();
+  const configuredFunctions = [], missingFunctions = [], unconfiguredFunctions = [], invalidFunctions = [], duplicateFunctions = [];
+  const modes = new Set();
+  for (const name of required) {
+    const matches = functions.filter((fn) => normalizeResourceName(fn.name) === name);
+    if (matches.length === 0) { missingFunctions.push(name); continue; }
+    if (matches.length !== 1) { duplicateFunctions.push(name); continue; }
+    const rawValue = matches[0].serviceConfig?.environmentVariables?.GOV_NOTIFY_DELIVERY_MODE;
+    if (rawValue === undefined || (typeof rawValue === "string" && !rawValue.trim())) {
+      unconfiguredFunctions.push(name);
+      continue;
+    }
+    const mode = typeof rawValue === "string" ? rawValue.trim().toUpperCase() : null;
+    if (!["SIMULATION", "TEAM_TEST", "LIVE"].includes(mode)) { invalidFunctions.push(name); continue; }
+    configuredFunctions.push(name);
+    modes.add(mode);
+  }
+  const failed = missingFunctions.length || unconfiguredFunctions.length || invalidFunctions.length || duplicateFunctions.length || modes.size > 1;
+  return {
+    status: failed ? RESULT_STATUS.FAIL : RESULT_STATUS.PASS,
+    summary: failed
+      ? "Required GOV.UK Notify callables have missing, invalid or inconsistent delivery ceilings."
+      : "Required GOV.UK Notify callables have valid, consistent delivery ceilings.",
+    details: { requiredFunctions: required, configuredFunctions, missingFunctions, unconfiguredFunctions, invalidFunctions,
+      duplicateFunctions, distinctModeCount: modes.size },
+  };
+}
+
 export function assessGovNotifyReplyToConfiguration(functions) {
   const configured = [];
   const missing = [];

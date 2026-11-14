@@ -65,6 +65,19 @@ fallbacks may be absent or intentionally empty; `GOV_NOTIFY_SERVICE_ID` is optio
 `ENV_NAME` and `PERMITTED_PROJECT_IDS` are reset-tool guardrails, not mandatory
 application runtime settings. Tests do not depend on real ignored project files.
 
+The six core announcement/mode-administration consumers listed in
+`config/deployment-check.json` must have valid, consistent
+`GOV_NOTIFY_DELIVERY_MODE` values in the proposed effective configuration. Missing,
+blank, invalid or inconsistent ceilings block even `--propose` and an explicit
+preservation review. The check matches the runtime parser's case/whitespace rules,
+does not read keys or contact Notify, and reports names/counts rather than values.
+Unrelated Functions, including the reviewed empty-environment `deleteMyAccount`
+creation, are outside this bounded consumer contract. The general deployment audit
+also checks the live core-consumer metadata, including after a Hosting-only release.
+See the [Dev repair procedure](./govuk-notify-delivery-modes.md#recover-the-dev-announcement-configuration)
+for the confirmed missing-ceiling failure. It requires a reviewed complete dotenv
+environment; a partial dotenv file is not an overlay.
+
 `--propose` emits **REVIEW_REQUIRED**, never a passing receipt. Inspect the exact
 endpoint/key/hash deltas and replace `reviewedBy` and `reason` with the actual review.
 Unedited placeholders (also with whitespace or different case) are rejected. Use
@@ -190,6 +203,8 @@ The proposal lists existing missing/empty policy deviations and default resets.
 An incorrect nonempty `APP_BASE_URL` or `SECTION_FILES_BUCKET`, including a
 whitespace-only value, blocks even a preservation proposal or reviewed override.
 Absent/empty inherited values remain listed deviations requiring exact review.
+The mandatory core-consumer delivery-ceiling check above is an exception: a
+review cannot approve preserving the absence that makes those callables fail.
 After review, set `SODC_FUNCTIONS_CONFIG_REVIEW` to the reviewed JSON and retain the
 same mode/review for preflight and deployment. Review mode must be
 `preserve-existing`, with **zero** application environment changes. This explicitly

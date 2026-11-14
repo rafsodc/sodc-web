@@ -9,6 +9,7 @@ import {
   firebaseStorageDownloadUrl,
   assessAuthConfiguration,
   assessDefinitionsFreshness,
+  assessGovNotifyDeliveryModeConfiguration,
   assessGovNotifyReplyToConfiguration,
   assessFunctionInvokerPolicies,
   assessServiceAccountProjectScope,
@@ -83,6 +84,48 @@ describe("deployment check configuration", () => {
 });
 
 describe("deployment check parsing and comparison", () => {
+  const deliveryFunction = (name, mode) => ({ name: `projects/example/locations/europe-west2/functions/${name}`,
+    serviceConfig: { environmentVariables: mode === undefined ? {} : { GOV_NOTIFY_DELIVERY_MODE: mode } } });
+
+  it.each(["SIMULATION", "TEAM_TEST", "LIVE"])("accepts the runtime parser's %s ceiling and ignores unrelated empty Functions", (mode) => {
+    const outcome = assessGovNotifyDeliveryModeConfiguration([
+      deliveryFunction("templates", mode), deliveryFunction("configuration", ` ${mode.toLowerCase()} `),
+      deliveryFunction("deleteMyAccount", undefined),
+    ], ["templates", "configuration"]);
+    expect(outcome.status).toBe(RESULT_STATUS.PASS);
+    expect(outcome.details).toMatchObject({ configuredFunctions: ["configuration", "templates"], distinctModeCount: 1 });
+  });
+
+  it.each([undefined, "", " \t "])("fails a missing/empty delivery ceiling (%s)", (mode) => {
+    const outcome = assessGovNotifyDeliveryModeConfiguration([deliveryFunction("templates", mode)], ["templates"]);
+    expect(outcome.status).toBe(RESULT_STATUS.FAIL);
+    expect(outcome.details.unconfiguredFunctions).toEqual(["templates"]);
+    expect(exitCodeFor([outcome])).toBe(1);
+  });
+
+  it.each([null, 0, "DISABLED", "PRIVATE_ENV_VALUE_DO_NOT_REPORT"])("fails an invalid ceiling without exposing it (%s)", (mode) => {
+    const outcome = assessGovNotifyDeliveryModeConfiguration([deliveryFunction("templates", mode)], ["templates"]);
+    expect(outcome.status).toBe(RESULT_STATUS.FAIL);
+    expect(outcome.details.invalidFunctions).toEqual(["templates"]);
+    if (typeof mode === "string") expect(JSON.stringify(outcome)).not.toContain(mode);
+  });
+
+  it("fails absent/duplicate required metadata and inconsistent valid ceilings", () => {
+    expect(assessGovNotifyDeliveryModeConfiguration([], ["templates"])).toMatchObject({ status: RESULT_STATUS.FAIL,
+      details: { missingFunctions: ["templates"] } });
+    expect(assessGovNotifyDeliveryModeConfiguration([
+      deliveryFunction("templates", "SIMULATION"), deliveryFunction("templates", "SIMULATION"),
+    ], ["templates"])).toMatchObject({ status: RESULT_STATUS.FAIL, details: { duplicateFunctions: ["templates"] } });
+    expect(assessGovNotifyDeliveryModeConfiguration([
+      deliveryFunction("templates", "SIMULATION"), deliveryFunction("configuration", "LIVE"),
+    ], ["templates", "configuration"])).toMatchObject({ status: RESULT_STATUS.FAIL, details: { distinctModeCount: 2 } });
+  });
+
+  it.each([undefined, ["templates", "TEMPLATES"], ["not/a/function"], [42]])("rejects an invalid delivery audit contract (%s)", (contract) => {
+    expect(assessGovNotifyDeliveryModeConfiguration([], contract)).toMatchObject({ status: RESULT_STATUS.FAIL,
+      details: { contractValid: false } });
+  });
+
   it("parses clean JSON and Firebase JSON preceded by a warning", () => {
     expect(parseJsonOutput('{"status":"success","result":[]}')).toEqual({
       status: "success",
@@ -185,6 +228,15 @@ describe("deployment check parsing and comparison", () => {
     expect(configuration.expectedPublicInvokerFunctions).toEqual(
       contracts.publicInvokerFunctions
     );
+    expect(configuration.govNotifyDeliveryModeFunctions).toEqual([
+      "getAnnouncementDeliveryConfiguration", "getAnnouncementTemplates", "getGovNotifyDeliveryAdminConfiguration",
+      "previewAnnouncementTemplate", "sendSectionAnnouncement", "updateGovNotifyDeliveryMode",
+    ]);
+    expect(configuration.govNotifyDeliveryModeFunctions.every((name) => contracts.publicInvokerFunctions.includes(name))).toBe(true);
+    expect(assessGovNotifyDeliveryModeConfiguration(
+      configuration.govNotifyDeliveryModeFunctions.map((name) => deliveryFunction(name, "SIMULATION")),
+      configuration.govNotifyDeliveryModeFunctions,
+    ).status).toBe(RESULT_STATUS.PASS);
   });
 
   it("recognises only public invoker principals on invoker roles", () => {

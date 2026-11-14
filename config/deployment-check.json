@@ -41,6 +41,14 @@
     "STRIPE_WEBHOOK_SECRET_PAYMENTS",
     "UNSUBSCRIBE_SECRET"
   ],
+  "govNotifyDeliveryModeFunctions": [
+    "getAnnouncementDeliveryConfiguration",
+    "getAnnouncementTemplates",
+    "getGovNotifyDeliveryAdminConfiguration",
+    "previewAnnouncementTemplate",
+    "sendSectionAnnouncement",
+    "updateGovNotifyDeliveryMode"
+  ],
   "requiredHostingHeaders": [
     "content-security-policy",
     "permissions-policy",
