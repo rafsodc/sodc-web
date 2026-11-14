@@ -5,6 +5,7 @@ import {
   isPrivateSessionSuspended,
 } from "../../../shared/appShell/sessionLifecycle";
 import { idsEqual } from "../../../shared/utils/uuid";
+import { authorizationReadEpoch, privateReadsBlocked, subscribeAuthorizationUpdates } from "../../../shared/auth/authorizationUpdate";
 import {
   eventAnnouncementPath,
   readEventAnnouncementFilters,
@@ -31,7 +32,7 @@ import type { EventAttendeeTicketFilters } from "../utils/bookingApprovalsAdmin"
 import TicketAttendanceDialog from "./TicketAttendanceDialog";
 import AddUserTicketDialog from "./AddUserTicketDialog";
 import type { EventAttendeeTicketRow } from "../utils/bookingApprovalsAdmin";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { isCancelledError, useQuery, useQueryClient } from "@tanstack/react-query";
 import { guestCall, type GuestList } from "../../guests/api";
 import { organiserGuestTicketRows } from "../../guests/reporting";
 import OrganiserGuestsManager from "../../guests/OrganiserGuestsManager";
@@ -45,6 +46,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useSyncExternalStore,
 } from "react";
 import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
 import { invalidateMyBookings } from "../../../shared/query/invalidation";
@@ -67,6 +69,7 @@ import {
   type CanonicalCommittedTicket,
 } from "../../../shared/query/ticketSaveCache";
 import {
+  DataConnectReadSupersededError,
   refreshDataConnectQuery,
   SERVER_ONLY_QUERY_OPTIONS,
 } from "../../../shared/query/authoritativeDataConnect";
@@ -254,6 +257,11 @@ interface TicketSaveReceipt {
   submittedSnapshot: string;
   created: boolean;
 }
+interface SavedChangeNotice {
+  isCurrent: () => boolean;
+  refreshing: boolean;
+  failed: boolean;
+}
 const editedTicketForm = (previous: TicketForm, next: TicketForm): TicketForm => ({ ...next, revision: previous.revision + 1 });
 function ticketFields(ticket: TicketTypeRow) {
   return {
@@ -326,6 +334,13 @@ export default function SectionEventsManager({
     `${sectionId}:${initialEventId ?? "list"}:${routeLocation.pathname}${routeLocation.search}`,
   );
   const queryClient = useQueryClient();
+  const authorityEpoch = useSyncExternalStore(subscribeAuthorizationUpdates, authorizationReadEpoch);
+  const [savedChange, setSavedChange] = useState<SavedChangeNotice | null>(null);
+  const savedChangeOwner = useRef<SavedChangeNotice | null>(null);
+  useEffect(() => {
+    savedChangeOwner.current = null;
+    setSavedChange(null);
+  }, [isCurrentEvent, authorityEpoch]);
   const [refreshFailure, setRefreshFailure] = useState<{
     message: string;
     savedMessage: string;
@@ -465,6 +480,9 @@ export default function SectionEventsManager({
   const submittedDraftIsConfirmed = eventWrite.status === "success" && !!eventWrite.result &&
     formSnapshot(eventForm) === eventWrite.result.submittedSnapshot;
   const eventDraftDirty = eventForm.initialized && formSnapshot(eventForm) !== eventForm.baseline && !submittedDraftIsConfirmed;
+  const eventEditorVisible = eventDialogOpen && (!routeControlled || task !== "details" ||
+    (!!eventDetailData?.event && eventForm.initialized &&
+      (!eventDetailFailed || Boolean(savedChange?.isCurrent()))));
   const ticketWrite = useSessionMutation<TicketSaveReceipt>(
     `ticket-write:${normalizedResourceId(sectionId)}:${normalizedResourceId(ticketTypesEventId ?? "none")}:${normalizedResourceId(routeControlled ? (ticketSelector ?? "new") : (editingTicketType?.id ?? "new"))}`,
   );
@@ -697,6 +715,51 @@ export default function SectionEventsManager({
           getEventByIdRef(dataConnect, { id: normalizedResourceId(ticketTypesEventId) }),
         )
       : Promise.resolve();
+  const offerSavedChangeRefresh = ({ session, epoch }: Pick<EventSaveReceipt["cacheWrite"], "session" | "epoch">) => {
+    const isCurrent = () => isCurrentEvent() && isSessionCurrent(session) &&
+      authorizationReadEpoch() === epoch && !privateReadsBlocked(session);
+    if (!isCurrent()) return;
+    const notice = { isCurrent, refreshing: false, failed: false };
+    savedChangeOwner.current = notice;
+    setSavedChange(notice);
+  };
+  const refreshDepartedSave = async (notice: SavedChangeNotice) => {
+    if (savedChangeOwner.current !== notice || notice.refreshing || !notice.isCurrent()) return;
+    const pending = { ...notice, refreshing: true };
+    savedChangeOwner.current = pending;
+    setSavedChange(pending);
+    try {
+      // These two projections are already observed by the workspace. Do not
+      // acknowledge another editor's receipt or fetch deferred task panels.
+      const readIfCurrent = (read: () => Promise<unknown>) =>
+        savedChangeOwner.current === pending && pending.isCurrent() ? read() : Promise.resolve();
+      await Promise.all([readIfCurrent(refetchEvents), readIfCurrent(refetchEventDetail)]);
+      if (savedChangeOwner.current !== pending || !pending.isCurrent()) return;
+      savedChangeOwner.current = null;
+      setSavedChange(null);
+    } catch (caught) {
+      if (savedChangeOwner.current !== pending || !pending.isCurrent()) return;
+      // Retirement of another confirmed save can supersede these reads before
+      // its replacement notice is offered. Keep Refresh available without
+      // reporting that expected hand-off as a failed server read.
+      const superseded = caught instanceof DataConnectReadSupersededError || isCancelledError(caught);
+      if (!superseded) reportError("admin.events.saved-change-refresh", caught, { sectionId, eventId: ticketTypesEventId });
+      const next = { ...pending, refreshing: false, failed: !superseded };
+      savedChangeOwner.current = next;
+      setSavedChange(next);
+    }
+  };
+  const savedChangeNotice = savedChange?.isCurrent() && (
+    <Alert severity={savedChange.failed ? "warning" : "info"} sx={{ mb: 2 }} action={
+      <Button disabled={savedChange.refreshing} onClick={() => void refreshDepartedSave(savedChange)}>
+        {savedChange.refreshing ? "Refreshing saved change…" : savedChange.failed ? "Retry saved change refresh" : "Refresh saved change"}
+      </Button>
+    }>
+      {savedChange.failed
+        ? "Your change is saved. The latest event data could not be loaded. Retry the refresh; your current edits will be kept."
+        : "Your change was saved after you changed tasks. Refresh the saved event data; your current edits will be kept."}
+    </Alert>
+  );
   const refetchEventBookings = () =>
     ticketTypesEventId
       ? refreshDataConnectQuery(
@@ -797,7 +860,9 @@ export default function SectionEventsManager({
   useEffect(() => {
     const failures = [
       {
-        failed: eventDetailFailed,
+        // The saved-change notice owns this read failure and its retry. Do not
+        // leave a second, stale editor error after that recovery succeeds.
+        failed: eventDetailFailed && !savedChange?.isCurrent(),
         error: eventDetailError,
         operation: "detail",
         context: "events" as const,
@@ -840,6 +905,7 @@ export default function SectionEventsManager({
     eventBookingsFailed,
     eventDetailError,
     eventDetailFailed,
+    savedChange,
     paymentAdjustmentsError,
     paymentAdjustmentsFailed,
     sectionId,
@@ -1196,12 +1262,13 @@ export default function SectionEventsManager({
       });
       if (!isCurrentView()) {
         await retireCommittedEventSave(result.cacheWrite, result.event);
+        offerSavedChangeRefresh(result.cacheWrite);
         return;
       }
       try {
         await applyCommittedEventSave(result.cacheWrite, result.event);
       } catch (caught) {
-        if (!isCurrentView()) return;
+        if (!isCurrentView()) { offerSavedChangeRefresh(result.cacheWrite); return; }
         reportError("admin.events.saved-cache", caught, { sectionId, eventId });
         // The successful receipt already explains that the save completed and
         // offers read-only recovery. Do not pair it with a write-failure error.
@@ -1347,12 +1414,13 @@ export default function SectionEventsManager({
       });
       if (!isCurrentView()) {
         await retireCommittedTicketSave(result.cacheWrite, result.ticket, result.event);
+        offerSavedChangeRefresh(result.cacheWrite.parent);
         return;
       }
       try {
         await applyCommittedTicketSave(result.cacheWrite, result.ticket, result.event);
       } catch (caught) {
-        if (!isCurrentView()) return;
+        if (!isCurrentView()) { offerSavedChangeRefresh(result.cacheWrite.parent); return; }
         reportError("admin.tickets.saved-cache", caught, { sectionId, eventId: ticketTypesEventId, ticketTypeId });
         return;
       }
@@ -1673,6 +1741,7 @@ export default function SectionEventsManager({
         sx={{ backgroundColor: "background.default" }}
       >
         {refreshWarning}
+        {!eventEditorVisible && !ticketTypeDialogOpen && savedChangeNotice}
         <WorkspaceFrame
           enabled={routeControlled}
           event={eventForAdmin}
@@ -1880,7 +1949,7 @@ export default function SectionEventsManager({
           loadingUserGroups={loadingUserGroups}
           submitting={submittingTicketType || ticketWrite.pending}
           saveDisabled={ticketWrite.status !== "idle"}
-          notice={writeNotice("ticket")}
+          notice={<>{writeNotice("ticket")}{savedChangeNotice}</>}
           onClose={() => {
             if (ticketWrite.status === "idle") discardTicketDraft();
             setTicketTypeDialogOpen(false);
@@ -1899,7 +1968,7 @@ export default function SectionEventsManager({
         <EventDialogSurface
           embedded={routeControlled && task === "details"}
           dirty={eventDraftDirty}
-          open={eventDialogOpen && (!routeControlled || task !== "details" || (!!eventDetailData?.event && eventForm.initialized && !eventDetailFailed))}
+          open={eventEditorVisible}
           editingEvent={editingEvent ?? eventForm.committedEvent}
           title={title}
           location={location}
@@ -1913,7 +1982,7 @@ export default function SectionEventsManager({
           maxGuestsStr={maxGuestsStr}
           submitting={submitting || eventWrite.pending}
           saveDisabled={eventWrite.status !== "idle"}
-          notice={writeNotice("event")}
+          notice={<>{writeNotice("event")}{savedChangeNotice}</>}
           error={error}
           onClose={() => {
             if (eventWrite.status === "idle") discardEventDraft();
@@ -1946,6 +2015,7 @@ export default function SectionEventsManager({
       sx={{ backgroundColor: "background.default" }}
     >
       {refreshWarning}
+      {!eventDialogOpen && savedChangeNotice}
       <EventListSurface
         sectionName={sectionName}
         onBack={onBack}
@@ -1988,7 +2058,7 @@ export default function SectionEventsManager({
         maxGuestsStr={maxGuestsStr}
         submitting={submitting || eventWrite.pending}
         saveDisabled={eventWrite.status !== "idle"}
-        notice={writeNotice("event")}
+        notice={<>{writeNotice("event")}{savedChangeNotice}</>}
         error={error}
         onClose={() => {
           if (eventWrite.status === "idle") discardEventDraft();
