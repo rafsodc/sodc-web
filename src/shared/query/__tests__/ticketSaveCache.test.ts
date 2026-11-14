@@ -356,7 +356,7 @@ function idsEqualForTest(variables: unknown, id: string) {
 }
 
 describe("ticket settlement read ownership", () => {
-  it("preserves a detail read started during dependency cancellation and still retires sibling aliases", async () => {
+  it.each(["dependency", "parent publication"] as const)("preserves a detail read started during %s cancellation and still retires sibling aliases", async phase => {
     const fresh = { ...saved, title: "Read after confirmed ticket commit" };
     const delayed = deferred<TransportResult>();
     const read = vi.fn(() => delayed.promise); transport(read);
@@ -366,22 +366,42 @@ describe("ticket settlement read ownership", () => {
     client.setQueryData(memberKey, { title: "Old catalogue metadata" });
     const write = captureTicketSaveCacheWrite(client, dc, scope);
     const pause = deferred<void>();
-    vi.spyOn(client, "cancelQueries").mockImplementationOnce(() => pause.promise);
+    const cancel = client.cancelQueries.bind(client);
+    let held = false;
+    vi.spyOn(client, "cancelQueries").mockImplementation((filters, options) => {
+      const selectedPhase = phase === "dependency" ? filters?.predicate !== undefined : filters?.queryKey?.[0] === "GetEventsForSection";
+      if (!held && selectedPhase) {
+        held = true;
+        return pause.promise;
+      }
+      return cancel(filters, options);
+    });
     const publishing = applyCommittedTicketSave(write, ticket, saved).catch(error => error);
+    // In the parent phase, dependency retirement must finish and publication
+    // must advance its own read fences before the authoritative read starts.
+    // A separately recaptured publication plan must not leave sibling aliases
+    // fresh by hiding those fence advances from the outer fallback plan.
+    await vi.waitFor(() => expect(held).toBe(true));
     const ref = queryRef<GetEventByIdData, {id: string}>(dc, "GetEventById", { id: EVENT });
-    const pending = client.fetchQuery({ ...dataConnectQueryOptions(ref), staleTime: 0 });
-    await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
-    pause.resolve();
-    await expect(publishing).resolves.toBeInstanceOf(DataConnectReadSupersededError);
-    expect(client.getQueryState(detailKey())?.fetchStatus).toBe("fetching");
-    expect(client.getQueryState(detailKey())?.isInvalidated).toBe(false);
-    expect(client.getQueryState(detailKey(EVENT.toUpperCase()))?.isInvalidated).toBe(true);
-    expect(client.getQueryState(listKey)?.isInvalidated).toBe(true);
-    expect(client.getQueryState(memberKey)?.isInvalidated).toBe(true);
-    delayed.resolve({ data: { event: fresh }, extensions: {} });
-    await expect(pending).resolves.toEqual({ event: fresh });
-    expect(client.getQueryState(detailKey())?.isInvalidated).toBe(false);
-    expect(read).toHaveBeenCalledOnce();
+    const pending = client.fetchQuery({ ...dataConnectQueryOptions(ref), staleTime: 0 }).catch(error => error);
+    try {
+      await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
+      pause.resolve();
+      await expect(publishing).resolves.toBeInstanceOf(DataConnectReadSupersededError);
+      expect(client.getQueryState(detailKey())?.fetchStatus).toBe("fetching");
+      expect(client.getQueryState(detailKey())?.isInvalidated).toBe(false);
+      expect(client.getQueryState(detailKey(EVENT.toUpperCase()))?.isInvalidated).toBe(true);
+      expect(client.getQueryState(listKey)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(memberKey)?.isInvalidated).toBe(true);
+      delayed.resolve({ data: { event: fresh }, extensions: {} });
+      await expect(pending).resolves.toEqual({ event: fresh });
+      expect(client.getQueryState(detailKey())?.isInvalidated).toBe(false);
+      expect(read).toHaveBeenCalledOnce();
+    } finally {
+      pause.resolve();
+      delayed.resolve({ data: { event: fresh }, extensions: {} });
+      await Promise.all([publishing, pending]);
+    }
   });
 
   it("makes an evicted active initial read retryable without fetching hidden panels", async () => {
