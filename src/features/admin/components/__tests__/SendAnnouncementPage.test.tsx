@@ -191,6 +191,7 @@ describe("attendee audience", () => {
       const template = screen.getByRole("combobox", { name: "Template" });
       expect(template).toHaveAttribute("aria-expanded", "false");
       fireEvent.mouseDown(template);
+      expect(exitingMenu).toBeInTheDocument();
       expect(template).toHaveAttribute("aria-expanded", "true");
       expect(screen.getByRole("option", { name: /BULK: Dinner/ })).toBeInTheDocument();
       expect(screen.queryByRole("option", { name: /BULK: Section/ })).not.toBeInTheDocument();
