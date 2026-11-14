@@ -54,6 +54,7 @@ import {
   applyCommittedEventSave,
   assertCanonicalCommittedEvent,
   captureEventSaveCacheWrite,
+  retireCommittedEventSave,
   type CanonicalCommittedEvent,
 } from "../../../shared/query/eventSaveCache";
 import {
@@ -62,6 +63,7 @@ import {
   assertCanonicalCommittedTicketResponse,
   captureTicketSaveCacheWrite,
   retireTicketSaveDependencies,
+  retireCommittedTicketSave,
   type CanonicalCommittedTicket,
 } from "../../../shared/query/ticketSaveCache";
 import {
@@ -1192,7 +1194,10 @@ export default function SectionEventsManager({
         }
         return { receipt, cacheWrite, event: saved, submittedRevision, submittedSnapshot, created };
       });
-      if (!isCurrentView()) return;
+      if (!isCurrentView()) {
+        await retireCommittedEventSave(result.cacheWrite, result.event);
+        return;
+      }
       try {
         await applyCommittedEventSave(result.cacheWrite, result.event);
       } catch (caught) {
@@ -1340,7 +1345,10 @@ export default function SectionEventsManager({
         }
         return { receipt, cacheWrite, ticket: saved, event, submittedRevision, submittedSnapshot, created };
       });
-      if (!isCurrentView()) return;
+      if (!isCurrentView()) {
+        await retireCommittedTicketSave(result.cacheWrite, result.ticket, result.event);
+        return;
+      }
       try {
         await applyCommittedTicketSave(result.cacheWrite, result.ticket, result.event);
       } catch (caught) {

@@ -3,7 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { deleteApp, initializeApp, type FirebaseApp } from "firebase/app";
 import { executeQuery, getDataConnect, queryRef, type DataConnect } from "firebase/data-connect";
 import { TicketAudience, type GetEventByIdData, type GetEventsForSectionData } from "@dataconnect/generated";
-import { applyCommittedEventSave, assertCanonicalCommittedEvent, captureEventSaveCacheWrite, type CanonicalCommittedEvent } from "../eventSaveCache";
+import { applyCommittedEventSave, assertCanonicalCommittedEvent, captureEventSaveCacheWrite, retireCommittedEventSave, type CanonicalCommittedEvent } from "../eventSaveCache";
 import { dataConnectQueryKey, dataConnectQueryOptions, DataConnectReadSupersededError, refreshDataConnectQuery } from "../authoritativeDataConnect";
 import { captureSectionEventSummaryRead, rememberSectionEventSummaries } from "../sectionEventSummaryCache";
 import { captureSession, createSessionLifecycle, installSessionRuntime, SessionChangedError, suspendPrivateSession } from "../../appShell/sessionLifecycle";
@@ -205,12 +205,16 @@ describe("canonical committed event cache updates", () => {
     expect(client.getQueryData(detailKey())).toEqual({ event: latest });
   });
 
-  it("rejects a superseded same-resource write but admits the current one", async () => {
+  it("retires superseded receipts and admits a later uncontended write", async () => {
     transport(vi.fn());
     const first = captureEventSaveCacheWrite(client, dc, { sectionId: SECTION, eventId: EVENT });
     const latest = captureEventSaveCacheWrite(client, dc, { sectionId: SECTION, eventId: compact(EVENT).toUpperCase() });
     await expect(applyCommittedEventSave(first, old)).rejects.toBeInstanceOf(DataConnectReadSupersededError);
-    await applyCommittedEventSave(latest, saved);
+    // The held latest response may predate the first write's late commit. Even
+    // an empty cache must not let that incomplete response seed fresh data.
+    await expect(applyCommittedEventSave(latest, saved)).rejects.toBeInstanceOf(DataConnectReadSupersededError);
+    expect(client.getQueryData(detailKey())).toBeUndefined();
+    await applyCommittedEventSave(captureEventSaveCacheWrite(client, dc, { sectionId: SECTION, eventId: EVENT }), saved);
     expect(client.getQueryData(detailKey())).toEqual({ event: saved });
   });
 
@@ -235,5 +239,98 @@ describe("canonical committed event cache updates", () => {
     });
     await expect(applyCommittedEventSave(write, saved)).rejects.toBeInstanceOf(SessionChangedError);
     unsubscribe(); expect(client.getQueryCache().getAll()).toHaveLength(0);
+  });
+});
+
+describe("confirmed late event projection retirement", () => {
+  it("retires every cached logical alias after another event in the section published first", async () => {
+    const latestA = { ...saved, title: "A committed late" };
+    const latestB = { ...saved, id: OTHER, title: "B committed first" };
+    const read = vi.fn(async (name: string) => ({ data: name === "GetEventsForSection" ? listData(latestA, latestB) : { event: latestA }, extensions: {} }));
+    transport(read);
+    const aliases = [EVENT, EVENT.toUpperCase(), compact(EVENT)];
+    for (const id of aliases) client.setQueryData(detailKey(id), { event: old });
+    client.setQueryData(detailKey(OTHER), { event: { ...old, id: OTHER } });
+    client.setQueryData(listKey(compact(SECTION).toUpperCase()), listData(old, { ...old, id: OTHER }));
+    const first = captureEventSaveCacheWrite(client, dc, { sectionId: SECTION, eventId: compact(EVENT) });
+    const second = captureEventSaveCacheWrite(client, dc, { sectionId: SECTION, eventId: OTHER });
+    await applyCommittedEventSave(second, latestB);
+    await expect(applyCommittedEventSave(first, latestA)).rejects.toBeInstanceOf(DataConnectReadSupersededError);
+    for (const id of aliases) {
+      expect(client.getQueryState(detailKey(id))?.isInvalidated).toBe(true);
+      expect(client.getQueryData(detailKey(id))).toEqual({ event: old });
+    }
+    expect(client.getQueryState(listKey(compact(SECTION).toUpperCase()))?.isInvalidated).toBe(true);
+    expect(client.getQueryData(detailKey(OTHER))).toEqual({ event: latestB });
+    expect(client.getQueryState(detailKey(OTHER))?.isInvalidated).toBe(false);
+    expect(read).not.toHaveBeenCalled();
+    const result = await refreshDataConnectQuery(client, queryRef<GetEventsForSectionData, {sectionId: string}>(dc, "GetEventsForSection", { sectionId: SECTION }));
+    expect(result.section?.events.map(row => row.title)).toEqual([latestA.title, latestB.title]);
+    expect(read).toHaveBeenCalledOnce();
+  });
+
+  it.each(["absent", "evicted"] as const)("fences a held newer response when projections are %s at the late commit", async state => {
+    const read = vi.fn(async () => ({ data: { event: saved }, extensions: {} })); transport(read);
+    if (state === "evicted") client.setQueryData(detailKey(), { event: old });
+    const first = captureEventSaveCacheWrite(client, dc, { sectionId: compact(SECTION).toUpperCase(), eventId: compact(EVENT) });
+    const second = captureEventSaveCacheWrite(client, dc, { sectionId: SECTION, eventId: EVENT.toUpperCase() });
+    client.removeQueries();
+    await retireCommittedEventSave(first, saved);
+    await expect(applyCommittedEventSave(second, old)).rejects.toBeInstanceOf(DataConnectReadSupersededError);
+    expect(client.getQueryCache().getAll()).toHaveLength(0);
+    expect(read).not.toHaveBeenCalled();
+    expect(await client.fetchQuery(dataConnectQueryOptions(queryRef<GetEventByIdData, {id: string}>(dc, "GetEventById", { id: EVENT })))).toEqual({ event: saved });
+    expect(read).toHaveBeenCalledOnce();
+  });
+
+  it("preserves a newer alias read during cancellation while retiring the other aliases", async () => {
+    const fresh = { ...saved, title: "Authoritative read after the commit" };
+    const read = vi.fn(async () => ({ data: { event: fresh }, extensions: {} })); transport(read);
+    client.setQueryData(detailKey(), { event: old });
+    client.setQueryData(detailKey(EVENT.toUpperCase()), { event: old });
+    client.setQueryData(listKey(), listData(old));
+    const write = captureEventSaveCacheWrite(client, dc, { sectionId: SECTION, eventId: EVENT });
+    const pause = deferred<void>();
+    vi.spyOn(client, "cancelQueries").mockImplementationOnce(() => pause.promise);
+    const retiring = retireCommittedEventSave(write, saved);
+    const alias = queryRef<GetEventByIdData, {id: string}>(dc, "GetEventById", { id: EVENT.toUpperCase() });
+    await client.fetchQuery({ ...dataConnectQueryOptions(alias), staleTime: 0 });
+    pause.resolve(); await retiring;
+    expect(client.getQueryData(detailKey(EVENT.toUpperCase()))).toEqual({ event: fresh });
+    expect(client.getQueryState(detailKey(EVENT.toUpperCase()))?.isInvalidated).toBe(false);
+    expect(client.getQueryState(detailKey())?.isInvalidated).toBe(true);
+    expect(client.getQueryState(listKey())?.isInvalidated).toBe(true);
+    expect(read).toHaveBeenCalledOnce();
+  });
+
+  it.each(["replace-query", "same-millisecond-refresh"] as const)("preserves a callable dependency's %s during cancellation", async kind => {
+    transport(vi.fn());
+    const key = ["organiser-guests", EVENT, "admin-a"];
+    client.setQueryData(key, { title: "Old" }, { updatedAt: 1 });
+    client.setQueryData(detailKey(), { event: old });
+    const write = captureEventSaveCacheWrite(client, dc, { sectionId: SECTION, eventId: EVENT });
+    const pause = deferred<void>(); vi.spyOn(client, "cancelQueries").mockImplementationOnce(() => pause.promise);
+    const retiring = retireCommittedEventSave(write, saved);
+    if (kind === "replace-query") client.removeQueries({ queryKey: key, exact: true });
+    client.setQueryData(key, { title: "New" }, { updatedAt: 1 });
+    pause.resolve(); await retiring;
+    expect(client.getQueryData(key)).toEqual({ title: "New" });
+    expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+    expect(client.getQueryState(detailKey())?.isInvalidated).toBe(true);
+  });
+
+  it.each(["account", "epoch", "blocked", "suspended"] as const)("does not retire a newer %s context during cancellation", async kind => {
+    transport(vi.fn()); client.setQueryData(detailKey(), { event: old });
+    const write = captureEventSaveCacheWrite(client, dc, { sectionId: SECTION, eventId: EVENT });
+    const pause = deferred<void>(); vi.spyOn(client, "cancelQueries").mockImplementationOnce(() => pause.promise);
+    const retiring = retireCommittedEventSave(write, saved).catch(error => error);
+    if (kind === "account") { lifecycle.retire(); uninstall(); uninstall = install("admin-b"); }
+    else if (kind === "suspended") suspendPrivateSession(captureSession());
+    else beginAuthorizationUpdate(captureSession()).finish(true, kind === "blocked");
+    client.clear(); client.setQueryData(detailKey(), { event: { ...saved, title: "New context" } });
+    pause.resolve();
+    await expect(retiring).resolves.toBeInstanceOf(SessionChangedError);
+    expect(client.getQueryData<GetEventByIdData>(detailKey())?.event?.title).toBe("New context");
+    expect(client.getQueryState(detailKey())?.isInvalidated).toBe(false);
   });
 });
