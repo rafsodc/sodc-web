@@ -32,7 +32,7 @@ import type { EventAttendeeTicketFilters } from "../utils/bookingApprovalsAdmin"
 import TicketAttendanceDialog from "./TicketAttendanceDialog";
 import AddUserTicketDialog from "./AddUserTicketDialog";
 import type { EventAttendeeTicketRow } from "../utils/bookingApprovalsAdmin";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { isCancelledError, useQuery, useQueryClient } from "@tanstack/react-query";
 import { guestCall, type GuestList } from "../../guests/api";
 import { organiserGuestTicketRows } from "../../guests/reporting";
 import OrganiserGuestsManager from "../../guests/OrganiserGuestsManager";
@@ -69,6 +69,7 @@ import {
   type CanonicalCommittedTicket,
 } from "../../../shared/query/ticketSaveCache";
 import {
+  DataConnectReadSupersededError,
   refreshDataConnectQuery,
   SERVER_ONLY_QUERY_OPTIONS,
 } from "../../../shared/query/authoritativeDataConnect";
@@ -738,10 +739,14 @@ export default function SectionEventsManager({
       setSavedChange(null);
     } catch (caught) {
       if (savedChangeOwner.current !== pending || !pending.isCurrent()) return;
-      reportError("admin.events.saved-change-refresh", caught, { sectionId, eventId: ticketTypesEventId });
-      const failed = { ...pending, refreshing: false, failed: true };
-      savedChangeOwner.current = failed;
-      setSavedChange(failed);
+      // Retirement of another confirmed save can supersede these reads before
+      // its replacement notice is offered. Keep Refresh available without
+      // reporting that expected hand-off as a failed server read.
+      const superseded = caught instanceof DataConnectReadSupersededError || isCancelledError(caught);
+      if (!superseded) reportError("admin.events.saved-change-refresh", caught, { sectionId, eventId: ticketTypesEventId });
+      const next = { ...pending, refreshing: false, failed: !superseded };
+      savedChangeOwner.current = next;
+      setSavedChange(next);
     }
   };
   const savedChangeNotice = savedChange?.isCurrent() && (

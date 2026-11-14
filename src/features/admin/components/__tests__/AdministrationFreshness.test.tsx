@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { initializeApp, deleteApp, type FirebaseApp } from "firebase/app";
-import { executeQuery, getDataConnect, type DataConnect } from "firebase/data-connect";
+import { executeQuery, getDataConnect, type DataConnect, type QueryRef } from "firebase/data-connect";
 import { BookingApprovalStatus, BookingStatus, MembershipStatus, TicketAudience, getMyBookingsRef, getEventByIdRef, getEventsForSectionRef, getUserGroupByIdRef, listUserGroupsRef, listEventBookingsForAdminRef } from "@dataconnect/generated";
 import { MemoryRouter, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
@@ -12,6 +12,8 @@ import SectionEventsManager from "../SectionEventsManager";
 import type { EventBookingAdminRow, TicketTypeRow } from "../sectionEventsManagerTypes";
 import { reviewBookingRevision, submitEventBooking } from "../../../../shared/utils/firebaseFunctions";
 import { dataConnectQueryOptions, refreshDataConnectQuery } from "../../../../shared/query/authoritativeDataConnect";
+import * as authoritativeDataConnect from "../../../../shared/query/authoritativeDataConnect";
+import * as adminErrors from "../../../../shared/errors";
 import { captureEventSaveCacheWrite, retireCommittedEventSave } from "../../../../shared/query/eventSaveCache";
 import { useGetMyBookings } from "../../../../shared/query/authoritativeHooks";
 import { guestCall } from "../../../guests/api";
@@ -576,6 +578,7 @@ describe("overlapping routed catalogue saves", () => {
     }));
     const rendered = render(routedEventView());
     const user = userEvent.setup();
+    const report = vi.spyOn(adminErrors, "reportError");
     let completeOldRead!: () => void;
     try {
       fireEvent.change(await screen.findByLabelText(/^title/i), { target: { value: "First late event save" } });
@@ -607,6 +610,7 @@ describe("overlapping routed catalogue saves", () => {
       expect(screen.getByRole("button", { name: "Refresh saved change" })).toBe(newerRefresh);
       expect(screen.queryByRole("button", { name: "Retry saved change refresh" })).not.toBeInTheDocument();
       expect(read).toHaveBeenCalledTimes(beforeOldCompletion);
+      expect(report).not.toHaveBeenCalledWith("admin.events.saved-change-refresh", expect.anything(), expect.anything());
       expect(screen.getByLabelText(/^title/i)).toHaveValue("First late event save");
       await user.click(newerRefresh);
       await waitFor(() => expect(screen.queryByRole("button", { name: /^(Refresh|Refreshing|Retry) saved change/ })).not.toBeInTheDocument());
@@ -617,6 +621,150 @@ describe("overlapping routed catalogue saves", () => {
       expect(screen.getByText(/The previous save completed/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateEvent", "UpdateTicketType"]);
+    } finally { completeOldRead?.(); rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it.each(["success", "error"] as const)("keeps a replacement notice when an older completed refresh hands off a late %s", async outcome => {
+    const endSession = eventSession();
+    const server = eventServer();
+    const completeWrites: Array<() => void> = [];
+    write.mockImplementation((name: string, variables: Record<string, unknown>) => new Promise(resolve => {
+      completeWrites.push(() => resolve(name === "UpdateTicketType"
+        ? commitTicketCatalog(name, variables, server.current()!)
+        : server.commit(name, variables)));
+    }));
+    const rendered = render(routedEventView());
+    const user = userEvent.setup();
+    const report = vi.spyOn(adminErrors, "reportError");
+    let releaseHandoff!: () => void;
+    try {
+      await waitFor(() => expect(screen.getByLabelText(/^title/i)).toHaveValue(event.title));
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "First departed event save" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await act(async () => navigateManager("?task=tickets&ticket=type-1"));
+      await waitFor(() => expect(screen.getByLabelText(/^title/i)).toHaveValue("Dinner"));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeEnabled());
+      fireEvent.change(screen.getByLabelText(/^title/i), { target: { value: "Second departed ticket save" } });
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(completeWrites).toHaveLength(2));
+      await act(async () => navigateManager("?task=details"));
+      await waitForDialogToClose();
+      await act(async () => completeWrites[0]());
+      const refresh = await screen.findByRole("button", { name: "Refresh saved change" });
+      const currentDraft = screen.getByLabelText(/^location/i);
+      fireEvent.change(currentDraft, { target: { value: "Newer unsaved event location" } });
+
+      // Complete the real server reads before holding only the caller handoff.
+      // A natural held SDK read is cancelled by the second retirement, so it
+      // cannot force either post-await branch to run after the new notice exists.
+      // These artificial success/error handoffs isolate that exact UI ordering.
+      const installedRefresh = authoritativeDataConnect.refreshDataConnectQuery;
+      let held = false;
+      vi.spyOn(authoritativeDataConnect, "refreshDataConnectQuery").mockImplementation(async <Data, Variables>(client: QueryClient, ref: QueryRef<Data, Variables>): Promise<Data> => {
+        const data = await installedRefresh(client, ref);
+        if (ref.name !== "GetEventById" || held) return data;
+        held = true;
+        return new Promise<Data>((resolve, reject) => {
+          releaseHandoff = () => outcome === "success" ? resolve(data) : reject(new Error("Older caller handoff failed"));
+        });
+      });
+      const beforeRefresh = read.mock.calls.length;
+      await user.click(refresh);
+      await waitFor(() => expect(releaseHandoff).toBeTypeOf("function"));
+      const detailKey = dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey;
+      const listKey = dataConnectQueryOptions(getEventsForSectionRef(context.dc, { sectionId: "section-1" })).queryKey;
+      expect(queryClient.getQueryState(detailKey)?.fetchStatus).toBe("idle");
+      expect(queryClient.getQueryState(listKey)?.fetchStatus).toBe("idle");
+      expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(false);
+      expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(false);
+      expect(screen.getByRole("button", { name: "Refreshing saved change…" })).toBeDisabled();
+      expect(read.mock.calls.slice(beforeRefresh).map(([name]) => name).sort()).toEqual(["GetEventById", "GetEventsForSection"]);
+
+      act(() => currentDraft.focus());
+      const beforeReplacement = read.mock.calls.length;
+      await act(async () => completeWrites[1]());
+      const replacementRefresh = await screen.findByRole("button", { name: "Refresh saved change" });
+      expect(replacementRefresh).toBeEnabled();
+      expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true);
+      await act(async () => releaseHandoff());
+
+      expect(screen.getByRole("button", { name: "Refresh saved change" })).toBe(replacementRefresh);
+      expect(replacementRefresh).toBeEnabled();
+      expect(screen.queryByRole("button", { name: "Retry saved change refresh" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Refreshing saved change…" })).not.toBeInTheDocument();
+      expect(screen.queryByText(/Your change is saved. The latest event data could not be loaded/)).not.toBeInTheDocument();
+      expect(report).not.toHaveBeenCalled();
+      expect(read).toHaveBeenCalledTimes(beforeReplacement);
+      expect(currentDraft).toHaveFocus();
+      expect(currentDraft).toHaveValue("Newer unsaved event location");
+      expect(screen.getByText(/The previous save completed/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Load saved change" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(write.mock.calls.map(([name]) => name)).toEqual(["UpdateEvent", "UpdateTicketType"]);
+    } finally { releaseHandoff?.(); rendered.unmount(); endSession(); }
+  }, 20_000);
+
+  it("restores Refresh after real query cancellation and keeps a later refresh safe from the cancelled transport", async () => {
+    const endSession = eventSession();
+    const { server, complete, rendered, user } = await pendingDepartedEventSave();
+    const report = vi.spyOn(adminErrors, "reportError");
+    let completeOldRead!: () => void;
+    try {
+      await act(async () => complete());
+      await screen.findByRole("button", { name: "Refresh saved change" });
+      await act(async () => navigateManager("?task=details"));
+      const currentDraft = await screen.findByLabelText(/^location/i);
+      fireEvent.change(currentDraft, { target: { value: "Unsent location during cancellation" } });
+      const originalRead = read.getMockImplementation()!;
+      let held = false;
+      read.mockImplementation((name: string, variables: Record<string, unknown>) => {
+        if (name === "GetEventById" && !held) {
+          held = true;
+          const previous = originalRead(name, variables);
+          return new Promise(resolve => { completeOldRead = () => resolve(previous); });
+        }
+        return originalRead(name, variables);
+      });
+      const beforeRefresh = read.mock.calls.length;
+      await user.click(screen.getByRole("button", { name: "Refresh saved change" }));
+      await waitFor(() => expect(completeOldRead).toBeTypeOf("function"));
+      expect(screen.getByRole("button", { name: "Refreshing saved change…" })).toBeDisabled();
+      act(() => currentDraft.focus());
+      const detailKey = dataConnectQueryOptions(getEventByIdRef(context.dc, { id: event.id })).queryKey;
+      // Default cancellation resolves cached reverted data. Disable reversion
+      // here so the real QueryClient delivers its CancelledError to the caller.
+      await act(async () => { await queryClient.cancelQueries({ queryKey: detailKey, exact: true }, { revert: false }); });
+      const refresh = await screen.findByRole("button", { name: "Refresh saved change" });
+      expect(refresh).toBeEnabled();
+      expect(screen.queryByRole("button", { name: "Retry saved change refresh" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Refreshing saved change…" })).not.toBeInTheDocument();
+      expect(screen.queryByText(/Your change is saved. The latest event data could not be loaded/)).not.toBeInTheDocument();
+      expect(report).not.toHaveBeenCalled();
+      expect(currentDraft).toHaveFocus();
+      expect(currentDraft).toHaveValue("Unsent location during cancellation");
+      expect(screen.getByText(/The previous save completed/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(read.mock.calls.slice(beforeRefresh).map(([name]) => name).sort()).toEqual(["GetEventById", "GetEventsForSection"]);
+      expect(write).toHaveBeenCalledOnce();
+
+      server.commit("UpdateEvent", { ...server.current()!, title: "Authoritative after cancellation" });
+      await user.click(refresh);
+      await waitFor(() => expect(screen.queryByRole("button", { name: /^(Refresh|Refreshing|Retry) saved change/ })).not.toBeInTheDocument());
+      expect(screen.getByRole("heading", { level: 1, name: "Authoritative after cancellation" })).toBeInTheDocument();
+      expect(read.mock.calls.slice(beforeRefresh).map(([name]) => name).sort()).toEqual(["GetEventById", "GetEventById", "GetEventsForSection", "GetEventsForSection"]);
+      const beforeOldCompletion = read.mock.calls.length;
+      act(() => currentDraft.focus());
+      await act(async () => completeOldRead());
+      expect(queryClient.getQueryData<{ event: { title: string } }>(detailKey)?.event.title).toBe("Authoritative after cancellation");
+      expect(screen.getByRole("heading", { level: 1, name: "Authoritative after cancellation" })).toBeInTheDocument();
+      expect(currentDraft).toHaveFocus();
+      expect(currentDraft).toHaveValue("Unsent location during cancellation");
+      expect(screen.getByText(/The previous save completed/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(report).not.toHaveBeenCalled();
+      expect(read).toHaveBeenCalledTimes(beforeOldCompletion);
+      expect(write).toHaveBeenCalledOnce();
     } finally { completeOldRead?.(); rendered.unmount(); endSession(); }
   }, 20_000);
 });
