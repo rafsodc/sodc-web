@@ -84,6 +84,7 @@ export async function refreshDataConnectQuery<Data, Variables>(client: QueryClie
   }
   assertOwner();
   let fence: ReadFence | undefined;
+  let active = true;
   let data: Data;
   try {
     data = await runSessionRead(async () => {
@@ -96,13 +97,20 @@ export async function refreshDataConnectQuery<Data, Variables>(client: QueryClie
       assertNotReplaced();
       // Register the real queryFn even for a never-mounted query. Later cached
       // inactive invalidation must have an authoritative function to execute.
-      return client.fetchQuery({...serverQueryOptions(ref, value => { assertOwner(); fence = value; }), staleTime: 0});
+      return client.fetchQuery({...serverQueryOptions(ref, value => {
+        // TanStack retains this queryFn for later inactive refetches. Only this
+        // explicit refresh belongs to the captured owner; future executions
+        // receive their own session/authority checks from runSessionRead.
+        if (active) { assertOwner(); fence = value; }
+      }), staleTime: 0});
     }, session);
   } catch (error) {
     assertOwner();
     if (error instanceof SessionChangedError) throw error;
     fence?.assertLatest();
     throw error;
+  } finally {
+    active = false;
   }
   assertOwner();
   if (!fence) throw new DataConnectReadSupersededError();

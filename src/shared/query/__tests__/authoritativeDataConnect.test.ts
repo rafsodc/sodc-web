@@ -292,6 +292,26 @@ describe("authoritative Data Connect reads", () => {
     expect(queryClient.getQueryData(dataConnectQueryKey(ref))).toEqual({value});
     expect(transport).toHaveBeenCalledTimes(2);
   });
+  it.each(["completed", "failed"] as const)("allows an inactive query's later refetch after a %s explicit refresh and an authority change", async outcome => {
+    const failure = new Error("refresh unavailable");
+    const transport = vi.fn().mockResolvedValue(response("after authority change"));
+    if (outcome === "completed") transport.mockResolvedValueOnce(response("before authority change"));
+    else transport.mockRejectedValueOnce(failure);
+    const { ref } = context(transport), queryClient = client(); session(queryClient);
+
+    const refresh = refreshDataConnectQuery(queryClient, ref);
+    if (outcome === "completed") await expect(refresh).resolves.toEqual({ value: "before authority change" });
+    else await expect(refresh).rejects.toBe(failure);
+    expect(queryClient.getQueryCache().find({ queryKey: dataConnectQueryKey(ref), exact: true })?.getObserversCount()).toBe(0);
+
+    beginAuthorizationUpdate(captureSession()).finish(true);
+
+    // Reuse the queryFn retained by fetchQuery, without mounting an observer or
+    // replacing its options. It must belong to this new read, not the old refresh.
+    await expect(invalidateDataConnectQueries(queryClient, [[ref.name]])).resolves.toBeUndefined();
+    expect(queryClient.getQueryData(dataConnectQueryKey(ref))).toEqual({ value: "after authority change" });
+    expect(transport).toHaveBeenCalledTimes(2);
+  });
   it("does not supersede reads of different variables", async () => {
     const transport = vi.fn(async (_name, variables) => response((variables as { id: string }).id));
     const { dc } = context(transport), queryClient = client();
