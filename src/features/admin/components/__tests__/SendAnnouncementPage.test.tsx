@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "../../../../test-utils";
+import { act, fireEvent, render, screen, waitFor } from "../../../../test-utils";
 import userEvent from "@testing-library/user-event";
 import * as firebaseFunctions from "../../../../shared/utils/firebaseFunctions";
 import SendAnnouncementPage from "../SendAnnouncementPage";
@@ -175,10 +175,29 @@ describe("attendee audience", () => {
       { id: "template-1", name: "BULK: Dinner", updatedAt: "2026-01-01", requiredPersonalisation: [] },
       { id: "section-template", name: "BULK: Section", updatedAt: "2026-01-01", requiredPersonalisation: ["unsubscribeUrl"] },
     ]);
-    const user = await open();
-    expect(screen.getByText(/regardless of announcement preferences/)).toBeInTheDocument();
-    await user.click(screen.getByLabelText("Template"));
-    expect(screen.queryByRole("option", { name: /BULK: Section/ })).not.toBeInTheDocument();
+    const user = userEvent.setup();
+    render(<SendAnnouncementPage sectionId="section-1" sectionName="Signals" onBack={vi.fn()} eventAudience={{ eventId: "event-1", filters }} />);
+    await user.click(await screen.findByRole("combobox", { name: "Template" }));
+    const exitingMenu = screen.getByRole("listbox", { name: "Template" });
+
+    // Hold MUI's exit callback so reopening is exercised with the old menu mounted.
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("option", { name: /BULK: Dinner/ }));
+      });
+      expect(exitingMenu).toBeInTheDocument();
+      expect(screen.getByText(/regardless of announcement preferences/)).toBeInTheDocument();
+      const template = screen.getByRole("combobox", { name: "Template" });
+      expect(template).toHaveAttribute("aria-expanded", "false");
+      fireEvent.mouseDown(template);
+      expect(template).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByRole("option", { name: /BULK: Dinner/ })).toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: /BULK: Section/ })).not.toBeInTheDocument();
+    } finally {
+      act(() => vi.runOnlyPendingTimers());
+      vi.useRealTimers();
+    }
   });
   it("invalidates the preview after filter edits and handles preview failures and empty audiences", async () => {
     const user = await open();
