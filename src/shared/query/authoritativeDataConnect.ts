@@ -49,14 +49,36 @@ async function readServer<Data, Variables>(ref: QueryRef<Data, Variables>, asser
 }
 
 interface ReadFence { assertLatest: () => void; epoch: number }
-function serverQueryOptions<Data, Variables>(ref: QueryRef<Data, Variables>, started?: (fence: ReadFence) => void) {
+interface RefreshExecution {
+  assertOwner: () => void;
+  fence?: ReadFence;
+  signal?: AbortSignal;
+}
+// TanStack keeps one signal for a fetch and all its retries, but observers can
+// replace its queryFn between attempts. Follow that fetch, not a particular
+// queryFn, so a retry retains the explicit refresh's owner and latest fence.
+const refreshExecutions = new WeakMap<AbortSignal, RefreshExecution>();
+function serverQueryOptions<Data, Variables>(ref: QueryRef<Data, Variables>, explicit?: () => RefreshExecution | undefined) {
   return queryOptions({
     queryKey: dataConnectQueryKey(ref),
-    queryFn: ({ signal }) => runSessionRead(() => {
-      const fence = {assertLatest: nextRead(ref), epoch: authorizationReadEpoch()};
-      started?.(fence);
-      return readServer(ref, fence.assertLatest);
-    }, undefined, signal),
+    queryFn: ({ signal }) => {
+      const proposed = explicit?.();
+      const execution = proposed && (!proposed.signal || proposed.signal === signal)
+        ? proposed : refreshExecutions.get(signal);
+      // Bind before the session boundary can wait. A distinct fetch that starts
+      // before the outer refresh settles must not inherit this execution.
+      if (execution) {
+        execution.signal = signal;
+        refreshExecutions.set(signal, execution);
+      }
+      return runSessionRead(() => {
+        execution?.assertOwner();
+        execution?.fence?.assertLatest();
+        const fence = {assertLatest: nextRead(ref), epoch: authorizationReadEpoch()};
+        if (execution) execution.fence = fence;
+        return readServer(ref, fence.assertLatest);
+      }, undefined, signal);
+    },
   });
 }
 
@@ -83,7 +105,7 @@ export async function refreshDataConnectQuery<Data, Variables>(client: QueryClie
     removeSectionEventSummaries(client);
   }
   assertOwner();
-  let fence: ReadFence | undefined;
+  const execution: RefreshExecution = {assertOwner};
   let active = true;
   let data: Data;
   try {
@@ -97,23 +119,28 @@ export async function refreshDataConnectQuery<Data, Variables>(client: QueryClie
       assertNotReplaced();
       // Register the real queryFn even for a never-mounted query. Later cached
       // inactive invalidation must have an authoritative function to execute.
-      return client.fetchQuery({...serverQueryOptions(ref, value => {
+      return client.fetchQuery({...serverQueryOptions(ref, () => {
         // TanStack retains this queryFn for later inactive refetches. Only this
         // explicit refresh belongs to the captured owner; future executions
         // receive their own session/authority checks from runSessionRead.
-        if (active) { assertOwner(); fence = value; }
+        return active ? execution : undefined;
       }), staleTime: 0});
     }, session);
   } catch (error) {
     assertOwner();
     if (error instanceof SessionChangedError) throw error;
-    fence?.assertLatest();
+    execution.fence?.assertLatest();
     throw error;
   } finally {
     active = false;
+    if (execution.signal) refreshExecutions.delete(execution.signal);
   }
   assertOwner();
+  const fence = execution.fence;
   if (!fence) throw new DataConnectReadSupersededError();
+  // TanStack can resolve a canceled fetch with its reverted cached value. That
+  // is not a completed authoritative read, even if no newer read was started.
+  if (execution.signal?.aborted) throw new DataConnectReadSupersededError();
   if (privateReadsBlocked(session) || fence.epoch !== authorizationReadEpoch()) throw new SessionChangedError();
   fence.assertLatest();
   return data;
