@@ -1,4 +1,4 @@
-import { DataConnectReadSupersededError } from "./authoritativeDataConnect";
+import { bindAuthoritativeQueryExecution, DataConnectReadSupersededError } from "./authoritativeDataConnect";
 import { classifyAuthorizationFailure } from "../auth/authorizationFailure";
 import { QueryClient, type DefaultError, type DefaultedQueryObserverOptions, type QueryKey, type QueryObserverOptions } from "@tanstack/react-query";
 import { isAuthenticationFailure } from "../auth/isAuthenticationFailure";
@@ -15,9 +15,12 @@ class SessionQueryClient extends QueryClient {
     // hooks without editing generated source or changing mutation retry behavior.
     if (!options._defaulted && typeof result.queryFn === "function") {
       const queryFn = result.queryFn;
-      result.queryFn = context => result.meta?.sessionBoundary === "capability"
-        ? runCapabilityOperation(async () => queryFn(context))
-        : runSessionRead(() => queryFn(context), undefined, context.signal);
+      result.queryFn = context => {
+        bindAuthoritativeQueryExecution(queryFn, () => context.signal);
+        return result.meta?.sessionBoundary === "capability"
+          ? runCapabilityOperation(async () => queryFn(context))
+          : runSessionRead(() => queryFn(context), undefined, context.signal);
+      };
     }
     return result;
   }

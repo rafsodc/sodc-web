@@ -292,6 +292,32 @@ describe("authoritative Data Connect reads", () => {
     expect(queryClient.getQueryData(dataConnectQueryKey(ref))).toEqual({value});
     expect(transport).toHaveBeenCalledTimes(2);
   });
+  it("does not adopt a separate inactive fetch started synchronously by its success notification", async () => {
+    const first = deferred<TransportResult>(), newer = deferred<TransportResult>();
+    const transport = vi.fn().mockImplementationOnce(() => first.promise).mockImplementationOnce(() => newer.promise);
+    const {ref} = context(transport), queryClient = client(), key = dataConnectQueryKey(ref);
+    let following: Promise<void> | undefined;
+    const unsubscribe = queryClient.getQueryCache().subscribe(event => {
+      if (event.type !== "updated" || event.action.type !== "success" || event.query.queryKey[0] !== ref.name || following) return;
+      following = queryClient.invalidateQueries({queryKey: key, exact: true, refetchType: "all"});
+    });
+    const pending = refreshDataConnectQuery(queryClient, ref).catch(error => error);
+    try {
+      await vi.waitFor(() => expect(transport).toHaveBeenCalledOnce());
+      first.resolve(response("first refresh"));
+      await vi.waitFor(() => expect(transport).toHaveBeenCalledTimes(2));
+      // The retained queryFn ran again before the outer await/finally settled,
+      // but this is a different fetch signal, not the first refresh's retry.
+      await expect(pending).resolves.toBeInstanceOf(DataConnectReadSupersededError);
+      expect(queryClient.getQueryCache().find({queryKey: key})?.getObserversCount()).toBe(0);
+      newer.resolve(response("newer authoritative read"));
+      await following;
+      expect(queryClient.getQueryData(key)).toEqual({value: "newer authoritative read"});
+    } finally {
+      unsubscribe(); first.resolve(response("first refresh")); newer.resolve(response("newer authoritative read"));
+      await pending; await following;
+    }
+  });
   it.each(["completed", "failed"] as const)("allows an inactive query's later refetch after a %s explicit refresh and an authority change", async outcome => {
     const failure = new Error("refresh unavailable");
     const transport = vi.fn().mockResolvedValue(response("after authority change"));
