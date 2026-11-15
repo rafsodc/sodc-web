@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { initializeApp, deleteApp, type FirebaseApp } from "firebase/app";
 import { Code, DataConnectError, executeQuery, getDataConnect, type DataConnect } from "firebase/data-connect";
 import { getEventByIdRef } from "@dataconnect/generated";
 import { useGetEventById } from "../authoritativeHooks";
 import { createAppQueryClient } from "../queryClient";
+import { invalidateDataConnectQueries } from "../invalidation";
 import {
   dataConnectQueryKey, DataConnectReadSupersededError, refreshDataConnectQuery, supersedeDataConnectQueryReads,
 } from "../authoritativeDataConnect";
@@ -31,7 +32,7 @@ function session(queryClient: QueryClient, uid = "member-a") {
   releases.push(installSessionRuntime({lifecycle, queryClient, retire: () => lifecycle.retire(), signOut: async () => lifecycle.retire()}));
   return lifecycle;
 }
-function mountedContext() {
+function mountedContext(mount = true) {
   const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(() => { throw new Error("Unexpected live request"); });
   const client = createAppQueryClient(); clients.push(client);
   const lifecycle = session(client);
@@ -45,9 +46,9 @@ function mountedContext() {
   };
   const ref = getEventByIdRef(dc, {id: eventId}), key = dataConnectQueryKey(ref);
   client.setQueryData(key, response("cached old title").data);
-  const hook = renderHook(() => useGetEventById(dc, {id: eventId}), {
+  const hook = mount ? renderHook(() => useGetEventById(dc, {id: eventId}), {
     wrapper: ({children}) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
-  });
+  }) : undefined;
   function start() {
     let pending!: Promise<unknown>;
     act(() => { pending = refreshDataConnectQuery(client, ref).catch(error => error); });
@@ -57,7 +58,7 @@ function mountedContext() {
     await waitFor(() => expect(attempts).toHaveLength(1));
     const firstQueryFn = client.getQueryCache().find({queryKey: key})?.options.queryFn;
     await act(async () => { attempts[0].reject(new DataConnectError(Code.OTHER, "first transport failure")); });
-    await waitFor(() => expect(hook.result.current.failureCount).toBe(1));
+    await waitFor(() => expect(hook?.result.current.failureCount).toBe(1));
     // The mounted reader replaces fetchQuery's options while the real retryer
     // waits. This is the production interaction missing from retry:false tests.
     expect(client.getQueryCache().find({queryKey: key})?.options.queryFn).not.toBe(firstQueryFn);
@@ -68,6 +69,7 @@ afterEach(async () => {
   cleanup(); resumeAuthorizationReads(captureSession());
   for (const release of releases.splice(0).reverse()) release();
   for (const client of clients.splice(0)) client.clear();
+  onlineManager.setOnline(true);
   await Promise.all(apps.splice(0).map(deleteApp));
   expect(vi.mocked(globalThis.fetch)).not.toHaveBeenCalled();
   vi.restoreAllMocks();
@@ -140,5 +142,58 @@ describe("explicit authoritative refresh with mounted readers and application re
     finally { await act(async () => { ctx.attempts[0].resolve(response("late abandoned response")); }); }
     expect(ctx.client.getQueryData(ctx.key)).toEqual(response("cached old title").data);
     expect(ctx.transport).toHaveBeenCalledOnce();
+  });
+
+  it.each(["replacement server title", "cached old title"])("does not let a same-tick replacement fetch claim an explicit refresh before dispatch (%s)", async title => {
+    const ctx = mountedContext(false), fetchQuery = ctx.client.fetchQuery.bind(ctx.client);
+    let cancellation: Promise<void> | undefined, replacement: Promise<void> | undefined;
+    vi.spyOn(ctx.client, "fetchQuery").mockImplementationOnce(options => {
+      const original = fetchQuery(options);
+      // No microtask boundary: the app client's outer session wrapper has not
+      // called the authoritative query function when this cancellation happens.
+      cancellation = ctx.client.cancelQueries({queryKey: ctx.key, exact: true});
+      replacement = ctx.client.refetchQueries({queryKey: ctx.key, exact: true, type: "all"});
+      return original;
+    });
+    const pending = ctx.start();
+    try {
+      await waitFor(() => expect(ctx.attempts).toHaveLength(1));
+      // The replacement's server read remains pending while the old refresh
+      // settles. Equal data must not make a canceled result authoritative.
+      await expect(pending).resolves.toBeInstanceOf(DataConnectReadSupersededError);
+      await act(async () => { ctx.attempts[0].resolve(response(title)); });
+      await cancellation; await replacement;
+      expect(ctx.client.getQueryData(ctx.key)).toEqual(response(title).data);
+      expect(ctx.transport).toHaveBeenCalledOnce();
+    } finally {
+      for (const attempt of ctx.attempts) attempt.resolve(response(title));
+      await pending; await cancellation; await replacement;
+    }
+  });
+
+  it("releases an unbound paused refresh before a later inactive refetch under new authority", async () => {
+    const ctx = mountedContext(false);
+    onlineManager.setOnline(false);
+    const pending = ctx.start();
+    try {
+      await waitFor(() => expect(ctx.client.getQueryState(ctx.key)?.fetchStatus).toBe("paused"));
+      expect(ctx.transport).not.toHaveBeenCalled();
+      await ctx.client.cancelQueries({queryKey: ctx.key, exact: true});
+      await expect(pending).resolves.toBeInstanceOf(DataConnectReadSupersededError);
+      expect(ctx.client.getQueryCache().find({queryKey: ctx.key})?.getObserversCount()).toBe(0);
+
+      beginAuthorizationUpdate(captureSession()).finish(true);
+      onlineManager.setOnline(true);
+      const later = invalidateDataConnectQueries(ctx.client, [[ctx.ref.name]]).catch(error => error);
+      await waitFor(() => expect(ctx.attempts).toHaveLength(1));
+      ctx.attempts[0].resolve(response("new authority title"));
+      await expect(later).resolves.toBeUndefined();
+      expect(ctx.client.getQueryData(ctx.key)).toEqual(response("new authority title").data);
+      expect(ctx.transport).toHaveBeenCalledOnce();
+    } finally {
+      for (const attempt of ctx.attempts) attempt.resolve(response("new authority title"));
+      await pending;
+      onlineManager.setOnline(true);
+    }
   });
 });

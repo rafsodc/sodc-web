@@ -58,19 +58,29 @@ interface RefreshExecution {
 // replace its queryFn between attempts. Follow that fetch, not a particular
 // queryFn, so a retry retains the explicit refresh's owner and latest fence.
 const refreshExecutions = new WeakMap<AbortSignal, RefreshExecution>();
+const queryExecutionBinders = new WeakMap<object, (signal: AbortSignal) => RefreshExecution | undefined>();
+/** The app's outer session wrapper must bind before its first await. Other query
+ * functions are untouched, including whether they consume TanStack's signal. */
+export function bindAuthoritativeQueryExecution(queryFn: unknown, signal: () => AbortSignal) {
+  const bind = typeof queryFn === "function" ? queryExecutionBinders.get(queryFn) : undefined;
+  bind?.(signal());
+}
 function serverQueryOptions<Data, Variables>(ref: QueryRef<Data, Variables>, explicit?: () => RefreshExecution | undefined) {
-  return queryOptions({
+  const bind = (signal: AbortSignal) => {
+    const proposed = explicit?.();
+    const execution = proposed && (!proposed.signal || proposed.signal === signal)
+      ? proposed : refreshExecutions.get(signal);
+    if (execution) {
+      execution.signal = signal;
+      refreshExecutions.set(signal, execution);
+    }
+    return execution;
+  };
+  const options = queryOptions({
     queryKey: dataConnectQueryKey(ref),
     queryFn: ({ signal }) => {
-      const proposed = explicit?.();
-      const execution = proposed && (!proposed.signal || proposed.signal === signal)
-        ? proposed : refreshExecutions.get(signal);
-      // Bind before the session boundary can wait. A distinct fetch that starts
-      // before the outer refresh settles must not inherit this execution.
-      if (execution) {
-        execution.signal = signal;
-        refreshExecutions.set(signal, execution);
-      }
+      // Idempotent for the app client, and also supports a plain QueryClient.
+      const execution = bind(signal);
       return runSessionRead(() => {
         execution?.assertOwner();
         execution?.fence?.assertLatest();
@@ -80,6 +90,8 @@ function serverQueryOptions<Data, Variables>(ref: QueryRef<Data, Variables>, exp
       }, undefined, signal);
     },
   });
+  if (typeof options.queryFn === "function") queryExecutionBinders.set(options.queryFn, bind);
+  return options;
 }
 
 /** Compatible with generated query keys; only actual executions read the server. */

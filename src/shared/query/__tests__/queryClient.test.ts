@@ -24,6 +24,18 @@ describe("queryClient retry policy", () => {
     uninstall();
     queryClient.removeQueries({ queryKey: ["public-capability"] });
   });
+  it("does not consume the signal of an unrelated public capability query", async () => {
+    const queryFn = vi.fn(async () => "public result"), signal = vi.fn(() => new AbortController().signal);
+    const options = queryClient.defaultQueryOptions({queryKey: ["public-signal"], meta: {sessionBoundary: "capability"}, queryFn});
+    const context = {
+      client: queryClient, queryKey: options.queryKey, meta: options.meta,
+      get signal() { return signal(); },
+    };
+    if (typeof options.queryFn !== "function") throw new Error("Expected the application's query wrapper");
+    await expect(options.queryFn(context)).resolves.toBe("public result");
+    expect(queryFn).toHaveBeenCalledOnce();
+    expect(signal).not.toHaveBeenCalled();
+  });
   it("does not retry authentication failures before session recovery", async () => {
     const queryFn = vi.fn().mockRejectedValue({ code: 401 });
 
