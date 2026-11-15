@@ -206,7 +206,7 @@ async function fixture({ publicInvoker = true } = {}) {
   const values = { APP_BASE_URL: policy.appBaseUrls.dev, SECTION_FILES_BUCKET: `${projectId}.firebasestorage.app`, OPTIONAL: "" };
   const files = { ".gitignore": ".firebase\nfunctions/.env*\nfunctions/lib\n", ".firebaserc": { projects: { dev: projectId } },
     "firebase.json": { functions: [{ source: "functions", disallowLegacyRuntimeConfig: true, predeploy: ['npm --prefix "$RESOURCE_DIR" run build'] }] },
-    "config/functions-config-guard.json": policy, "config/deployment-check.json": { region, expectedPublicInvokerFunctions: publicInvoker ? ["example"] : [] },
+    "config/functions-config-guard.json": policy, "config/deployment-check.json": { region, expectedPublicInvokerFunctions: publicInvoker ? ["example"] : [], govNotifyDeliveryModeFunctions: [] },
     "functions/package.json": { main: "lib/index.js", engines: { node: "24" } }, "functions/package-lock.json": {}, "package-lock.json": {}, "functions/lib/index.js": "test" };
   for (const [file, value] of Object.entries(files)) await writeFile(path.join(root, file), typeof value === "string" ? value : JSON.stringify(value));
   const projectFile = path.join(root, `functions/.env.${projectId}`);
@@ -250,7 +250,7 @@ async function creationFixture(mode = "preserve-existing") {
   const creationPolicy = { runtime: "nodejs24", serviceConfiguration, identity: "default-compute", invokers: ["allUsers"], secretBindings: [] };
   f.policy.reviewableCallableCreations = { [name]: creationPolicy };
   await writeFile(path.join(f.root, "config/functions-config-guard.json"), JSON.stringify(f.policy));
-  await writeFile(path.join(f.root, "config/deployment-check.json"), JSON.stringify({ region, expectedPublicInvokerFunctions: ["example", name] }));
+  await writeFile(path.join(f.root, "config/deployment-check.json"), JSON.stringify({ region, expectedPublicInvokerFunctions: ["example", name], govNotifyDeliveryModeFunctions: [] }));
   execFileSync("git", ["add", "."], {cwd: f.root});
   execFileSync("git", ["-c", "user.name=Guard Test", "-c", "user.email=guard@synthetic.invalid", "commit", "-qm", "reviewable creation policy"], {cwd: f.root});
   f.manifestResult.manifest.endpoints[name] = {region: [region], platform: "gcfv2", callableTrigger: {}, entryPoint: name};
@@ -279,6 +279,61 @@ function materializeCreation(f) {
       environmentVariables: {}, secretEnvironmentVariables: [], allTrafficOnLatestRevision: true,
       service: `projects/${projectId}/locations/${region}/services/deletemyaccount`, uri: "https://deletemyaccount.run.app", revision: "created"}});
 }
+
+async function requireDeliveryModeFor(f, names = ["example"]) {
+  const file = path.join(f.root, "config/deployment-check.json");
+  const config = JSON.parse(await readFile(file, "utf8"));
+  config.govNotifyDeliveryModeFunctions = names;
+  await writeFile(file, JSON.stringify(config));
+  execFileSync("git", ["add", "."], { cwd: f.root });
+  execFileSync("git", ["-c", "user.name=Guard Test", "-c", "user.email=guard@synthetic.invalid", "commit", "-qm", "delivery ceiling contract"], { cwd: f.root });
+}
+
+describe("mandatory delivery ceilings for configured consumers", () => {
+  it.each(["dotenv", "preserve-existing"])("blocks missing, empty and invalid ceilings in %s even with a review", async (mode) => {
+    const f = await fixture();
+    await requireDeliveryModeFor(f);
+    const reviewPath = path.join(f.root, ".firebase/missing-ceiling-review.json");
+    await mkdir(path.dirname(reviewPath), { recursive: true });
+    await writeFile(reviewPath, JSON.stringify({ mode: "preserve-existing", reviewedBy: "operator",
+      reason: "Preserve the old missing ceiling; must not authorize a broken consumer" }));
+    for (const value of [undefined, "", " \t ", "DISABLED"]) {
+      for (const values of [f.values, f.functions[0].serviceConfig.environmentVariables]) {
+        if (value === undefined) delete values.GOV_NOTIFY_DELIVERY_MODE;
+        else values.GOV_NOTIFY_DELIVERY_MODE = value;
+      }
+      await expect(runFunctionsConfigGuard(f.root, "dev", { cli: f.cli, provider: f.provider, manifestResult: f.manifestResult,
+        mode, propose: true })).rejects.toThrow("missing-invalid-or-inconsistent-gov-notify-delivery-mode");
+      await expect(runFunctionsConfigGuard(f.root, "dev", { cli: f.cli, provider: f.provider, manifestResult: f.manifestResult,
+        mode, reviewPath })).rejects.toThrow("missing-invalid-or-inconsistent-gov-notify-delivery-mode");
+    }
+  });
+
+  it.each(["SIMULATION", "TEAM_TEST", "LIVE"])("allows a reviewed valid %s ceiling without inventing a default", async (mode) => {
+    const f = await fixture();
+    f.values.GOV_NOTIFY_DELIVERY_MODE = mode;
+    await requireDeliveryModeFor(f);
+    const options = { cli: f.cli, provider: f.provider, manifestResult: f.manifestResult };
+    const proposal = await runFunctionsConfigGuard(f.root, "dev", { ...options, propose: true });
+    expect(proposal.environmentChanges).toEqual([{ endpoint: "example", key: "GOV_NOTIFY_DELIVERY_MODE",
+      before: { state: "absent" }, after: environmentProjection({ GOV_NOTIFY_DELIVERY_MODE: mode }).GOV_NOTIFY_DELIVERY_MODE }]);
+    await expect(runFunctionsConfigGuard(f.root, "dev", options)).rejects.toThrow("unreviewed-application-environment-change");
+    const reviewPath = path.join(f.root, ".firebase/ceiling-repair-review.json");
+    await mkdir(path.dirname(reviewPath), { recursive: true });
+    await writeFile(reviewPath, JSON.stringify({ ...proposal, mode: "change-environment", reviewedBy: "operator",
+      reason: "Repair only the exact missing non-secret deployment ceiling" }));
+    await expect(runFunctionsConfigGuard(f.root, "dev", { ...options, reviewPath })).resolves.toHaveProperty("status", "PASS");
+  });
+
+  it("retains the reviewed empty environment of an unrelated callable creation", async () => {
+    const f = await creationFixture();
+    f.functions[0].serviceConfig.environmentVariables.GOV_NOTIFY_DELIVERY_MODE = "SIMULATION";
+    await requireDeliveryModeFor(f);
+    const { proposal, reviewPath } = await f.review();
+    expect(proposal.endpointCreations[0].environment).toEqual({});
+    await expect(runFunctionsConfigGuard(f.root, "dev", { ...f.options, reviewPath })).resolves.toHaveProperty("status", "PASS");
+  });
+});
 
 describe("reviewed callable endpoint creation", () => {
   it("proposes exact empty-env creation without fabricating live state and requires explicit review", async () => {

@@ -10,6 +10,7 @@ import {
   firebaseStorageDownloadUrl,
   assessAuthConfiguration,
   assessDefinitionsFreshness,
+  assessGovNotifyDeliveryModeConfiguration,
   assessGovNotifyReplyToConfiguration,
   assessFunctionInvokerPolicies,
   assessServiceAccountProjectScope,
@@ -550,6 +551,10 @@ async function main() {
   });
 
   if (deployedFunctions) {
+    const deliveryMode = assessGovNotifyDeliveryModeConfiguration(
+      values(deployedFunctions), configuration.govNotifyDeliveryModeFunctions,
+    );
+    results.push(result("gov-notify-delivery-mode", deliveryMode.status, deliveryMode.summary, deliveryMode.details));
     const replyTo = assessGovNotifyReplyToConfiguration(values(deployedFunctions));
     const details = {
       configuredFunctionCount: replyTo.configuredFunctions.length,

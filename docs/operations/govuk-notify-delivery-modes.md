@@ -8,6 +8,13 @@ settings:
 - **Admin → Email Delivery** is the day-to-day runtime mode. Its persisted
   default is `SIMULATION`.
 
+The deployment audit checks the ceiling on the six core announcement and mode-
+administration callables named in `config/deployment-check.json`. It fails when
+one is missing, has an empty or unrecognised ceiling, or disagrees with another
+consumer. The Functions guard applies the same check to the proposed effective
+environment; preservation review cannot waive it. This bounded contract does not
+establish provider connectivity or the health of every transactional email path.
+
 | Mode | Secret | Delivery behaviour |
 |---|---|---|
 | `SIMULATION` | `GOV_NOTIFY_TEST_API_KEY` | Calls Notify once per intended recipient but delivers no email. |
@@ -111,6 +118,44 @@ After configuration:
    are reported as restricted failures; never retry them using the live key.
 5. Before `LIVE`, verify templates, reply-to settings, callback processing,
    unsubscribe links, recipient selection, and environment identity.
+
+## Recover the Dev announcement configuration
+
+Issue [#737](https://github.com/rafsodc/sodc-web/issues/737) was diagnosed from scoped
+Dev logs and read-only Function metadata: all six core consumers lacked
+`GOV_NOTIFY_DELIVERY_MODE`. Both the template and delivery-configuration callables
+failed at the mandatory deployment-ceiling parser, before Notify was contacted.
+Do not replace this fail-closed behaviour with a default mode or another mode's key.
+
+The intended Dev repair is an explicitly configured `SIMULATION` ceiling in
+project `sodc-web`; it permits no delivered email. This does not change the saved
+runtime mode, rotate secrets or send a test notification. Prepare it only in an
+isolated reviewed release checkout after the prevention change has merged:
+
+1. Stage the matching Dev Vite configuration and a **complete, reconciled**
+   `functions/.env.sodc-web` containing `GOV_NOTIFY_DELIVERY_MODE=SIMULATION`.
+   Do not also create `.env.dev`. Firebase treats any dotenv file, even an empty
+   one, as replacement configuration; a one-line patch file can remove existing
+   endpoint-specific settings. There is no inherited-environment overlay in the
+   supported CLI workflow.
+2. Build Functions and run `node scripts/functions-config-guard.mjs --env dev --propose`
+   in normal dotenv mode. Review the entire proposal, including all endpoint/key
+   deltas and provider-dependent resets. The desired functional change is the
+   missing ceiling. If a complete file also changes other settings, reconcile and
+   explicitly review that scope before proceeding; do not silently accept it.
+   `preserve-existing` cannot install the missing value.
+3. Retain the exact `change-environment` review as
+   `SODC_FUNCTIONS_CONFIG_REVIEW`, run the full `deployment:preflight -- --env dev`,
+   then use `deploy:functions -- --env dev`. Do not deploy Data Connect, Hosting,
+   Production or use a raw Functions deploy for this configuration repair.
+4. Run `deployment:check -- --env dev` and require the new
+   `gov-notify-delivery-mode` check to pass. Verify the six actual ceilings from
+   non-secret metadata and keep the post-deployment proof with the exact review.
+5. With the existing Dev administrator, load Email Delivery and Communications.
+   Verify the effective ceiling, load templates, select a template and close/reopen
+   its menu. Do not submit an announcement or recipient-preview operation in this
+   acceptance check. Investigate any subsequent error independently; correcting
+   the ceiling alone is not proof of Notify connectivity.
 
 Announcement history records requested, site-wide, and effective modes.
 Per-recipient rows and the generic transactional delivery ledger record the

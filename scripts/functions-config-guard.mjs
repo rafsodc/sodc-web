@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEPLOYMENT_ENVIRONMENTS, validateFirebaseAlias } from "./deploy-environment-lib.mjs";
+import { assessGovNotifyDeliveryModeConfiguration, RESULT_STATUS } from "./deployment-check-lib.mjs";
 import {
   GUARD_SCHEMA, GuardError, applicationEnvironment, assertScheduledTarget, assertSecretMetadata, assertSupportedManifest,
   bytesDigest, canonical, configurationProposal, digest, environmentProjection, evaluateConfiguration, requireGuard, verifyGuardReceipt,
@@ -315,6 +316,14 @@ export async function collectAssessment({ root, environment, mode = "dotenv", cl
     selectedCli.prepare.resolveCpuAndConcurrency(candidate);
     selectedCli.prepare.resolveDefaultTimeout(candidate);
   } catch { throw new GuardError("unsupported-sdk-contract-resolution"); }
+  const deliveryMode = assessGovNotifyDeliveryModeConfiguration(
+    selectedCli.backend.allEndpoints(candidate).map((endpoint) => ({ name: endpoint.id,
+      serviceConfig: { environmentVariables: endpoint.environmentVariables } })),
+    auditConfig.govNotifyDeliveryModeFunctions,
+  );
+  // A reviewed preservation may retain optional legacy values, but cannot make
+  // these callables usable without their mandatory deployment ceiling.
+  requireGuard(deliveryMode.status === RESULT_STATUS.PASS, "missing-invalid-or-inconsistent-gov-notify-delivery-mode");
   const rows = [];
   const liveContracts = [];
   const providerDefaultResets = [];
