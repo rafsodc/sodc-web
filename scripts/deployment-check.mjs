@@ -30,6 +30,7 @@ import {
   safeErrorMessage,
   unwrapFirebaseResult,
 } from "./deployment-check-lib.mjs";
+import { checkNotifyTemplateReadiness, readNotifyTemplateBindings } from "./notify-template-readiness-lib.mjs";
 
 const execFileAsync = promisify(execFile);
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -188,10 +189,11 @@ async function main() {
     return;
   }
 
-  const [firebaseRc, configuration, contracts] = await Promise.all([
+  const [firebaseRc, configuration, contracts, templateContract] = await Promise.all([
     readJson(".firebaserc"),
     readJson("config/deployment-check.json"),
     discoverFunctionContracts(path.join(repositoryRoot, "functions/src")),
+    readJson("config/notify-template-readiness.json"),
   ]);
   const target = resolveTarget(firebaseRc, configuration, options.env);
   const expectedPublicInvokerFunctions = configuration.expectedPublicInvokerFunctions ?? [];
@@ -549,6 +551,14 @@ async function main() {
       };
     },
   });
+
+  const templateReadiness = await checkNotifyTemplateReadiness({
+    contract: templateContract,
+    functions: deployedFunctions ? values(deployedFunctions) : undefined,
+    loadBindings: () => readNotifyTemplateBindings({ projectId: target.projectId, region: target.region,
+      service: configuration.dataConnect.service, accessToken }),
+  });
+  results.push(result("gov-notify-template-readiness", templateReadiness.status, templateReadiness.summary, templateReadiness.details));
 
   if (deployedFunctions) {
     const deliveryMode = assessGovNotifyDeliveryModeConfiguration(

@@ -288,6 +288,12 @@ export function createPreflightSteps(environment) {
       kind: "functions-config-record",
     },
     {
+      id: "notify-template-readiness",
+      label: "Verify transactional template IDs on the target senders",
+      command: "node",
+      args: ["scripts/notify-template-readiness.mjs", "--env", environment],
+    },
+    {
       id: "record-preflight-attestation",
       label: "Record the verified environment and revision",
       kind: "record-preflight-attestation",
@@ -348,6 +354,7 @@ export function applyFromStage(plan, fromStage) {
   const startIndex = plan.findIndex((step) => step.stage === fromStage);
   if (startIndex === -1) return plan;
   const cleanCheckout = plan.find((step) => step.id === "clean-checkout");
+  const templateReadiness = plan.find((step) => step.id === "notify-template-readiness");
   return [
     cleanCheckout,
     {
@@ -356,6 +363,7 @@ export function applyFromStage(plan, fromStage) {
       label: "Confirm this revision passed preflight for the target environment",
       kind: "verify-preflight-attestation",
     },
+    ...(fromStage === "audit" ? [] : [templateReadiness]),
     ...plan.slice(startIndex),
   ].filter(Boolean);
 }

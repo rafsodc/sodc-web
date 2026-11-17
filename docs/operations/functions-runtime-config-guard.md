@@ -36,6 +36,32 @@ This is a bounded point-in-time check, not a provider transaction. Post-deployme
 configuration/identity/trigger/secret/Scheduler comparisons and the usual audit
 remain required. Operators must coordinate concurrent changes.
 
+### Transactional-template readiness boundary
+
+The [transactional-template readiness audit](./deployment-checks.md#deployed-state-gate-and-remediation-limits)
+is a separate full-preflight requirement. It reads current deployed sender state,
+current per-Function fallback values and saved bindings; it does not assess the
+candidate manifest or environment that this runtime guard reviews. Missing,
+renamed or non-`ACTIVE` required mail senders fail readiness before deployment.
+An environment-only candidate fix also remains blocked when the live sender has
+neither a usable saved binding nor a usable fallback.
+
+This limits ordinary deployment and resume paths to environments that already
+satisfy the deployed-state gate. For existing active senders, an approved saved
+binding can repair missing template configuration without a deployment, followed
+by fresh readiness checks and full preflight. It cannot restore missing or failed
+Functions. New-environment bootstrap (including Beta), sender creation/renaming,
+and repairs that require deploying candidate configuration need a separately
+reviewed staged bootstrap or recovery plan. Candidate-aware readiness is tracked
+in [#743](https://github.com/rafsodc/sodc-web/issues/743), not an implemented exception.
+
+The standalone `npm run deploy:functions` runner verifies the same current
+full-preflight attestation before its CLI handoff. A runtime-configuration proposal
+or passing guard receipt alone is not enough, and this command cannot bypass a
+template-readiness failure. Do not use a raw deploy or modified/fabricated receipt
+as a workaround. The one-time legacy migration exception below remains limited to
+its separately authorized frozen cutover; it is not a general repair procedure.
+
 ## Prepare and review
 
 Stage the target Vite file and matching non-secret Functions project file in an

@@ -16,6 +16,7 @@
     "deploy:beta": "node scripts/deploy-environment.mjs --env beta",
     "deploy:prod": "node scripts/deploy-environment.mjs --env prod",
     "deployment:check": "node scripts/deployment-check.mjs",
+    "deployment:template-readiness": "node scripts/notify-template-readiness.mjs",
     "deployment:preflight": "node scripts/deployment-preflight.mjs",
     "deployment:functions-config": "node scripts/functions-config-guard.mjs",
     "deploy:functions": "node scripts/functions-deploy.mjs",

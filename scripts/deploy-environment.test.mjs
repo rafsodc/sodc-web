@@ -76,6 +76,7 @@ describe("environment deployment configuration", () => {
       "functions-test",
       "functions-build",
       "functions-config-preflight",
+      "notify-template-readiness",
       "record-preflight-attestation",
       "functions-config-before-first-deploy",
       "deploy-dataconnect",
@@ -123,6 +124,7 @@ describe("resuming a deployment with --from", () => {
     expect(resumed.map(({ id }) => id)).toEqual([
       "clean-checkout",
       "verify-preflight-attestation",
+      "notify-template-readiness",
       "functions-creation-before-hosting",
       "deploy-hosting",
       "deployment-audit",
