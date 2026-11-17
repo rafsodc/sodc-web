@@ -1,6 +1,8 @@
 import { createServer, type Server } from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { makeImmutableHostingConfig, type HostingConfig } from "../../scripts/hosting-cache-config.mjs";
 
 export interface DeploymentRequest { method: string; pathname: string; build: "A" | "B"; status: number }
 export interface DeploymentServer {
@@ -12,11 +14,33 @@ export interface DeploymentServer {
   missingAssets(mode: "404" | "html200"): void;
   close(): Promise<void>;
 }
+export interface DeploymentServerOptions { cacheAssets?: boolean }
 
 /** Serve one complete build at a time. Previous assets genuinely disappear.
  * All resources and the inert write counter exist only on loopback.
  */
-export async function startDeploymentServer(builds: Record<"A" | "B", string>): Promise<DeploymentServer> {
+export async function startDeploymentServer(builds: Record<"A" | "B", string>, options: DeploymentServerOptions = {}): Promise<DeploymentServer> {
+  const cacheConfigs = new Map<"A" | "B", HostingConfig>();
+  if (options.cacheAssets) {
+    const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+    const firebase = JSON.parse(await readFile(path.join(repository, "firebase.json"), "utf8")) as { hosting: HostingConfig };
+    for (const build of ["A", "B"] as const) {
+      const assets = (await readdir(path.join(builds[build], "assets"))).map(name => `/assets/${name}`);
+      cacheConfigs.set(build, makeImmutableHostingConfig(firebase.hosting, assets, builds[build]));
+    }
+  }
+  function configuredHeaders(build: "A" | "B", pathname: string): Record<string, string> {
+    const headers: Record<string, string> = {};
+    for (const rule of cacheConfigs.get(build)?.headers ?? []) {
+      // Node's glob matcher does not support leading whole-pattern negation.
+      // Firebase's existing !/@(assets)/** rule uses that form explicitly.
+      const matches = rule.regex ? new RegExp(rule.regex, "u").test(pathname)
+        : rule.source?.startsWith("!/") ? !path.matchesGlob(pathname, rule.source.slice(1))
+          : !!rule.source && path.matchesGlob(pathname, rule.source);
+      if (matches) for (const header of rule.headers) headers[header.key.toLowerCase()] = header.value;
+    }
+    return headers;
+  }
   let active: "A" | "B" = "A";
   let failedAsset: string | null = null;
   let missingMode: "404" | "html200" = "404";
@@ -65,7 +89,13 @@ export async function startDeploymentServer(builds: Record<"A" | "B", string>): 
         return;
       }
       record.status = 404;
-      response.writeHead(404, { "Content-Type": "text/plain", "Cache-Control": "no-store" }).end("Asset no longer available");
+      // Superstatic reapplies /404.html headers, then its original-path
+      // onHeaders callback runs. An obsolete build's exact asset rule must
+      // therefore be absent; a current-file fault can still inherit immutable.
+      const headers = options.cacheAssets
+        ? { ...configuredHeaders(active, "/404.html"), ...configuredHeaders(active, pathname) }
+        : { "cache-control": "no-store" };
+      response.writeHead(404, { "content-type": "text/plain", ...headers }).end("Asset no longer available");
     };
     if (pathname === failedAsset) { await sendMissing(); return; }
     let bytes: Buffer;
@@ -79,7 +109,9 @@ export async function startDeploymentServer(builds: Record<"A" | "B", string>): 
     }
     record.status = 200;
     const contentType = ({ ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml" } as Record<string, string>)[extension] ?? "application/octet-stream";
-    response.writeHead(200, { "Content-Type": contentType, "Cache-Control": extension === ".html" ? "no-cache" : "no-store" });
+    const headers = options.cacheAssets ? configuredHeaders(active, pathname)
+      : { "cache-control": extension === ".html" ? "no-cache" : "no-store" };
+    response.writeHead(200, { "content-type": contentType, ...headers });
     response.end(method === "HEAD" ? undefined : bytes);
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));

@@ -47,14 +47,54 @@ If a custom domain is connected, revisit this decision before launch. Firebase s
 repository-configured HSTS value on custom domains, so confirm HTTPS coverage and ownership of all
 subdomains before adding `includeSubDomains` or `preload`.
 
+## Public asset caching
+
+The `deploy:hosting:dev`, `deploy:hosting:beta`, and `deploy:hosting:prod` npm commands
+build the application, then freeze that build into a temporary directory. The Hosting wrapper
+generates a literal header rule for each fingerprinted JS/CSS file present in that build:
+
+```text
+Cache-Control: public, max-age=31536000, immutable
+```
+
+The content hash in each URL changes when its contents change. Repeat visits can therefore reuse
+unchanged scripts and styles without revalidation. HTML, deep-link documents, and the deployment
+manifest keep `no-cache`, so the browser can discover the current release. Other assets and private
+API responses do not gain this policy. [Firebase Hosting already negotiates gzip or Brotli](https://firebase.google.com/docs/hosting/);
+the wrapper does not change compression settings.
+
+Do not replace the literal rules with `/assets/**` or a filename-shaped wildcard. The pinned local
+Hosting server applies matching headers to missing files too, making an obsolete chunk's 404
+cacheable for a year. Build-specific rules remove those old grants on the next release. They do
+not provide status-dependent headers: if a file listed in the finalized release unexpectedly
+returns 404, its literal rule still matches. Verify the published files after deployment.
+
+The snapshot binds the deployment manifest's environment and Git revision, checks copied file
+contents, and keeps the upload and its headers together. It copies the project's aliases and
+contains only Hosting configuration; it does not run backend deployment hooks or create a
+full-stack preflight receipt. The temporary copy is removed on success or failure. The full-stack
+npm deployment runner uses these same Hosting commands. A raw Firebase CLI deploy uses the base
+configuration and omits the generated cache grants; use the npm commands for releases.
+
+The deployment browser suite tests actual browser cache reuse without request routing, including
+both JS and CSS, a second build, and rollback after an old lazy chunk returns 404. Its local server
+models the generated rules; it does not prove Firebase CDN behavior. Before Production, check on
+Dev that:
+
+1. Current fingerprinted JS/CSS return the immutable policy, including a request with a query string.
+2. HTML, a deep link, and `deployment-manifest.json` retain `no-cache` and all security headers.
+3. An unknown hashed asset returns 404 without a year-long cache policy or SPA HTML.
+4. After an upgrade, the existing explicit reload recovery loads the current release; after a
+   rollback, an earlier missing-chunk response does not prevent that chunk loading again.
+
 ## Deployment verification
 
-For a full-stack release, complete the Data Connect and Functions checkpoints in the [central rollout runbook](./environments-dev-beta-prod.md#full-stack-rollout-sequence) before this Hosting step. For a Hosting-only change, deploy to Beta first:
+For a full-stack release, complete the Data Connect and Functions checkpoints in the [central rollout runbook](./environments-dev-beta-prod.md#full-stack-rollout-sequence) before this Hosting step. For a Hosting-only change, deploy to Dev first:
 
 ```bash
-npm run deploy:hosting:beta
-curl -sS -D - -o /dev/null https://sodc-web-beta.web.app/
-curl -sS -D - -o /dev/null https://sodc-web-beta.web.app/sections/example
+npm run deploy:hosting:dev
+curl -sS -D - -o /dev/null https://sodc-web.web.app/
+curl -sS -D - -o /dev/null https://sodc-web.web.app/sections/example
 ```
 
 Confirm the five configured headers appear on both responses, HSTS remains present, and the CSP

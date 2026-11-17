@@ -28,7 +28,7 @@ describe("environment-safe Hosting scripts", () => {
         `tsc -b && vite build --mode ${mode}`
       );
       expect(packageJson.scripts[`deploy:hosting:${alias}`]).toBe(
-        `npm run build:${alias} && firebase deploy --only hosting --project ${alias}`
+        `npm run build:${alias} && node scripts/deploy-hosting.mjs --env ${alias}`
       );
       expect(packageJson.scripts[`deploy:${alias}`]).toBe(
         `node scripts/deploy-environment.mjs --env ${alias}`
