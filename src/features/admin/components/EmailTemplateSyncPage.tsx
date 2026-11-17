@@ -47,9 +47,9 @@ function statusChipColor(status: TemplateSyncStatus): "success" | "error" | "war
 }
 
 function statusLabel(status: TemplateSyncStatus): string {
-  if (status === "in_sync") return "In sync";
-  if (status === "drift") return "Drift detected";
-  if (status === "not_configured") return "Not bound";
+  if (status === "in_sync") return "Content matches";
+  if (status === "drift") return "Content differs";
+  if (status === "not_configured") return "No saved binding";
   return "Fetch error";
 }
 
@@ -141,10 +141,10 @@ function UpdateInstructions({ result }: { result: TemplateSyncResult }) {
   return (
     <Box sx={{ mb: 2 }}>
       <Typography variant="subtitle2" gutterBottom>
-        How to update
+        Expected template content
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Open the template in GOV Notify and update the fields below.
+        Use these expected values when creating or correcting a GOV Notify template.
       </Typography>
 
       <Stack spacing={1}>
@@ -334,11 +334,21 @@ function TemplateRow({
               color={statusChipColor(result.status)}
             />
             {result.versionDrift && (
-              <Tooltip title="GOV Notify's live version has moved past the version an admin last reviewed">
-                <Chip size="small" label={`v${result.reviewedVersion} → v${result.currentLiveVersion}`} color="warning" variant="outlined" />
+              <Tooltip title="The live version differs from the last reviewed version. This review reminder does not block sending; GOV Notify uses the current live version.">
+                <Chip size="small" label={`Review v${result.reviewedVersion} → v${result.currentLiveVersion}`} color="warning" variant="outlined" />
               </Tooltip>
             )}
           </Stack>
+          {result.status === "not_configured" && (
+            <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>
+              Runtime fallback readiness is not assessed here.
+            </Typography>
+          )}
+          {result.status === "in_sync" && result.versionDrift && (
+            <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>
+              Version review only. This reminder does not block sending.
+            </Typography>
+          )}
         </TableCell>
         <TableCell>
           <BindingControls result={result} onSaved={onSaved} />
@@ -374,9 +384,9 @@ function TemplateRow({
                 ) : result.status === "not_configured" ? (
                   <>
                     <Alert severity="warning" sx={{ mb: 2 }}>
-                      No binding saved yet. Create the template in GOV Notify using the values
-                      below, named exactly <strong>{result.templateKey}</strong>, then select it
-                      from the dropdown and save.
+                      Select an existing template named exactly <strong>{result.templateKey}</strong>{" "}
+                      whose content matches, then save the binding. Only create a template using
+                      the values below if no suitable template already exists.
                     </Alert>
                     <UpdateInstructions result={result} />
                   </>
@@ -455,12 +465,13 @@ export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageP
       <PageHeader title="Email Templates" onBack={onBack} />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Bind each transactional template key to a live GOV Notify template whose name exactly
-        matches the key, and record the version you've reviewed. Drift means the reviewed
-        content no longer matches the live GOV Notify template, or the code in{" "}
+        matches the key, and record the version you've reviewed. Content differences compare
+        the bound template with the expected subject and message in{" "}
         <Typography component="span" variant="body2" fontFamily="monospace">
           functions/email-templates/
-        </Typography>{" "}
-        no longer matches what's bound. Click a drifted or errored template to see details.
+        </Typography>. A changed live version is a separate review reminder and does not block sending.
+        This page does not assess runtime fallback configuration or prove email delivery.
+        Click a template with content differences, no saved binding or a fetch error to see details.
       </Typography>
 
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
@@ -486,6 +497,12 @@ export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageP
         </Alert>
       )}
 
+      {!results && !loading && !error && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Select Refresh to load template status. Loading status does not save bindings or review versions.
+        </Alert>
+      )}
+
       {results && (
         <>
           {driftCount + unconfiguredCount + errorCount + versionDriftCount === 0 ? (
@@ -495,13 +512,13 @@ export default function EmailTemplateSyncPage({ onBack }: EmailTemplateSyncPageP
           ) : (
             <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mb: 2 }}>
               {driftCount > 0 && (
-                <Chip label={`${driftCount} drift detected`} color="error" size="small" />
+                <Chip label={`${driftCount} with content differences`} color="error" size="small" />
               )}
               {unconfiguredCount > 0 && (
-                <Chip label={`${unconfiguredCount} not bound`} color="warning" size="small" />
+                <Chip label={`${unconfiguredCount} without a saved binding`} color="warning" size="small" />
               )}
               {versionDriftCount > 0 && (
-                <Chip label={`${versionDriftCount} live version changed since review`} color="warning" size="small" variant="outlined" />
+                <Chip label={`${versionDriftCount} version review reminder${versionDriftCount === 1 ? "" : "s"}`} color="warning" size="small" variant="outlined" />
               )}
               {errorCount > 0 && (
                 <Chip label={`${errorCount} fetch error`} color="default" size="small" />

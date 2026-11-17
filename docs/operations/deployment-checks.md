@@ -20,6 +20,9 @@ It never enables APIs, changes IAM, deploys resources, or reads secret values.
   include Firebase Viewer, Cloud Functions Viewer, Cloud Run Viewer, Secret
   Manager Viewer, Service Usage Viewer, Storage Viewer, IAM Security Reviewer,
   Logs Viewer, and equivalent Data Connect/Hosting read permissions.
+- The transactional-template audit also needs permission to execute read-only
+  Data Connect service queries. It reads saved template-binding configuration,
+  not member profiles, recipients, booking contents or notification payloads.
 - Do not use an unrestricted production owner account in CI. Prefer Workload
   Identity Federation and a dedicated read-only service account.
 - Run from a clean checkout of the release being inspected.
@@ -37,6 +40,19 @@ npm run deployment:check -- --env beta --expected-sha "$(git rev-parse HEAD)"
 npm run deployment:check -- --env prod --expected-sha "$(git rev-parse HEAD)" --json
 npm run deployment:check -- --env beta --expected-sha "$(git rev-parse HEAD)" --json --out report.json
 ```
+
+For a focused transactional-template configuration check, without the rest of
+the deployment audit:
+
+```sh
+npm run deployment:template-readiness -- --env dev
+npm run deployment:template-readiness -- --env prod --json --out template-readiness.json
+```
+
+The full deployment audit reports the same check as
+`gov-notify-template-readiness`. It also runs during the standard deployment
+preflight, so missing effective template configuration blocks that preflight.
+It does not send a test message or repair bindings.
 
 The command exits non-zero when a required check fails. Warnings identify
 manual review or unexpected resources but do not change the exit status. JSON
@@ -63,6 +79,13 @@ artifact.
 - the expected Hosting site exists;
 - every Function exported from `functions/src` is deployed, Gen 2, `ACTIVE`,
   and in `europe-west2`; unexpected Functions are reported as warnings;
+- all transactional keys and their sender Functions in
+  `config/notify-template-readiness.json` have a well-formed effective template
+  ID: a saved Data Connect binding, or an environment fallback on each executing
+  Function when that binding is absent. The contract covers the current template
+  manifest, including the recovery sender and the reply-to verification test's
+  use of `emailVerification`. Missing sender metadata, missing-both configuration,
+  malformed or duplicate configuration and unreadable bindings fail the check;
 - when the optional GOV.UK Notify migration reply-to value is present, it is a
   valid UUID and is consistent across every deployed Function; absence is valid
   because new environments use the admin-managed configuration;
@@ -91,6 +114,56 @@ the source's HTTP and callable exports, so adding or removing an endpoint
 requires a reviewed infrastructure-contract change. Environment-specific
 resource expectations and required APIs live in `config/deployment-check.json`;
 update and review that file whenever the infrastructure contract changes.
+
+## Transactional-template readiness limits
+
+The template audit joins saved binding metadata with each deployed sender's
+environment metadata. A well-formed saved binding is sufficient: it does not
+require an unnecessary environment fallback as well. When a binding exists but
+is malformed, the audit fails instead of treating a fallback as a substitute,
+because runtime sending gives that saved ID precedence. A failed binding read
+also fails the audit; it cannot prove the binding is absent.
+
+Keep the reviewed key-to-sender mapping in
+`config/notify-template-readiness.json` up to date when adding a template or
+moving a send path. Include scheduled recovery and administrative test senders,
+not only the callable that first creates the domain record.
+
+Use the canonical hyphenated UUID shape with no surrounding whitespace for both
+saved IDs and fallback values. The audit applies this conservative format rule
+uniformly, including the reply-to verification test, even though that particular
+sender trims its environment fallback at runtime. Other configured mailers
+preserve nonempty fallback values as supplied.
+
+This check uses Google OAuth and the read-only Data Connect service operation
+`executeGraphqlRead` (a POST carrying a query), plus Function metadata reads. It
+does not use a member's browser token, access secret payloads, call Notify or
+change any data. Keep its report alongside the release evidence.
+
+A UUID-shaped ID is configuration evidence, not proof that the template exists
+in the selected Notify service, has approved content or will be delivered. Review
+the exact template name, ID, subject, body, placeholders and live version using
+**Email Templates → Refresh**, following the
+[registration runbook](./govuk-notify-template-registration.md). A version-review
+reminder is separate from missing configuration and does not itself block
+sending. Neither a green readiness report nor a reviewed version proves actual
+email delivery; that needs a separately approved end-to-end test.
+
+The audit observes a point-in-time deployed configuration. Coordinate concurrent
+binding/environment changes and re-run it after deployment or a configuration
+repair. It neither releases nor cancels a notification backlog. Review recovery
+eligibility before applying bindings, and preserve the duplicate-suppression
+history when stale notifications are explicitly cancelled as `SKIPPED`.
+
+The older `npm --prefix functions run check:template-sync` drift checker is a
+separate informational tool. It still uses `template-registry.json`, which is
+retired as runtime configuration but retained for that checker; it does not read
+the live bindings used by this readiness audit. The existing PR/nightly jobs pass
+`GOV_NOTIFY_API_KEY`, while that checker expects `GOV_NOTIFY_LIVE_API_KEY` and
+skips with a successful exit when the latter is absent. Neither a green nor a
+skipped legacy result is live-binding or readiness evidence. Those jobs and the
+checker are unchanged here; modernizing their credential wiring or adding an
+authenticated readiness CI job requires a separate authentication review.
 
 ## Deployment manifest
 
@@ -161,10 +234,12 @@ would have caught:
   content-age check would false-fail on a job that ran successfully but found
   nothing new to download.
 
-These calls a raw access token against Google/Firebase Management REST APIs
+These calls use an access token against Google/Firebase Management REST APIs
 that have no `gcloud`/`firebase` CLI equivalent (App Check, Identity
 Toolkit config, Firebase Security Rules) using the same credentials already
 required for every other check -- no new authentication surface.
+The transactional-template check additionally uses the Data Connect read-only
+service operation described above.
 
 ## Manual checks that remain
 

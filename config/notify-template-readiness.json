@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "sodc-notify-template-contract/v1",
+  "templates": [
+    { "key": "bookingApproved", "functions": ["reviewBookingRevision", "recoverNotificationDeliveries"] },
+    { "key": "bookingChangesRequested", "functions": ["reviewBookingRevision", "recoverNotificationDeliveries"] },
+    { "key": "bookingConfirmation", "functions": ["submitEventBooking", "recoverNotificationDeliveries"] },
+    { "key": "bookingPendingApproval", "functions": ["submitEventBooking", "recoverNotificationDeliveries"] },
+    { "key": "bookingPendingApprovalModerator", "functions": ["submitEventBooking", "recoverNotificationDeliveries"] },
+    { "key": "bookingRevision", "functions": ["submitEventBooking", "reviewBookingRevision", "recoverNotificationDeliveries"] },
+    { "key": "emailChangeVerification", "functions": ["requestEmailChange"] },
+    { "key": "emailVerification", "functions": ["requestEmailVerification", "updateUserEmail", "sendNotifyReplyToVerificationTest"] },
+    { "key": "membershipAccessRestricted", "functions": ["updateMembershipStatus", "resignMembership", "confirmPotentialLostMember", "recoverNotificationDeliveries"] },
+    { "key": "membershipActivated", "functions": ["updateMembershipStatus", "recoverNotificationDeliveries"] },
+    { "key": "newUserPendingApprovalAlert", "functions": ["syncPendingUserClaims", "recoverNotificationDeliveries"] },
+    { "key": "passwordReset", "functions": ["requestPasswordReset"] },
+    { "key": "paymentDisputeOpsAlert", "functions": ["stripeWebhookPayments", "recoverNotificationDeliveries"] },
+    { "key": "paymentReconciliationExceptionAlert", "functions": ["stripeWebhookPayments", "reconcileMyCheckoutSessionOrders", "recoverNotificationDeliveries"] },
+    { "key": "ticketOrderFailed", "functions": ["stripeWebhookPayments", "recoverNotificationDeliveries"] },
+    { "key": "ticketOrderPaid", "functions": ["stripeWebhookPayments", "reconcileMyCheckoutSessionOrders", "recoverNotificationDeliveries"] },
+    { "key": "ticketOrderRefunded", "functions": ["stripeWebhookPayments", "recoverNotificationDeliveries"] }
+  ]
+}

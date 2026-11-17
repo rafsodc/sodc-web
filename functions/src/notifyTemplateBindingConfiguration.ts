@@ -5,8 +5,9 @@ import { getNotifyTemplateBindings } from "@dataconnect/admin-generated";
  * Resolves a transactional template's bound Notify template ID from Data
  * Connect. Returns undefined (rather than throwing) on any lookup failure or
  * missing binding so the caller's own GOV_NOTIFY_TEMPLATE_* env var fallback
- * (functions/src/mailer.ts) can take over -- a missing or unreachable
- * binding must never block a critical transactional email.
+ * (functions/src/mailer.ts) can take over when it is configured. If neither
+ * source supplies an ID, the mailer raises MailerConfigurationError before
+ * contacting Notify; this resolver does not guarantee delivery readiness.
  */
 export async function resolveNotifyTemplateId(templateKey: string): Promise<string | undefined> {
   try {
