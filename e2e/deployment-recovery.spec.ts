@@ -1,9 +1,14 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { createHash } from "node:crypto";
+import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { buildDeployments, type BuiltDeployment } from "./support/deploymentBuilds";
 import { startDeploymentServer, type DeploymentServer } from "./support/deploymentServer";
 
 let actualApp: BuiltDeployment;
 let localFixture: BuiltDeployment;
+let cachedFixture: BuiltDeployment;
+const fixtureStyles = { A: "", B: "" };
 const servers = new Set<DeploymentServer>();
 const recoveryHeading = (page: Page) => page.getByRole("heading", { name: "This page couldn’t load", exact: true });
 
@@ -11,10 +16,25 @@ test.beforeAll(async () => {
   test.setTimeout(180_000);
   actualApp = await buildDeployments("app");
   localFixture = await buildDeployments("fixture");
+  cachedFixture = await buildDeployments("fixture");
+  // The inert fixture otherwise emits no CSS. These temporary build outputs
+  // exercise both immutable resource types without changing its source or the
+  // unchanged deployment-recovery builds above.
+  for (const build of ["A", "B"] as const) {
+    const css = `:root { --deployment-cache-build: ${build}; }\n`;
+    const hash = createHash("sha256").update(css).digest("hex").slice(0, 8);
+    const stylesheet = `/assets/cache-probe-${hash}.css`;
+    fixtureStyles[build] = stylesheet;
+    await writeFile(path.join(cachedFixture.directories[build], stylesheet.slice(1)), css);
+    const index = path.join(cachedFixture.directories[build], "index.html");
+    const html = await readFile(index, "utf8");
+    await writeFile(index, html.replace("</head>", `<link rel="stylesheet" href="${stylesheet}" /></head>`));
+  }
 });
 test.afterAll(async () => {
   await actualApp?.remove();
   await localFixture?.remove();
+  await cachedFixture?.remove();
 });
 test.afterEach(async () => {
   for (const server of servers) await server.close();
@@ -31,8 +51,8 @@ test.beforeEach(async ({ context }) => {
   });
 });
 
-async function serverFor(build: BuiltDeployment) {
-  const server = await startDeploymentServer(build.directories);
+async function serverFor(build: BuiltDeployment, cacheAssets = false) {
+  const server = await startDeploymentServer(build.directories, { cacheAssets });
   servers.add(server);
   return server;
 }
@@ -232,6 +252,88 @@ test("a genuinely browser-cached A document still offers manual recovery after B
     expect(server.requests.some(request => request.pathname === localFixture.featureAssets.A && request.status === 404)).toBe(true);
     await page.getByRole("button", { name: "Reload page", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Lazy feature build B", exact: true })).toBeVisible();
+    expect(server.acceptedBusinessWrites).toBe(0);
+    expect(remoteRequests).toEqual([]);
+  } finally { await context.close(); }
+});
+
+test("immutable emitted JS and CSS survive full navigation while HTML, deep links and the manifest revalidate", async ({ browser }) => {
+  const server = await serverFor(cachedFixture, true);
+  // Playwright request routing disables the HTTP cache. This context has no
+  // interception, no Auth SDK and the fixture's self-only meta CSP.
+  const context = await browser.newContext({ serviceWorkers: "block" });
+  try {
+    const page = await context.newPage();
+    const remoteRequests: string[] = [];
+    page.on("request", request => {
+      if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(request.url()).hostname)) remoteRequests.push(new URL(request.url()).origin);
+    });
+    const entryResponse = page.waitForResponse(response => new URL(response.url()).pathname === cachedFixture.entries.A);
+    const styleResponse = page.waitForResponse(response => new URL(response.url()).pathname === fixtureStyles.A);
+    const first = await page.goto(server.url + "/fixture?account=alpha&visit=first");
+    await expect(page.getByRole("heading", { name: "Local fixture home", exact: true })).toBeVisible();
+    expect(await (await entryResponse).headerValue("cache-control")).toBe("public, max-age=31536000, immutable");
+    expect(await (await styleResponse).headerValue("cache-control")).toBe("public, max-age=31536000, immutable");
+    expect(await first?.headerValue("cache-control")).toBe("no-cache");
+    expect(await first?.headerValue("x-content-type-options")).toBe("nosniff");
+    expect(await first?.headerValue("x-frame-options")).toBe("DENY");
+    expect(await first?.headerValue("content-security-policy")).toContain("object-src 'none'");
+    const loadedAssets = server.requests.filter(request => request.pathname.startsWith("/assets/") && request.status === 200).map(request => request.pathname);
+    expect(loadedAssets).toContain(cachedFixture.entries.A);
+    expect(loadedAssets).toContain(fixtureStyles.A);
+    const before = server.requests.length;
+    const second = await page.goto(server.url + "/fixture/draft?account=alpha&visit=second");
+    await expect(page.getByRole("textbox", { name: "Local draft", exact: true })).toHaveValue("");
+    expect(await second?.headerValue("cache-control")).toBe("no-cache");
+    expect(server.requests.slice(before).filter(request => loadedAssets.includes(request.pathname))).toEqual([]);
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--deployment-cache-build").trim())).toBe("A");
+    const manifest = await page.evaluate(async () => {
+      const response = await fetch("/deployment-manifest.json");
+      return { status: response.status, cache: response.headers.get("cache-control"), hardening: response.headers.get("x-content-type-options"), value: await response.json() };
+    });
+    expect(manifest.status).toBe(200);
+    expect(manifest.cache).toBe("no-cache");
+    expect(manifest.hardening).toBe("nosniff");
+    expect(manifest.value.schemaVersion).toBe("sodc-deployment-manifest/v1");
+    expect(server.requests.filter(request => request.pathname.startsWith("/fixture")).map(request => request.status)).toEqual([200, 200]);
+    expect(server.acceptedBusinessWrites).toBe(0);
+    expect(remoteRequests).toEqual([]);
+  } finally { await context.close(); }
+});
+
+test("exact build asset rules allow upgrade recovery and rollback after an obsolete lazy asset returned 404", async ({ browser }) => {
+  const server = await serverFor(cachedFixture, true);
+  const context = await browser.newContext({ serviceWorkers: "block" });
+  try {
+    const page = await context.newPage();
+    const remoteRequests: string[] = [];
+    page.on("request", request => {
+      if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(request.url()).hostname)) remoteRequests.push(new URL(request.url()).origin);
+    });
+    await page.goto(server.url + "/fixture?account=alpha&phase=A");
+    await expect(page.getByRole("heading", { name: "Local fixture home", exact: true })).toBeVisible();
+    expect(server.requests.some(request => request.pathname === cachedFixture.featureAssets.A)).toBe(false);
+    server.publish("B");
+    const obsoleteResponse = page.waitForResponse(response => new URL(response.url()).pathname === cachedFixture.featureAssets.A);
+    await page.getByRole("link", { name: "Open lazy feature", exact: true }).click();
+    await assertManualRecovery(page);
+    const missing = await obsoleteResponse;
+    expect(missing.status()).toBe(404);
+    expect(await missing.headerValue("cache-control")).toBe("no-cache");
+    expect(await missing.headerValue("content-type")).not.toContain("text/html");
+    await page.getByRole("button", { name: "Reload page", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Lazy feature build B", exact: true })).toBeVisible();
+    expect(server.requests.some(request => request.pathname === cachedFixture.entries.B && request.status === 200)).toBe(true);
+    expect(server.requests.some(request => request.pathname === cachedFixture.featureAssets.B && request.status === 200)).toBe(true);
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--deployment-cache-build").trim())).toBe("B");
+    server.publish("A");
+    await page.goto(server.url + "/fixture/feature?account=alpha&phase=rollback");
+    await expect(page.getByRole("heading", { name: "Lazy feature build A", exact: true })).toBeVisible();
+    expect(server.requests.filter(request => request.pathname === cachedFixture.featureAssets.A).map(request => request.status)).toEqual([404, 200]);
+    // The old missing URL revalidates; A's already-present assets can be reused.
+    expect(server.requests.filter(request => request.pathname === cachedFixture.entries.A && request.status === 200)).toHaveLength(1);
+    expect(server.requests.filter(request => request.pathname === fixtureStyles.A && request.status === 200)).toHaveLength(1);
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--deployment-cache-build").trim())).toBe("A");
     expect(server.acceptedBusinessWrites).toBe(0);
     expect(remoteRequests).toEqual([]);
   } finally { await context.close(); }
