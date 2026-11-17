@@ -47,6 +47,15 @@ guarantee.
 5. Redeploy Functions through the [guarded deployment workflow](./functions-runtime-config-guard.md) after environment changes. Binding-only changes take effect immediately and need no deployment. Before saving a binding, inspect recovery-eligible notification counts: correcting configuration can enable queued notifications to send. Review their relevance and recipients before allowing a stale backlog to recover.
 6. Refresh status and read back the exact bindings, reviewed versions and audit actions. These are configuration checks, not proof of provider delivery. Run an approved **end-to-end** trigger per domain in that environment when appropriate (see [transactional-email-workflows.md](./transactional-email-workflows.md#manual-qa-beta)).
 
+The preflight readiness gate checks the current deployed senders, not candidate
+Functions or dotenv repairs. A new, missing or non-active required sender can
+block preflight before the proposed repair deploys. For an existing active sender,
+reviewing and saving its missing binding first needs no deployment; then re-run
+the readiness audit and full preflight. Missing/failed sender recovery or a new
+environment needs a separately reviewed staged plan. The standalone Functions
+deploy command still requires current full preflight and is not an escape path;
+see the [deployed-state gate limits](./deployment-checks.md#deployed-state-gate-and-remediation-limits).
+
 ## Template list
 
 | Logical key |
@@ -70,6 +79,10 @@ guarantee.
 | `emailChangeVerification` |
 
 ## Suggested order
+
+This order assumes separately reviewed project bootstrap has already established
+the required active senders. It is not an automatic Beta or Production provisioning
+procedure.
 
 1. Dev — every active template key listed above, bind each from the admin page, then approved E2E smoke tests
 2. Beta — clone copy, new templates, repeat binding and smoke tests

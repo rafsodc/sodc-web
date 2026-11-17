@@ -141,7 +141,9 @@ does not use a member's browser token, access secret payloads, call Notify or
 change any data. Keep its report alongside the release evidence.
 
 A UUID-shaped ID is configuration evidence, not proof that the template exists
-in the selected Notify service, has approved content or will be delivered. Review
+in the selected Notify service, has approved content or will be delivered. This
+audit also does not check each sender's Notify API-key secret bindings; credential
+wiring needs its own verification (see [#744](https://github.com/rafsodc/sodc-web/issues/744)). Review
 the exact template name, ID, subject, body, placeholders and live version using
 **Email Templates → Refresh**, following the
 [registration runbook](./govuk-notify-template-registration.md). A version-review
@@ -154,6 +156,37 @@ binding/environment changes and re-run it after deployment or a configuration
 repair. It neither releases nor cancels a notification backlog. Review recovery
 eligibility before applying bindings, and preserve the duplicate-suppression
 history when stale notifications are explicitly cancelled as `SKIPPED`.
+
+### Deployed-state gate and remediation limits
+
+Template readiness checks the **currently deployed** sender Functions and their
+current environment metadata before deployment. It does not evaluate the proposed
+Functions manifest or candidate dotenv values. A required sender that is new,
+renamed, missing or not `ACTIVE` therefore fails this gate even if the candidate
+release would create or repair it. If a sender has no saved binding and its live
+fallback is missing or invalid, adding a valid fallback only to the candidate
+environment does not make this check pass. Full preflight and resumed deployment
+can consequently block the very deployment proposed as the repair.
+
+For an existing, active sender with missing template configuration, an approved
+saved-binding repair is available without deploying Functions: review and save the
+exact template binding, then run a fresh readiness audit and full preflight. Review
+recovery eligibility before applying that binding, as described above. This does
+not repair a missing or inactive sender.
+
+`npm run deploy:functions` is not a bypass. Its guarded runner also requires the
+current full-preflight attestation for the reviewed commit and environment before
+executing the CLI. Do not substitute a raw deployment or alter/fabricate a receipt
+to get around a failed gate.
+
+First deployment to an empty environment, including Beta, is not automatically
+supported by this check. New or renamed senders, failed/missing sender recovery,
+and repairs that depend on candidate environment values need a separately reviewed
+staged bootstrap or recovery plan. Evaluating candidate configuration alongside
+the live baseline is tracked in [#743](https://github.com/rafsodc/sodc-web/issues/743);
+the current gate provides no
+general bootstrap or recovery escape path. See the
+[Functions guard's supported boundary](./functions-runtime-config-guard.md#transactional-template-readiness-boundary).
 
 The older `npm --prefix functions run check:template-sync` drift checker is a
 separate informational tool. It still uses `template-registry.json`, which is
