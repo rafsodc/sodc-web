@@ -64,6 +64,13 @@ its separately authorized frozen cutover; it is not a general repair procedure.
 
 ## Prepare and review
 
+An existing endpoint's changed secret bindings fail before proposals, including
+additions, removals and renames. The bounded
+[checkout reconciliation Notify repair](./notify-secret-binding-repair.md) is a
+separately reviewed configuration-only operation for #744/#745. It does not weaken
+this guard or replace its receipts; ordinary deployment needs fresh preflight
+after that repair passes. Other secret-contract changes remain blocked.
+
 Stage the target Vite file and matching non-secret Functions project file in an
 isolated reviewed checkout. Never edit/delete tracked `functions/.env` to change
 resolution behavior. Install both locked dependency trees and build Functions:

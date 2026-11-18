@@ -661,6 +661,64 @@ describe("offline actual guard orchestration with injected CLI/provider", () => 
   });
 });
 
+describe("existing endpoint secret-binding contract changes", () => {
+  async function secretFixture() {
+    const f = await fixture();
+    // Both secrets already exist and are bound somewhere in the deployed
+    // project, matching the Notify repair's global secret inventory. This
+    // reaches the per-endpoint equality check rather than failing earlier on
+    // an entirely new/unbound parameter.
+    const other = structuredClone(f.functions[0]);
+    other.name = `projects/${projectId}/locations/${region}/functions/other`;
+    other.buildConfig.entryPoint = "other";
+    Object.assign(other.serviceConfig, {
+      service: `projects/${projectId}/locations/${region}/services/other`,
+      uri: "https://other.run.app",
+      secretEnvironmentVariables: [{ key: "OTHER_SECRET", secret: "OTHER_SECRET", projectId, version: "1" }],
+    });
+    f.functions.push(other);
+    f.manifestResult.manifest.params.push({ name: "OTHER_SECRET", type: "secret" });
+    f.manifestResult.manifest.endpoints.example.secretEnvironmentVariables = [{ key: "SECRET" }];
+    f.manifestResult.manifest.endpoints.other = {
+      region: [region], platform: "gcfv2", callableTrigger: {}, secretEnvironmentVariables: [{ key: "OTHER_SECRET" }],
+    };
+    f.provider.latestSecret.mockImplementation(async (name) => ({ name: `projects/123/secrets/${name}/versions/1`, state: "ENABLED" }));
+    f.cli.build.toBackend.mockImplementation((manifest) => ({ endpoints: Object.entries(manifest.endpoints).map(([id, endpoint]) => ({
+      ...endpoint, id, environmentVariables: {},
+      secretEnvironmentVariables: endpoint.secretEnvironmentVariables.map(({ key }) => ({ key, secret: key, projectId })),
+    })) }));
+    const convert = f.cli.functions.functionFromEndpoint;
+    f.cli.functions.functionFromEndpoint = (endpoint) => ({ ...convert(endpoint), buildConfig: { entryPoint: endpoint.id } });
+    await writeFile(path.join(f.root, "config/deployment-check.json"), JSON.stringify({
+      ...f.files["config/deployment-check.json"], expectedPublicInvokerFunctions: ["example", "other"],
+    }));
+    execFileSync("git", ["add", "config/deployment-check.json"], { cwd: f.root });
+    execFileSync("git", ["-c", "user.name=Guard Test", "-c", "user.email=guard@synthetic.invalid", "commit", "-qm", "existing secret bindings fixture"], { cwd: f.root });
+    // Prove the rest of the fixture satisfies the actual collector before
+    // changing only one endpoint's desired secret declarations.
+    await expect(f.assess()).resolves.toHaveProperty("rows.length", 2);
+    return f;
+  }
+
+  it.each([
+    ["add", ["SECRET", "OTHER_SECRET"], false],
+    ["remove", [], false],
+    ["rename", ["OTHER_SECRET"], false],
+    ["add", ["SECRET", "OTHER_SECRET"], true],
+    ["remove", [], true],
+    ["rename", ["OTHER_SECRET"], true],
+  ])("blocks existing endpoint secret %s (%j; propose=%s) before returning a proposal or receipt", async (_change, keys, propose) => {
+    const f = await secretFixture();
+    f.manifestResult.manifest.endpoints.example.secretEnvironmentVariables = keys.map((key) => ({ key }));
+    const returned = vi.fn();
+    await expect(runFunctionsConfigGuard(f.root, "dev", {
+      cli: f.cli, provider: f.provider, manifestResult: f.manifestResult, mode: "dotenv", propose,
+    }).then(returned)).rejects.toThrow("secret-binding-contract-change");
+    expect(returned).not.toHaveBeenCalled();
+    await expect(readFile(guardPath(f.root, "dev"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+});
+
 // These imports are intentionally exercised by fixture-only tests, never against PATH
 // credentials. The production provider uses only explicit-project metadata GET resources.
 describe("metadata and CLI boundary", () => {
