@@ -85,6 +85,36 @@ describe("private run initialization and reads", () => {
     await expect(initializeRunDirectory(f.runDirectory, {...f, comparisonKey: Buffer.alloc(length)})).rejects.toHaveProperty("code", "invalid-comparison-key");
   });
 
+  it.each([
+    [0o770, "group-writable"],
+    [0o707, "world-writable"],
+    [0o1770, "sticky but not root-owned"],
+  ])("rejects a %i (%s) parent before creating private records", async (mode) => {
+    const f = await fixture();
+    await fs.chmod(f.base, mode);
+    try {
+      expect((await fs.lstat(f.base)).mode & 0o7777).toBe(mode);
+      if ((mode & 0o1000) !== 0 && process.getuid() === 0) {
+        // Root's sticky directories are the allowed temporary-directory case.
+        // Model only this parent's non-root owner when tests themselves run as
+        // root; normal developer/CI runs use the real current-user directory.
+        const lstat = fs.lstat.bind(fs);
+        vi.spyOn(process, "getuid").mockReturnValue(1234);
+        vi.spyOn(fs, "lstat").mockImplementation(async (...args) => {
+          const stat = await lstat(...args);
+          if (args[0] === f.base) stat.uid = 1234;
+          return stat;
+        });
+      }
+      if ((mode & 0o1000) !== 0) expect((await fs.lstat(f.base)).uid).not.toBe(0);
+      await expect(f.initialize()).rejects.toHaveProperty("code", "writable-private-directory-ancestor");
+      await expect(fs.lstat(f.runDirectory)).rejects.toHaveProperty("code", "ENOENT");
+      expect(await fs.readdir(f.base)).toEqual([]);
+    } finally {
+      await fs.chmod(f.base, 0o700);
+    }
+  });
+
   it("rejects ancestor and leaf symlinks rather than following them", async () => {
     const f = await fixture(); await f.initialize();
     const alias = path.join(f.base, "alias"); await fs.symlink(f.runDirectory, alias);

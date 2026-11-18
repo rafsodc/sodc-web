@@ -205,9 +205,9 @@ function assertOperation(operation, proposal, requireScope = false) {
 export async function applyRepair({proposal, review, comparisonKey, provider, readSource, store, now}) {
   validateProposal(proposal); assertReview(proposal, review, now);
   need(await store.read("intent.json") === null, "application-already-started-use-verify");
-  let source = await currentSource(proposal, readSource);
+  const source = await currentSource(proposal, readSource);
   compare(proposal, await provider.snapshot(), comparisonKey, source, false);
-  source = await currentSource(proposal, readSource);
+  await currentSource(proposal, readSource);
   assertReview(proposal, review, now);
   const intent = {schemaVersion: SCHEMA, proposalSha256: digest(proposal), reviewSha256: digest(review), startedAt: iso(now)};
   await store.writeOnce("intent.json", intent);
