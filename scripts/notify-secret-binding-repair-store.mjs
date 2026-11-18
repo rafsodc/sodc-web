@@ -1,0 +1,211 @@
+import fs from "node:fs/promises";
+import {constants} from "node:fs";
+import path from "node:path";
+import {createHash, randomUUID} from "node:crypto";
+import {BindingRepairError, REGION, TARGET, reviewTemplate} from "./notify-secret-binding-repair-lib.mjs";
+
+const RECORDS = new Set(["proposal.json", "review-template.json", "review.json", "intent.json", "operation.json"]);
+const MAX_JSON_BYTES = 2 * 1024 * 1024;
+const need = (condition, code) => {if (!condition) throw new BindingRepairError(code);};
+const failure = (code, error) => {throw error instanceof BindingRepairError ? error : new BindingRepairError(code);};
+const hash = bytes => createHash("sha256").update(bytes).digest("hex");
+const exactKeys = (value, keys) => value !== null && typeof value === "object" && !Array.isArray(value) &&
+  JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
+
+function absoluteDirectory(value) {
+  need(typeof value === "string" && !value.includes("\0") && path.isAbsolute(value) &&
+    path.normalize(value) === value && !value.endsWith(path.sep) && value !== path.parse(value).root, "invalid-private-directory-path");
+  need(typeof process.getuid === "function" && Number.isInteger(constants.O_NOFOLLOW), "unsupported-private-filesystem");
+  return value;
+}
+function owner(stat) {return stat.uid === process.getuid();}
+function privateDirectory(stat) {
+  need(stat.isDirectory() && !stat.isSymbolicLink() && owner(stat) && (stat.mode & 0o7777) === 0o700,
+    "private-directory-required");
+}
+function privateFile(stat) {
+  need(stat.isFile() && !stat.isSymbolicLink() && owner(stat) && stat.nlink === 1 && (stat.mode & 0o7777) === 0o600,
+    "private-regular-file-required");
+}
+async function syncDirectory(directory) {
+  let handle;
+  try {
+    handle = await fs.open(directory, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
+    await handle.sync();
+  } finally {await handle?.close();}
+}
+/** Check every existing component rather than following an ancestor symlink.
+ * Only the leaf must be private; trusted root/current-owner ancestors can be
+ * readable. Root-owned sticky temporary directories are supported. */
+async function checkAncestors(directory, {create = false} = {}) {
+  absoluteDirectory(directory);
+  const parsed = path.parse(directory);
+  let current = parsed.root;
+  for (const component of directory.slice(parsed.root.length).split(path.sep)) {
+    current = path.join(current, component);
+    let stat;
+    try {stat = await fs.lstat(current);}
+    catch (error) {
+      if (error.code !== "ENOENT" || !create) throw error;
+      try {await fs.mkdir(current, {mode: 0o700}); await syncDirectory(path.dirname(current));}
+      catch (created) {if (created.code !== "EEXIST") throw created;}
+      stat = await fs.lstat(current);
+    }
+    need(stat.isDirectory() && !stat.isSymbolicLink() && (owner(stat) || stat.uid === 0), "unsafe-private-directory-ancestor");
+    need((stat.mode & 0o022) === 0 || (stat.uid === 0 && (stat.mode & 0o1000) !== 0), "writable-private-directory-ancestor");
+  }
+}
+async function checkPrivateDirectory(directory) {
+  await checkAncestors(directory);
+  privateDirectory(await fs.lstat(directory));
+}
+async function ensureLockDirectory(directory) {
+  await checkAncestors(directory, {create: true});
+  privateDirectory(await fs.lstat(directory));
+}
+function proposalMetadata(proposal) {
+  // The protocol validator enforces Dev/Production, exact target, mask and
+  // secret scope. No arbitrary project or target can choose a global lock.
+  const review = reviewTemplate(proposal);
+  need(["sodc-web", "sodc-web-production"].includes(proposal.projectId) &&
+    proposal.target === `projects/${proposal.projectId}/locations/${REGION}/functions/${TARGET}`, "invalid-storage-proposal-target");
+  return {proposalSha256: review.proposalSha256, projectId: proposal.projectId, target: proposal.target};
+}
+function jsonBytes(value) {
+  need(value !== null && typeof value === "object" && !Array.isArray(value), "invalid-local-json-record");
+  let bytes;
+  try {bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);}
+  catch {throw new BindingRepairError("invalid-local-json-record");}
+  need(bytes.length <= MAX_JSON_BYTES, "local-json-record-too-large");
+  return bytes;
+}
+async function durableWrite(directory, name, bytes, existsCode = "local-record-already-exists") {
+  try {
+    await checkPrivateDirectory(directory);
+    const handle = await fs.open(path.join(directory, name), constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+    try {
+      privateFile(await handle.stat());
+      await handle.writeFile(bytes);
+      await handle.sync();
+    } finally {await handle.close();}
+    await syncDirectory(directory);
+  } catch (error) {
+    if (error.code === "EEXIST") throw new BindingRepairError(existsCode);
+    failure("durable-local-record-write-failed", error);
+  }
+}
+async function privateRead(directory, name, {optional = false, key = false} = {}) {
+  let directoryChecked = false;
+  try {
+    await checkPrivateDirectory(directory); directoryChecked = true;
+    let handle;
+    try {
+      const file = path.join(directory, name);
+      privateFile(await fs.lstat(file));
+      handle = await fs.open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+      const stat = await handle.stat(); privateFile(stat);
+      need(stat.size <= (key ? 32 : MAX_JSON_BYTES), "private-record-too-large");
+      const bytes = await handle.readFile();
+      privateFile(await handle.stat());
+      if (key) {need(bytes.length === 32, "invalid-comparison-key-file"); return bytes;}
+      need(bytes.length <= MAX_JSON_BYTES, "private-record-too-large");
+      try {return JSON.parse(bytes.toString("utf8"));}
+      catch {throw new BindingRepairError("malformed-private-json-record");}
+    } finally {await handle?.close();}
+  } catch (error) {
+    if (optional && directoryChecked && error.code === "ENOENT") return null;
+    failure("private-record-read-failed", error);
+  }
+}
+function initializationRecord(metadata) {
+  return {schemaVersion: "sodc-notify-binding-repair-private-run/v1", ...metadata};
+}
+async function assertInitialized(runDirectory, metadata) {
+  const initialized = await privateRead(runDirectory, "initialized.json");
+  need(exactKeys(initialized, ["schemaVersion", "proposalSha256", "projectId", "target"]) &&
+    JSON.stringify(initialized) === JSON.stringify(initializationRecord(metadata)), "private-run-initialization-incomplete");
+}
+
+export async function initializeRunDirectory(runDirectory, {proposal, comparisonKey}) {
+  const metadata = proposalMetadata(proposal);
+  need(Buffer.isBuffer(comparisonKey) && comparisonKey.length === 32, "invalid-comparison-key");
+  absoluteDirectory(runDirectory);
+  try {
+    await checkAncestors(path.dirname(runDirectory), {create: true});
+    try {await fs.mkdir(runDirectory, {mode: 0o700});}
+    catch (error) {if (error.code === "EEXIST") throw new BindingRepairError("run-directory-already-exists"); throw error;}
+    await checkPrivateDirectory(runDirectory);
+    await syncDirectory(path.dirname(runDirectory));
+    await durableWrite(runDirectory, "proposal.json", jsonBytes(proposal));
+    await durableWrite(runDirectory, "review-template.json", jsonBytes(reviewTemplate(proposal)));
+    await durableWrite(runDirectory, "comparison.key", comparisonKey);
+    // Written only after all critical files and their directory entries are
+    // durable. Partial initialization must not be silently reused by apply.
+    await durableWrite(runDirectory, "initialized.json", jsonBytes(initializationRecord(metadata)));
+    return {runDirectory, ...metadata};
+  } catch (error) {failure("run-directory-initialization-failed", error);}
+}
+
+/** The raw comparison key is returned only to the caller doing local HMAC
+ * comparisons. It must never be logged or copied into release evidence. */
+export async function loadRunDirectory({runDirectory}) {
+  absoluteDirectory(runDirectory);
+  try {
+    const proposal = await privateRead(runDirectory, "proposal.json");
+    await assertInitialized(runDirectory, proposalMetadata(proposal));
+    const comparisonKey = await privateRead(runDirectory, "comparison.key", {key: true});
+    return {proposal, comparisonKey};
+  } catch (error) {failure("private-run-load-failed", error);}
+}
+
+export async function openRepairStore({runDirectory, lockDirectory, proposal}) {
+  absoluteDirectory(runDirectory); absoluteDirectory(lockDirectory);
+  const metadata = proposalMetadata(proposal);
+  const disk = await privateRead(runDirectory, "proposal.json");
+  need(proposalMetadata(disk).proposalSha256 === metadata.proposalSha256, "stored-proposal-mismatch");
+  await assertInitialized(runDirectory, metadata);
+  const claim = {schemaVersion: "sodc-notify-binding-repair-target-lock/v1", ...metadata, runDirectory};
+  const lockName = `${metadata.projectId}.json`;
+  const read = async name => {
+    need(RECORDS.has(name), "unsupported-local-record-name");
+    const value = await privateRead(runDirectory, name, {optional: true});
+    if (name === "proposal.json" && value !== null) need(proposalMetadata(value).proposalSha256 === metadata.proposalSha256, "stored-proposal-mismatch");
+    return value;
+  };
+  return {
+    read,
+    async writeOnce(name, value) {
+      need(["intent.json", "operation.json"].includes(name), "unsupported-local-record-name");
+      try {
+        if (name === "intent.json") {
+          need(exactKeys(value, ["schemaVersion", "proposalSha256", "reviewSha256", "startedAt"]) &&
+            value.schemaVersion === proposal.schemaVersion && value.proposalSha256 === metadata.proposalSha256 &&
+            /^[a-f0-9]{64}$/.test(value.reviewSha256 ?? "") &&
+            Date.parse(value.startedAt) >= Date.parse(proposal.createdAt) && Date.parse(value.startedAt) <= Date.parse(proposal.expiresAt), "invalid-local-intent");
+          await ensureLockDirectory(lockDirectory);
+          // Claim once across run directories/worktrees FIRST. Never unlink on
+          // failure: even failed fsync/local intent requires operator review.
+          await durableWrite(lockDirectory, lockName, jsonBytes(claim), "global-target-already-claimed");
+        } else {
+          const intent = await read("intent.json");
+          need(intent?.proposalSha256 === metadata.proposalSha256, "operation-without-local-intent");
+          const locked = await privateRead(lockDirectory, lockName);
+          need(JSON.stringify(locked) === JSON.stringify(claim), "global-target-claim-mismatch");
+          need(exactKeys(value, ["name"]) && typeof value.name === "string" &&
+            new RegExp(`^projects/${metadata.projectId}/locations/${REGION}/operations/[A-Za-z0-9_-]+$`).test(value.name), "invalid-local-operation");
+        }
+        await durableWrite(runDirectory, name, jsonBytes(value));
+      } catch (error) {failure("local-store-write-failed", error);}
+    },
+  };
+}
+
+export async function persistVerification({runDirectory, verification}) {
+  absoluteDirectory(runDirectory);
+  const name = `verification-${randomUUID()}.json`;
+  const bytes = jsonBytes(verification);
+  try {
+    await durableWrite(runDirectory, name, bytes);
+    return {runDirectory, name, sha256: hash(bytes)};
+  } catch (error) {failure("verification-record-write-failed", error);}
+}
