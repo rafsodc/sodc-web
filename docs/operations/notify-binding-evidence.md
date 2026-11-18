@@ -59,9 +59,15 @@ reconciliation is limited to Dev. No production repair is enabled by this tool.
 
 ## Reconcile the known Dev operation
 
-Use a **new** private output directory outside both source checkouts and the old
-run directory. On macOS prefer `/private/tmp` because `/tmp` is a symlink. Do not
-copy the original run into release evidence.
+Use a **new** private output directory outside both source checkouts, the old run
+directory and the repository's shared `.firebase/notify-binding-repair-locks`
+directory. Output must not contain any of those protected directories either.
+The command resolves the nearest existing ancestors, conservatively compares
+case and Unicode aliases on macOS, and repeats this boundary check immediately
+before initialization. These checks narrow local path races; they are not atomic
+protection against a malicious local process renaming directories. On macOS
+prefer `/private/tmp` because `/tmp` is a symlink. Do not copy the original run
+into release evidence.
 
 ```sh
 npm run operations:notify-binding-evidence -- \

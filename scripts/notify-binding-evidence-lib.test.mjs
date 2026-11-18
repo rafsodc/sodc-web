@@ -1,3 +1,4 @@
+import {createHmac} from "node:crypto";
 import {beforeEach, afterEach, describe, expect, it, vi} from "vitest";
 import {digest} from "./functions-config-guard-lib.mjs";
 import {TARGET, NOTIFY_KEYS, verifyRepair} from "./notify-secret-binding-repair-lib.mjs";
@@ -270,6 +271,50 @@ describe("read-only reconciliation of the original known operation", () => {
   });
 
   it.each([
+    ["SUCCESS", "CONFIRMED"],
+    ["FAILURE", "UNKNOWN"],
+    ["WORKING", "UNKNOWN"],
+  ])("reports a correlated %s operation build as %s", async (status, expected) => {
+    const f = evidenceFixture(); const provenance = emptyProvenance();
+    provenance.operationBuild = {state: "AVAILABLE", value: {name: NEW_BUILD, id: "01234567-89ab-cdef-0123-456789abcdef", status,
+      createTime: new Date(NOW + 1).toISOString(), source: null, resolvedSource: null, archiveSha256: null, images: []}};
+    f.provider.provenance.mockResolvedValue(provenance);
+    f.provider.operation.mockResolvedValue(operationRecord({done: true, metadata: {target: TARGET_NAME, verb: "update", buildName: NEW_BUILD}}));
+    const report = await reconcile(f);
+    expect(report.artifactEvidence.operationBuild.value.status).toBe(status);
+    expect(report.providerRebuild).toBe(expected);
+    expect(report.sourceArchiveEquality).toBe("UNPROVEN"); neverAuthorizes(report); noMutation(f);
+  });
+
+  it.each([
+    ["before", -1, "UNKNOWN"],
+    ["at", 0, "CONFIRMED"],
+    ["after", 1, "CONFIRMED"],
+  ])("reports a successful build created %s the recorded intent (%i ms) as %s", async (_label, offset, expected) => {
+    const f = evidenceFixture(); const provenance = emptyProvenance();
+    provenance.operationBuild = {state: "AVAILABLE", value: {name: NEW_BUILD, id: "01234567-89ab-cdef-0123-456789abcdef", status: "SUCCESS",
+      createTime: new Date(Date.parse(f.original.intent.startedAt) + offset).toISOString(),
+      source: null, resolvedSource: null, archiveSha256: null, images: []}};
+    f.provider.provenance.mockResolvedValue(provenance);
+    f.provider.operation.mockResolvedValue(operationRecord({done: true, metadata: {target: TARGET_NAME, verb: "update", buildName: NEW_BUILD}}));
+    const report = await reconcile(f);
+    expect(report.providerRebuild).toBe(expected);
+    expect(report.sourceArchiveEquality).toBe("UNPROVEN"); neverAuthorizes(report); noMutation(f);
+  });
+
+  it("projects only allowed revision build annotations even when the provider returns raw annotations", async () => {
+    const f = evidenceFixture(); const provenance = emptyProvenance();
+    provenance.currentRevision = {state: "AVAILABLE", value: {
+      name: `${PREFIX}/services/${TARGET.toLowerCase()}/revisions/${f.target.serviceConfig.revision}`, images: [],
+      buildAnnotations: {"run.googleapis.com/build-function-target": TARGET,
+        PRIVATE_ARBITRARY_ANNOTATION_KEY: "PRIVATE_ARBITRARY_ANNOTATION_VALUE"}}};
+    f.provider.provenance.mockResolvedValue(provenance);
+    const report = await reconcile(f);
+    expect(report.artifactEvidence.currentRevision.value.buildAnnotations).toEqual({"run.googleapis.com/build-function-target": TARGET});
+    expect(JSON.stringify(report)).not.toContain("PRIVATE_ARBITRARY_ANNOTATION"); neverAuthorizes(report); noMutation(f);
+  });
+
+  it.each([
     ["equal immutable images", "a".repeat(64), "a".repeat(64), "MATCHED"],
     ["different immutable images", "a".repeat(64), "b".repeat(64), "DIFFERENT"],
     ["mutable image tags", null, null, "UNKNOWN"],
@@ -353,6 +398,37 @@ describe("prospective capture is an observation, never an authorization", () => 
     expect(JSON.stringify(second)).not.toContain("NEW_PRIVATE_VALUE"); neverAuthorizes(second); noMutation(f);
   });
 
+  it("includes buildConfig and known and future descendants in the opaque per-field fingerprint tree", () => {
+    const f = evidenceFixture();
+    f.target.buildConfig.futureBuildOption = {nested: "PRIVATE_BUILD_OPTION_BEFORE"};
+    const pointerKey = pointer => createHmac("sha256", KEY).update(JSON.stringify(pointer)).digest("hex");
+    const before = captureBindingEvidence(f.captureOptions());
+    for (const pointer of ["/buildConfig", "/buildConfig/runtime", "/buildConfig/entryPoint",
+      "/buildConfig/source/storageSource/generation", "/buildConfig/futureBuildOption/nested"]) {
+      expect(before.targetComponents.fieldHmacs).toHaveProperty(pointerKey(pointer), expect.stringMatching(/^[a-f0-9]{64}$/));
+    }
+    f.target.buildConfig.futureBuildOption.nested = "PRIVATE_BUILD_OPTION_AFTER";
+    const after = captureBindingEvidence(f.captureOptions());
+    expect(after.targetComponents.fieldHmacs[pointerKey("/buildConfig/futureBuildOption/nested")])
+      .not.toBe(before.targetComponents.fieldHmacs[pointerKey("/buildConfig/futureBuildOption/nested")]);
+    expect(after.targetComponents.fieldHmacs[pointerKey("/buildConfig/entryPoint")])
+      .toBe(before.targetComponents.fieldHmacs[pointerKey("/buildConfig/entryPoint")]);
+    expect(JSON.stringify(after)).not.toContain("PRIVATE_BUILD_OPTION_AFTER"); neverAuthorizes(after); noMutation(f);
+  });
+
+  it("distinguishes absent, null, empty and populated values in the selected fingerprints themselves", () => {
+    const f = evidenceFixture();
+    delete f.target.buildConfig.sourceProvenance;
+    const fingerprints = [captureBindingEvidence(f.captureOptions()).targetComponents.selectedHmacs["/buildConfig/sourceProvenance"]];
+    for (const value of [null, "", {resolvedStorageSource: {generation: "9"}}]) {
+      f.target.buildConfig.sourceProvenance = value;
+      fingerprints.push(captureBindingEvidence(f.captureOptions()).targetComponents.selectedHmacs["/buildConfig/sourceProvenance"]);
+    }
+    expect(fingerprints).toHaveLength(4);
+    expect(fingerprints.every(value => /^[a-f0-9]{64}$/.test(value))).toBe(true);
+    expect(new Set(fingerprints).size).toBe(4); noMutation(f);
+  });
+
   it("records new environment keys as opaque identities with separate value fingerprints", () => {
     const f = evidenceFixture();
     const before = captureBindingEvidence(f.captureOptions());
@@ -406,6 +482,13 @@ describe("prospective capture is an observation, never an authorization", () => 
     options.provenance.sourceObject = {state: "AVAILABLE", value: {
       bucket: "gcf-v2-sources-123-europe-west2", name: `${TARGET}/function-source.zip`, generation: "10", size: "100", md5Hash: null, crc32c: null}};
     expect(() => captureBindingEvidence(options)).toThrow(); noMutation(f);
+  });
+
+  it("rejects an archive hash without resolved input source even when the provider supplies it", () => {
+    const f = evidenceFixture(); const options = f.captureOptions();
+    options.provenance.functionBuild = {state: "AVAILABLE", value: {name: NEW_BUILD, id: "01234567-89ab-cdef-0123-456789abcdef",
+      status: "SUCCESS", source: null, resolvedSource: null, archiveSha256: "a".repeat(64), images: []}};
+    expect(() => captureBindingEvidence(options)).toThrow("unbound-archive-hash"); noMutation(f);
   });
 
   it("permits explicitly selected Production metadata capture without authorizing Production changes", () => {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import {execFileSync} from "node:child_process";
-import {lstat, readFile} from "node:fs/promises";
+import {lstat, readFile, realpath} from "node:fs/promises";
 import {createHash, randomBytes, timingSafeEqual} from "node:crypto";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
@@ -24,6 +24,32 @@ The original run, comparison key, intent, claim and failed verification remain i
 Reports cannot authorize releases or Production. Keep capture comparison.key private.`;
 const need = (condition, code) => {if (!condition) throw new BindingEvidenceError(code);};
 const nested = (parent, child) => child === parent || child.startsWith(`${parent}${path.sep}`);
+async function filesystemPath(directory) {
+  let existing = directory;
+  const missing = [];
+  while (true) {
+    try {
+      const resolved = path.join(await realpath(existing), ...missing);
+      // Darwin volumes may ignore case and Unicode normalization. Conservatively
+      // protect aliases even when an operator uses a case-sensitive volume.
+      return process.platform === "darwin" ? resolved.normalize("NFD").toLowerCase() : resolved;
+    } catch (error) {
+      need(error.code === "ENOENT" && path.dirname(existing) !== existing, "evidence-path-inspection-failed");
+      missing.unshift(path.basename(existing)); existing = path.dirname(existing);
+    }
+  }
+}
+async function assertOutputBoundary(root, options, claims) {
+  need(canonicalDirectory(claims), "invalid-shared-lock-directory");
+  const [output, tool, source, locks, original] = await Promise.all([
+    filesystemPath(options.outputDirectory), filesystemPath(root), filesystemPath(options.sourceRoot), filesystemPath(claims),
+    options.phase === "reconcile" ? filesystemPath(options.runDirectory) : null,
+  ]);
+  const overlaps = directory => nested(directory, output) || nested(output, directory);
+  need(!original || !overlaps(original), "output-overlaps-original-run");
+  need(!overlaps(tool) && !overlaps(source), "output-inside-source-checkout");
+  need(!overlaps(locks), "output-overlaps-shared-lock-directory");
+}
 function canonicalDirectory(value) {
   return typeof value === "string" && path.isAbsolute(value) && path.resolve(value) === value &&
     value !== path.parse(value).root && !value.endsWith(path.sep) && !value.includes("\0");
@@ -81,14 +107,15 @@ export async function runBindingEvidence(root, options, {
 } = {}) {
   if (options.help) return {status: "HELP", help};
   validateOptions(options);
-  need(!nested(root, options.outputDirectory) && !nested(options.sourceRoot, options.outputDirectory), "output-inside-source-checkout");
+  const claims = lockDirectory(options.sourceRoot);
+  await assertOutputBoundary(root, options, claims);
   const aliases = JSON.parse(await readFile(path.join(options.sourceRoot, ".firebaserc"), "utf8"));
   const projectId = validateFirebaseAlias(aliases, options.environment);
   validateFirebaseAlias(JSON.parse(await readFile(path.join(root, ".firebaserc"), "utf8")), options.environment);
   const toolBinding = await readTool(root), source = await readSource(projectId, options.sourceRoot);
   assertEvidenceToolBinding(toolBinding); assertRepairSource(source, projectId);
   let original, comparisonKey, report;
-  if (options.phase === "reconcile") original = await loadRun({runDirectory: options.runDirectory, lockDirectory: lockDirectory(options.sourceRoot)});
+  if (options.phase === "reconcile") original = await loadRun({runDirectory: options.runDirectory, lockDirectory: claims});
   const provider = providerFactory({projectId, region: "europe-west2"});
   if (options.phase === "capture") {
     comparisonKey = randomBytes(32);
@@ -102,10 +129,11 @@ export async function runBindingEvidence(root, options, {
   need(digest((await readSource(projectId, options.sourceRoot)).binding) === digest(source.binding), "application-source-changed-during-evidence");
   need(digest(await readTool(root)) === digest(toolBinding), "tool-source-changed-during-evidence");
   if (original) {
-    const latest = await loadRun({runDirectory: options.runDirectory, lockDirectory: lockDirectory(options.sourceRoot)});
+    const latest = await loadRun({runDirectory: options.runDirectory, lockDirectory: claims});
     need(inputDigests(latest) === inputDigests(original) && Buffer.isBuffer(latest.comparisonKey) && latest.comparisonKey.length === 32 &&
       timingSafeEqual(latest.comparisonKey, original.comparisonKey), "original-records-changed-during-evidence");
   }
+  await assertOutputBoundary(root, options, claims);
   const written = await initialize(options.outputDirectory, options.phase === "capture" ? {report, comparisonKey} : {report});
   return {status: report.status, projectId, target: report.target, reportPath: path.join(written.outputDirectory, "report.json"),
     reportSha256: written.reportSha256, originalContractAccepted: false, releaseAuthorized: false, productionAuthorized: false,

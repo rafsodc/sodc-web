@@ -29,9 +29,10 @@ and adds the existing numeric versions of `GOV_NOTIFY_LIVE_API_KEY`,
 `GOV_NOTIFY_TEAM_API_KEY` and `GOV_NOTIFY_TEST_API_KEY`. The configured mailer eagerly
 resolves all three modes, so all three are required even in SIMULATION.
 
-It does not deploy source, use Firebase's release fabricator, change IAM, read secret
-payloads, create/rotate keys, invoke reconciliation, send a test message, or replay
-failed notifications. Once repaired, normal reconciliation can send its usual
+It does not upload application source or use Firebase's release fabricator; Google
+may rebuild the stored Function during the configuration update. It does not
+change IAM, read secret payloads, create/rotate keys, invoke reconciliation, send a
+test message, or replay failed notifications. Once repaired, normal reconciliation can send its usual
 messages according to the existing delivery ceiling and ledger.
 
 Preparation requires all of the following, and refuses to infer a replacement:

@@ -1,11 +1,11 @@
 import {beforeEach, afterEach, describe, expect, it, vi} from "vitest";
-import {mkdtemp,realpath,mkdir,writeFile,readFile,readdir,stat,rm} from "node:fs/promises";
+import {mkdtemp,realpath,mkdir,writeFile,readFile,readdir,stat,rm,symlink} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {parseEvidenceArguments,readEvidenceToolBinding,runBindingEvidence,runEvidenceCommand} from "./notify-binding-evidence.mjs";
-import {initializeRunDirectory,openRepairStore,readRepairRunEvidence} from "./notify-secret-binding-repair-store.mjs";
+import {initializeRunDirectory,openRepairStore,readRepairRunEvidence,initializeBindingEvidenceDirectory} from "./notify-secret-binding-repair-store.mjs";
 import {TOOL_BINDING,evidenceFixture} from "./test-fixtures/binding-evidence-fixture.mjs";
 import {NOW,KEY,clone} from "./test-fixtures/notify-binding-repair-fixture.mjs";
 
@@ -32,7 +32,8 @@ async function setup({original=false}={}) {
     await writer.writeOnce("operation.json",f.original.operation);
   }
   const deps={readSource:vi.fn(async()=>clone(f.source)),readTool:vi.fn(async()=>clone(TOOL_BINDING)),
-    providerFactory:vi.fn(()=>f.provider),loadRun:vi.fn(readRepairRunEvidence),lockDirectory:vi.fn(()=>lockDirectory),now:()=>NOW+60_000};
+    providerFactory:vi.fn(()=>f.provider),loadRun:vi.fn(readRepairRunEvidence),initialize:vi.fn(initializeBindingEvidenceDirectory),
+    lockDirectory:vi.fn(()=>lockDirectory),now:()=>NOW+60_000};
   const options=phase=>({phase,environment:"dev",sourceRoot,outputDirectory,...(phase==="reconcile"?{runDirectory}:{})});
   return {root,sourceRoot,runDirectory,lockDirectory,outputDirectory,f,deps,options,
     run:(phase="capture",extra={})=>runBindingEvidence(root,{...options(phase),...extra},deps)};
@@ -86,6 +87,90 @@ describe("read-only evidence command arguments",()=>{
     ["--phase","capture","--env","dev","--source-root","/source","--output-dir","/output","--env","dev"],
   ])("rejects unsupported, missing or mutation-oriented arguments %j",args=>{
     expect(()=>parseEvidenceArguments(args)).toThrow();
+  });
+});
+
+describe("filesystem output preservation boundaries",()=>{
+  const boundary = (c,kind) => ({original:c.runDirectory,tool:c.root,application:c.sourceRoot,locks:c.lockDirectory})[kind];
+  const reason = kind => kind==="original"?"output-overlaps-original-run":
+    kind==="locks"?"output-overlaps-shared-lock-directory":"output-inside-source-checkout";
+  async function expectBlocked(c,kind,outputDirectory) {
+    const runBefore=await recordBytes(c.runDirectory),claimsBefore=await recordBytes(c.lockDirectory);
+    await expect(c.run(kind==="original"?"reconcile":"capture",{outputDirectory})).rejects.toThrow(reason(kind));
+    expect(c.deps.readSource).not.toHaveBeenCalled();expect(c.deps.loadRun).not.toHaveBeenCalled();
+    expect(c.deps.providerFactory).not.toHaveBeenCalled();expect(c.deps.initialize).not.toHaveBeenCalled();
+    expect(await recordBytes(c.runDirectory)).toEqual(runBefore);
+    expect(await recordBytes(c.lockDirectory)).toEqual(claimsBefore);
+    await expect(stat(outputDirectory)).rejects.toHaveProperty("code","ENOENT");
+  }
+
+  it.each(["original","tool","application","locks"])("rejects a symlink ancestor alias of the %s directory before any reads or writes",async kind=>{
+    const c=await setup({original:true}),alias=path.join(path.dirname(c.root),"aliased-directory");
+    await symlink(boundary(c,kind),alias);
+    await expectBlocked(c,kind,path.join(alias,"unwanted-report"));
+  });
+
+  it.each(["original","tool","application","locks"])("rejects alternate-case %s aliases under Darwin's conservative filesystem policy",async kind=>{
+    const c=await setup({original:true}),protectedDirectory=boundary(c,kind);
+    // Exercise Darwin's policy on Linux CI too, without replacing filesystem IO.
+    vi.stubGlobal("process",new Proxy(process,{get:(target,key)=>key==="platform"?"darwin":Reflect.get(target,key)}));
+    const alias=path.join(path.dirname(protectedDirectory),path.basename(protectedDirectory).toUpperCase());
+    await expectBlocked(c,kind,path.join(alias,"unwanted-report"));
+  });
+
+  it("protects an absent shared claim directory from a future Production claim-name output",async()=>{
+    const c=await setup(),outputDirectory=path.join(c.lockDirectory,"sodc-web-production.json");
+    await expect(c.run("capture",{outputDirectory})).rejects.toThrow("output-overlaps-shared-lock-directory");
+    expect(c.deps.providerFactory).not.toHaveBeenCalled();expect(c.deps.initialize).not.toHaveBeenCalled();
+    await expect(stat(c.lockDirectory)).rejects.toHaveProperty("code","ENOENT");
+  });
+
+  it.each(["case","Unicode"])("protects %s aliases in a missing shared claim directory on Darwin",async kind=>{
+    const c=await setup(),parent=path.dirname(c.root);
+    const originalName=kind==="case"?"claims-directory":"claims-\u00e9";
+    const aliasName=kind==="case"?"CLAIMS-DIRECTORY":"claims-e\u0301";
+    const claims=path.join(parent,originalName),outputDirectory=path.join(parent,aliasName,"sodc-web-production.json");
+    c.deps.lockDirectory.mockReturnValue(claims);
+    vi.stubGlobal("process",new Proxy(process,{get:(target,key)=>key==="platform"?"darwin":Reflect.get(target,key)}));
+    await expect(c.run("capture",{outputDirectory})).rejects.toThrow("output-overlaps-shared-lock-directory");
+    expect(c.deps.providerFactory).not.toHaveBeenCalled();expect(c.deps.initialize).not.toHaveBeenCalled();
+    await expect(stat(claims)).rejects.toHaveProperty("code","ENOENT");
+  });
+
+  it("rejects an output ancestor that would create the shared claim directory's parent",async()=>{
+    const c=await setup(),outputDirectory=path.join(path.dirname(c.root),"new-claim-parent");
+    c.deps.lockDirectory.mockReturnValue(path.join(outputDirectory,"claims"));
+    await expect(c.run("capture",{outputDirectory})).rejects.toThrow("output-overlaps-shared-lock-directory");
+    expect(c.deps.providerFactory).not.toHaveBeenCalled();expect(c.deps.initialize).not.toHaveBeenCalled();
+    await expect(stat(outputDirectory)).rejects.toHaveProperty("code","ENOENT");
+  });
+
+  it.each(["original","locks"])("rechecks a new %s alias introduced during awaited metadata before initialization",async kind=>{
+    const c=await setup({original:true}),alias=path.join(path.dirname(c.root),"late-alias");
+    const runBefore=await recordBytes(c.runDirectory),claimsBefore=await recordBytes(c.lockDirectory);
+    const provenance=c.f.provider.provenance.getMockImplementation();
+    c.f.provider.provenance.mockImplementation(async args=>{await symlink(boundary(c,kind),alias);return provenance(args);});
+    const outputDirectory=path.join(alias,"unwanted-report");
+    await expect(c.run(kind==="original"?"reconcile":"capture",{outputDirectory})).rejects.toThrow(reason(kind));
+    expect(c.deps.providerFactory).toHaveBeenCalledTimes(1);expect(c.deps.initialize).not.toHaveBeenCalled();
+    expect(await recordBytes(c.runDirectory)).toEqual(runBefore);expect(await recordBytes(c.lockDirectory)).toEqual(claimsBefore);
+    await expect(stat(outputDirectory)).rejects.toHaveProperty("code","ENOENT");
+  });
+
+  it("uses the same resolved shared claim directory for both original-record reads",async()=>{
+    const c=await setup({original:true});
+    c.deps.lockDirectory.mockReturnValueOnce(c.lockDirectory).mockReturnValue(path.join(path.dirname(c.root),"different-claims"));
+    expect((await c.run("reconcile")).status).toBe("REVIEW_REQUIRED_WITH_HISTORICAL_GAPS");
+    expect(c.deps.lockDirectory).toHaveBeenCalledTimes(1);
+    expect(c.deps.loadRun.mock.calls).toEqual(Array(2).fill([{runDirectory:c.runDirectory,lockDirectory:c.lockDirectory}]));
+  });
+
+  it("fails closed on a non-directory ancestor instead of treating inspection errors as missing paths",async()=>{
+    const c=await setup(),blocker=path.join(path.dirname(c.root),"existing-file");
+    await writeFile(blocker,"KEEP_THIS_FILE");
+    await expect(c.run("capture",{outputDirectory:path.join(blocker,"report")})).rejects.toThrow("evidence-path-inspection-failed");
+    expect(c.deps.providerFactory).not.toHaveBeenCalled();expect(c.deps.initialize).not.toHaveBeenCalled();
+    expect(await readFile(blocker,"utf8")).toBe("KEEP_THIS_FILE");
   });
 });
 
