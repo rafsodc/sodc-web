@@ -11,6 +11,14 @@ merge first without changing the ordinary guard. Preparing a repair requires a
 clean integration checkout containing both changes and a fresh Functions build.
 Source approval alone does not establish deployed secret access or delivery.
 
+**Dev rehearsal outcome:** Google rebuilt the target during the approved secret-only
+PATCH, so the original unchanged-build/source verification correctly failed. Keep
+the existing claim and failed result intact. Further repair execution, including
+Production, is on hold pending a separately reviewed rebuild-aware procedure. The
+[read-only evidence tool](./notify-binding-evidence.md) can assess the known Dev
+operation and capture prospective component evidence; it cannot waive this failed
+contract, authorize another PATCH or replay the operation.
+
 ## Exact scope and limits
 
 The only provider write is one Cloud Functions v2 PATCH of

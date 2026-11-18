@@ -3,6 +3,7 @@ import {constants} from "node:fs";
 import path from "node:path";
 import {createHash, randomUUID} from "node:crypto";
 import {BindingRepairError, REGION, TARGET, reviewTemplate} from "./notify-secret-binding-repair-lib.mjs";
+import {digest} from "./functions-config-guard-lib.mjs";
 
 const RECORDS = new Set(["proposal.json", "review-template.json", "review.json", "intent.json", "operation.json"]);
 const MAX_JSON_BYTES = 2 * 1024 * 1024;
@@ -208,4 +209,51 @@ export async function persistVerification({runDirectory, verification}) {
     await durableWrite(runDirectory, name, bytes);
     return {runDirectory, name, sha256: hash(bytes)};
   } catch (error) {failure("verification-record-write-failed", error);}
+}
+
+/** Read the original repair state without creating a claim, record or directory.
+ * The comparison key is for in-memory HMAC checks only and must not be copied to
+ * a reconciliation report or output directory. */
+export async function readRepairRunEvidence({runDirectory, lockDirectory}) {
+  absoluteDirectory(runDirectory); absoluteDirectory(lockDirectory);
+  try {
+    const {proposal, comparisonKey} = await loadRunDirectory({runDirectory});
+    const metadata = proposalMetadata(proposal);
+    const claim = await privateRead(lockDirectory, `${metadata.projectId}.json`, {optional: true});
+    const expected = {schemaVersion: "sodc-notify-binding-repair-target-lock/v1", ...metadata, runDirectory};
+    need(claim !== null && exactKeys(claim, Object.keys(expected)) && digest(claim) === digest(expected),
+      "missing-or-invalid-original-project-claim");
+    const review = await privateRead(runDirectory, "review.json", {optional: true});
+    const intent = await privateRead(runDirectory, "intent.json", {optional: true});
+    const operation = await privateRead(runDirectory, "operation.json", {optional: true});
+    return {proposal, comparisonKey, review, intent, operation, claim};
+  } catch (error) {failure("private-repair-evidence-read-failed", error);}
+}
+
+/** Persist only new, private evidence. This never initializes an original repair
+ * run or a target claim, and reconciliation must never receive the old key. */
+export async function initializeBindingEvidenceDirectory(outputDirectory, options) {
+  const report = options?.report;
+  const capture = report?.schemaVersion === "sodc-notify-binding-capture/v1";
+  need(capture || report?.schemaVersion === "sodc-notify-binding-reconciliation/v1", "unsupported-binding-evidence-schema");
+  need(exactKeys(options, capture ? ["report", "comparisonKey"] : ["report"]),
+    capture ? "invalid-binding-capture-options" : "comparison-key-forbidden-for-reconciliation");
+  if (capture) need(Buffer.isBuffer(options.comparisonKey) && options.comparisonKey.length === 32, "invalid-comparison-key");
+  const capturedKey = capture ? Buffer.from(options.comparisonKey) : null;
+  const bytes = jsonBytes(report);
+  const reportSha256 = digest(report);
+  const initialized = {schemaVersion: "sodc-notify-binding-evidence-private-run/v1", reportSchemaVersion: report.schemaVersion,
+    reportSha256, comparisonKeyPresent: capture};
+  absoluteDirectory(outputDirectory);
+  try {
+    await checkAncestors(path.dirname(outputDirectory), {create: true});
+    try {await fs.mkdir(outputDirectory, {mode: 0o700});}
+    catch (error) {if (error.code === "EEXIST") throw new BindingRepairError("evidence-directory-already-exists"); throw error;}
+    await checkPrivateDirectory(outputDirectory);
+    await syncDirectory(path.dirname(outputDirectory));
+    await durableWrite(outputDirectory, "report.json", bytes);
+    if (capture) await durableWrite(outputDirectory, "comparison.key", capturedKey);
+    await durableWrite(outputDirectory, "initialized.json", jsonBytes(initialized));
+    return {outputDirectory, reportSha256, comparisonKeyPresent: capture};
+  } catch (error) {failure("binding-evidence-initialization-failed", error);}
 }
