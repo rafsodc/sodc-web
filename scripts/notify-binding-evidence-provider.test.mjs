@@ -18,6 +18,11 @@ const image = `${region}-docker.pkg.dev/${projectId}/gcf-artifacts/function@sha2
 const sha = Buffer.alloc(32, 7).toString("base64");
 const clone = value => structuredClone(value);
 const json = value => Response.json(value);
+function matchesEndpoint(url, hostname, pathnamePrefix = "/") {
+  const parsed = new URL(url);
+  return parsed.protocol === "https:" && parsed.hostname === hostname && parsed.port === "" &&
+    parsed.username === "" && parsed.password === "" && parsed.pathname.startsWith(pathnamePrefix);
+}
 
 function fixture({fetchOverride, tokenProvider, defaults = false} = {}) {
   const targetFunction = {name: `${prefix}/functions/${target}`, buildConfig: {build: buildName, source: {storageSource: clone(storage)},
@@ -43,7 +48,7 @@ function fixture({fetchOverride, tokenProvider, defaults = false} = {}) {
     if (url === `https://cloudresourcemanager.googleapis.com/v1/projects/${projectId}`) return data.project;
     if (url === `https://cloudfunctions.googleapis.com/v2/${prefix}/functions?pageSize=1000`) return {functions: data.functions};
     if (url === `https://cloudscheduler.googleapis.com/v1/${prefix}/jobs?pageSize=500`) return {jobs: data.schedulers};
-    if (url.includes("run.googleapis.com/v1/") && url.endsWith(":getIamPolicy?options.requestedPolicyVersion=3")) return {version: 3, bindings: []};
+    if (matchesEndpoint(url, "run.googleapis.com", "/v1/") && url.endsWith(":getIamPolicy?options.requestedPolicyVersion=3")) return {version: 3, bindings: []};
     const key = keys.find(name => url.startsWith(`https://secretmanager.googleapis.com/v1/projects/${projectId}/secrets/${name}`));
     if (key && url.endsWith(":getIamPolicy?options.requestedPolicyVersion=3")) return {version: 3, bindings: []};
     if (key && /\/versions\/(1|latest)$/.test(url)) return {name: `projects/${projectNumber}/secrets/${key}/versions/1`, state: "ENABLED"};
@@ -69,6 +74,16 @@ beforeEach(() => {vi.stubGlobal("fetch", vi.fn(() => {throw new Error("Unexpecte
 afterEach(() => {expect(globalThis.fetch).not.toHaveBeenCalled(); vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals();});
 
 describe("GET-only evidence provider boundary", () => {
+  it.each([
+    "https://storage.googleapis.com.evil.invalid/storage/v1/b/private",
+    "https://evil.invalid/storage.googleapis.com/storage/v1/b/private",
+    "https://storage.googleapis.com@evil.invalid/storage/v1/b/private",
+    "http://storage.googleapis.com/storage/v1/b/private",
+    "https://storage.googleapis.com:8443/storage/v1/b/private",
+  ])("does not satisfy the offline host matcher with a lookalike URL (%s)", url => {
+    expect(matchesEndpoint(url, "storage.googleapis.com", "/storage/v1/")).toBe(false);
+  });
+
   it("exposes no mutation methods and delegates the bounded inventory via GET only", async () => {
     const f = fixture();
     expect(Object.keys(f.provider).sort()).toEqual(["operation", "provenance", "snapshot"]);
@@ -154,7 +169,7 @@ describe("allowlisted rebuild provenance", () => {
       expect(options.signal).toBeInstanceOf(AbortSignal); expect(options.body).toBeUndefined();
       expect(url).not.toMatch(/alt=media|generateDownloadUrl|sourceToken|:access/);
     }
-    const [url] = f.fetchImpl.mock.calls.find(([value]) => value.includes("storage.googleapis.com"));
+    const [url] = f.fetchImpl.mock.calls.find(([value]) => matchesEndpoint(value, "storage.googleapis.com"));
     const parsed = new URL(url); expect(parsed.searchParams.get("generation")).toBe(storage.generation);
     expect(parsed.searchParams.get("fields")).toBe("bucket,name,generation,size,md5Hash,crc32c");
     expect(parsed.pathname).toContain(encodeURIComponent(storage.object));
@@ -205,7 +220,7 @@ describe("allowlisted rebuild provenance", () => {
     const f = fixture(); const c = await f.load(); c.snapshot.functions[0].buildConfig.source.storageSource.generation = "0";
     const result = await c.read();
     expect(result.sourceObject.state).toBe("UNSUPPORTED");
-    expect(f.fetchImpl.mock.calls.some(([url]) => url.includes("storage.googleapis.com"))).toBe(false);
+    expect(f.fetchImpl.mock.calls.some(([url]) => matchesEndpoint(url, "storage.googleapis.com"))).toBe(false);
   });
 
   it("allows only the exact documented upload bucket for this project number and region", async () => {
@@ -214,8 +229,8 @@ describe("allowlisted rebuild provenance", () => {
     ref.bucket = `gcf-v2-uploads-${projectNumber}-${region}.cloudfunctions.appspot.com`; ref.object = "uploaded-source.zip";
     f.fetchImpl.mockImplementation(async (url, options) => {
       expect(options.method).toBe("GET");
-      if (url.includes("storage.googleapis.com")) return json({...f.data.object, bucket: ref.bucket, name: ref.object});
-      if (url.includes("cloudbuild.googleapis.com")) return json(f.data.build);
+      if (matchesEndpoint(url, "storage.googleapis.com")) return json({...f.data.object, bucket: ref.bucket, name: ref.object});
+      if (matchesEndpoint(url, "cloudbuild.googleapis.com")) return json(f.data.build);
       return json({...f.data.revision, name: url.slice("https://run.googleapis.com/v2/".length)});
     });
     expect((await c.read()).sourceObject).toMatchObject({state: "AVAILABLE", value: {bucket: ref.bucket, name: "uploaded-source.zip"}});
@@ -282,26 +297,26 @@ describe("allowlisted rebuild provenance", () => {
     // Revision identity is normally built by the route; force that one field explicitly.
     if (f.data.revision.name) f.fetchImpl.mockImplementation(async (url, options) => {
       expect(options.method).toBe("GET");
-      if (url.includes("run.googleapis.com/v2/")) return json(f.data.revision);
-      if (url.includes("cloudbuild.googleapis.com")) return json(f.data.build);
-      if (url.includes("storage.googleapis.com")) return json(f.data.object);
+      if (matchesEndpoint(url, "run.googleapis.com", "/v2/")) return json(f.data.revision);
+      if (matchesEndpoint(url, "cloudbuild.googleapis.com")) return json(f.data.build);
+      if (matchesEndpoint(url, "storage.googleapis.com")) return json(f.data.object);
       throw new Error("Unexpected route");
     });
     await expect(c.read()).rejects.toThrow(/^Notify binding evidence blocked: [a-z-]+\.$/);
   });
 
   it.each([403, 404, 500])("records artifact HTTP %i as an explicit unavailable gap without leaking bodies or retrying", async status => {
-    const f = fixture({fetchOverride: url => url.includes("run.googleapis.com/v2/") ? new Response("PRIVATE_HTTP_BODY", {status}) : undefined});
+    const f = fixture({fetchOverride: url => matchesEndpoint(url, "run.googleapis.com", "/v2/") ? new Response("PRIVATE_HTTP_BODY", {status}) : undefined});
     const c = await f.load(); const value = await c.read();
     expect(value.currentRevision).toEqual({state: "UNAVAILABLE", reason: "metadata-not-readable"});
     expect(value.previousRevision).toEqual({state: "UNAVAILABLE", reason: "metadata-not-readable"});
-    expect(f.fetchImpl.mock.calls.filter(([url]) => url.includes("run.googleapis.com/v2/"))).toHaveLength(2);
+    expect(f.fetchImpl.mock.calls.filter(([url]) => matchesEndpoint(url, "run.googleapis.com", "/v2/"))).toHaveLength(2);
     expect(JSON.stringify(value)).not.toContain("PRIVATE");
   });
 
   it.each(["network", "json", "shape", "header-cap", "stream-cap"])("bounds/sanitizes %s artifact failures", async kind => {
     const f = fixture({fetchOverride: url => {
-      if (!url.includes("run.googleapis.com/v2/")) return undefined;
+      if (!matchesEndpoint(url, "run.googleapis.com", "/v2/")) return undefined;
       if (kind === "network") throw new Error("PRIVATE_NETWORK_ERROR");
       if (kind === "json") return new Response("PRIVATE_JSON");
       if (kind === "shape") return json(["PRIVATE_ARRAY"]);
