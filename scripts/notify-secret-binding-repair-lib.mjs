@@ -80,7 +80,7 @@ function collect(snapshot, comparisonKey, projectId, manifest, {after = false} =
   let target;
   for (const fn of snapshot.functions) {
     const name = fn.name.split("/").at(-1);
-    need(fn.name === `projects/${projectId}/locations/${REGION}/functions/${name}` && fn.state === "ACTIVE" &&
+    need(fn.name === `projects/${projectId}/locations/${REGION}/functions/${name}` && fn.environment === "GEN_2" && fn.state === "ACTIVE" &&
       fn.buildConfig?.runtime === "nodejs24" && fn.buildConfig.entryPoint === name && fn.serviceConfig?.allTrafficOnLatestRevision === true,
     "function-not-active-or-contract-invalid");
     const refs = sortedBindings(fn.serviceConfig.secretEnvironmentVariables ?? [], project);
