@@ -11,6 +11,14 @@ merge first without changing the ordinary guard. Preparing a repair requires a
 clean integration checkout containing both changes and a fresh Functions build.
 Source approval alone does not establish deployed secret access or delivery.
 
+**Dev rehearsal outcome:** Google rebuilt the target during the approved secret-only
+PATCH, so the original unchanged-build/source verification correctly failed. Keep
+the existing claim and failed result intact. Further repair execution, including
+Production, is on hold pending a separately reviewed rebuild-aware procedure. The
+[read-only evidence tool](./notify-binding-evidence.md) can assess the known Dev
+operation and capture prospective component evidence; it cannot waive this failed
+contract, authorize another PATCH or replay the operation.
+
 ## Exact scope and limits
 
 The only provider write is one Cloud Functions v2 PATCH of
@@ -21,9 +29,10 @@ and adds the existing numeric versions of `GOV_NOTIFY_LIVE_API_KEY`,
 `GOV_NOTIFY_TEAM_API_KEY` and `GOV_NOTIFY_TEST_API_KEY`. The configured mailer eagerly
 resolves all three modes, so all three are required even in SIMULATION.
 
-It does not deploy source, use Firebase's release fabricator, change IAM, read secret
-payloads, create/rotate keys, invoke reconciliation, send a test message, or replay
-failed notifications. Once repaired, normal reconciliation can send its usual
+It does not upload application source or use Firebase's release fabricator; Google
+may rebuild the stored Function during the configuration update. It does not
+change IAM, read secret payloads, create/rotate keys, invoke reconciliation, send a
+test message, or replay failed notifications. Once repaired, normal reconciliation can send its usual
 messages according to the existing delivery ceiling and ledger.
 
 Preparation requires all of the following, and refuses to infer a replacement:

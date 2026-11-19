@@ -192,6 +192,9 @@ function compare(proposal, snapshot, comparisonKey, source, after) {
   need(sameFingerprint(fingerprint(baseline, comparisonKey), fingerprint(expected, comparisonKey)), "provider-baseline-drift");
 }
 export const assertRepairSource = validateSource;
+// Read-only consumers reuse these exact transformations; v1 verification and
+// its original whole-Function baseline remain unchanged.
+export {collect as collectBindingRepairSnapshot};
 function operationName(name, projectId) {
   return typeof name === "string" && new RegExp(`^projects/${projectId}/locations/${REGION}/operations/[A-Za-z0-9_-]+$`).test(name);
 }
