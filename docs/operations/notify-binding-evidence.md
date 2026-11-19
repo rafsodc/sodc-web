@@ -62,9 +62,17 @@ reconciliation is limited to Dev. No production repair is enabled by this tool.
 Use a **new** private output directory outside both source checkouts, the old run
 directory and the repository's shared `.firebase/notify-binding-repair-locks`
 directory. Output must not contain any of those protected directories either.
+In both phases the command reads the two fixed Dev/Production claim records
+read-only and protects every recorded run directory, regardless of the selected
+environment. This does not read those runs' records or comparison keys. Missing
+claim files/directories stay absent; unsafe or malformed existing claims block.
+Claims are refreshed before initialization, retaining the initially protected
+paths as well. Unclaimed historical directories cannot be discovered this way;
+operators must still choose a separate output directory.
 The command resolves the nearest existing ancestors, conservatively compares
 case and Unicode aliases on macOS, and repeats this boundary check immediately
-before initialization. These checks narrow local path races; they are not atomic
+before initialization. Dangling symlink ancestors also block before provider
+reads. These checks narrow local path races; they are not atomic
 protection against a malicious local process renaming directories. On macOS
 prefer `/private/tmp` because `/tmp` is a symlink. Do not copy the original run
 into release evidence.

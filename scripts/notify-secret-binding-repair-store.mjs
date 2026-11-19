@@ -230,6 +230,30 @@ export async function readRepairRunEvidence({runDirectory, lockDirectory}) {
   } catch (error) {failure("private-repair-evidence-read-failed", error);}
 }
 
+/** Read only fixed project claims to protect their original run directories in
+ * both evidence phases. Never inspect those runs or create a lock directory. */
+export async function readBindingRepairClaimDirectories(lockDirectory) {
+  absoluteDirectory(lockDirectory);
+  try {
+    try {await checkPrivateDirectory(lockDirectory);}
+    catch (error) {if (error.code === "ENOENT") return []; throw error;}
+    const directories = [];
+    for (const projectId of ["sodc-web", "sodc-web-production"]) {
+      const name = `${projectId}.json`;
+      try {await fs.lstat(path.join(lockDirectory, name));}
+      catch (error) {if (error.code === "ENOENT") continue; throw error;}
+      const claim = await privateRead(lockDirectory, name);
+      need(exactKeys(claim, ["schemaVersion", "proposalSha256", "projectId", "target", "runDirectory"]) &&
+        claim.schemaVersion === "sodc-notify-binding-repair-target-lock/v1" && claim.projectId === projectId &&
+        claim.target === `projects/${projectId}/locations/${REGION}/functions/${TARGET}` &&
+        typeof claim.proposalSha256 === "string" && /^[a-f0-9]{64}$/.test(claim.proposalSha256),
+      "invalid-binding-repair-project-claim");
+      directories.push(absoluteDirectory(claim.runDirectory));
+    }
+    return [...new Set(directories)];
+  } catch (error) {failure("private-project-claims-read-failed", error);}
+}
+
 /** Persist only new, private evidence. This never initializes an original repair
  * run or a target claim, and reconciliation must never receive the old key. */
 export async function initializeBindingEvidenceDirectory(outputDirectory, options) {

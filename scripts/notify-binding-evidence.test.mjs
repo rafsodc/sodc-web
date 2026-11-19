@@ -5,7 +5,7 @@ import path from "node:path";
 import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {parseEvidenceArguments,readEvidenceToolBinding,runBindingEvidence,runEvidenceCommand} from "./notify-binding-evidence.mjs";
-import {initializeRunDirectory,openRepairStore,readRepairRunEvidence,initializeBindingEvidenceDirectory} from "./notify-secret-binding-repair-store.mjs";
+import {initializeRunDirectory,openRepairStore,readRepairRunEvidence,readBindingRepairClaimDirectories,initializeBindingEvidenceDirectory} from "./notify-secret-binding-repair-store.mjs";
 import {TOOL_BINDING,evidenceFixture} from "./test-fixtures/binding-evidence-fixture.mjs";
 import {NOW,KEY,clone} from "./test-fixtures/notify-binding-repair-fixture.mjs";
 
@@ -32,7 +32,8 @@ async function setup({original=false}={}) {
     await writer.writeOnce("operation.json",f.original.operation);
   }
   const deps={readSource:vi.fn(async()=>clone(f.source)),readTool:vi.fn(async()=>clone(TOOL_BINDING)),
-    providerFactory:vi.fn(()=>f.provider),loadRun:vi.fn(readRepairRunEvidence),initialize:vi.fn(initializeBindingEvidenceDirectory),
+    providerFactory:vi.fn(()=>f.provider),loadRun:vi.fn(readRepairRunEvidence),readClaims:vi.fn(readBindingRepairClaimDirectories),
+    initialize:vi.fn(initializeBindingEvidenceDirectory),
     lockDirectory:vi.fn(()=>lockDirectory),now:()=>NOW+60_000};
   const options=phase=>({phase,environment:"dev",sourceRoot,outputDirectory,...(phase==="reconcile"?{runDirectory}:{})});
   return {root,sourceRoot,runDirectory,lockDirectory,outputDirectory,f,deps,options,
@@ -40,6 +41,13 @@ async function setup({original=false}={}) {
 }
 async function recordBytes(directory) {
   return Object.fromEntries(await Promise.all((await readdir(directory)).map(async name=>[name,(await readFile(path.join(directory,name))).toString("hex")])));
+}
+async function writeClaim(c,projectId,runDirectory) {
+  await mkdir(c.lockDirectory,{recursive:true,mode:0o700});
+  await writeFile(path.join(c.lockDirectory,`${projectId}.json`),JSON.stringify({
+    schemaVersion:"sodc-notify-binding-repair-target-lock/v1",proposalSha256:"a".repeat(64),projectId,
+    target:`projects/${projectId}/locations/europe-west2/functions/reconcileMyCheckoutSessionOrders`,runDirectory,
+  }),{mode:0o600});
 }
 beforeEach(()=>{vi.stubGlobal("fetch",vi.fn(()=>{throw new Error("UNEXPECTED_LIVE_NETWORK_IN_EVIDENCE_CLI_TEST");}));});
 afterEach(async()=>{
@@ -175,6 +183,86 @@ describe("filesystem output preservation boundaries",()=>{
 });
 
 describe("private prospective evidence capture",()=>{
+  it.each([
+    ["dev","sodc-web"],["dev","sodc-web-production"],
+    ["prod","sodc-web"],["prod","sodc-web-production"],
+  ])("protects the %s capture from output inside the %s claimed run without --run-dir",async (environment,projectId)=>{
+    const c=await setup({original:true});
+    if(projectId==="sodc-web-production"){
+      await rm(path.join(c.lockDirectory,"sodc-web.json"));await writeClaim(c,projectId,c.runDirectory);
+    }
+    const before=await recordBytes(c.runDirectory),claimsBefore=await recordBytes(c.lockDirectory);
+    const outputDirectory=path.join(c.runDirectory,"capture-out");
+    await expect(c.run("capture",{environment,outputDirectory})).rejects.toThrow("output-overlaps-original-run");
+    expect(c.deps.readSource).not.toHaveBeenCalled();expect(c.deps.loadRun).not.toHaveBeenCalled();
+    expect(c.deps.providerFactory).not.toHaveBeenCalled();expect(c.deps.initialize).not.toHaveBeenCalled();
+    expect(await recordBytes(c.runDirectory)).toEqual(before);expect(await recordBytes(c.lockDirectory)).toEqual(claimsBefore);
+  });
+
+  it.each(["symlink","case"])("protects a %s alias into a claimed run during capture",async kind=>{
+    const c=await setup({original:true});const before=await recordBytes(c.runDirectory);
+    let alias;
+    if(kind==="symlink"){
+      alias=path.join(path.dirname(c.root),"capture-alias");await symlink(c.runDirectory,alias);
+    } else {
+      vi.stubGlobal("process",new Proxy(process,{get:(target,key)=>key==="platform"?"darwin":Reflect.get(target,key)}));
+      alias=path.join(path.dirname(c.runDirectory),path.basename(c.runDirectory).toUpperCase());
+    }
+    await expect(c.run("capture",{outputDirectory:path.join(alias,"capture-out")})).rejects.toThrow("output-overlaps-original-run");
+    expect(c.deps.providerFactory).not.toHaveBeenCalled();expect(c.deps.initialize).not.toHaveBeenCalled();
+    expect(await recordBytes(c.runDirectory)).toEqual(before);
+  });
+
+  it("rereads claims added while capture metadata loads before creating output",async()=>{
+    const c=await setup();await mkdir(c.runDirectory,{mode:0o700});
+    await writeFile(path.join(c.runDirectory,"kept-record.json"),"ORIGINAL_RECORD",{mode:0o600});
+    const before=await recordBytes(c.runDirectory),provenance=c.f.provider.provenance.getMockImplementation();
+    c.f.provider.provenance.mockImplementation(async args=>{await writeClaim(c,"sodc-web-production",c.runDirectory);return provenance(args);});
+    await expect(c.run("capture",{outputDirectory:path.join(c.runDirectory,"capture-out")})).rejects.toThrow("output-overlaps-original-run");
+    expect(c.deps.readClaims).toHaveBeenCalledTimes(2);expect(c.deps.initialize).not.toHaveBeenCalled();
+    expect(c.deps.loadRun).not.toHaveBeenCalled();expect(await recordBytes(c.runDirectory)).toEqual(before);
+  });
+
+  it("retains original claimed-run protection when the claim disappears and a late alias appears",async()=>{
+    const c=await setup({original:true}),alias=path.join(path.dirname(c.root),"late-capture-alias");
+    const before=await recordBytes(c.runDirectory),provenance=c.f.provider.provenance.getMockImplementation();
+    c.f.provider.provenance.mockImplementation(async args=>{
+      await rm(path.join(c.lockDirectory,"sodc-web.json"));await symlink(c.runDirectory,alias);return provenance(args);
+    });
+    await expect(c.run("capture",{outputDirectory:path.join(alias,"capture-out")})).rejects.toThrow("output-overlaps-original-run");
+    expect(c.deps.readClaims).toHaveBeenCalledTimes(2);expect(c.deps.initialize).not.toHaveBeenCalled();
+    expect(c.deps.loadRun).not.toHaveBeenCalled();expect(await recordBytes(c.runDirectory)).toEqual(before);
+  });
+
+  it("rejects malformed existing claims before capture provider reads",async()=>{
+    const c=await setup({original:true});
+    await writeFile(path.join(c.lockDirectory,"sodc-web.json"),"MALFORMED_PRIVATE_CLAIM");
+    await expect(c.run()).rejects.toThrow();
+    expect(c.deps.readSource).not.toHaveBeenCalled();expect(c.deps.loadRun).not.toHaveBeenCalled();
+    expect(c.deps.providerFactory).not.toHaveBeenCalled();expect(c.deps.initialize).not.toHaveBeenCalled();
+    await expect(stat(c.outputDirectory)).rejects.toHaveProperty("code","ENOENT");
+  });
+
+  it("reads only claim metadata for ordinary capture and keeps claimed run paths out of its report",async()=>{
+    const c=await setup({original:true}),prodRun=path.join(path.dirname(c.root),"private-production-run");
+    await mkdir(prodRun,{mode:0o700});await writeClaim(c,"sodc-web-production",prodRun);
+    const before=await recordBytes(c.runDirectory),claimsBefore=await recordBytes(c.lockDirectory);
+    const result=await c.run();
+    expect(result.status).toBe("CAPTURED_OBSERVATION_NOT_APPROVAL");
+    expect(c.deps.readClaims).toHaveBeenCalledTimes(2);expect(c.deps.loadRun).not.toHaveBeenCalled();
+    const publicData=JSON.stringify([result,await json(path.join(c.outputDirectory,"report.json"))]);
+    expect(publicData).not.toContain(c.runDirectory);expect(publicData).not.toContain(prodRun);
+    expect(await recordBytes(c.runDirectory)).toEqual(before);expect(await recordBytes(c.lockDirectory)).toEqual(claimsBefore);
+  });
+
+  it("rejects a dangling output ancestor before constructing a provider or creating claims",async()=>{
+    const c=await setup(),alias=path.join(path.dirname(c.root),"dangling-capture-alias");
+    await symlink(path.join(path.dirname(c.root),"missing-target"),alias);
+    await expect(c.run("capture",{outputDirectory:path.join(alias,"capture-out")})).rejects.toThrow("evidence-path-inspection-failed");
+    expect(c.deps.providerFactory).not.toHaveBeenCalled();expect(c.deps.initialize).not.toHaveBeenCalled();
+    await expect(stat(c.lockDirectory)).rejects.toHaveProperty("code","ENOENT");
+  });
+
   it("writes a new private report and key while exposing only summary metadata",async()=>{
     const c=await setup();
     const result=await c.run();

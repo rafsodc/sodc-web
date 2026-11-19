@@ -9,7 +9,7 @@ import {validateFirebaseAlias} from "./deploy-environment-lib.mjs";
 import {readLocalSource, sharedLockDirectory} from "./notify-secret-binding-repair.mjs";
 import {BindingRepairError, assertRepairSource} from "./notify-secret-binding-repair-lib.mjs";
 import {BindingRepairProviderError} from "./notify-secret-binding-repair-provider.mjs";
-import {readRepairRunEvidence, initializeBindingEvidenceDirectory} from "./notify-secret-binding-repair-store.mjs";
+import {readRepairRunEvidence, readBindingRepairClaimDirectories, initializeBindingEvidenceDirectory} from "./notify-secret-binding-repair-store.mjs";
 import {BindingEvidenceError, assertEvidenceToolBinding, captureBindingEvidence, reconcileBindingEvidence} from "./notify-binding-evidence-lib.mjs";
 import {BindingEvidenceProviderError, createBindingEvidenceProvider} from "./notify-binding-evidence-provider.mjs";
 
@@ -35,11 +35,15 @@ async function filesystemPath(directory) {
       return process.platform === "darwin" ? resolved.normalize("NFD").toLowerCase() : resolved;
     } catch (error) {
       need(error.code === "ENOENT" && path.dirname(existing) !== existing, "evidence-path-inspection-failed");
+      let absent = false;
+      try {await lstat(existing);}
+      catch (entry) {need(entry.code === "ENOENT", "evidence-path-inspection-failed"); absent = true;}
+      need(absent, "evidence-path-inspection-failed");
       missing.unshift(path.basename(existing)); existing = path.dirname(existing);
     }
   }
 }
-async function assertOutputBoundary(root, options, claims) {
+async function assertOutputBoundary(root, options, claims, readClaims, earlierRuns = []) {
   need(canonicalDirectory(claims), "invalid-shared-lock-directory");
   const [output, tool, source, locks, original] = await Promise.all([
     filesystemPath(options.outputDirectory), filesystemPath(root), filesystemPath(options.sourceRoot), filesystemPath(claims),
@@ -49,6 +53,13 @@ async function assertOutputBoundary(root, options, claims) {
   need(!original || !overlaps(original), "output-overlaps-original-run");
   need(!overlaps(tool) && !overlaps(source), "output-inside-source-checkout");
   need(!overlaps(locks), "output-overlaps-shared-lock-directory");
+  const latestRuns = await readClaims(claims);
+  need(Array.isArray(latestRuns) && latestRuns.length <= 2 && latestRuns.every(canonicalDirectory), "invalid-shared-claim-run-directories");
+  const protectedRuns = [...new Set([...earlierRuns, ...latestRuns])];
+  for (const directory of await Promise.all(protectedRuns.map(filesystemPath))) {
+    need(!overlaps(directory), "output-overlaps-original-run");
+  }
+  return protectedRuns;
 }
 function canonicalDirectory(value) {
   return typeof value === "string" && path.isAbsolute(value) && path.resolve(value) === value &&
@@ -101,6 +112,7 @@ export async function runBindingEvidence(root, options, {
   readTool = readEvidenceToolBinding,
   providerFactory = createBindingEvidenceProvider,
   loadRun = readRepairRunEvidence,
+  readClaims = readBindingRepairClaimDirectories,
   initialize = initializeBindingEvidenceDirectory,
   lockDirectory = sourceRoot => sharedLockDirectory(sourceRoot),
   now = Date.now,
@@ -108,7 +120,7 @@ export async function runBindingEvidence(root, options, {
   if (options.help) return {status: "HELP", help};
   validateOptions(options);
   const claims = lockDirectory(options.sourceRoot);
-  await assertOutputBoundary(root, options, claims);
+  const protectedRuns = await assertOutputBoundary(root, options, claims, readClaims);
   const aliases = JSON.parse(await readFile(path.join(options.sourceRoot, ".firebaserc"), "utf8"));
   const projectId = validateFirebaseAlias(aliases, options.environment);
   validateFirebaseAlias(JSON.parse(await readFile(path.join(root, ".firebaserc"), "utf8")), options.environment);
@@ -133,7 +145,7 @@ export async function runBindingEvidence(root, options, {
     need(inputDigests(latest) === inputDigests(original) && Buffer.isBuffer(latest.comparisonKey) && latest.comparisonKey.length === 32 &&
       timingSafeEqual(latest.comparisonKey, original.comparisonKey), "original-records-changed-during-evidence");
   }
-  await assertOutputBoundary(root, options, claims);
+  await assertOutputBoundary(root, options, claims, readClaims, protectedRuns);
   const written = await initialize(options.outputDirectory, options.phase === "capture" ? {report, comparisonKey} : {report});
   return {status: report.status, projectId, target: report.target, reportPath: path.join(written.outputDirectory, "report.json"),
     reportSha256: written.reportSha256, originalContractAccepted: false, releaseAuthorized: false, productionAuthorized: false,

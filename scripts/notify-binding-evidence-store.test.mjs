@@ -5,8 +5,8 @@ import {tmpdir} from "node:os";
 import {createHash, randomBytes} from "node:crypto";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {digest} from "./functions-config-guard-lib.mjs";
-import {prepareRepair} from "./notify-secret-binding-repair-lib.mjs";
-import {initializeRunDirectory, openRepairStore, readRepairRunEvidence, initializeBindingEvidenceDirectory} from "./notify-secret-binding-repair-store.mjs";
+import {prepareRepair, REGION, TARGET} from "./notify-secret-binding-repair-lib.mjs";
+import {initializeRunDirectory, openRepairStore, readRepairRunEvidence, readBindingRepairClaimDirectories, initializeBindingEvidenceDirectory} from "./notify-secret-binding-repair-store.mjs";
 import {fixture as protocolFixture, approved, NOW, OPERATION} from "./test-fixtures/notify-binding-repair-fixture.mjs";
 
 const directories = [];
@@ -130,6 +130,153 @@ describe("read-only original repair evidence", () => {
   it("sanitizes malformed optional records without exposing their contents", async () => {
     const f = await setup(); await fs.writeFile(path.join(f.runDirectory, "review.json"), "PRIVATE_BAD_REVIEW_CONTENT");
     await expect(f.read()).rejects.toThrow(/^Notify binding repair blocked: malformed-private-json-record\.$/);
+  });
+});
+
+describe("read-only protection from shared project claims", () => {
+  async function claims({projects = ["sodc-web", "sodc-web-production"]} = {}) {
+    const f = await setup({initialize: false});
+    await fs.mkdir(f.lockDirectory, {mode: 0o700});
+    const values = {};
+    for (const projectId of projects) {
+      const value = {schemaVersion: "sodc-notify-binding-repair-target-lock/v1", proposalSha256: "a".repeat(64), projectId,
+        target: `projects/${projectId}/locations/${REGION}/functions/${TARGET}`, runDirectory: path.join(f.base, `${projectId}-original-run`)};
+      await fs.writeFile(path.join(f.lockDirectory, `${projectId}.json`), JSON.stringify(value), {mode: 0o600});
+      values[projectId] = value;
+    }
+    return {...f, values, readClaims: () => readBindingRepairClaimDirectories(f.lockDirectory)};
+  }
+
+  it("reads both fixed project claims without opening any run, key or unrelated file or changing metadata", async () => {
+    const f = await claims();
+    await fs.writeFile(path.join(f.lockDirectory, "unrelated.json"), "MUST_NOT_READ_THIS", {mode: 0o600});
+    const before = await snapshot(f.base), opened = [];
+    spyOpen((handle, name, flags) => {opened.push({name, flags}); return handle;});
+    const mkdir = vi.spyOn(fs, "mkdir").mockRejectedValue(new Error("MUST_NOT_CREATE"));
+    const write = vi.spyOn(fs, "writeFile").mockRejectedValue(new Error("MUST_NOT_WRITE"));
+    expect(await f.readClaims()).toEqual(Object.values(f.values).map(value => value.runDirectory));
+    expect(opened.map(value => value.name)).toEqual(["sodc-web", "sodc-web-production"].map(project => path.join(f.lockDirectory, `${project}.json`)));
+    for (const {flags} of opened) {
+      expect(flags & constants.O_NOFOLLOW).toBe(constants.O_NOFOLLOW);
+      expect(flags & (constants.O_WRONLY | constants.O_RDWR | constants.O_CREAT | constants.O_TRUNC | constants.O_APPEND)).toBe(0);
+    }
+    expect(mkdir).not.toHaveBeenCalled(); expect(write).not.toHaveBeenCalled();
+    expect(await snapshot(f.base)).toEqual(before);
+  });
+
+  it.each(["sodc-web", "sodc-web-production"])("protects the %s run when only that project's claim exists", async projectId => {
+    const f = await claims({projects: [projectId]});
+    expect(await f.readClaims()).toEqual([f.values[projectId].runDirectory]);
+  });
+
+  it("deduplicates a shared original run path without inspecting that path", async () => {
+    const f = await claims();
+    f.values["sodc-web-production"].runDirectory = f.values["sodc-web"].runDirectory;
+    await fs.writeFile(path.join(f.lockDirectory, "sodc-web-production.json"), JSON.stringify(f.values["sodc-web-production"]));
+    expect(await f.readClaims()).toEqual([f.values["sodc-web"].runDirectory]);
+    await expect(fs.stat(f.values["sodc-web"].runDirectory)).rejects.toHaveProperty("code", "ENOENT");
+  });
+
+  it("allows absent claim files without creating or rewriting anything", async () => {
+    const f = await claims({projects: []}), before = await snapshot(f.base);
+    const mkdir = vi.spyOn(fs, "mkdir").mockRejectedValue(new Error("MUST_NOT_CREATE"));
+    expect(await f.readClaims()).toEqual([]);
+    expect(mkdir).not.toHaveBeenCalled(); expect(await snapshot(f.base)).toEqual(before);
+  });
+
+  it.each(["directory", "parent"])("allows a missing claim %s without creating it", async kind => {
+    const f = await setup({initialize: false});
+    const lockDirectory = kind === "directory" ? f.lockDirectory : path.join(f.base, "missing-parent", "locks");
+    const before = await snapshot(f.base), mkdir = vi.spyOn(fs, "mkdir").mockRejectedValue(new Error("MUST_NOT_CREATE"));
+    expect(await readBindingRepairClaimDirectories(lockDirectory)).toEqual([]);
+    expect(mkdir).not.toHaveBeenCalled(); expect(await snapshot(f.base)).toEqual(before);
+    await expect(fs.lstat(lockDirectory)).rejects.toHaveProperty("code", "ENOENT");
+  });
+
+  it.each(["schema", "project", "target", "hash", "hash type", "missing run", "extra field", "relative run", "traversal run", "trailing run", "root run", "null byte run"])("rejects a claim with invalid %s rather than weakening path protection", async kind => {
+    const f = await claims(), value = f.values["sodc-web"], file = path.join(f.lockDirectory, "sodc-web.json");
+    if (kind === "schema") value.schemaVersion = "other";
+    if (kind === "project") value.projectId = "sodc-web-production";
+    if (kind === "target") value.target += "Other";
+    if (kind === "hash") value.proposalSha256 = "invalid";
+    if (kind === "hash type") value.proposalSha256 = ["a".repeat(64)];
+    if (kind === "missing run") delete value.runDirectory;
+    if (kind === "extra field") value.ignoreMe = true;
+    if (kind === "relative run") value.runDirectory = "relative";
+    if (kind === "traversal run") value.runDirectory = `${f.base}/nested/../run`;
+    if (kind === "trailing run") value.runDirectory += "/";
+    if (kind === "root run") value.runDirectory = "/";
+    if (kind === "null byte run") value.runDirectory += "\0";
+    await fs.writeFile(file, JSON.stringify(value));
+    const before = await snapshot(f.base);
+    await expect(f.readClaims()).rejects.toThrow("Notify binding repair blocked");
+    expect(await snapshot(f.base)).toEqual(before);
+  });
+
+  it("sanitizes malformed claim contents", async () => {
+    const f = await claims(); await fs.writeFile(path.join(f.lockDirectory, "sodc-web.json"), "PRIVATE_MALFORMED_CLAIM");
+    await expect(f.readClaims()).rejects.toThrow(/^Notify binding repair blocked: malformed-private-json-record\.$/);
+  });
+
+  it.each([null, [], "invalid"])("does not confuse an existing %j JSON claim with an absent file", async value => {
+    const f = await claims(); await fs.writeFile(path.join(f.lockDirectory, "sodc-web.json"), JSON.stringify(value));
+    await expect(f.readClaims()).rejects.toHaveProperty("code", "invalid-binding-repair-project-claim");
+  });
+
+  it("rejects an oversized claim before reading its payload", async () => {
+    const f = await claims(), file = path.join(f.lockDirectory, "sodc-web.json");
+    await fs.writeFile(file, "x".repeat(2 * 1024 * 1024 + 1));
+    const reads = [];
+    spyOpen((handle, name) => {
+      if (name === file) reads.push(vi.spyOn(handle, "readFile").mockRejectedValue(new Error("MUST_NOT_READ_PAYLOAD")));
+      return handle;
+    });
+    await expect(f.readClaims()).rejects.toHaveProperty("code", "private-record-too-large");
+    expect(reads).toHaveLength(1); expect(reads[0]).not.toHaveBeenCalled();
+  });
+
+  it.each(["claim mode", "claim symlink", "claim hard link", "claim directory", "directory mode", "directory file", "directory symlink", "dangling directory symlink"])("rejects unsafe existing claim storage: %s", async kind => {
+    const f = await claims(), file = path.join(f.lockDirectory, "sodc-web.json");
+    if (kind === "claim mode") await fs.chmod(file, 0o640);
+    if (kind === "claim symlink") {await fs.rename(file, path.join(f.base, "claim-copy")); await fs.symlink(path.join(f.base, "claim-copy"), file);}
+    if (kind === "claim hard link") await fs.link(file, path.join(f.base, "claim-copy"));
+    if (kind === "claim directory") {await fs.unlink(file); await fs.mkdir(file, {mode: 0o700});}
+    if (kind === "directory mode") await fs.chmod(f.lockDirectory, 0o750);
+    if (kind === "directory file") {await fs.rename(f.lockDirectory, path.join(f.base, "locks-copy")); await fs.writeFile(f.lockDirectory, "NOT_A_DIRECTORY", {mode: 0o600});}
+    if (kind.endsWith("directory symlink")) {
+      await fs.rename(f.lockDirectory, path.join(f.base, "locks-copy"));
+      await fs.symlink(path.join(f.base, kind.startsWith("dangling") ? "missing-locks" : "locks-copy"), f.lockDirectory);
+    }
+    await expect(f.readClaims()).rejects.toThrow("Notify binding repair blocked");
+  });
+
+  it("rejects a claim owned by another user", async () => {
+    const f = await claims(), file = path.join(f.lockDirectory, "sodc-web.json"), lstat = fs.lstat.bind(fs);
+    vi.spyOn(fs, "lstat").mockImplementation(async name => {
+      const value = await lstat(name);
+      return name === file ? new Proxy(value, {get: (target, key) => key === "uid" ? target.uid + 1 : Reflect.get(target, key)}) : value;
+    });
+    await expect(f.readClaims()).rejects.toHaveProperty("code", "private-regular-file-required");
+  });
+
+  it("fails closed when a claim disappears after its presence check", async () => {
+    const f = await claims(), file = path.join(f.lockDirectory, "sodc-web.json"), lstat = fs.lstat.bind(fs);
+    let removed = false;
+    vi.spyOn(fs, "lstat").mockImplementation(async name => {
+      const value = await lstat(name);
+      if (name === file && !removed) {removed = true; await fs.unlink(file);}
+      return value;
+    });
+    await expect(f.readClaims()).rejects.toHaveProperty("code", "private-record-read-failed");
+  });
+
+  it("does not mistake a permission failure for an absent claim directory", async () => {
+    const f = await claims(), lstat = fs.lstat.bind(fs);
+    vi.spyOn(fs, "lstat").mockImplementation(async name => {
+      if (name === f.lockDirectory) throw Object.assign(new Error("PRIVATE_PERMISSION_DETAIL"), {code: "EACCES"});
+      return lstat(name);
+    });
+    await expect(f.readClaims()).rejects.toThrow(/^Notify binding repair blocked: private-project-claims-read-failed\.$/);
   });
 });
 
