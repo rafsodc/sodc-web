@@ -159,6 +159,21 @@ describe("fixed Dev Stripe webhook correction provider",()=>{
   const f=fixture();await expect(f.provider.updateSubscriptions({endpointId:ENDPOINT,enabledEvents:EVENTS,idempotencyKey:"dev_intent_long_enough"})).rejects.toThrow("verified-stripe-credential-binding-required");
   expect(f.fetchImpl).not.toHaveBeenCalled();expect(f.token).not.toHaveBeenCalled();
  });
+ it.each(["initial","after-completed-snapshot"])("clears subscription authority after an %s snapshot fails following Stripe credential binding",async prior=>{
+  let failArchive=false;
+  const f=fixture({override:url=>failArchive && hasOrigin(url,"https://storage.googleapis.com") && new URL(url).searchParams.get("alt")==="media"
+   ?new Response("offline source unavailable",{status:503}):undefined});
+  if(prior==="after-completed-snapshot") await f.provider.snapshot();
+  failArchive=true;
+  await expect(f.provider.snapshot()).rejects.toThrow("provider-read-failed");
+  expect(f.fetchImpl.mock.calls.some(([url])=>hasOrigin(url,"https://api.stripe.com"))).toBe(true);
+  expect(f.fetchImpl.mock.calls.some(([url])=>hasOrigin(url,"https://storage.googleapis.com") && new URL(url).searchParams.get("alt")==="media")).toBe(true);
+  expect(writes(f)).toHaveLength(0);
+  f.fetchImpl.mockClear();
+  await expect(f.provider.updateSubscriptions({endpointId:ENDPOINT,enabledEvents:EVENTS,idempotencyKey:"dev_intent_long_enough"})).rejects.toThrow("verified-stripe-credential-binding-required");
+  expect(f.fetchImpl).not.toHaveBeenCalled();
+  expect(writes(f)).toHaveLength(0);
+ });
  it.each(["wrong-version","wrong-secret","disabled","payload-in-metadata"])("refuses %s bound Stripe metadata before any payload access or Stripe request",async mode=>{
   const f=fixture({modify:input=>{
    for(const fn of input.functions) for(const value of fn.serviceConfig.secretEnvironmentVariables) if(value.key==="STRIPE_SECRET") value.version="4";
