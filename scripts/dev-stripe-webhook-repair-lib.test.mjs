@@ -142,7 +142,7 @@ describe("one-shot secret creation and Function handoff", () => {
   });
   it("never creates a version for a different in-memory candidate", async () => {
     const f = fixture(), p = f.prepare();
-    await expect(applySecret(context(f, p, {candidateSecret: "whsec_DifferentSyntheticFixture123456"}))).rejects.toThrow("candidate-signing-secret-mismatch");
+    await expect(applySecret(context(f, p, {candidateSecret: "whsec_DIFFERENT1234"}))).rejects.toThrow("candidate-signing-secret-mismatch");
     expect(f.store.claim).not.toHaveBeenCalled(); expect(f.provider.addSecretVersion).not.toHaveBeenCalled();
   });
   it.each(["secret-intent.json", "secret-version.json", "function-intent.json", "operation.json"]) ("does not proceed after durable write failure at %s", async name => {
@@ -176,7 +176,7 @@ describe("one-shot secret creation and Function handoff", () => {
     expect(f.files.has("secret-version.json")).toBe(false); expect(f.provider.patchFunctionBindings).not.toHaveBeenCalled();
   });
   it("cannot progress if read-back differs from the approved candidate", async () => {
-    const f = fixture(), p = f.prepare(); f.provider.accessSecretVersion.mockResolvedValue("whsec_DifferentSyntheticFixture123456");
+    const f = fixture(), p = f.prepare(); f.provider.accessSecretVersion.mockResolvedValue("whsec_DIFFERENT1234");
     await expect(applySecret(context(f, p))).resolves.toMatchObject({status: "UNKNOWN_OUTCOME_OPERATOR_REVIEW_REQUIRED"});
     expect(f.files.has("secret-version.json")).toBe(false);
   });

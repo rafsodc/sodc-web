@@ -5,7 +5,8 @@ import {ACCOUNT_ID, BEFORE_EVENTS, ENDPOINT_ID, ENDPOINT_URL, PROJECT_ID, PROJEC
 
 export const NOW = Date.parse("2026-11-20T12:00:00.000Z");
 export const KEY = Buffer.alloc(32, 0x75);
-export const CANDIDATE = "whsec_OnlySyntheticFixtureNotACredential123456";
+// Deliberately short, synthetic input: valid for the parser, never a Stripe key.
+export const CANDIDATE = "whsec_TESTONLY1234";
 export const PREFIX = `projects/${PROJECT_ID}/locations/${REGION}`;
 export const OPERATION = `${PREFIX}/operations/webhook-repair-fixture`;
 export const OLD_BUILD = `${PREFIX}/builds/original-webhook-build`;

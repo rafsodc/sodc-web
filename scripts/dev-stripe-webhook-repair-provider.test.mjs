@@ -16,6 +16,7 @@ const ref={bucket:`gcf-v2-sources-${NUMBER}-${REGION}`,object:"stripeWebhookPaym
 const binding=(key,version="1")=>({key,secret:key,projectId:PROJECT,version});
 const metadata=(secret,version="1")=>({name:`projects/${NUMBER}/secrets/${secret}/versions/${version}`,state:"ENABLED",createTime:"2026-11-20T12:00:00Z"});
 const clone=value=>structuredClone(value);
+function hasOrigin(url,expected) {const parsed=new URL(url);return parsed.origin===expected && parsed.username==="" && parsed.password==="";}
 
 function fixture({modify,override,timeoutMs=30000,tokenProvider}={}) {
  const target={name:TARGET,state:"ACTIVE",environment:"GEN_2",updateTime:"2026-11-19T10:03:00Z",buildConfig:{runtime:"nodejs24",entryPoint:"stripeWebhookPayments",build:BUILD,source:{storageSource:clone(ref)},sourceProvenance:{resolvedStorageSource:clone(ref)},environmentVariables:{INTERNAL:"PRIVATE_ENV"}},
@@ -28,11 +29,12 @@ function fixture({modify,override,timeoutMs=30000,tokenProvider}={}) {
  modify?.(input);
  const route=(url,options)=>{
   const parsed=new URL(url),p=parsed.pathname;
+  if(parsed.username || parsed.password) throw new Error("Unexpected offline route");
   if(url===`https://cloudresourcemanager.googleapis.com/v1/projects/${PROJECT}`) return input.project;
   if(url===`https://cloudfunctions.googleapis.com/v2/${PREFIX}/functions?pageSize=1000`) return {functions:input.functions};
   if(url===`https://cloudscheduler.googleapis.com/v1/${PREFIX}/jobs?pageSize=500`) return {jobs:input.schedulers};
-  if(parsed.hostname==="run.googleapis.com" && p.endsWith(":getIamPolicy")) return {version:3,bindings:[]};
-  if(parsed.hostname==="secretmanager.googleapis.com") {
+  if(parsed.origin==="https://run.googleapis.com" && p.endsWith(":getIamPolicy")) return {version:3,bindings:[]};
+  if(parsed.origin==="https://secretmanager.googleapis.com") {
    const match=/^\/v1\/projects\/[^/]+\/secrets\/([^/:]+)(.*)$/.exec(p); if(!match) throw new Error("bad secret fixture route");
    const [,secret,suffix]=match;
    if(suffix===":getIamPolicy") return {version:3,bindings:[{role:"roles/secretmanager.secretAccessor",members:[`serviceAccount:${NUMBER}-compute@developer.gserviceaccount.com`]}]};
@@ -43,7 +45,7 @@ function fixture({modify,override,timeoutMs=30000,tokenProvider}={}) {
    const version=/^\/versions\/([1-9][0-9]*|latest)$/.exec(suffix);
    if(version) return metadata(secret,version[1]==="latest"?(secret==="NOTIFY_CALLBACK_BEARER"?"3":secret===SIGNING?input.signingVersions.at(-1).name.split("/").at(-1):"1"):version[1]);
   }
-  if(parsed.hostname==="api.stripe.com") {
+  if(parsed.origin==="https://api.stripe.com") {
    if(p==="/v1/account") return {id:input.accountId,business_profile:{name:"PRIVATE_ACCOUNT_DETAILS"}};
    if(p===`/v1/webhook_endpoints/${ENDPOINT}`) {
     if(options.method==="POST") return {...input.endpoint,enabled_events:new URLSearchParams(options.body).getAll("enabled_events[]")};
@@ -51,7 +53,7 @@ function fixture({modify,override,timeoutMs=30000,tokenProvider}={}) {
    }
    if(p==="/v1/webhook_endpoints") return {object:"list",data:[input.endpoint],has_more:false};
   }
-  if(parsed.hostname==="storage.googleapis.com") return new Response(input.archiveBytes,{headers:{"content-length":String(input.archiveBytes.length)}});
+  if(parsed.origin==="https://storage.googleapis.com") return new Response(input.archiveBytes,{headers:{"content-length":String(input.archiveBytes.length)}});
   if(url===`https://cloudbuild.googleapis.com/v1/${BUILD}`) return input.build;
   if(url===`https://cloudfunctions.googleapis.com/v2/${TARGET}`) return input.functions[0];
   if(url===`https://cloudfunctions.googleapis.com/v2/${TARGET}?updateMask=serviceConfig.secretEnvironmentVariables` && options.method==="PATCH") {input.functions[0].serviceConfig.secretEnvironmentVariables=JSON.parse(options.body).serviceConfig.secretEnvironmentVariables;return {name:OPERATION,done:false,metadata:{target:TARGET,verb:"update"}};}
@@ -71,6 +73,18 @@ afterEach(()=>{vi.useRealTimers();vi.restoreAllMocks();vi.clearAllMocks();vi.uns
 const writes=f=>f.fetchImpl.mock.calls.filter(([,options])=>options.method!=="GET");
 
 describe("fixed Dev Stripe webhook correction provider",()=>{
+ it("matches exact HTTPS provider origins and rejects lookalike hosts, schemes, ports and credentials",()=>{
+  const f=fixture();
+  for(const origin of ["https://api.stripe.com","https://storage.googleapis.com"]) {
+   expect(hasOrigin(origin+"/v1/account",origin)).toBe(true);
+   for(const value of [origin+".attacker.test/v1/account",origin+":444/v1/account",origin.replace("https:","http:")+"/v1/account",
+    origin.replace("https://","https://user@")+"/v1/account",origin+"@attacker.test/v1/account"]) {
+    expect(hasOrigin(value,origin)).toBe(false);
+    expect(()=>f.route(value,{method:"GET"})).toThrow("Unexpected offline route");
+   }
+  }
+  expect(f.fetchImpl).not.toHaveBeenCalled();
+ });
  it("has only the new fixed-scope facade and constructs without reading credentials",()=>{
   const fetchImpl=vi.fn();const provider=createDevStripeWebhookProvider({fetchImpl});
   expect(Object.keys(provider).sort()).toEqual(["accessSecretVersion","addSecretVersion","build","operation","patchFunctionBindings","snapshot","updateSubscriptions"].sort());
@@ -91,12 +105,12 @@ describe("fixed Dev Stripe webhook correction provider",()=>{
   expect(result.targetBuild).toEqual({name:BUILD,status:"SUCCESS",createTime:f.input.build.createTime,startTime:f.input.build.startTime,finishTime:f.input.build.finishTime,resolvedSource:ref});
   expect(JSON.stringify(result)).not.toMatch(/PRIVATE_ZIP_SOURCE_BYTES|PRIVATE_API_KEY|PRIVATE_SIGNING_VALUE|PRIVATE_GCP_TOKEN|PRIVATE_ACCOUNT_DETAILS/);
   expect(writes(f)).toHaveLength(0);
-  const stripeCalls=f.fetchImpl.mock.calls.filter(([url])=>url.startsWith("https://api.stripe.com"));
+  const stripeCalls=f.fetchImpl.mock.calls.filter(([url])=>hasOrigin(url,"https://api.stripe.com"));
   for(let index=0;index<stripeCalls.length;index++) if(!stripeCalls[index][0].endsWith("/v1/account")) expect(stripeCalls[index-1][0]).toBe("https://api.stripe.com/v1/account");
   for(const [url,options] of f.fetchImpl.mock.calls) {
    expect(options.redirect).toBe("error");expect(options.signal).toBeInstanceOf(AbortSignal);
    expect(url).not.toMatch(/notify\.gov|executeGraphql|\/events(?:\?|\/)|sodc-web-production/);
-   if(!url.startsWith("https://api.stripe.com")) expect(options.headers["x-goog-user-project"]).toBe(PROJECT);
+   if(!hasOrigin(url,"https://api.stripe.com")) expect(options.headers["x-goog-user-project"]).toBe(PROJECT);
   }
   const media=f.fetchImpl.mock.calls.filter(([url])=>url.includes("alt=media"));expect(media).toHaveLength(2);
   for(const [url,options] of media){expect(url).toContain("generation=123456");expect(options.headers["Accept-Encoding"]).toBe("identity");}
@@ -141,11 +155,11 @@ describe("fixed Dev Stripe webhook correction provider",()=>{
  });
  it.each(["wrong","acct_different"])("verifies the test account before endpoint/list reads or writes (%s)",async accountId=>{
   const f=fixture({modify:i=>{i.accountId=accountId;}});await expect(f.provider.snapshot()).rejects.toThrow("stripe-account-mismatch");
-  expect(f.fetchImpl.mock.calls.filter(([url])=>url.startsWith("https://api.stripe.com")&&!url.endsWith("/v1/account"))).toHaveLength(0);
+  expect(f.fetchImpl.mock.calls.filter(([url])=>hasOrigin(url,"https://api.stripe.com")&&!url.endsWith("/v1/account"))).toHaveLength(0);
  });
  it("rejects a live Stripe API key without calling Stripe",async()=>{
   const f=fixture({override:url=>url.endsWith("/secrets/STRIPE_SECRET/versions/1:access")?{name:`projects/${NUMBER}/secrets/STRIPE_SECRET/versions/1`,payload:{data:Buffer.from("sk_live_PRIVATE").toString("base64")}}:undefined});
-  await expect(f.provider.snapshot()).rejects.toThrow("stripe-test-key-required");expect(f.fetchImpl.mock.calls.some(([url])=>url.startsWith("https://api.stripe.com"))).toBe(false);
+  await expect(f.provider.snapshot()).rejects.toThrow("stripe-test-key-required");expect(f.fetchImpl.mock.calls.some(([url])=>hasOrigin(url,"https://api.stripe.com"))).toBe(false);
  });
  it.each([
   e=>{e.url="https://production.example/webhook";},e=>{e.api_version="new-version";},e=>{e.livemode=true;},e=>{e.status="disabled";},e=>{e.secret="PRIVATE_WHSEC";},
@@ -158,13 +172,13 @@ describe("fixed Dev Stripe webhook correction provider",()=>{
  });
  it.each([undefined,"0","latest",17])("requires the target archive's numeric generation (%j)",async generation=>{
   const f=fixture({modify:i=>{i.functions[0].buildConfig.source.storageSource.generation=generation;}});
-  await expect(f.provider.snapshot()).rejects.toThrow("invalid-generation-bound-source");expect(f.fetchImpl.mock.calls.some(([url])=>url.startsWith("https://storage.googleapis.com"))).toBe(false);
+  await expect(f.provider.snapshot()).rejects.toThrow("invalid-generation-bound-source");expect(f.fetchImpl.mock.calls.some(([url])=>hasOrigin(url,"https://storage.googleapis.com"))).toBe(false);
  });
  it.each([
   r=>{r.bucket="other-bucket";},r=>{r.object="../private.zip";},r=>{r.object="/source.zip";},r=>{r.object="source.zip?inject=1";},r=>{r.object="source.txt";},
  ])("rejects out-of-scope/ambiguous object routes before a source download",async change=>{
   const f=fixture({modify:i=>change(i.functions[0].buildConfig.source.storageSource)});await expect(f.provider.snapshot()).rejects.toThrow("invalid-generation-bound-source");
-  expect(f.fetchImpl.mock.calls.some(([url])=>url.startsWith("https://storage.googleapis.com"))).toBe(false);
+  expect(f.fetchImpl.mock.calls.some(([url])=>hasOrigin(url,"https://storage.googleapis.com"))).toBe(false);
  });
  it("independently hashes the build's resolved storage generation, never an unbound archive hash from build metadata",async()=>{
   const different={...ref,object:"stripeWebhookPayments/resolved.zip",generation:"987654"};
