@@ -40,6 +40,12 @@ Use your Firebase project id in place of `<project-id>`.
 
 - `STRIPE_WEBHOOK_SECRET_PAYMENTS`: signing secret for `stripeWebhookPayments`.
 
+For the existing Dev signing-secret mismatch and four missing subscriptions, use
+the [reviewed Dev repair procedure](dev-stripe-webhook-repair.md). It preserves the
+deployed source across Google's rebuild and requires an exact proposal before
+writes. The general replay examples below do not authorize replay during that
+repair.
+
 ## Retiring the Legacy Endpoint
 
 Before removing an existing `stripeWebhook` deployment, confirm in every Stripe
