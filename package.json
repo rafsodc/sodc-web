@@ -18,6 +18,7 @@
     "deployment:check": "node scripts/deployment-check.mjs",
     "deployment:template-readiness": "node scripts/notify-template-readiness.mjs",
     "operations:notify-bindings": "node scripts/notify-secret-binding-repair.mjs",
+    "operations:dev-stripe-webhook": "node scripts/dev-stripe-webhook-repair.mjs",
     "operations:notify-binding-evidence": "node scripts/notify-binding-evidence.mjs",
     "deployment:preflight": "node scripts/deployment-preflight.mjs",
     "deployment:functions-config": "node scripts/functions-config-guard.mjs",
