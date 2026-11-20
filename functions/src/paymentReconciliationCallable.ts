@@ -3,11 +3,12 @@ import type { UUIDString } from "@dataconnect/admin-generated";
 import { requireEnabled, validateUUID } from "./helpers";
 import { FUNCTIONS_REGION } from "./constants";
 import { stripeSecret } from "./paymentConfig";
+import { govNotifySecrets } from "./mailer";
 import { reconcilePaidCheckoutSessionOrders } from "./paymentReconciliationService";
 import { enforceRateLimit } from "./rateLimiter";
 
 export const reconcileMyCheckoutSessionOrders = onCall(
-  { region: FUNCTIONS_REGION, secrets: [stripeSecret] },
+  { region: FUNCTIONS_REGION, secrets: [stripeSecret, ...govNotifySecrets] },
   async (request) => {
     await requireEnabled(request);
     const uid = request.auth!.uid;
