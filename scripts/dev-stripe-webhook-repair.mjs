@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {execFileSync} from "node:child_process";
 import {readFile} from "node:fs/promises";
+import {fstatSync} from "node:fs";
 import {randomBytes} from "node:crypto";
 import {tmpdir} from "node:os";
 import path from "node:path";
@@ -68,7 +69,7 @@ export function parseRepairArguments(args, pathOptions = {}) {
 
 /** The input is never a command argument, environment value or JSON record.
  * Remove only a stream line terminator; never silently trim candidate bytes. */
-export async function readSecretInput(input = process.stdin, output = process.stderr) {
+export async function readSecretInput(input = process.stdin, output = process.stderr, {statDescriptor = fstatSync} = {}) {
   let value;
   if (input.isTTY) {
     need(typeof input.setRawMode === "function", "protected-terminal-unavailable");
@@ -110,6 +111,14 @@ export async function readSecretInput(input = process.stdin, output = process.st
       } catch {finish(new DevStripeWebhookCommandError("protected-terminal-unavailable"));}
     });
   } else {
+    let descriptor;
+    try {
+      need(Number.isInteger(input.fd) && input.fd >= 0, "protected-pipe-required");
+      descriptor = statDescriptor(input.fd);
+    } catch {throw new DevStripeWebhookCommandError("protected-pipe-required");}
+    // Child-process pipes can be implemented by a local socket pair. Regular
+    // files and other devices must be rejected before reading any input bytes.
+    need(descriptor.isFIFO() || descriptor.isSocket(), "protected-pipe-required");
     const chunks = []; let size = 0;
     try {
       for await (const chunk of input) {

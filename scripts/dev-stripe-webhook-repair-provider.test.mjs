@@ -1,10 +1,14 @@
 import {afterEach,describe,expect,it,vi} from "vitest";
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {prepareRepair,applySecret,applyFunction} from "./dev-stripe-webhook-repair-lib.mjs";
+import {createBindingRepairProvider} from "./notify-secret-binding-repair-provider.mjs";
+import {prepareRepair,applySecret,applyFunction,verifyFunction,applySubscriptions,verifyRepair} from "./dev-stripe-webhook-repair-lib.mjs";
 import {fixture as coreFixture,KEY,NOW,CANDIDATE,context} from "./test-fixtures/dev-stripe-webhook-repair-fixture.mjs";
 import {createDevStripeWebhookProvider,DevStripeWebhookProviderError} from "./dev-stripe-webhook-repair-provider.mjs";
 vi.mock("node:child_process",()=>({execFileSync:vi.fn()}));
+vi.mock("./notify-secret-binding-repair-provider.mjs",async importOriginal=>{
+ const original=await importOriginal();return {...original,createBindingRepairProvider:vi.fn(original.createBindingRepairProvider)};
+});
 const PROJECT="sodc-web",NUMBER="931675247602",REGION="europe-west2";
 const PREFIX=`projects/${PROJECT}/locations/${REGION}`,TARGET=`${PREFIX}/functions/stripeWebhookPayments`;
 const SIGNING="STRIPE_WEBHOOK_SECRET_PAYMENTS",ENDPOINT="we_1TOixKEJWVZaraSfeonnSQby",ACCOUNT="acct_1SgTanEJWVZaraSf";
@@ -41,23 +45,23 @@ function fixture({modify,override,timeoutMs=30000,tokenProvider}={}) {
    if(suffix==="/versions" && secret===SIGNING) return {versions:input.signingVersions};
    if(suffix===":addVersion" && secret===SIGNING && options.method==="POST") {input.signingVersions.push(metadata(SIGNING,"2"));input.signingPayloads["2"]=Buffer.from(JSON.parse(options.body).payload.data,"base64").toString("utf8");return metadata(SIGNING,"2");}
    const access=/^\/versions\/([1-9][0-9]*):access$/.exec(suffix);
-   if(access) return {name:`projects/${NUMBER}/secrets/${secret}/versions/${access[1]}`,payload:{data:Buffer.from(secret==="STRIPE_SECRET"?"sk_test_PRIVATE_API_KEY":input.signingPayloads[access[1]]??"whsec_PRIVATESIGNINGVALUE").toString("base64")}};
+   if(access) return {name:`projects/${NUMBER}/secrets/${secret}/versions/${access[1]}`,payload:{data:Buffer.from(secret==="STRIPE_SECRET"?`sk_test_FAKE_V${access[1]}`:input.signingPayloads[access[1]]??"whsec_PRIVATESIGNINGVALUE").toString("base64")}};
    const version=/^\/versions\/([1-9][0-9]*|latest)$/.exec(suffix);
-   if(version) return metadata(secret,version[1]==="latest"?(secret==="NOTIFY_CALLBACK_BEARER"?"3":secret===SIGNING?input.signingVersions.at(-1).name.split("/").at(-1):"1"):version[1]);
+   if(version) return metadata(secret,version[1]==="latest"?(secret==="NOTIFY_CALLBACK_BEARER"?"3":secret===SIGNING?input.signingVersions.at(-1).name.split("/").at(-1):secret==="STRIPE_SECRET"?input.functions[0].serviceConfig.secretEnvironmentVariables.find(value=>value.key==="STRIPE_SECRET").version:"1"):version[1]);
   }
   if(parsed.origin==="https://api.stripe.com") {
    if(p==="/v1/account") return {id:input.accountId,business_profile:{name:"PRIVATE_ACCOUNT_DETAILS"}};
    if(p===`/v1/webhook_endpoints/${ENDPOINT}`) {
-    if(options.method==="POST") return {...input.endpoint,enabled_events:new URLSearchParams(options.body).getAll("enabled_events[]")};
+    if(options.method==="POST") {input.endpoint.enabled_events=new URLSearchParams(options.body).getAll("enabled_events[]");return input.endpoint;}
     return input.endpoint;
    }
    if(p==="/v1/webhook_endpoints") return {object:"list",data:[input.endpoint],has_more:false};
   }
   if(parsed.origin==="https://storage.googleapis.com") return new Response(input.archiveBytes,{headers:{"content-length":String(input.archiveBytes.length)}});
-  if(url===`https://cloudbuild.googleapis.com/v1/${BUILD}`) return input.build;
+  if(url===`https://cloudbuild.googleapis.com/v1/${input.build.name}`) return input.build;
   if(url===`https://cloudfunctions.googleapis.com/v2/${TARGET}`) return input.functions[0];
   if(url===`https://cloudfunctions.googleapis.com/v2/${TARGET}?updateMask=serviceConfig.secretEnvironmentVariables` && options.method==="PATCH") {input.functions[0].serviceConfig.secretEnvironmentVariables=JSON.parse(options.body).serviceConfig.secretEnvironmentVariables;return {name:OPERATION,done:false,metadata:{target:TARGET,verb:"update"}};}
-  if(url===`https://cloudfunctions.googleapis.com/v2/${OPERATION}`) return {name:OPERATION,done:true,metadata:{target:TARGET,verb:"update",buildName:BUILD},response:{name:TARGET,serviceConfig:{environmentVariables:{PRIVATE:"MUST_NOT_ESCAPE"}}}};
+  if(url===`https://cloudfunctions.googleapis.com/v2/${OPERATION}`) return {name:OPERATION,done:true,metadata:{target:TARGET,verb:"update",buildName:input.build.name},response:{name:TARGET,serviceConfig:{environmentVariables:{PRIVATE:"MUST_NOT_ESCAPE"}}}};
   throw new Error("Unexpected offline route");
  };
  const fetchImpl=vi.fn(async(url,options)=>{
@@ -116,8 +120,9 @@ describe("fixed Dev Stripe webhook correction provider",()=>{
   for(const [url,options] of media){expect(url).toContain("generation=123456");expect(options.headers["Accept-Encoding"]).toBe("identity");}
  });
 
- it.each(["project-id","numeric-string","mixed-strings"])("hands real provider snapshots through core while preserving all five %s project references",async spelling=>{
+ it.each(["project-id","numeric-string","mixed-strings","bound-version-4"])("hands real provider snapshots through core while preserving all five %s project references",async spelling=>{
   const f=fixture({modify:input=>{
+   if(spelling==="bound-version-4") for(const fn of input.functions) for(const value of fn.serviceConfig.secretEnvironmentVariables) if(value.key==="STRIPE_SECRET") value.version="4";
    input.functions[0].serviceConfig.secretEnvironmentVariables.forEach((value,index)=>{
     value.projectId=spelling==="numeric-string" || spelling==="mixed-strings" && index%2===0 ? NUMBER : PROJECT;
    });
@@ -133,6 +138,57 @@ describe("fixed Dev Stripe webhook correction provider",()=>{
   const patched=JSON.parse(writes(f).find(([,options])=>options.method==="PATCH")[1].body).serviceConfig.secretEnvironmentVariables;
   expect(patched).toHaveLength(5);
   for(const before of original) expect(patched.find(value=>value.key===before.key)).toEqual({...before,version:before.key===SIGNING?"2":before.version});
+  if(spelling==="bound-version-4") {
+   const rebuilt=BUILD.replace("11111111-1111-4111-8111-111111111111","22222222-2222-4222-8222-222222222222");
+   const target=f.input.functions[0];target.serviceConfig.revision="stripewebhookpayments-00137-fixed";target.updateTime=new Date(NOW+20000).toISOString();target.buildConfig.build=rebuilt;
+   f.input.build={...f.input.build,name:rebuilt,id:rebuilt.split("/").at(-1),createTime:new Date(NOW+1000).toISOString(),startTime:new Date(NOW+2000).toISOString(),finishTime:new Date(NOW+15000).toISOString()};
+   await expect(verifyFunction(ctx)).resolves.toMatchObject({status:"FUNCTION_VERIFIED"});
+   await expect(applySubscriptions(ctx)).resolves.toMatchObject({status:"SUBSCRIPTIONS_UPDATED_VERIFY_REQUIRED"});
+   await expect(verifyRepair(ctx)).resolves.toMatchObject({status:"PASS",runtimeAcceptancePassed:false,productionAuthorized:false});
+   expect(writes(f).map(([,options])=>options.method)).toEqual(["POST","PATCH","POST"]);
+   const accesses=f.fetchImpl.mock.calls.filter(([url])=>new URL(url).pathname.includes("/secrets/STRIPE_SECRET/") && new URL(url).pathname.endsWith(":access"));
+   expect(accesses).toHaveLength(1);
+   expect(accesses[0][0]).toBe(`https://secretmanager.googleapis.com/v1/projects/${NUMBER}/secrets/STRIPE_SECRET/versions/4:access`);
+   const stripeCalls=f.fetchImpl.mock.calls.filter(([url])=>hasOrigin(url,"https://api.stripe.com"));
+   expect(stripeCalls.length).toBeGreaterThan(0);
+   for(const [,options] of stripeCalls) expect(options.headers.Authorization).toBe("Bearer sk_test_FAKE_V4");
+   expect(f.fetchImpl.mock.calls.some(([url])=>url.endsWith("/secrets/STRIPE_SECRET/versions/1:access"))).toBe(false);
+  }
+ });
+ it("requires validated bound credential metadata before a subscription update",async()=>{
+  const f=fixture();await expect(f.provider.updateSubscriptions({endpointId:ENDPOINT,enabledEvents:EVENTS,idempotencyKey:"dev_intent_long_enough"})).rejects.toThrow("verified-stripe-credential-binding-required");
+  expect(f.fetchImpl).not.toHaveBeenCalled();expect(f.token).not.toHaveBeenCalled();
+ });
+ it.each(["wrong-version","wrong-secret","disabled","payload-in-metadata"])("refuses %s bound Stripe metadata before any payload access or Stripe request",async mode=>{
+  const f=fixture({modify:input=>{
+   for(const fn of input.functions) for(const value of fn.serviceConfig.secretEnvironmentVariables) if(value.key==="STRIPE_SECRET") value.version="4";
+  },override:url=>{
+   if(new URL(url).pathname.endsWith("/secrets/STRIPE_SECRET/versions/4")) {
+    const value=metadata("STRIPE_SECRET","4");
+    if(mode==="wrong-version") value.name=metadata("STRIPE_SECRET","1").name;
+    if(mode==="wrong-secret") value.name=metadata("OTHER","4").name;
+    if(mode==="disabled") value.state="DISABLED";
+    if(mode==="payload-in-metadata") value.payload={data:"unexpected"};
+    return value;
+   }
+  }});
+  await expect(f.provider.snapshot()).rejects.toThrow("stripe-bound-secret-metadata-mismatch");
+  expect(f.fetchImpl.mock.calls.some(([url])=>new URL(url).pathname.endsWith(":access"))).toBe(false);
+  expect(f.fetchImpl.mock.calls.some(([url])=>hasOrigin(url,"https://api.stripe.com"))).toBe(false);
+ });
+ it("invalidates cached API credentials and remains closed when the bound version changes",async()=>{
+  const f=fixture();await f.provider.snapshot();f.fetchImpl.mockClear();
+  for(const fn of f.input.functions) for(const value of fn.serviceConfig.secretEnvironmentVariables) if(value.key==="STRIPE_SECRET") value.version="4";
+  await expect(f.provider.snapshot()).rejects.toThrow("stripe-credential-binding-changed");
+  expect(f.fetchImpl.mock.calls.some(([url])=>new URL(url).pathname.endsWith(":access"))).toBe(false);
+  expect(f.fetchImpl.mock.calls.some(([url])=>hasOrigin(url,"https://api.stripe.com"))).toBe(false);
+  f.fetchImpl.mockClear();
+  await expect(f.provider.updateSubscriptions({endpointId:ENDPOINT,enabledEvents:EVENTS,idempotencyKey:"dev_intent_long_enough"})).rejects.toThrow("verified-stripe-credential-binding-required");
+  expect(f.fetchImpl).not.toHaveBeenCalled();
+ });
+ it("refuses a nondefault port in the baseline metadata adapter before network work",async()=>{
+  createBindingRepairProvider.mockImplementationOnce(({fetchImpl})=>({snapshot:()=>fetchImpl(`https://cloudresourcemanager.googleapis.com:444/v1/projects/${PROJECT}`,{method:"GET"})}));
+  const f=fixture();await expect(f.provider.snapshot()).rejects.toThrow("invalid-baseline-provider-route");expect(f.fetchImpl).not.toHaveBeenCalled();
  });
  it("keeps gcloud authentication lazy, bounded and in-memory",async()=>{
   execFileSync.mockReturnValue("PRIVATE_GCP_TOKEN\n");const f=fixture();const provider=createDevStripeWebhookProvider({fetchImpl:f.fetchImpl});
@@ -236,7 +292,7 @@ describe("fixed Dev Stripe webhook correction provider",()=>{
   }
  });
  it("writes exactly the eleven event array and no other Stripe fields after account verification",async()=>{
-  const f=fixture();const result=await f.provider.updateSubscriptions({endpointId:ENDPOINT,enabledEvents:EVENTS,idempotencyKey:"dev_repair_subscription_intent_1"});expect(result.enabled_events).toEqual(EVENTS);
+  const f=fixture();await f.provider.snapshot();f.fetchImpl.mockClear();const result=await f.provider.updateSubscriptions({endpointId:ENDPOINT,enabledEvents:EVENTS,idempotencyKey:"dev_repair_subscription_intent_1"});expect(result.enabled_events).toEqual(EVENTS);
   const post=writes(f);expect(post).toHaveLength(1);expect(post[0][0]).toBe(`https://api.stripe.com/v1/webhook_endpoints/${ENDPOINT}`);
   expect([...new Set(new URLSearchParams(post[0][1].body).keys())]).toEqual(["enabled_events[]"]);
   expect(new URLSearchParams(post[0][1].body).getAll("enabled_events[]")).toEqual(EVENTS);
@@ -270,7 +326,7 @@ describe("fixed Dev Stripe webhook correction provider",()=>{
  });
  it.each(["add","patch","stripe"])("unknown %s outcomes never retry or expose response/credential details",async kind=>{
   const f=fixture({override:(_url,options)=>options.method!=="GET"?new Response("PRIVATE_BODY",{status:403}):undefined});
-  if(kind==="patch") await f.provider.snapshot();f.fetchImpl.mockClear();
+  if(kind==="patch" || kind==="stripe") await f.provider.snapshot();f.fetchImpl.mockClear();
   const promise=kind==="add"?f.provider.addSecretVersion({value:"whsec_CANDIDATE"}):kind==="stripe"?f.provider.updateSubscriptions({endpointId:ENDPOINT,enabledEvents:EVENTS,idempotencyKey:"dev_intent_long_enough"}):f.provider.patchFunctionBindings({name:TARGET,bindings:KEYS.map(k=>binding(k,k===SIGNING?"2":"1"))});
   await expect(promise).rejects.toThrow("provider-write-outcome-unknown");expect(writes(f)).toHaveLength(1);
  });

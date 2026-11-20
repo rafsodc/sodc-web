@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {mkdtemp, mkdir, writeFile, readFile, readdir, realpath, rm, chmod, symlink} from "node:fs/promises";
+import {mkdtemp, mkdir, writeFile, readFile, readdir, realpath, rm, chmod, symlink, open} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {PassThrough} from "node:stream";
 import path from "node:path";
@@ -13,6 +13,9 @@ const json = async file => JSON.parse(await readFile(file, "utf8"));
 const cli = fileURLToPath(new URL("./dev-stripe-webhook-repair.mjs", import.meta.url));
 const pathOptions = {platform: "linux", temporaryRoot: "/tmp"};
 const valid = ["--env", "dev", "--phase", "prepare", "--run-dir", "/tmp/sodc-dev-stripe-webhook-repair-run-example", "--secret-stdin"];
+const pipeStat = {statDescriptor: () => ({isFIFO: () => true, isSocket: () => false})};
+const inputReader = `import {readSecretInput} from ${JSON.stringify(new URL("./dev-stripe-webhook-repair.mjs", import.meta.url).href)};
+try {await readSecretInput(); process.stdout.write("ACCEPTED");} catch(error) {process.stderr.write(error.code); process.exitCode=1;}`;
 async function setup() {
   const parent = await realpath(await mkdtemp(path.join(tmpdir(), "sodc-webhook-cli-"))); directories.add(parent);
   const root = path.join(parent, "checkout"); await mkdir(root, {mode:0o700});
@@ -75,11 +78,29 @@ describe("fixed Dev webhook command boundary",()=>{
 
 describe("protected credential input",()=>{
   it("reads a pipe without echoing and removes only its final line terminator",async()=>{
-    const input=new PassThrough();const output={write:vi.fn()};input.end(CANDIDATE+"\r\n");
-    expect(await readSecretInput(input,output)).toBe(CANDIDATE);expect(output.write).not.toHaveBeenCalled();
+    const input=new PassThrough();input.fd=0;const output={write:vi.fn()};input.end(CANDIDATE+"\r\n");
+    expect(await readSecretInput(input,output,pipeStat)).toBe(CANDIDATE);expect(output.write).not.toHaveBeenCalled();
   });
   it.each(["",CANDIDATE+" "," "+CANDIDATE,CANDIDATE+"\n\n","invalid-signing-secret-prefix",'"'+CANDIDATE+'"',"x".repeat(600)])("rejects altered/invalid pipe value %j",async value=>{
-    const input=new PassThrough();input.end(value);await expect(readSecretInput(input,{write:vi.fn()})).rejects.toThrow();
+    const input=new PassThrough();input.fd=0;input.end(value);await expect(readSecretInput(input,{write:vi.fn()},pipeStat)).rejects.toThrow();
+  });
+  it("accepts real child-process pipe input without echoing its value",()=>{
+    const result=execFileSync(process.execPath,["--input-type=module","-e",inputReader],{input:CANDIDATE+"\n",encoding:"utf8",timeout:10000});
+    expect(result).toBe("ACCEPTED");
+  });
+  it("rejects a real regular-file stdin redirect before consuming input",async()=>{
+    const c=await setup(),file=path.join(c.parent,"synthetic-input.txt");await writeFile(file,CANDIDATE+"\n",{mode:0o600});
+    const handle=await open(file,"r");
+    try {
+      const input=new PassThrough();input.fd=handle.fd;const iterator=vi.spyOn(input,Symbol.asyncIterator);
+      await expect(readSecretInput(input,{write:vi.fn()})).rejects.toThrow("protected-pipe-required");expect(iterator).not.toHaveBeenCalled();
+      let failure;try{execFileSync(process.execPath,["--input-type=module","-e",inputReader],{stdio:[handle.fd,"pipe","pipe"],encoding:"utf8",timeout:10000});}catch(error){failure=error;}
+      expect(failure.status).toBe(1);expect(failure.stdout).toBe("");expect(failure.stderr).toBe("protected-pipe-required");
+    } finally {await handle.close();}
+  });
+  it.each([undefined,-1,999999])("rejects a missing or unreadable descriptor before input (%j)",async fd=>{
+    const input=new PassThrough();input.fd=fd;const iterator=vi.spyOn(input,Symbol.asyncIterator);
+    await expect(readSecretInput(input,{write:vi.fn()})).rejects.toThrow("protected-pipe-required");expect(iterator).not.toHaveBeenCalled();
   });
   it("hides terminal input and always restores terminal mode",async()=>{
     const input=new PassThrough();input.isTTY=true;input.setRawMode=vi.fn();const output={write:vi.fn()};

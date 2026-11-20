@@ -77,7 +77,7 @@ export function createDevStripeWebhookProvider({projectId = PROJECT, region = RE
   need(typeof fetchImpl === "function" && (tokenProvider === undefined || typeof tokenProvider === "function") &&
     Number.isSafeInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 30_000, "invalid-provider-dependency");
   const authenticate = tokenProvider ?? authentication();
-  let snapshotTarget, stripeApiKey;
+  let snapshotTarget, stripeApiKey, stripeCredential, initialStripeVersion;
 
   async function transport(url, options, {archive = false, uncertain = false} = {}) {
     const controller = new AbortController();
@@ -130,7 +130,7 @@ export function createDevStripeWebhookProvider({projectId = PROJECT, region = RE
     fetchImpl:async(url,options) => {
       need(options.method === "GET" && options.body === undefined, "baseline-read-only-required");
       const parsed = new URL(url);
-      need(parsed.protocol === "https:" && ["cloudresourcemanager.googleapis.com","cloudfunctions.googleapis.com","cloudscheduler.googleapis.com","run.googleapis.com","secretmanager.googleapis.com"].includes(parsed.hostname) && !parsed.username && !parsed.password && !parsed.hash, "invalid-baseline-provider-route");
+      need(parsed.protocol === "https:" && parsed.port === "" && ["cloudresourcemanager.googleapis.com","cloudfunctions.googleapis.com","cloudscheduler.googleapis.com","run.googleapis.com","secretmanager.googleapis.com"].includes(parsed.hostname) && !parsed.username && !parsed.password && !parsed.hash, "invalid-baseline-provider-route");
       const result = await transport(url,{method:"GET",headers:options.headers});
       if (parsed.hostname === "cloudresourcemanager.googleapis.com") need(result.projectId === PROJECT && result.projectNumber === NUMBER,"provider-project-mismatch");
       return Response.json(result);
@@ -155,8 +155,27 @@ export function createDevStripeWebhookProvider({projectId = PROJECT, region = RE
       Buffer.from(encoded,"base64").toString("base64") === encoded,"invalid-private-secret-response");
     return Buffer.from(encoded,"base64").toString("utf8");
   }
+  function bindStripeCredential(target, numeric) {
+    const ref = target.serviceConfig.secretEnvironmentVariables.find(binding => binding.key === "STRIPE_SECRET");
+    const names = [PROJECT,NUMBER].map(project => `projects/${project}/secrets/STRIPE_SECRET/versions/${ref.version}`);
+    need(object(numeric) && names.includes(numeric.name) && numeric.state === "ENABLED" && !Object.hasOwn(numeric,"payload"), "stripe-bound-secret-metadata-mismatch");
+    if (initialStripeVersion !== undefined && initialStripeVersion !== ref.version || stripeApiKey && stripeApiKey.version !== ref.version) {
+      stripeCredential = undefined; stripeApiKey = undefined;
+      throw new DevStripeWebhookProviderError("stripe-credential-binding-changed");
+    }
+    initialStripeVersion = ref.version;
+    stripeCredential = {version:ref.version,ready:false};
+  }
   async function stripeRaw(resource, {method = "GET", body, idempotencyKey} = {}) {
-    const key = stripeApiKey ??= secretText(await access("STRIPE_SECRET","1"),/^sk_test_[A-Za-z0-9_]+$/,"stripe-test-key-required");
+    need(stripeCredential, "verified-stripe-credential-binding-required");
+    const version = stripeCredential.version;
+    if (!stripeApiKey) {
+      const value = secretText(await access("STRIPE_SECRET",version),/^sk_test_[A-Za-z0-9_]+$/,"stripe-test-key-required");
+      need(stripeCredential?.version === version, "stripe-credential-binding-changed");
+      stripeApiKey = {version,value};
+    }
+    need(stripeCredential?.version === version && stripeApiKey.version === version, "stripe-credential-binding-changed");
+    const key = stripeApiKey.value;
     return transport(`https://api.stripe.com${resource}`,{method,headers:{Authorization:`Bearer ${key}`,"Stripe-Version":"2026-03-25.dahlia",
       ...(body ? {"Content-Type":"application/x-www-form-urlencoded"} : {}), ...(idempotencyKey ? {"Idempotency-Key":idempotencyKey} : {})},
     ...(body ? {body} : {})},{uncertain:method !== "GET"});
@@ -210,11 +229,13 @@ export function createDevStripeWebhookProvider({projectId = PROJECT, region = RE
   }
   return {
     async snapshot() {
+      stripeCredential = undefined;
       try {
         const base = await original.snapshot();
         need(base.project?.projectId === PROJECT && base.project.projectNumber === NUMBER,"provider-project-mismatch");
         const targets = base.functions.filter(fn=>fn.name===TARGET); need(targets.length === 1,"missing-target-function");
         const target = targets[0]; targetBindings(target.serviceConfig?.secretEnvironmentVariables);
+        bindStripeCredential(target,base.secretVersions?.STRIPE_SECRET?.numeric);
         const referenced = new Map();
         for (const fn of base.functions) {
           need(Array.isArray(fn.serviceConfig?.secretEnvironmentVariables ?? []),"invalid-bound-secret-reference");
@@ -244,8 +265,12 @@ export function createDevStripeWebhookProvider({projectId = PROJECT, region = RE
         const targetBuild = await build(target.buildConfig?.build);
         const targetBuildArchive = targetBuild.resolvedSource ? await archive(targetBuild.resolvedSource) : null;
         snapshotTarget=clone(target);
+        stripeCredential.ready = true;
         return {...base,signingPolicy:base.secretPolicies[SIGNING],signingVersions,stripe:{account:{id:ACCOUNT},endpoint,endpoints},targetSourceArchive,targetBuild,targetBuildArchive};
-      } catch (error) {throw error instanceof DevStripeWebhookProviderError ? error : new DevStripeWebhookProviderError("provider-snapshot-failed");}
+      } catch (error) {
+        stripeCredential = undefined; stripeApiKey = undefined;
+        throw error instanceof DevStripeWebhookProviderError ? error : new DevStripeWebhookProviderError("provider-snapshot-failed");
+      }
     },
     async addSecretVersion({value} = {}) {
       const secret=secretText(value,/^whsec_[A-Za-z0-9]+$/,"invalid-candidate-signing-secret");
@@ -271,6 +296,7 @@ export function createDevStripeWebhookProvider({projectId = PROJECT, region = RE
       need(endpointId===ENDPOINT,"invalid-stripe-endpoint-target");
       need(Array.isArray(enabledEvents) && enabledEvents.length===EVENTS.length && new Set(enabledEvents).size===EVENTS.length && EVENTS.every(e=>enabledEvents.includes(e)),"invalid-subscription-events");
       need(typeof idempotencyKey==="string" && /^[A-Za-z0-9_-]{16,200}$/.test(idempotencyKey),"invalid-stripe-idempotency-key");
+      need(stripeCredential?.ready, "verified-stripe-credential-binding-required");
       const body=new URLSearchParams(EVENTS.map(event=>["enabled_events[]",event])).toString();
       const result=endpointProjection(await stripe(`/v1/webhook_endpoints/${ENDPOINT}`,{method:"POST",body,idempotencyKey}));
       need(result.id===ENDPOINT && result.url===ENDPOINT_URL && result.api_version==="2026-03-25.dahlia" && result.status==="enabled" &&

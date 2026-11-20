@@ -66,10 +66,17 @@ hidden terminal prompt. Input is needed again at `apply-secret`, after review.
 Do not use the Stripe CLI's forwarding secret or a different endpoint's secret.
 Do not put the value in chat, arguments, an environment variable, shell history,
 evidence, or a regular file. A protected pipe is supported for an approved
-credential source. The tool removes only one terminal line ending; it never trims
+credential source; a regular-file stdin redirect is rejected before reading.
+The tool removes only one terminal line ending; it never trims
 or repairs the candidate. Existing webhook endpoint GETs do not return its secret,
 so the private Dashboard comparison is a prerequisite, not something the tool
 can rediscover through the API.
+
+The signing candidate is the only credential supplied through stdin. Separately,
+the provider reads the existing `STRIPE_SECRET` payload from Secret Manager, using
+the numeric version bound to the target and cross-checked against that version's
+enabled metadata. It uses that TEST API key only in memory to check the account
+and inspect/update the fixed endpoint. No key value enters proposals or logs.
 
 Preparation makes provider reads and creates only local private files. It requires
 the existing seven subscriptions, exactly one enabled signing version (`1`), the
@@ -91,6 +98,24 @@ in the private run directory from `review-template.json`, set `decision` to
 mode `0600` and its exact proposal hash. An expired proposal cannot authorize a
 write. Do not extend an expiry or edit the proposal; obtain a new proposal before
 any write has begun. Verification remains available after expiry.
+
+The hour starts at **prepare**, not at approval or the first write. Finish code
+review first, arrange the maintenance freeze and have the exact-proposal reviewer
+available before preparing. Begin writes only when the operator can remain for
+the entire sequence, including Google's update and the final Stripe update,
+within the remaining hour. If approval is delayed or too little time remains,
+prepare a fresh run before any claim or write has started.
+Check that the operator machine's clock is synchronized before preparation:
+verification compares locally recorded intent times with Google's UTC metadata,
+so clock skew can cause a chronology stop after an intent is recorded.
+
+Expiry after a claim/write does not have an in-tool renewal or restart. It can
+leave an enabled new signing version unbound, or leave the signing correction
+complete while the endpoint still has only seven subscriptions. Verification
+remains read-only and available, but completing the remaining writes then needs
+separate operator review and a separately reviewed recovery procedure. Do not
+delete the claim, edit timestamps, extend approval, or start another run to evade
+that stop. No automatic rollback is attempted.
 
 ## Execute once, in order
 
@@ -133,12 +158,19 @@ another clone or machine from operating, so keep the maintenance freeze.
    ```
 
    `PENDING` permits another verification read, never another PATCH. Require
-   `FUNCTION_VERIFIED` before continuing. Verification requires a successful new
-   build after the intent, the acknowledged operation's target and update verb,
-   an active new revision, the exact numeric binding and the original source
-   archive bytes. Source object names and generations may move, but both the
-   Function archive and the build's resolved input must hash to the original bytes.
-   If Function source provenance is present, it must identify that archive.
+   `FUNCTION_VERIFIED` before continuing. Both supported outcomes require the
+   acknowledged operation's target and update verb, an active new revision and
+   update time after the intent, the exact numeric binding and all preservation
+   checks. If Google creates a new build, it must succeed after the intent; both
+   the Function archive and the build's resolved input must hash to the original
+   source bytes, even if archive names or generations move. If Google does not
+   rebuild, the reviewed successful build, build-input archive proof and exact
+   build/source/provenance references must remain unchanged. If Function source
+   provenance is present, it must identify the hash-proven archive in either case.
+
+   `verify-function` is the pre-subscription phase. After the Stripe update use
+   final `verify`; repeating `verify-function` then fails its expected seven-event
+   baseline rather than checking the completed eleven-event state.
 
    Only target update time, state messages, revision, source/build references and
    the signing version may differ. All other target settings, environment values,
@@ -193,6 +225,9 @@ Exit `0` means help, proposal prepared, secret version acknowledged, Function
 verified, or final metadata PASS. Exit `3` means an accepted write still needs
 verification, a pending operation, or an unresolved outcome. Exit `1` is a block;
 an intent or claim may already exist. Read the status as well as the exit code.
+An exit `1` can also mean an auxiliary verification-log append failed after a
+stage acknowledgement was durably stored. The stage records remain authoritative;
+do not repeat the mutation because its command failed to append that log.
 
 ## Runtime acceptance afterwards
 
@@ -212,6 +247,7 @@ signature acceptance, runtime secret access, Notify key validity nor delivery.
 ## API references
 
 - [Secret Manager addVersion](https://docs.cloud.google.com/secret-manager/docs/reference/rest/v1/projects.secrets/addVersion)
+- [Secret Manager version access](https://docs.cloud.google.com/secret-manager/docs/reference/rest/v1/projects.secrets.versions/access)
 - [Functions v2 PATCH and field mask](https://docs.cloud.google.com/functions/docs/reference/rest/v2/projects.locations.functions/patch)
 - [Cloud Build source provenance](https://docs.cloud.google.com/build/docs/api/reference/rest/v1/projects.builds#SourceProvenance)
 - [Stripe endpoint update](https://docs.stripe.com/api/webhook_endpoints/update)

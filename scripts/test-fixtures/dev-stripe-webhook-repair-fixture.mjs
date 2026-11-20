@@ -74,6 +74,13 @@ export function fixture() {
   const f = {source, snapshot, files, events, store, provider, readSource: vi.fn(async () => clone(source)),
     prepare: () => prepareRepair({source: clone(source), snapshot: clone(snapshot), comparisonKey: KEY, candidateSecret: CANDIDATE, now: NOW}),
     updateManifest: change => {change(manifest); source.binding.manifestSha256 = digest(manifest);},
+    rebindWithoutRebuild: () => {
+      const fn = snapshot.functions[0]; fn.serviceConfig.secretEnvironmentVariables = fn.serviceConfig.secretEnvironmentVariables.map(value =>
+        value.key === SECRET_KEY ? {...value, version: "2"} : {...value});
+      snapshot.secretVersions[SECRET_KEY].numeric = clone(snapshot.signingVersions.find(value => value.name.endsWith("/2")));
+      fn.serviceConfig.revision = "stripewebhookpayments-rebound-without-rebuild"; fn.updateTime = new Date(NOW + 20_000).toISOString();
+      provider.operation.mockResolvedValue(operation({metadata: {target: TARGET_NAME, verb: "update", buildName: OLD_BUILD}}));
+    },
     rebuild: () => {
       const fn = snapshot.functions[0]; fn.serviceConfig.secretEnvironmentVariables = fn.serviceConfig.secretEnvironmentVariables.map(value =>
         value.key === SECRET_KEY ? {...value, version: "2"} : {...value});

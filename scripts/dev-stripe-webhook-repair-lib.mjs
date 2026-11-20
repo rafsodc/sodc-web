@@ -158,9 +158,11 @@ function collect(snapshot, key) {
   // rebind stages. Its consistency is checked above; the complete version list
   // is compared against that phase below. Every other secret stays immutable.
   const otherSecretVersions = Object.fromEntries(Object.entries(snapshot.secretVersions).filter(([name]) => name !== SECRET_KEY));
+  const buildReferencesHmac = hmac(Object.fromEntries(["build", "source", "sourceProvenance"]
+    .filter(field => Object.hasOwn(target.buildConfig, field)).map(field => [field, target.buildConfig[field]])), key);
   return {protected: {functions, invokers, schedulers, secretVersions: hmac(otherSecretVersions, key), secretPolicies: hmac(snapshot.secretPolicies, key),
     signingPolicy: hmac(signingPolicy, key)}, target, targetBindings: bindings(target.serviceConfig.secretEnvironmentVariables), signingVersions,
-  endpoint, proof: sourceProof(snapshot, target)};
+  endpoint, proof: sourceProof(snapshot, target), buildReferencesHmac};
 }
 function validateProposal(proposal) {
   need(keys(proposal, ["schemaVersion", "action", "environment", "projectId", "projectNumber", "target", "endpointId", "accountId", "createdAt", "expiresAt",
@@ -181,6 +183,7 @@ export function prepareRepair({source, snapshot, comparisonKey, candidateSecret,
   return canonical({schemaVersion: SCHEMA, action: "repair-dev-stripe-webhook-signing-and-subscriptions", environment: "dev", projectId: PROJECT_ID,
     projectNumber: PROJECT_NUMBER, target: TARGET_NAME, endpointId: ENDPOINT_ID, accountId: ACCOUNT_ID, createdAt: iso(now), expiresAt: iso(at(now) + TTL),
     sourceBinding: source.binding, baseline: {protected: view.protected, signingVersions: view.signingVersions, sourceArchive: view.proof.source,
+      buildInputArchive: view.proof.input, buildReferencesHmac: view.buildReferencesHmac,
       build: view.proof.build, targetObservation: {revision: view.target.serviceConfig.revision, updateTime: view.target.updateTime}},
     beforeBindings: view.targetBindings, beforeStripe: view.endpoint, candidateSecretHmac: hmac(candidateSecret, comparisonKey),
     acceptsExistingDevBacklog: true, backlogAcceptance: BACKLOG_ACCEPTANCE, approvedEvents: REQUIRED_EVENTS});
@@ -209,7 +212,7 @@ function desiredBindings(proposal, secretVersion) {return proposal.beforeBinding
 function compare(ctx, snapshot, {secretRecord, rebound = false, subscriptions = false, functionPass} = {}) {
   const view = collect(snapshot, ctx.comparisonKey), proposal = ctx.proposal;
   need(same(view.protected, proposal.baseline.protected), "protected-baseline-drift");
-  const expectedVersions = secretRecord ? [...proposal.baseline.signingVersions, version(secretRecord.metadata)] : proposal.baseline.signingVersions;
+  const expectedVersions = [...proposal.baseline.signingVersions, ...(secretRecord ? [version(secretRecord.metadata)] : [])];
   need(same(view.signingVersions, expectedVersions.sort((a, b) => versionId(a).localeCompare(versionId(b)))), "signing-version-inventory-drift");
   need(same(view.targetBindings, rebound ? desiredBindings(proposal, secretRecord.version) : proposal.beforeBindings), "target-binding-drift");
   const expectedEndpoint = {...proposal.beforeStripe, enabled_events: subscriptions ? proposal.approvedEvents : proposal.beforeStripe.enabled_events};
@@ -217,9 +220,13 @@ function compare(ctx, snapshot, {secretRecord, rebound = false, subscriptions = 
   need(view.proof.source.sha256 === proposal.baseline.sourceArchive.sha256 && view.proof.input.sha256 === proposal.baseline.sourceArchive.sha256, "source-archive-content-drift");
   if (functionPass) need(view.target.serviceConfig.revision === functionPass.revision && view.proof.build.name === functionPass.buildName &&
     view.proof.source.sha256 === functionPass.sourceArchiveSha256 && secretRecord?.version === functionPass.version, "function-pass-baseline-drift");
-  if (!rebound) need(same(view.proof.source, proposal.baseline.sourceArchive) && same(view.proof.build, proposal.baseline.build) &&
-    view.target.serviceConfig.revision === proposal.baseline.targetObservation.revision && view.target.updateTime === proposal.baseline.targetObservation.updateTime,
-  "pre-update-target-provenance-drift");
+  if (!rebound || view.proof.build.name === proposal.baseline.build.name) {
+    need(same(view.proof.source, proposal.baseline.sourceArchive) && same(view.proof.build, proposal.baseline.build) &&
+      same(view.proof.input, proposal.baseline.buildInputArchive) && equalHmac(view.buildReferencesHmac, proposal.baseline.buildReferencesHmac),
+    rebound ? "unchanged-build-source-drift" : "pre-update-target-provenance-drift");
+  }
+  if (!rebound) need(view.target.serviceConfig.revision === proposal.baseline.targetObservation.revision && view.target.updateTime === proposal.baseline.targetObservation.updateTime,
+    "pre-update-target-provenance-drift");
   return view;
 }
 async function beforeMutation(ctx, phase) {
@@ -284,9 +291,9 @@ async function functionProof(ctx, {subscriptions = false} = {}) {
   if (operation.error !== undefined) return {status: "OPERATION_FAILED_OPERATOR_REVIEW_REQUIRED", operationName: ack.name};
   await currentSource(ctx); const view = compare(ctx, await ctx.provider.snapshot(), {secretRecord, rebound: true, subscriptions}); await currentSource(ctx);
   const build = view.proof.build;
-  need(build.name !== ctx.proposal.baseline.build.name && Date.parse(build.createTime) >= Date.parse(intent.startedAt) &&
-    Date.parse(view.target.updateTime) >= Date.parse(intent.startedAt) && view.target.serviceConfig.revision !== ctx.proposal.baseline.targetObservation.revision,
-  "rebuild-chronology-not-proven");
+  need(Date.parse(view.target.updateTime) >= Date.parse(intent.startedAt) && view.target.serviceConfig.revision !== ctx.proposal.baseline.targetObservation.revision,
+    "function-update-chronology-not-proven");
+  if (build.name !== ctx.proposal.baseline.build.name) need(Date.parse(build.createTime) >= Date.parse(intent.startedAt), "rebuild-chronology-not-proven");
   if (operation.metadata.buildName !== undefined) need(operation.metadata.buildName === build.name, "operation-build-not-current");
   return {status: "FUNCTION_VERIFIED", operationName: ack.name, revision: view.target.serviceConfig.revision, buildName: build.name,
     sourceArchiveSha256: view.proof.source.sha256, version: secretRecord.version, proposalSha256: digest(ctx.proposal)};

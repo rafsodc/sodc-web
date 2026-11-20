@@ -2,7 +2,7 @@ import {afterEach, describe, expect, it, vi} from "vitest";
 import {digest} from "./functions-config-guard-lib.mjs";
 import {ACCOUNT_ID, BEFORE_EVENTS, DevStripeWebhookRepairError, ENDPOINT_ID, PROJECT_ID, PROJECT_NUMBER, REQUIRED_EVENTS, SECRET_KEY, TARGET_NAME,
   applyFunction, applySecret, applySubscriptions, assertReview, prepareRepair, reviewTemplate, verifyFunction, verifyRepair} from "./dev-stripe-webhook-repair-lib.mjs";
-import {CANDIDATE, KEY, NEW_BUILD, NOW, OPERATION, approved, clone, context, fixture, operation, version} from "./test-fixtures/dev-stripe-webhook-repair-fixture.mjs";
+import {CANDIDATE, KEY, NEW_BUILD, OLD_BUILD, NOW, OPERATION, approved, clone, context, fixture, operation, version} from "./test-fixtures/dev-stripe-webhook-repair-fixture.mjs";
 
 afterEach(() => {vi.restoreAllMocks();});
 async function secretReady(f, proposal = f.prepare()) {
@@ -215,6 +215,54 @@ describe("one-shot secret creation and Function handoff", () => {
 });
 
 describe("rebuild-aware preservation and ordered subscriptions", () => {
+  it.each(["present", "absent"])("completes a legitimate no-rebuild PATCH with an unchanged reviewed build (operation buildName %s)", async buildName => {
+    const f = fixture(), p = await secretReady(f), originalProof = clone({archive: f.snapshot.targetSourceArchive, build: f.snapshot.targetBuild,
+      input: f.snapshot.targetBuildArchive, references: f.snapshot.functions[0].buildConfig});
+    f.provider.patchFunctionBindings.mockResolvedValue(operation({done: false, metadata: {target: TARGET_NAME, verb: "update"}}));
+    await applyFunction(context(f, p)); f.rebindWithoutRebuild();
+    if (buildName === "absent") f.provider.operation.mockResolvedValue(operation({metadata: {target: TARGET_NAME, verb: "update"}}));
+    await expect(verifyFunction(context(f, p))).resolves.toMatchObject({status: "FUNCTION_VERIFIED", buildName: OLD_BUILD});
+    expect(f.files.get("function-pass.json")).toMatchObject({buildName: OLD_BUILD, version: "2"});
+    await applySubscriptions(context(f, p));
+    await expect(verifyRepair(context(f, p))).resolves.toMatchObject({status: "PASS", buildName: OLD_BUILD});
+    expect({archive: f.snapshot.targetSourceArchive, build: f.snapshot.targetBuild, input: f.snapshot.targetBuildArchive,
+      references: f.snapshot.functions[0].buildConfig}).toEqual(originalProof);
+    expect(f.provider.patchFunctionBindings).toHaveBeenCalledTimes(1); expect(f.provider.updateSubscriptions).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    ["unchanged revision", (f, p) => {f.snapshot.functions[0].serviceConfig.revision = p.baseline.targetObservation.revision;}],
+    ["update before intent", f => {f.snapshot.functions[0].updateTime = new Date(NOW - 1).toISOString();}],
+    ["moved Function source archive", f => {
+      const ref = {bucket: f.snapshot.targetSourceArchive.bucket, object: "moved-without-a-build.zip", generation: "8"};
+      f.snapshot.functions[0].buildConfig.source.storageSource = clone(ref);
+      f.snapshot.functions[0].buildConfig.sourceProvenance.resolvedStorageSource = clone(ref);
+      Object.assign(f.snapshot.targetSourceArchive, ref);
+    }],
+    ["source reference shape change", f => {delete f.snapshot.functions[0].buildConfig.source.storageSource.generation;}],
+    ["removed Function provenance", f => {delete f.snapshot.functions[0].buildConfig.sourceProvenance;}],
+    ["mutated old build metadata", f => {f.snapshot.targetBuild.finishTime = "2026-11-16T00:00:41.000Z";}],
+    ["moved old build input", f => {
+      f.snapshot.targetBuild.resolvedSource.object = "different-input.zip";
+      f.snapshot.targetBuildArchive.object = "different-input.zip";
+    }],
+    ["mismatched operation build", f => {f.provider.operation.mockResolvedValue(operation());}],
+  ])("rejects no-rebuild %s before Function pass or subscriptions", async (_name, change) => {
+    const f = fixture(), p = await secretReady(f);
+    f.provider.patchFunctionBindings.mockResolvedValue(operation({done: false, metadata: {target: TARGET_NAME, verb: "update"}}));
+    await applyFunction(context(f, p)); f.rebindWithoutRebuild(); change(f, p);
+    await expect(verifyFunction(context(f, p))).rejects.toThrow();
+    expect(f.files.has("function-pass.json")).toBe(false); expect(f.provider.updateSubscriptions).not.toHaveBeenCalled();
+  });
+  it("rechecks unchanged-build references after the Stripe intent before issuing its write", async () => {
+    const f = fixture(), p = await secretReady(f);
+    await applyFunction(context(f, p)); f.rebindWithoutRebuild(); await verifyFunction(context(f, p));
+    const original = f.store.writeOnce.getMockImplementation();
+    f.store.writeOnce.mockImplementation(async (name, value) => {
+      await original(name, value); if (name === "stripe-intent.json") delete f.snapshot.functions[0].buildConfig.source.storageSource.generation;
+    });
+    await expect(applySubscriptions(context(f, p))).rejects.toThrow("unchanged-build-source-drift");
+    expect(f.provider.updateSubscriptions).not.toHaveBeenCalled();
+  });
   it("accepts changed source object/revision/image provenance only when the generation-bound archive bytes match", async () => {
     const f = fixture(), p = await functionReady(f);
     expect(f.files.get("function-pass.json")).toMatchObject({operationName: OPERATION, buildName: NEW_BUILD, version: "2"});
