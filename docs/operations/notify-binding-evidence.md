@@ -13,6 +13,10 @@ The `operations:notify-binding-evidence` command collects evidence for
 applies changes, accepts risk, grants a waiver, replays a request or authorizes a
 release. There is no apply, unlock or acceptance flag.
 
+The separate [prospective Production comparison procedure](./notify-binding-prospective-verification.md)
+adds a GET-only before/after comparator for a future reviewed operation. It does
+not replace the original failed Dev verification or supply a mutation engine.
+
 ## Current Dev boundary
 
 The known Dev update completed, and the expected three Notify version-1 bindings

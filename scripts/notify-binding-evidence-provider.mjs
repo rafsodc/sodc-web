@@ -205,6 +205,69 @@ export function createBindingEvidenceProvider({projectId, region, tokenProvider,
     return envelope("AVAILABLE", undefined, {bucket: value.bucket, name: value.name, generation: value.generation, size: value.size,
       md5Hash: value.md5Hash == null ? null : base64(value.md5Hash, 16), crc32c: value.crc32c == null ? null : base64(value.crc32c, 4)});
   }
+
+  async function limits(snapshot) {
+    context(snapshot);
+    need(snapshot.functions.length > 0 && snapshot.functions.length <= 1000, "invalid-limits-inventory");
+    const maximum = value => {
+      if (value === undefined) return null;
+      need(object(value), "invalid-run-scaling");
+      if (!Object.hasOwn(value, "maxInstanceCount")) return null;
+      need(Number.isSafeInteger(value.maxInstanceCount) && value.maxInstanceCount > 0, "invalid-run-maximum");
+      return value.maxInstanceCount;
+    };
+    const references = snapshot.functions.map(fn => {
+      const name = typeof fn?.name === "string" ? fn.name.split("/").at(-1) : "";
+      const match = /^projects\/([^/]+)\/locations\/([^/]+)\/services\/([a-z0-9-]+)$/.exec(fn?.serviceConfig?.service ?? "");
+      need(name && fn.name === `${prefix}/functions/${name}` && match && sameProject(match[1]) && match[2] === region &&
+        match[3] === name.toLowerCase(), "invalid-limits-service");
+      return {fn, name, current: revisionReferenceForLimits(fn.serviceConfig.revision, match[3])};
+    });
+    need(new Set(references.map(ref => ref.name)).size === references.length, "duplicate-limits-function");
+    const output = new Array(snapshot.functions.length);
+    let next = 0;
+    await Promise.all(Array.from({length: Math.min(8, output.length)}, async () => {
+      while (next < output.length) {
+        const index = next++, {fn, name, current} = references[index];
+        const service = await get("run.googleapis.com", `/v2/${fn.serviceConfig.service}`);
+        const revisionValue = await get("run.googleapis.com", `/v2/${fn.serviceConfig.service}/revisions/${current}`);
+        need(service.state === "AVAILABLE" && revisionValue.state === "AVAILABLE", "limits-metadata-unavailable");
+        const s = service.value, r = revisionValue.value;
+        need(s.name === fn.serviceConfig.service && r.name === `${s.name}/revisions/${current}`, "limits-resource-mismatch");
+        need(s.scaling?.scalingMode === undefined || ["AUTOMATIC", "SCALING_MODE_UNSPECIFIED"].includes(s.scaling.scalingMode),
+          "limits-automatic-scaling-required");
+        const revisionMatches = value => [current, r.name,
+          r.name.replace(`projects/${projectId}/`, `projects/${projectNumber}/`),
+          r.name.replace(`projects/${projectNumber}/`, `projects/${projectId}/`)].includes(value);
+        const latestOnly = (rows, observed) => {
+          // The Service API defines absent/empty configured traffic as latest100.
+          // Observed traffic must still explicitly confirm the serving revision.
+          if (!observed && (rows === undefined || Array.isArray(rows) && rows.length === 0)) return true;
+          if (!Array.isArray(rows) || rows.length !== 1) return false;
+          const row = rows[0], latest = row?.type === "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST";
+          return row?.percent === 100 && (row.tag === undefined || row.tag === "") &&
+            (latest || row.type === "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION") &&
+            (row.revision === undefined ? latest && !observed : revisionMatches(row.revision));
+        };
+        const serviceMaximum = maximum(s.scaling), revisionMaximum = maximum(r.scaling);
+        const configured = [serviceMaximum, revisionMaximum].filter(value => value !== null);
+        output[index] = {name, revision: current, serviceMaximum, revisionMaximum,
+          effectiveMaximum: configured.length ? Math.min(...configured) : null,
+          ready: s.terminalCondition?.state === "CONDITION_SUCCEEDED" &&
+            s.latestReadyRevision === r.name && s.latestCreatedRevision === r.name && s.reconciling !== true &&
+            (s.generation === undefined || s.observedGeneration === s.generation),
+          allTrafficOnLatestRevision: fn.serviceConfig.allTrafficOnLatestRevision === true &&
+            latestOnly(s.traffic, false) && latestOnly(s.trafficStatuses, true)};
+      }
+    }));
+    need(new Set(output.map(value => value.name)).size === output.length, "duplicate-limits-function");
+    return {projectId, functions: output.sort((a, b) => a.name.localeCompare(b.name))};
+  }
+  function revisionReferenceForLimits(revisionName, serviceName) {
+    need(typeof revisionName === "string" && revisionName.length <= 150 && revisionName.startsWith(`${serviceName}-`) &&
+      /^[a-z0-9-]+$/.test(revisionName), "invalid-limits-revision");
+    return revisionName;
+  }
   return {
     async snapshot() {
       try {
@@ -214,6 +277,7 @@ export function createBindingEvidenceProvider({projectId, region, tokenProvider,
       } catch (error) {throw new BindingEvidenceProviderError(error instanceof BindingRepairProviderError && error.code === "provider-authentication-failed"
         ? "provider-authentication-failed" : "evidence-snapshot-unavailable");}
     },
+    limits,
     async operation(name) {
       need(projectNumber !== undefined, "verified-snapshot-required"); operationReference(name);
       let value;
