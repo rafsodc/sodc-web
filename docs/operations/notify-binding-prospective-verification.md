@@ -110,6 +110,9 @@ The operator transport is a separate review gate; the GET-only comparator cannot
 execute these steps. Review a transport that submits the approved request once,
 keeps authentication out of arguments/logs/files, and retains the response safely.
 Do not substitute a broad deploy or a raw Firebase deployment workaround.
+The [one-request operator command](./production-notify-once.md) is prepared
+separately and still requires independent review and exact Production approval;
+preparing its code or records authorizes no submission.
 
 Immediately before submission, repeat the **before** comparison and review checks.
 Then durably record the target claim and intent before any provider write. The

@@ -4,6 +4,7 @@ import path from "node:path";
 import {createHash, randomUUID} from "node:crypto";
 import {BindingRepairError, REGION, TARGET, reviewTemplate} from "./notify-secret-binding-repair-lib.mjs";
 import {digest} from "./functions-config-guard-lib.mjs";
+import {validateProductionOperatorPlan, productionOperatorReviewTemplate} from "./production-notify-once-lib.mjs";
 
 const RECORDS = new Set(["proposal.json", "review-template.json", "review.json", "intent.json", "operation.json"]);
 const MAX_JSON_BYTES = 2 * 1024 * 1024;
@@ -328,4 +329,104 @@ export async function initializeProspectiveEvidenceDirectory(outputDirectory, op
       reportSchemaVersion: report.schemaVersion, reportSha256, comparisonKeyPresent: false}));
     return {outputDirectory, reportSha256, comparisonKeyPresent: false};
   } catch (error) {failure("prospective-evidence-initialization-failed", error);}
+}
+
+const PRODUCTION_OPERATOR_PROJECT = "sodc-web-production";
+const PRODUCTION_OPERATOR_TARGET = `projects/${PRODUCTION_OPERATOR_PROJECT}/locations/${REGION}/functions/${TARGET}`;
+function productionOperatorMetadata(plan) {
+  return {planSha256: digest(plan), projectId: PRODUCTION_OPERATOR_PROJECT, target: PRODUCTION_OPERATOR_TARGET};
+}
+function productionOperatorMarker(metadata) {
+  return {schemaVersion: "sodc-production-notify-operator-run/v1", ...metadata};
+}
+async function assertProductionOperatorRun(runDirectory, plan) {
+  const metadata = productionOperatorMetadata(plan);
+  const storedPlan = await privateRead(runDirectory, "plan.json");
+  const storedRequest = await privateRead(runDirectory, "request.json");
+  const marker = await privateRead(runDirectory, "initialized.json");
+  need(digest(storedPlan) === metadata.planSha256 && digest(storedRequest) === digest(plan.request),
+    "production-operator-stored-plan-or-request-mismatch");
+  const expected = productionOperatorMarker(metadata);
+  need(exactKeys(marker, Object.keys(expected)) && digest(marker) === digest(expected), "production-operator-initialization-incomplete");
+}
+function productionOperatorIntent(plan, value) {
+  need(exactKeys(value, ["schemaVersion", "projectId", "target", ...Object.keys(plan.context), "startedAt"]) &&
+    value.schemaVersion === "sodc-notify-binding-operator-intent/v1" && value.projectId === PRODUCTION_OPERATOR_PROJECT &&
+    value.target === PRODUCTION_OPERATOR_TARGET && Object.entries(plan.context).every(([name, hash]) => value[name] === hash) &&
+    typeof value.startedAt === "string" && value.startedAt.length <= 40 && Number.isFinite(Date.parse(value.startedAt)) &&
+    Date.parse(value.startedAt) >= Date.parse(plan.createdAt), "invalid-production-operator-intent");
+}
+
+/** Prepare private, key-free operator records. Preparation never claims a target. */
+export async function initializeProductionOperatorRun(runDirectory, options) {
+  need(exactKeys(options, ["plan"]), "invalid-production-operator-initialize-options");
+  const plan = validateProductionOperatorPlan(options.plan);
+  const metadata = productionOperatorMetadata(plan);
+  const planBytes = jsonBytes(plan), requestBytes = jsonBytes(plan.request);
+  const reviewBytes = jsonBytes(productionOperatorReviewTemplate(plan));
+  absoluteDirectory(runDirectory);
+  need(runDirectory === plan.paths.runDirectory, "production-operator-run-path-mismatch");
+  try {
+    await checkAncestors(path.dirname(runDirectory), {create: true});
+    try {await fs.mkdir(runDirectory, {mode: 0o700});}
+    catch (error) {if (error.code === "EEXIST") throw new BindingRepairError("production-operator-run-already-exists"); throw error;}
+    await checkPrivateDirectory(runDirectory);
+    await syncDirectory(path.dirname(runDirectory));
+    await durableWrite(runDirectory, "plan.json", planBytes);
+    await durableWrite(runDirectory, "request.json", requestBytes);
+    await durableWrite(runDirectory, "review-template.json", reviewBytes);
+    await durableWrite(runDirectory, "initialized.json", jsonBytes(productionOperatorMarker(metadata)));
+    return {runDirectory, ...metadata};
+  } catch (error) {failure("production-operator-initialization-failed", error);}
+}
+
+/** A separate one-shot journal; it never reads or changes the original v1 claims. */
+export async function openProductionOperatorStore(options) {
+  need(exactKeys(options, ["runDirectory", "lockDirectory", "plan", "reviewSha256"]), "invalid-production-operator-store-options");
+  const {runDirectory, lockDirectory, reviewSha256} = options;
+  absoluteDirectory(runDirectory); absoluteDirectory(lockDirectory);
+  need(typeof reviewSha256 === "string" && /^[a-f0-9]{64}$/.test(reviewSha256), "invalid-production-operator-review-hash");
+  const plan = validateProductionOperatorPlan(options.plan), metadata = productionOperatorMetadata(plan);
+  need(runDirectory === plan.paths.runDirectory, "production-operator-run-path-mismatch");
+  await assertProductionOperatorRun(runDirectory, plan);
+  const claim = {schemaVersion: "sodc-production-notify-operator-claim/v1", ...metadata, reviewSha256,
+    operatorToolBindingSha256: digest(plan.operatorToolBinding), runDirectory};
+  const lockName = `${PRODUCTION_OPERATOR_PROJECT}.json`;
+  const assertUnclaimed = async () => {
+    await assertProductionOperatorRun(runDirectory, plan);
+    try {
+      await checkPrivateDirectory(lockDirectory);
+      try {await fs.lstat(path.join(lockDirectory, lockName));}
+      catch (error) {if (error.code === "ENOENT") return; throw error;}
+      need(false, "production-operator-target-already-claimed");
+    } catch (error) {
+      if (error.code === "ENOENT") return;
+      failure("production-operator-claim-inspection-failed", error);
+    }
+  };
+  return {
+    assertUnclaimed,
+    async beginIntent(value) {
+      const intent = structuredClone(value); productionOperatorIntent(plan, intent);
+      await assertUnclaimed();
+      need(await privateRead(runDirectory, "intent.json", {optional: true}) === null &&
+        await privateRead(runDirectory, "operation.json", {optional: true}) === null, "production-operator-application-already-started");
+      await ensureLockDirectory(lockDirectory);
+      // A claim is durable before the intent. Neither is removed on any failure.
+      await durableWrite(lockDirectory, lockName, jsonBytes(claim), "production-operator-target-already-claimed");
+      await durableWrite(runDirectory, "intent.json", jsonBytes(intent));
+    },
+    async writeOperation(value) {
+      const acknowledgement = structuredClone(value);
+      need(exactKeys(acknowledgement, ["name"]) && typeof acknowledgement.name === "string" &&
+        new RegExp(`^projects/${PRODUCTION_OPERATOR_PROJECT}/locations/${REGION}/operations/[A-Za-z0-9_-]+$`).test(acknowledgement.name),
+      "invalid-production-operator-operation");
+      await assertProductionOperatorRun(runDirectory, plan);
+      const intent = await privateRead(runDirectory, "intent.json", {optional: true});
+      need(intent !== null, "production-operator-operation-without-intent"); productionOperatorIntent(plan, intent);
+      const storedClaim = await privateRead(lockDirectory, lockName);
+      need(exactKeys(storedClaim, Object.keys(claim)) && digest(storedClaim) === digest(claim), "production-operator-claim-mismatch");
+      await durableWrite(runDirectory, "operation.json", jsonBytes(acknowledgement));
+    },
+  };
 }
