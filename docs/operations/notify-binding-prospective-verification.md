@@ -41,8 +41,10 @@ backlog replay or delivery-mode change is implicit in this procedure.
    source declarations are not proof that that source is currently deployed.
 2. Make a fresh [prospective capture](./notify-binding-evidence.md#capture-prospective-observations)
    into a new private directory outside source checkouts, original runs and shared
-   claims. Capture binds Function components, invokers, schedulers and secret
-   versions/policies. Keep `comparison.key` private and out of evidence archives.
+   claims. Capture binds Function components, invokers and schedulers. Secret
+   version/policy metadata covers the four target secrets in the table above;
+   it does not inventory other secrets' versions or IAM policies. Keep
+   `comparison.key` private and out of evidence archives.
 3. Capture a matching limit sidecar for every Function: its Run service maximum,
    latest serving revision maximum, readiness and traffic. The observed inventory
    is 85 Functions: 82 effective maxima of 20 and three maintenance maxima of 1.
@@ -153,9 +155,11 @@ node scripts/notify-binding-prospective.mjs --phase after \
 ```
 
 The **after** comparator must preserve all 84 unrelated whole-Function fingerprints,
-normalized invoker policies, scheduler configurations, secret versions and secret
-policies. For the target it compares the union of actual component paths, including
-added/removed and unknown fields. It may allow only:
+normalized invoker policies, scheduler configurations, and version/policy metadata
+for the four target secrets. Other Functions' secret references are protected by
+their whole-Function fingerprints; other secrets' version state and IAM policies
+are outside this capture's scope. For the target it compares the union of actual
+component paths, including added/removed and unknown fields. It may allow only:
 
 - Exactly the four approved secret references, with no extra key, version, project
   or grant. The prepared request retains the existing Stripe reference spelling;
@@ -186,12 +190,16 @@ verification does not accept the old v1 contract or grant release authority.
 Results are `BASELINE_MATCH`, `METADATA_VERIFIED_WITH_PROVENANCE_LIMIT`, `PENDING`
 or `FAIL`. All retain false release/Production authorization. Repeat only the
 read-only after phase with a new output directory when an operation is pending.
+The inventory snapshot precedes the operation read. If an operation completes
+between those reads, the earlier snapshot can produce `FAIL` rather than a final
+observation. Retain that report and repeat only the read-only after comparison
+into a new directory; a transient mismatch does not authorize another update.
 `BASELINE_MATCH` exits 0; `FAIL` or a local/provider block exits 1; `PENDING` and
 `METADATA_VERIFIED_WITH_PROVENANCE_LIMIT` exit 3. A qualified result deliberately
 cannot be chained as successful deployment authorization.
 
 After separately approved metadata acceptance, collect fresh ordinary Production
 guard/full preflight from the final clean integration commit. Runtime/delivery
-acceptance still needs its own exact scope; metadata verifies bindings/direct
-grants, not key validity or delivered mail. Keep #744 open until the agreed
-Production acceptance is complete.
+acceptance still needs its own exact scope; metadata verifies the four target
+bindings/direct grants, not key validity or delivered mail. Keep #744 open until
+the agreed Production acceptance is complete.

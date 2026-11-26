@@ -200,6 +200,26 @@ describe("effective instance limit evidence", () => {
     expect(row.effectiveMaximum).toBe(kind === "both" ? null : 20);
   });
 
+  it.each([
+    ["empty", "service", {}], ["empty", "revision", {}], ["empty", "both", {}],
+    ["minimum-only", "service", {minInstanceCount: 0}],
+    ["minimum-only", "revision", {minInstanceCount: 0}],
+    ["minimum-only", "both", {minInstanceCount: 0}],
+  ])("keeps a %s %s scaling object without maxInstanceCount unconfigured", async (_shape, kind, scaling) => {
+    const f = limitsFixture({modifyService: value => {if (kind !== "revision") value.scaling = structuredClone(scaling);},
+      modifyRevision: value => {if (kind !== "service") value.scaling = structuredClone(scaling);}});
+    const row = (await f.read()).functions.find(value => value.name === target);
+    expect(row).toMatchObject({
+      serviceMaximum: kind === "revision" ? 20 : null,
+      revisionMaximum: kind === "service" ? 20 : null,
+      effectiveMaximum: kind === "both" ? null : 20,
+      ready: true,
+      allTrafficOnLatestRevision: true,
+    });
+    expect(f.fetchImpl).toHaveBeenCalledTimes(4);
+    for (const [, options] of f.fetchImpl.mock.calls) expect(options.method).toBe("GET");
+  });
+
   it.each([null, 0, -1, 1.5, "20"])("rejects an invalid explicit maximum %j", async maximum => {
     const f = limitsFixture({modifyService: value => {value.scaling.maxInstanceCount = maximum;}});
     await expect(f.read()).rejects.toThrow("invalid-run-maximum");

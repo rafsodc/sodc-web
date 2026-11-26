@@ -1,5 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {digest} from "./functions-config-guard-lib.mjs";
+import {createHmac} from "node:crypto";
+import {canonical, digest} from "./functions-config-guard-lib.mjs";
 import {captureBindingEvidence} from "./notify-binding-evidence-lib.mjs";
 import {compareProspectiveBindingEvidence, prospectiveBindingRequest, validateProspectiveInputs} from "./notify-binding-prospective-lib.mjs";
 import {fixture, KEY, NOW, clone} from "./test-fixtures/notify-binding-repair-fixture.mjs";
@@ -343,5 +344,86 @@ describe("prospective metadata comparison", () => {
     const f = testCase(); f.after.operation.error = {code: 7, message: "PRIVATE_PROVIDER_MESSAGE", token: "PRIVATE_TOKEN"};
     const text = JSON.stringify(rejected(f.after));
     for (const marker of ["PRIVATE_PROVIDER_MESSAGE", "PRIVATE_TOKEN", "PRIVATE_ENV_VALUE_744", "ops-fixture@example.invalid", "allUsers"]) expect(text).not.toContain(marker);
+  });
+});
+
+describe("independent safety boundaries", () => {
+  it("G1 rejects deletion of a captured leaf even when its permitted parent changes", () => {
+    const f = testCase();
+    delete f.target.serviceConfig.service;
+    rejected(f.after, "protected-target-component-drift");
+  });
+  it("G2 rejects a maintenance cap raised in both the bound baseline and observation", () => {
+    const f = testCase({maintenance: true});
+    for (const limits of [f.after.limitsBaseline, f.after.limitsObservation]) {
+      const maintenance = limits.functions.find(row => row.name === "recoverNotificationDeliveries");
+      maintenance.revisionMaximum = 20;
+      maintenance.effectiveMaximum = 20;
+    }
+    // Isolate the maintenance ceiling from the independent sidecar-digest guard.
+    f.after.intent.limitsBaselineSha256 = digest(f.after.limitsBaseline);
+    rejected(f.after, "unapproved-baseline-limit");
+  });
+  it("G3 rejects non-latest observed target traffic while Function metadata still claims latest", () => {
+    const f = testCase();
+    f.after.limitsObservation.functions.find(row => row.name === TARGET).allTrafficOnLatestRevision = false;
+    expect(f.target.serviceConfig.allTrafficOnLatestRevision).toBe(true);
+    rejected(f.after, "invalid-limit-observation");
+  });
+  it("G4 rejects an invented effective20 with both explicit maxima absent in both bound observations", () => {
+    const f = testCase();
+    for (const limits of [f.after.limitsBaseline, f.after.limitsObservation]) {
+      const target = limits.functions.find(row => row.name === TARGET);
+      target.serviceMaximum = null;
+      target.revisionMaximum = null;
+      target.effectiveMaximum = 20;
+    }
+    f.after.intent.limitsBaselineSha256 = digest(f.after.limitsBaseline);
+    rejected(f.after, "unproven-effective-limit");
+  });
+  it("G5 rejects reuse of the captured revision with otherwise coherent provenance and limits", () => {
+    const f = testCase();
+    const original = f.after.capture.baseline.targetObservation.revision;
+    f.target.serviceConfig.revision = original;
+    f.after.provenance.currentRevision.value.name = `${SERVICE}/revisions/${original}`;
+    f.after.limitsObservation.functions.find(row => row.name === TARGET).revision = original;
+    rejected(f.after, "target-revision-or-update-not-attributed");
+  });
+  it.each(["source", "resolvedSource"])("G6 rejects non-null wrong %s even when Function and operation builds agree", field => {
+    const f = testCase();
+    const wrong = {bucket: BUCKET, object: "different-function-source.zip", generation: "7"};
+    f.after.provenance.functionBuild.value[field] = clone(wrong);
+    f.after.provenance.operationBuild.value[field] = clone(wrong);
+    expect(f.after.provenance.functionBuild).toEqual(f.after.provenance.operationBuild);
+    rejected(f.after, "build-source-context-mismatch");
+  });
+  it("G8 rejects omitted maximum unless the captured actual component was exactly20", () => {
+    const f = testCase({omission: true});
+    const original = clone(f.before.snapshot.functions[0]);
+    original.serviceConfig.maxInstanceCount = 30;
+    // A synthetic older component tree is needed because v1 capture itself
+    // refuses non20. Recompute every affected HMAC, rather than corrupting a
+    // digest and accidentally exercising a different comparison-key guard.
+    const fingerprint = value => createHmac("sha256", KEY).update(JSON.stringify(canonical(value))).digest("hex");
+    const fields = {};
+    const walk = (value, pointer) => {
+      fields[fingerprint(pointer)] = fingerprint({present: true, value});
+      if (value && typeof value === "object") for (const [name, child] of Object.entries(value)) {
+        walk(child, `${pointer}/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`);
+      }
+    };
+    walk(original, "");
+    const captured = f.after.capture;
+    captured.targetComponents.fullHmac = fingerprint(original);
+    captured.targetComponents.fieldHmacs = fields;
+    captured.targetComponents.selectedHmacs["/serviceConfig"] = fingerprint({present: true, value: original.serviceConfig});
+    captured.targetComponents.selectedHmacs["/serviceConfig/maxInstanceCount"] = fingerprint({present: true, value: 30});
+    const protectedFunction = clone(original);
+    delete protectedFunction.updateTime; delete protectedFunction.stateMessages;
+    delete protectedFunction.serviceConfig.revision; delete protectedFunction.serviceConfig.secretEnvironmentVariables;
+    captured.baseline.functions[TARGET] = fingerprint(protectedFunction);
+    captured.checks.targetMaxInstances = 30;
+    f.after.intent.captureReportSha256 = digest(captured);
+    rejected(f.after, "captured-maximum-not20");
   });
 });
