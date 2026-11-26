@@ -21,6 +21,8 @@
     "operations:dev-stripe-webhook": "node scripts/dev-stripe-webhook-repair.mjs",
     "operations:notify-binding-evidence": "node scripts/notify-binding-evidence.mjs",
     "operations:notify-binding-prospective": "node scripts/notify-binding-prospective.mjs",
+    "operations:production-notify-once": "node scripts/production-notify-once.mjs",
+    "operations:prepare-production-notify-once": "node scripts/prepare-production-notify-once.mjs",
     "deployment:preflight": "node scripts/deployment-preflight.mjs",
     "deployment:functions-config": "node scripts/functions-config-guard.mjs",
     "deploy:functions": "node scripts/functions-deploy.mjs",
