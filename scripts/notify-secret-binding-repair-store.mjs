@@ -281,3 +281,51 @@ export async function initializeBindingEvidenceDirectory(outputDirectory, option
     return {outputDirectory, reportSha256, comparisonKeyPresent: capture};
   } catch (error) {failure("binding-evidence-initialization-failed", error);}
 }
+
+/** Read-only access to an initialized prospective capture. Never copies its key. */
+export async function readBindingEvidenceCapture(directory) {
+  absoluteDirectory(directory);
+  const initialized = await privateRead(directory, "initialized.json");
+  const report = await privateRead(directory, "report.json");
+  need(exactKeys(initialized, ["schemaVersion", "reportSchemaVersion", "reportSha256", "comparisonKeyPresent"]) &&
+    initialized.schemaVersion === "sodc-notify-binding-evidence-private-run/v1" &&
+    initialized.reportSchemaVersion === "sodc-notify-binding-capture/v1" && initialized.comparisonKeyPresent === true &&
+    report?.schemaVersion === initialized.reportSchemaVersion && initialized.reportSha256 === digest(report),
+  "invalid-prospective-capture-initialization");
+  const comparisonKey = await privateRead(directory, "comparison.key", {key: true});
+  return {report, comparisonKey};
+}
+
+/** These input readers never create missing files or read credentials. */
+export async function readProspectiveJsonInput(file) {
+  need(typeof file === "string" && path.isAbsolute(file) && path.normalize(file) === file &&
+    /^[A-Za-z0-9_.-]+\.json$/.test(path.basename(file)), "invalid-prospective-input-path");
+  return privateRead(path.dirname(file), path.basename(file));
+}
+
+export async function readProspectiveOperationRecords(directory) {
+  absoluteDirectory(directory);
+  return {intent: await privateRead(directory, "intent.json"), acknowledgement: await privateRead(directory, "operation.json")};
+}
+
+/** Prospective reports contain no comparison key and confer no write authority. */
+export async function initializeProspectiveEvidenceDirectory(outputDirectory, options) {
+  need(exactKeys(options, ["report"]), "invalid-prospective-report-options");
+  const report = options.report;
+  need(report?.schemaVersion === "sodc-notify-binding-prospective/v1" && report.readOnly === true &&
+    report.productionAuthorized === false && report.releaseAuthorized === false && report.originalContractAccepted === false,
+  "invalid-prospective-report");
+  absoluteDirectory(outputDirectory);
+  const bytes = jsonBytes(report), reportSha256 = digest(report);
+  try {
+    await checkAncestors(path.dirname(outputDirectory), {create: true});
+    try {await fs.mkdir(outputDirectory, {mode: 0o700});}
+    catch (error) {if (error.code === "EEXIST") throw new BindingRepairError("evidence-directory-already-exists"); throw error;}
+    await checkPrivateDirectory(outputDirectory);
+    await syncDirectory(path.dirname(outputDirectory));
+    await durableWrite(outputDirectory, "report.json", bytes);
+    await durableWrite(outputDirectory, "initialized.json", jsonBytes({schemaVersion: "sodc-notify-binding-prospective-private-run/v1",
+      reportSchemaVersion: report.schemaVersion, reportSha256, comparisonKeyPresent: false}));
+    return {outputDirectory, reportSha256, comparisonKeyPresent: false};
+  } catch (error) {failure("prospective-evidence-initialization-failed", error);}
+}

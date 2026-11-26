@@ -13,12 +13,17 @@ The `operations:notify-binding-evidence` command collects evidence for
 applies changes, accepts risk, grants a waiver, replays a request or authorizes a
 release. There is no apply, unlock or acceptance flag.
 
+The separate [prospective Production comparison procedure](./notify-binding-prospective-verification.md)
+adds a GET-only before/after comparator for a future reviewed operation. It does
+not replace the original failed Dev verification or supply a mutation engine.
+
 ## Current Dev boundary
 
 The known Dev update completed, and the expected three Notify version-1 bindings
 are present alongside Stripe version 1. The target is active with max instances
 20. Read-only comparison found the other 84 Functions, all 85 invoker policies,
-the five Scheduler configurations and the secret version/policy baselines intact.
+the five Scheduler configurations and the four target secrets' version/policy
+baselines intact.
 Only the target's normalized whole-Function fingerprint changed. Google created
 a new build and container image.
 

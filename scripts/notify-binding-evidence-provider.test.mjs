@@ -86,7 +86,7 @@ describe("GET-only evidence provider boundary", () => {
 
   it("exposes no mutation methods and delegates the bounded inventory via GET only", async () => {
     const f = fixture();
-    expect(Object.keys(f.provider).sort()).toEqual(["operation", "provenance", "snapshot"]);
+    expect(Object.keys(f.provider).sort()).toEqual(["limits", "operation", "provenance", "snapshot"]);
     expect(f.provider.patchBindings).toBeUndefined();
     const snapshot = await f.provider.snapshot();
     expect(snapshot.project).toEqual(f.data.project);
@@ -146,6 +146,139 @@ describe("GET-only evidence provider boundary", () => {
   ])("fails closed on malformed or foreign operation response fields", async modify => {
     const f = fixture(); await f.provider.snapshot(); modify(f.data);
     await expect(f.provider.operation(operationName)).rejects.toThrow(/^Notify binding evidence blocked: [a-z-]+\.$/);
+  });
+});
+
+describe("effective instance limit evidence", () => {
+  function limitsFixture({modifyService, modifyRevision, override} = {}) {
+    const f = fixture({fetchOverride: (url, options, data) => {
+      if (override) {const result = override(url, options, data); if (result !== undefined) return result;}
+      if (!matchesEndpoint(url, "run.googleapis.com", "/v2/")) return;
+      const fn = data.functions.find(value => url.startsWith(`https://run.googleapis.com/v2/${value.serviceConfig.service}`));
+      const serviceRef = fn.serviceConfig.service, revisionRef = `${serviceRef}/revisions/${fn.serviceConfig.revision}`;
+      if (url.endsWith(`/revisions/${fn.serviceConfig.revision}`)) {
+        const value = {name: revisionRef, scaling: {maxInstanceCount: fn === data.functions[0] ? 20 : 1}, PRIVATE: "PRIVATE_REVISION_ENV"};
+        modifyRevision?.(value); return value;
+      }
+      const value = {name: serviceRef, scaling: {maxInstanceCount: 20}, latestReadyRevision: revisionRef,
+        latestCreatedRevision: revisionRef, terminalCondition: {state: "CONDITION_SUCCEEDED"},
+        traffic: [{type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100}],
+        trafficStatuses: [{type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: revisionRef, percent: 100}], PRIVATE: "PRIVATE_SERVICE_ENV"};
+      modifyService?.(value); return value;
+    }});
+    f.data.functions[1].serviceConfig.revision = "existingsender-00001-new";
+    for (const fn of f.data.functions) fn.serviceConfig.allTrafficOnLatestRevision = true;
+    return {...f, read: async () => {const snapshot = await f.provider.snapshot(); f.fetchImpl.mockClear(); return f.provider.limits(snapshot);}};
+  }
+
+  it("requires a verified snapshot before any limits read", async () => {
+    const f = limitsFixture(); await expect(f.provider.limits({functions: f.data.functions})).rejects.toThrow("verified-snapshot-required");
+    expect(f.fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("takes the lower explicit cap and emits only safe readiness and numeric evidence via bounded GETs", async () => {
+    const f = limitsFixture(), result = await f.read();
+    expect(result).toEqual({projectId, functions: [
+      {name: "existingSender", revision: "existingsender-00001-new", serviceMaximum: 20, revisionMaximum: 1, effectiveMaximum: 1, ready: true, allTrafficOnLatestRevision: true},
+      {name: target, revision: currentRevision, serviceMaximum: 20, revisionMaximum: 20, effectiveMaximum: 20, ready: true, allTrafficOnLatestRevision: true},
+    ]});
+    expect(JSON.stringify(result)).not.toMatch(/PRIVATE|environment|annotations|secret/);
+    expect(f.fetchImpl).toHaveBeenCalledTimes(4);
+    for (const [url, options] of f.fetchImpl.mock.calls) {
+      expect(matchesEndpoint(url, "run.googleapis.com", "/v2/")).toBe(true);
+      expect(options).toMatchObject({method: "GET", redirect: "error"});
+      expect(options.body).toBeUndefined(); expect(options.signal).toBeInstanceOf(AbortSignal);
+    }
+  });
+
+  it.each(["service", "revision", "both"])("keeps an absent %s cap absent rather than defaulting to20", async kind => {
+    const f = limitsFixture({modifyService: value => {if (kind !== "revision") delete value.scaling;},
+      modifyRevision: value => {if (kind !== "service") delete value.scaling;}});
+    const result = await f.read(), row = result.functions.find(value => value.name === target);
+    expect(row.serviceMaximum).toBe(kind === "revision" ? 20 : null);
+    expect(row.revisionMaximum).toBe(kind === "service" ? 20 : null);
+    expect(row.effectiveMaximum).toBe(kind === "both" ? null : 20);
+  });
+
+  it.each([
+    ["empty", "service", {}], ["empty", "revision", {}], ["empty", "both", {}],
+    ["minimum-only", "service", {minInstanceCount: 0}],
+    ["minimum-only", "revision", {minInstanceCount: 0}],
+    ["minimum-only", "both", {minInstanceCount: 0}],
+  ])("keeps a %s %s scaling object without maxInstanceCount unconfigured", async (_shape, kind, scaling) => {
+    const f = limitsFixture({modifyService: value => {if (kind !== "revision") value.scaling = structuredClone(scaling);},
+      modifyRevision: value => {if (kind !== "service") value.scaling = structuredClone(scaling);}});
+    const row = (await f.read()).functions.find(value => value.name === target);
+    expect(row).toMatchObject({
+      serviceMaximum: kind === "revision" ? 20 : null,
+      revisionMaximum: kind === "service" ? 20 : null,
+      effectiveMaximum: kind === "both" ? null : 20,
+      ready: true,
+      allTrafficOnLatestRevision: true,
+    });
+    expect(f.fetchImpl).toHaveBeenCalledTimes(4);
+    for (const [, options] of f.fetchImpl.mock.calls) expect(options.method).toBe("GET");
+  });
+
+  it.each([null, 0, -1, 1.5, "20"])("rejects an invalid explicit maximum %j", async maximum => {
+    const f = limitsFixture({modifyService: value => {value.scaling.maxInstanceCount = maximum;}});
+    await expect(f.read()).rejects.toThrow("invalid-run-maximum");
+  });
+  it("distinguishes an explicit null scaling object from an absent one", async () => {
+    const f = limitsFixture({modifyRevision: value => {value.scaling = null;}});
+    await expect(f.read()).rejects.toThrow("invalid-run-scaling");
+  });
+  it.each(["ready", "created", "terminal", "traffic"])("does not claim readiness with stale %s metadata", async kind => {
+    const f = limitsFixture({modifyService: value => {
+      if (kind === "ready") value.latestReadyRevision += "-old";
+      if (kind === "created") value.latestCreatedRevision += "-other";
+      if (kind === "terminal") value.terminalCondition.state = "CONDITION_FAILED";
+    }});
+    if (kind === "traffic") f.data.functions[0].serviceConfig.allTrafficOnLatestRevision = false;
+    const row = (await f.read()).functions.find(value => value.name === target);
+    expect(row.ready && row.allTrafficOnLatestRevision).toBe(false);
+  });
+  it.each(["old observed", "old configured", "split", "tagged", "missing observed", "no observed revision", "reconciling", "unobserved generation"])(
+    "does not use the latest cap as serving proof with %s traffic", async kind => {
+      const f = limitsFixture({modifyService: value => {
+        if (kind === "old observed") value.trafficStatuses[0].revision += "-old";
+        if (kind === "old configured") value.traffic = [{type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: value.latestReadyRevision + "-old", percent: 100}];
+        if (kind === "split") value.trafficStatuses.push({...value.trafficStatuses[0], percent: 0});
+        if (kind === "tagged") value.trafficStatuses[0].tag = "old";
+        if (kind === "missing observed") delete value.trafficStatuses;
+        if (kind === "no observed revision") {value.trafficStatuses[0].type = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"; delete value.trafficStatuses[0].revision;}
+        if (kind === "reconciling") value.reconciling = true;
+        if (kind === "unobserved generation") {value.generation = "3"; value.observedGeneration = "2";}
+      }});
+      const row = (await f.read()).functions.find(value => value.name === target);
+      expect(row.ready && row.allTrafficOnLatestRevision).toBe(false);
+    });
+  it.each([undefined, []])("accepts the documented configured latest100 default %j only with observed latest traffic", async traffic => {
+    const f = limitsFixture({modifyService: value => {value.traffic = traffic;}});
+    expect((await f.read()).functions.every(row => row.ready && row.allTrafficOnLatestRevision)).toBe(true);
+  });
+  it("rejects manual scaling which ignores the automatic maximum", async () => {
+    const f = limitsFixture({modifyService: value => {value.scaling.scalingMode = "MANUAL"; value.scaling.manualInstanceCount = 100;}});
+    await expect(f.read()).rejects.toThrow("limits-automatic-scaling-required");
+  });
+  it.each(["project", "region", "service", "revision", "duplicate"])("checks the complete %s reference inventory before Run GETs", async kind => {
+    const f = limitsFixture(), snapshot = await f.provider.snapshot(); f.fetchImpl.mockClear();
+    const fn = snapshot.functions[1];
+    if (kind === "project") fn.serviceConfig.service = fn.serviceConfig.service.replace(projectId, "foreign");
+    if (kind === "region") fn.serviceConfig.service = fn.serviceConfig.service.replace(region, "us-central1");
+    if (kind === "service") fn.serviceConfig.service += "-other";
+    if (kind === "revision") fn.serviceConfig.revision = "foreign-00001";
+    if (kind === "duplicate") snapshot.functions.push(clone(snapshot.functions[0]));
+    await expect(f.provider.limits(snapshot)).rejects.toThrow(); expect(f.fetchImpl).not.toHaveBeenCalled();
+  });
+  it("rejects a foreign response resource even at the expected URL", async () => {
+    const f = limitsFixture({modifyRevision: value => {value.name += "-wrong";}});
+    await expect(f.read()).rejects.toThrow("limits-resource-mismatch");
+  });
+  it("fails closed when serving metadata is unavailable and does not leak the body", async () => {
+    const f = limitsFixture({override: url => matchesEndpoint(url, "run.googleapis.com", "/v2/") ?
+      new Response("PRIVATE_FAILURE_BODY", {status: 403}) : undefined});
+    await expect(f.read()).rejects.toThrow(/^Notify binding evidence blocked: limits-metadata-unavailable\.$/);
   });
 });
 

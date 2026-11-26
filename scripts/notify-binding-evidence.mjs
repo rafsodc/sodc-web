@@ -84,6 +84,9 @@ export function parseEvidenceArguments(args) {
   }
   validateOptions(result); return result;
 }
+
+// The prospective GET-only command shares the reviewed alias/path inspection.
+export {filesystemPath as resolveEvidenceFilesystemPath, canonicalDirectory as isCanonicalEvidenceDirectory};
 function git(root, args) {
   try {return execFileSync("git", args, {cwd: root, encoding: "utf8", timeout: 30_000, maxBuffer: 20 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"]});}
   catch {throw new BindingEvidenceError("tool-git-read-failed");}
