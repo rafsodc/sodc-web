@@ -14,6 +14,7 @@ const clone = value => structuredClone(value);
 const operatorTool = {gitSha: "1".repeat(40), tree: "2".repeat(40), trackedSha256: "3".repeat(64), nodeMajor: 24};
 const verifierTool = {gitSha: REVIEWED_VERIFIER_COMMIT, tree: "5".repeat(40), trackedSha256: "6".repeat(64), nodeMajor: 24};
 const acknowledgement = () => ({name: OPERATION, done: false, metadata: {target: TARGET_NAME, verb: "update"}});
+const responseFor = value => new Response(JSON.stringify(value), {status: 200, headers: {"content-type": "application/json"}});
 const failure = code => Object.assign(new Error(code), {code});
 async function privateJson(file, value) {
   await fs.writeFile(file, `${JSON.stringify(value, null, 2)}\n`, {mode: 0o600});
@@ -46,7 +47,13 @@ async function fixture({realStore = false} = {}) {
   const store = {assertUnclaimed: vi.fn(async () => {state.events.push("assert-unclaimed");}),
     beginIntent: vi.fn(async intent => {state.events.push("durable-claim", "durable-intent"); state.retained.intent = clone(intent);}),
     writeOperation: vi.fn(async value => {state.events.push("durable-operation"); state.retained.operation = clone(value);})};
-  const writer = {patchBindings: vi.fn(async () => {state.events.push("PATCH"); return acknowledgement();}), snapshot: vi.fn()};
+  let guardedFetch;
+  const writer = {patchBindings: vi.fn(async ({name, bindings}) => {
+    state.events.push("PATCH");
+    const response = await guardedFetch(EXPECTED_REQUEST.url, {method: "PATCH", redirect: "error", signal: AbortSignal.timeout(30_000),
+      body: JSON.stringify({name, serviceConfig: {secretEnvironmentVariables: bindings}})});
+    return response.json();
+  }), snapshot: vi.fn()};
   const result = () => ({status: "BASELINE_MATCH", reportPath: path.join(plan.paths.beforeOutputDirectory, "report.json"), reportSha256: digest(state.report)});
   const deps = {readJson: vi.fn(async file => {
     if (file === path.join(state.plan.paths.runDirectory, "plan.json")) return clone(state.plan);
@@ -55,8 +62,9 @@ async function fixture({realStore = false} = {}) {
     throw failure("unexpected-synthetic-input-path");
   }), readTool: vi.fn(async directory => clone(directory === root ? state.operatorTool : state.verifierTool)),
   readSource: vi.fn(async () => clone(state.source)), before: vi.fn(async () => {state.events.push("GET-before"); return result();}),
-  openStore: vi.fn(async () => store), writerFactory: vi.fn(() => writer), legacyLockDirectory: vi.fn(() => legacyLocks),
-  readClaims: vi.fn(async () => []), now: () => state.now};
+  openStore: vi.fn(async () => store), writerFactory: vi.fn(({fetchImpl}) => {guardedFetch = fetchImpl; return writer;}), legacyLockDirectory: vi.fn(() => legacyLocks),
+  readClaims: vi.fn(async () => []), now: () => state.now,
+  fetchImpl: vi.fn(async () => {state.events.push("HTTP"); return responseFor(acknowledgement());})};
   if (realStore) {
     await initializeProductionOperatorRun(plan.paths.runDirectory, {plan});
     await privateJson(path.join(plan.paths.runDirectory, "review.json"), review);
@@ -211,18 +219,32 @@ describe("one request and truthful acknowledgement", () => {
   });
   it.each(["malformed ack", "lost ack", "provider error", "ack write failure"])("retains intent and returns UNKNOWN without retry for %s", async kind => {
     const f = await fixture();
-    if (kind === "malformed ack") f.writer.patchBindings.mockResolvedValue({name: OPERATION, metadata: {target: TARGET_NAME, verb: "create"}});
-    if (kind === "lost ack") f.writer.patchBindings.mockResolvedValue(undefined);
-    if (kind === "provider error") f.writer.patchBindings.mockRejectedValue(new Error("PRIVATE_PROVIDER_ERROR_TOKEN"));
+    if (kind === "malformed ack") f.deps.fetchImpl.mockResolvedValue(responseFor({name: OPERATION, metadata: {target: TARGET_NAME, verb: "create"}}));
+    if (kind === "lost ack") f.deps.fetchImpl.mockResolvedValue(responseFor(undefined));
+    if (kind === "provider error") f.deps.fetchImpl.mockRejectedValue(new Error("PRIVATE_PROVIDER_ERROR_TOKEN"));
     if (kind === "ack write failure") f.store.writeOperation.mockRejectedValue(new Error("PRIVATE_ACK_FSYNC_ERROR"));
     const stdout = vi.fn(), stderr = vi.fn(); expect(await f.command(stdout, stderr)).toBe(3);
     expect(JSON.parse(stdout.mock.calls[0][0])).toMatchObject({status: "UNKNOWN_OUTCOME_OPERATOR_REVIEW_REQUIRED", providerWritesAttempted: 1, verificationComplete: false});
     expect(stdout.mock.calls[0][0]).not.toMatch(/PRIVATE|TOKEN|FSYNC/); expect(stderr).not.toHaveBeenCalled();
-    expect(f.writer.patchBindings).toHaveBeenCalledTimes(1); expect(f.state.retained.intent).toBeDefined();
+    expect(f.writer.patchBindings).toHaveBeenCalledTimes(1); expect(f.deps.fetchImpl).toHaveBeenCalledTimes(1); expect(f.state.retained.intent).toBeDefined();
+  });
+  it("reports a local provider callback failure as blocked with zero HTTP attempts and retains the claim", async () => {
+    const f = await fixture(); f.writer.patchBindings.mockRejectedValue(new Error("PRIVATE_LOCAL_CALLBACK_FAILURE"));
+    const stdout = vi.fn(), stderr = vi.fn(); expect(await f.command(stdout, stderr)).toBe(3);
+    expect(JSON.parse(stdout.mock.calls[0][0])).toMatchObject({status: "BLOCKED_BEFORE_DISPATCH_CLAIM_RETAINED", providerWritesAttempted: 0});
+    expect(stdout.mock.calls[0][0]).not.toContain("PRIVATE_LOCAL_CALLBACK_FAILURE"); expect(stderr).not.toHaveBeenCalled();
+    expect(f.writer.patchBindings).toHaveBeenCalledTimes(1); expect(f.deps.fetchImpl).not.toHaveBeenCalled();
+    expect(f.state.retained.intent).toBeDefined(); expect(f.store.writeOperation).not.toHaveBeenCalled();
+  });
+  it("does not retain an acknowledgement returned without invoking the transport", async () => {
+    const f = await fixture(); f.writer.patchBindings.mockResolvedValue(acknowledgement());
+    expect(await f.run()).toMatchObject({status: "BLOCKED_BEFORE_DISPATCH_CLAIM_RETAINED", providerWritesAttempted: 0});
+    expect(f.deps.fetchImpl).not.toHaveBeenCalled(); expect(f.store.writeOperation).not.toHaveBeenCalled();
+    expect(f.state.retained.intent).toBeDefined();
   });
   it("retains only the scoped operation name even when the accepted operation already contains an error", async () => {
-    const f = await fixture(); f.writer.patchBindings.mockResolvedValue({...acknowledgement(), done: true,
-      error: {code: 7, message: "PRIVATE_PROVIDER_MESSAGE"}, response: {PRIVATE: "RESPONSE_TOKEN"}});
+    const f = await fixture(); f.deps.fetchImpl.mockResolvedValue(responseFor({...acknowledgement(), done: true,
+      error: {code: 7, message: "PRIVATE_PROVIDER_MESSAGE"}, response: {PRIVATE: "RESPONSE_TOKEN"}}));
     const stdout = vi.fn(), stderr = vi.fn(); expect(await f.command(stdout, stderr)).toBe(3);
     expect(f.state.retained.operation).toEqual({name: OPERATION}); expect(stdout.mock.calls[0][0]).not.toMatch(/PRIVATE|TOKEN|error/);
     expect(JSON.parse(stdout.mock.calls[0][0]).verificationComplete).toBe(false);
@@ -253,7 +275,9 @@ describe("one request and truthful acknowledgement", () => {
     });
     f.deps.fetchImpl = vi.fn(async () => new Response(JSON.stringify(acknowledgement())));
     f.deps.writerFactory = vi.fn(options => createBindingRepairProvider({...options, tokenProvider}));
-    expect((await f.run()).status).toBe("UNKNOWN_OUTCOME_OPERATOR_REVIEW_REQUIRED");
+    const stdout = vi.fn(), stderr = vi.fn(); expect(await f.command(stdout, stderr)).toBe(3);
+    expect(JSON.parse(stdout.mock.calls[0][0])).toMatchObject({status: "BLOCKED_BEFORE_DISPATCH_CLAIM_RETAINED", providerWritesAttempted: 0});
+    expect(stderr).not.toHaveBeenCalled();
     expect(f.state.retained.intent).toBeDefined(); expect(tokenProvider).toHaveBeenCalledTimes(1);
     expect(f.deps.fetchImpl).not.toHaveBeenCalled(); expect(f.store.writeOperation).not.toHaveBeenCalled();
   });
@@ -280,7 +304,8 @@ describe("one request and truthful acknowledgement", () => {
       await fetchImpl(kind === "wrong URL" ? EXPECTED_REQUEST.url + "&force=1" : EXPECTED_REQUEST.url, options);
       return acknowledgement();
     }}));
-    expect((await f.run()).status).toBe("UNKNOWN_OUTCOME_OPERATOR_REVIEW_REQUIRED"); expect(f.deps.fetchImpl).not.toHaveBeenCalled();
+    expect(await f.run()).toMatchObject({status: "BLOCKED_BEFORE_DISPATCH_CLAIM_RETAINED", providerWritesAttempted: 0});
+    expect(f.deps.fetchImpl).not.toHaveBeenCalled(); expect(f.state.retained.intent).toBeDefined(); expect(f.store.writeOperation).not.toHaveBeenCalled();
   });
 });
 

@@ -26,11 +26,13 @@ export function parseProductionOnceArguments(args) {
   need(args.length === 2 && args[0] === "--run-dir" && isCanonicalEvidenceDirectory(args[1]), "invalid-production-operator-arguments");
   return {runDirectory: args[1]};
 }
-async function reviewedBefore(verifierRoot, options) {
+export async function runReviewedProductionBefore(verifierRoot, options) {
   const module = await import(pathToFileURL(path.join(verifierRoot, "scripts/notify-binding-prospective.mjs")).href);
   return module.runProspectiveComparison(verifierRoot, options);
 }
-async function assertBoundaries(root, plan, legacyLocks, operatorLocks, readClaims, previous = []) {
+export async function assertProductionOperatorBoundaries(root, plan, legacyLocks, operatorLocks, readClaims, previous = [], extraOutputs = []) {
+  need(Array.isArray(previous) && previous.every(isCanonicalEvidenceDirectory) && Array.isArray(extraOutputs) &&
+    extraOutputs.length <= 1 && extraOutputs.every(isCanonicalEvidenceDirectory), "invalid-operator-protected-paths");
   const claims = await readClaims(legacyLocks);
   need(Array.isArray(claims) && claims.length <= 2 && claims.every(isCanonicalEvidenceDirectory), "invalid-operator-protected-claims");
   const kept = [...new Set([...previous, ...claims])], p = plan.paths;
@@ -38,10 +40,12 @@ async function assertBoundaries(root, plan, legacyLocks, operatorLocks, readClai
     legacyLocks, operatorLocks, ...kept];
   const nested = (a, b) => a === b || b.startsWith(a + path.sep);
   const overlap = (a, b) => nested(a, b) || nested(b, a);
-  const run = await resolveEvidenceFilesystemPath(p.runDirectory), before = await resolveEvidenceFilesystemPath(p.beforeOutputDirectory);
-  need(!overlap(run, before), "operator-output-overlaps-run");
+  const outputs = await Promise.all([p.runDirectory, p.beforeOutputDirectory, ...extraOutputs].map(resolveEvidenceFilesystemPath));
+  for (let i = 0; i < outputs.length; i++) for (let j = i + 1; j < outputs.length; j++) {
+    need(!overlap(outputs[i], outputs[j]), "operator-output-overlaps-run");
+  }
   for (const protectedPath of await Promise.all(protectedPaths.map(resolveEvidenceFilesystemPath))) {
-    need(!overlap(protectedPath, run) && !overlap(protectedPath, before), "operator-path-overlaps-protected-input");
+    need(outputs.every(output => !overlap(protectedPath, output)), "operator-path-overlaps-protected-input");
   }
   let legacyClaimExists = true;
   try {await lstat(path.join(legacyLocks, `${PROJECT}.json`));}
@@ -54,7 +58,7 @@ async function assertBoundaries(root, plan, legacyLocks, operatorLocks, readClai
  * No provider mutation is reachable from help or preparation records. */
 export async function runProductionNotifyOnce(root, options, {
   readJson = readProspectiveJsonInput, readTool = readEvidenceToolBinding,
-  readSource = sourceRoot => readLocalSource(sourceRoot, PROJECT), before = reviewedBefore,
+  readSource = sourceRoot => readLocalSource(sourceRoot, PROJECT), before = runReviewedProductionBefore,
   openStore = openProductionOperatorStore, writerFactory = createBindingRepairProvider,
   legacyLockDirectory = sharedLockDirectory, readClaims = readBindingRepairClaimDirectories, now = Date.now,
   fetchImpl = globalThis.fetch,
@@ -66,7 +70,7 @@ export async function runProductionNotifyOnce(root, options, {
   const plan = validateProductionOperatorPlan(await readJson(planFile));
   const review = structuredClone(await readJson(reviewFile)), reviewSha256 = digest(review), planSha256 = digest(plan);
   const legacyLocks = legacyLockDirectory(root), operatorLocks = path.join(path.dirname(legacyLocks), "production-notify-once-locks");
-  let protectedRuns = await assertBoundaries(root, plan, legacyLocks, operatorLocks, readClaims);
+  let protectedRuns = await assertProductionOperatorBoundaries(root, plan, legacyLocks, operatorLocks, readClaims);
   need(validateFirebaseAlias(JSON.parse(await readFile(path.join(root, ".firebaserc"), "utf8")), "prod") === PROJECT,
     "operator-production-alias-mismatch");
   async function current() {
@@ -93,15 +97,15 @@ export async function runProductionNotifyOnce(root, options, {
     report.status === "BASELINE_MATCH" && report.phase === "before" && report.readOnly === true &&
     report.productionAuthorized === false && report.releaseAuthorized === false && report.originalContractAccepted === false &&
     contextNames.every(name => report[name] === plan.context[name]), "operator-baseline-context-mismatch");
-  protectedRuns = await assertBoundaries(root, plan, legacyLocks, operatorLocks, readClaims, protectedRuns);
+  protectedRuns = await assertProductionOperatorBoundaries(root, plan, legacyLocks, operatorLocks, readClaims, protectedRuns);
   await store.assertUnclaimed();
   await current();
   const intent = productionOperatorIntent(plan, now());
   await store.beginIntent(intent); // Retained exclusive project claim, then durable intent.
-  await assertBoundaries(root, plan, legacyLocks, operatorLocks, readClaims, protectedRuns);
+  await assertProductionOperatorBoundaries(root, plan, legacyLocks, operatorLocks, readClaims, protectedRuns);
   await current(); // A withdrawn/expired approval cannot dispatch after the intent wait.
   const request = structuredClone(plan.request);
-  let admitted = false;
+  let admitted = false, actualFetchInvoked = false;
   const provider = writerFactory({projectId: PROJECT, region: "europe-west2", fetchImpl: async (url, options) => {
     need(!admitted && url === request.url && options?.method === "PATCH" && options.redirect === "error" &&
       typeof options.body === "string" && digest(JSON.parse(options.body)) === digest(request.body), "operator-http-request-outside-plan");
@@ -109,20 +113,22 @@ export async function runProductionNotifyOnce(root, options, {
     // Authentication may itself wait. Check the actual dispatch boundary too.
     await current();
     need(options.signal instanceof AbortSignal && !options.signal.aborted, "operator-request-deadline-expired");
+    actualFetchInvoked = true;
     return fetchImpl(url, options);
   }});
   try {
     // Every reviewed reference uses the literal project ID. The existing
     // provider validates those without a project-number inventory initialization.
-    const acknowledgement = productionOperatorAcknowledgement(await provider.patchBindings({name: TARGET_NAME,
-      bindings: request.body.serviceConfig.secretEnvironmentVariables}));
+    const response = await provider.patchBindings({name: TARGET_NAME, bindings: request.body.serviceConfig.secretEnvironmentVariables});
+    need(actualFetchInvoked, "operator-acknowledgement-without-dispatch");
+    const acknowledgement = productionOperatorAcknowledgement(response);
     await store.writeOperation(acknowledgement);
     return {status: "ACKNOWLEDGED_VERIFY_REQUIRED", projectId: PROJECT, operationName: acknowledgement.name,
-      planSha256, providerWritesAttempted: 1, verificationComplete: false, releaseAuthorized: false};
+      planSha256, providerWritesAttempted: actualFetchInvoked ? 1 : 0, verificationComplete: false, releaseAuthorized: false};
   } catch {
     // The retained claim/intent are never removed, even for a definite rejection.
-    return {status: "UNKNOWN_OUTCOME_OPERATOR_REVIEW_REQUIRED", projectId: PROJECT, planSha256,
-      providerWritesAttempted: 1, verificationComplete: false, releaseAuthorized: false};
+    return {status: actualFetchInvoked ? "UNKNOWN_OUTCOME_OPERATOR_REVIEW_REQUIRED" : "BLOCKED_BEFORE_DISPATCH_CLAIM_RETAINED", projectId: PROJECT, planSha256,
+      providerWritesAttempted: actualFetchInvoked ? 1 : 0, verificationComplete: false, releaseAuthorized: false};
   }
 }
 

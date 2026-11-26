@@ -21,8 +21,9 @@ binding set is fixed:
 | `GOV_NOTIFY_TEST_API_KEY` | `2` | Add |
 
 These are proposal-specific references, not secret values or `latest` aliases.
-The request changes no IAM grant, delivery ceiling, source or unrelated setting.
-It uses the existing restricted provider PATCH with an explicit field mask.
+The request asks for no IAM, delivery-ceiling or unrelated change and uploads no
+application source. Google may rebuild stored source during the update. It uses
+the existing restricted provider PATCH with an explicit field mask.
 There is no alternative project, endpoint, host, phase, retry, rollback or unlock.
 
 The current ceiling remains **LIVE**. Restoring these keys can immediately let
@@ -39,11 +40,12 @@ payment fixture, test send or backlog replay.
    bind the exact capture, limits, request, application source and verifier tool.
    The original capture keeps its private comparison key; never copy it into the
    operator run, repository or evidence archive.
-3. Prepare a new owned mode-0700 operator directory with mode-0600 `plan.json`,
-   `request.json`, `review-template.json` and an initialization record written
-   last as `initialized.json`. Preparation is separate from the command below;
-   this document supplies no mutation command for constructing those records.
-   The run contains metadata and digests, not credentials or a comparison key.
+3. Use the GET-only preparation command below. It checks the paths, source/tool
+   bindings and inputs, runs the reviewed verifier's real before comparison and
+   requires `BASELINE_MATCH`. It rechecks inputs after awaited work, then creates
+   an owned mode-0700 run with mode-0600 `plan.json`, `request.json`,
+   `review-template.json` and `initialized.json` written last. These four files
+   are unapproved metadata: no credentials, comparison key, claim or intent.
 4. Review the exact plan/request, operator code binding and all five verifier
    context digests: `captureReportSha256`, `limitsBaselineSha256`, `requestSha256`,
    `sourceBindingSha256` and `comparisonToolBindingSha256`. Bind the actual clean
@@ -64,6 +66,26 @@ Production provenance boundary; it cannot borrow the earlier Dev decision.
 The ordinary Functions guard and old v1 verification are unchanged, and the old
 failed Dev verification remains failed.
 
+From the clean, reviewed operator checkout on Node 24, prepare the records:
+
+```sh
+node scripts/prepare-production-notify-once.mjs \
+  --verifier-root /private/tmp/sodc-reviewed-verifier-REPLACE \
+  --source-root /private/tmp/sodc-reviewed-application-REPLACE \
+  --capture-dir /private/tmp/sodc-production-capture-REPLACE \
+  --limits-baseline /private/tmp/sodc-production-review-REPLACE/limits.json \
+  --check-output-dir /private/tmp/sodc-production-prep-before-NEW \
+  --before-output-dir /private/tmp/sodc-production-execution-before-NEW \
+  --run-dir /private/tmp/sodc-production-operator-NEW
+```
+
+`--check-output-dir` is the new directory for preparation's GET-only comparison.
+`--before-output-dir` is a different, still-absent directory pinned in the plan
+for execution's fresh comparison. The run and both output directories must be
+new and satisfy the protected-path checks. Preparation takes no approval input
+and never creates an `APPROVED` review. Inspect its records before seeking the
+separate exact authorization and recording `review.json`.
+
 ## Execute once after authorization
 
 From the clean, reviewed operator checkout on Node 24:
@@ -82,6 +104,14 @@ GET-only prospective before comparison and requires `BASELINE_MATCH`. After
 awaited work it rechecks the plan, review, application and tooling rather than silently
 adopting changed inputs or an expired approval.
 
+The execution before-output path is pinned as `beforeOutputDirectory`. Once the
+comparison creates it, any later block makes that plan/review non-reusable, even
+if no claim was written. Do not rerun the command or delete the output to reuse
+the plan. Investigate the cause first. If there is no claim or intent, prepare a
+new run with new preparation/execution output paths and obtain a new exact review.
+If a claim or intent exists, a replacement run must not bypass it: retain the
+records and require separate operator review before any further mutation.
+
 The durable order is:
 
 1. Exclusively claim the fixed Production project in the shared repository's
@@ -96,19 +126,27 @@ The claim comes before the intent, and both come before the provider write.
 The exclusive claim covers this repository's worktrees on this machine. It does
 not lock another clone, machine or cloud administrator; the coordinated window
 is still required. Keep all claim and journal records.
+These checks, including checks around dynamic verifier loading, are not atomic
+against a malicious local writer changing files between validation and use.
+Use a trusted local account and the coordinated window; code-binding checks do
+not establish a lock against that attacker.
 
 ## Acknowledgement, unknown outcomes and verification
 
-An accepted acknowledgement exits **3**, because GET-only verification is still
+`ACKNOWLEDGED_VERIFY_REQUIRED` exits **3**, because GET-only verification is still
 required. It does not prove operation completion, preservation, key validity or
 delivery, and it grants no deployment receipt or runtime acceptance.
 
-Any lost response, malformed acknowledgement, timeout, non-success response or
-failure to persist an accepted acknowledgement is **UNKNOWN**, also exit 3.
-Retain the claim and intent. Do not infer an acknowledgement from live state,
-resubmit, remove a claim, unlock or roll back as an implicit retry. A local block
-exits 1 and may already have left a claim or intent; help exits 0. Inspect the retained records and arrange separate operator
-review before considering any further mutation.
+`BLOCKED_BEFORE_DISPATCH_CLAIM_RETAINED` means a guard stopped the operation after
+journalling but before the actual fetch: `providerWritesAttempted` is 0 and the
+exit is 3. Once the fetch is called, a lost response, malformed acknowledgement,
+timeout, non-success response or failed acknowledgement persistence is
+`UNKNOWN_OUTCOME_OPERATOR_REVIEW_REQUIRED`, with `providerWritesAttempted` 1 and
+exit 3. Both retain the claim/intent and prohibit a retry. Do not infer an
+acknowledgement from live state, resubmit, remove a claim, unlock or roll back as
+an implicit retry. Local blocks outside the submission attempt exit 1 and can
+already have left a claim or intent; help exits 0. Inspect the retained records
+and arrange separate operator review before any further mutation.
 
 For a retained acknowledgement, use only the prospective verifier's **after**
 phase with the same capture, limits baseline, source and operator run. Give each
