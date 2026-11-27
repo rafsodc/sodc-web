@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execFileSync } from 'node:child_process'
+import { chunkGraphGuard } from './scripts/build/chunk-graph.mjs'
 
 const DEPLOY_ENV_BY_MODE: Record<string, string> = {
   development: 'dev',
@@ -10,18 +11,18 @@ const DEPLOY_ENV_BY_MODE: Record<string, string> = {
 
 // Keep later-used controls together: the shell and Home need the core UI, while
 // the first section/admin task can fetch one shared chunk rather than many files.
+// Common auth, onboarding and guest form controls stay in core. Entries below
+// belong only to deferred task routes; the build guard rejects static cycles
+// and any eager path to mui-task.
 const TASK_COMPONENTS = new Set([
-  'Autocomplete', 'useAutocomplete', 'Input', 'InputBase', 'FilledInput',
-  'OutlinedInput', 'TextField', 'TextareaAutosize', 'InputLabel',
-  'FormHelperText', 'FormLabel', 'Select', 'NativeSelect', 'Checkbox', 'Radio',
+  'Autocomplete', 'useAutocomplete', 'Checkbox', 'Radio',
   'RadioGroup', 'FormGroup', 'ToggleButton', 'ToggleButtonGroup',
   'TablePagination', 'TablePaginationActions',
   'Tabs', 'Tab', 'TabScrollButton', 'Tooltip', 'Popper', 'Chip', 'Pagination',
   'PaginationItem', 'usePagination', 'Table', 'TableBody', 'TableHead',
   'TableCell', 'TableRow', 'TableContainer', 'TableSortLabel', 'Collapse',
-  'Accordion', 'AccordionSummary', 'AccordionDetails', 'Stepper', 'Step',
-  'StepLabel', 'StepConnector', 'StepIcon', 'ListItem', 'ListItemSecondaryAction',
-  'ListSubheader', 'Link', 'Breadcrumbs', 'DialogContentText', 'LinearProgress',
+  'Accordion', 'AccordionSummary', 'AccordionDetails', 'ListItem', 'ListItemSecondaryAction',
+  'ListSubheader', 'Breadcrumbs', 'DialogContentText', 'LinearProgress',
 ])
 
 function currentGitSha(): string {
@@ -40,6 +41,8 @@ export default defineConfig(({ mode }) => ({
   ...(mode === 'session-e2e' ? { server: { hmr: false } } : {}),
   plugins: [
     react(),
+    // Fail the build if shared dependencies pull deferred controls into startup.
+    chunkGraphGuard(),
     {
       name: 'sodc-deployment-manifest',
       generateBundle() {
@@ -75,12 +78,7 @@ export default defineConfig(({ mode }) => ({
           }
           const materialPath = id.split('/node_modules/@mui/material/')[1]?.replace(/^esm\//, '')
           const component = materialPath?.split('/')[0]
-          if (
-            (component && TASK_COMPONENTS.has(component)) ||
-            // FormControlLabel in the shell uses the context helpers, not the
-            // actual form component. Leave those helpers with the shared core.
-            /^FormControl\/(?:FormControl|formControlClasses|index)\.js$/.test(materialPath ?? '')
-          ) {
+          if (component && TASK_COMPONENTS.has(component)) {
             return 'mui-task'
           }
           if (

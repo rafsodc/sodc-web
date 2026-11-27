@@ -9,13 +9,14 @@ import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { chromium } from '@playwright/test';
 import { fixture, installSyntheticTransport } from '../../e2e/performance/startup/fixture.mjs';
+import { summarizeStartupSamples } from './startup-statistics.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const args = Object.fromEntries(process.argv.slice(2).reduce((result, value, index, array) => {
   if (value.startsWith('--')) result.push([value.slice(2), array[index + 1]]);
   return result;
 }, []));
-if (!args.assets || !args.output) throw new Error('Usage: node scripts/performance/startup-browser.mjs --assets <paired-assets-directory> --output <report.json> [--pairs 10] [--profile normal|slow|both] [--journey member|admin|both]');
+if (!args.assets || !args.output) throw new Error('Usage: node scripts/performance/startup-browser.mjs --assets <paired-assets-directory> --output <report.json> [--pairs 10] [--profile normal|slow|both] [--journey member|admin|public|guest|register|reset|both|signed-out|all]');
 const assets = path.resolve(args.assets);
 const output = path.resolve(args.output);
 const pairs = Number(args.pairs ?? 10);
@@ -24,8 +25,10 @@ const profiles = { normal: { latency: 0, downloadThroughput: -1, uploadThroughpu
   slow: { latency: 150, downloadThroughput: 200000, uploadThroughput: 93750, cpu: 4 } };
 const selectedProfiles = args.profile && args.profile !== 'both' ? [args.profile] : Object.keys(profiles);
 if (selectedProfiles.some(name => !profiles[name])) throw new Error('unknown profile');
-const journeys = args.journey && args.journey !== 'both' ? [args.journey] : ['member', 'admin'];
-if (journeys.some(name => !['member', 'admin'].includes(name))) throw new Error('unknown journey');
+const allJourneys = ['member', 'admin', 'public', 'guest', 'register', 'reset'];
+const journeyGroups = { both: ['member', 'admin'], 'signed-out': ['public', 'guest', 'register', 'reset'], all: allJourneys };
+const journeys = journeyGroups[args.journey ?? 'both'] ?? [args.journey];
+if (journeys.some(name => !allJourneys.includes(name))) throw new Error('unknown journey');
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 async function inventory(directory, prefix = '') {
   const result = {};
@@ -38,7 +41,8 @@ async function inventory(directory, prefix = '') {
   return result;
 }
 const binding = { harnessSha256: sha256(await readFile(fileURLToPath(import.meta.url))),
-  fixtureSha256: sha256(await readFile(path.join(root, 'e2e/performance/startup/fixture.mjs'))), variants: {} };
+  fixtureSha256: sha256(await readFile(path.join(root, 'e2e/performance/startup/fixture.mjs'))),
+  statisticsSha256: sha256(await readFile(path.join(root, 'scripts/performance/startup-statistics.mjs'))), variants: {} };
 for (const variant of ['baseline', 'candidate']) {
   const graph = JSON.parse(await readFile(path.join(assets, `${variant}-graph.json`), 'utf8'));
   const files = await inventory(path.join(assets, variant));
@@ -88,10 +92,26 @@ const report = { schema: 1, label: 'Real production App and SDK; invented local 
   limitations: ['Local Chromium synthetic transport timings are not live Dev/Production Firebase latency or real authentication performance.',
     'Transport interception disables browser HTTP cache; each fresh context is cold and later steps reuse evaluated modules.',
     'Gzip level 9 loopback assets; CDP throttling applies to browser asset requests, intercepted synthetic responses are not a network-service model.',
-    'Synthetic unsigned Auth token and invented read responses; backend authorization, writes, payments, email and real App Check are excluded.'],
+    'Only member/admin seed an unsigned synthetic Auth token; public/guest/register/reset remain signed out. Invented read responses exclude backend authorization, writes, payments, email and real App Check.'],
   createdAt: new Date().toISOString(), browser: browser.version(), viewport: { width: 1280, height: 800 }, profiles, pairs, journeys, binding, samples: [] };
 const sectionPath = `/sections/${fixture.sectionId}`;
 const eventPath = `${sectionPath}/events/${fixture.eventId}`;
+const entryPaths = { member: '', admin: `${sectionPath}/manage`, public: '',
+  guest: `/guest-ticket#${fixture.guestToken}`, register: '/register', reset: '/account/reset-password' };
+const coldNames = { member: 'cold-home', admin: 'cold-admin-hub', public: 'cold-public-home',
+  guest: 'cold-guest-ticket', register: 'cold-register', reset: 'cold-password-reset' };
+const authFormReady = ({ path, passwords, submit }) => {
+  const inputs = [...document.querySelectorAll('form input')];
+  return location.pathname === path && !document.querySelector('#account-menu-button') &&
+    document.querySelector('form input[type="email"]') && document.querySelectorAll('form input[type="password"]').length === passwords &&
+    [...document.querySelectorAll('form button')].some(el => el.textContent === submit) &&
+    inputs.every(input => !input.disabled && input.getBoundingClientRect().height > 10 &&
+      getComputedStyle(input).fontFamily.includes('Roboto') && parseFloat(getComputedStyle(input).paddingLeft) > 0) &&
+    !document.querySelector('[role="progressbar"]');
+};
+const authForms = { signIn: { path: '/account', passwords: 1, submit: 'Sign in' },
+  register: { path: '/register', passwords: 2, submit: 'Create account' },
+  reset: { path: '/account/reset-password', passwords: 0, submit: 'Send reset link' } };
 async function armReadiness(page, predicate, data) {
   const key = `${Date.now()}:${Math.random()}`;
   await page.evaluate(({ text, data, key }) => {
@@ -129,7 +149,8 @@ async function run(variant, profile, pair, position, journey) {
     downloadThroughput: profiles[profile].downloadThroughput, uploadThroughput: profiles[profile].uploadThroughput });
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: profiles[profile].cpu });
   await cdp.send('Performance.enable');
-  const sample = { variant, profile, journey, pair, position, status: 'running', steps: [], ledger, errors };
+  const sample = { variant, profile, journey, authState: ['member', 'admin'].includes(journey) ? 'synthetic-signed-in' : 'signed-out',
+    pair, position, status: 'running', steps: [], ledger, errors };
   const metrics = async () => Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(item => [item.name, item.value]));
   const step = async (name, action, predicate, data) => {
     if (args.debug) process.stdout.write(`starting ${name}\n`);
@@ -153,17 +174,50 @@ async function run(variant, profile, pair, position, journey) {
       driverActionOverheadMs: actionStart - before, cpuSeconds: Object.fromEntries(['TaskDuration', 'ScriptDuration', 'LayoutDuration', 'RecalcStyleDuration'].map(key => [key, cpuAfter[key] - cpuBefore[key]])), ...detail });
     if (ledger.blocked.length || errors.length) throw new Error('unexpected-network-or-browser-error');
   };
+  const exerciseAuthForm = async kind => {
+    const form = page.locator('form');
+    await form.getByRole('textbox', { name: 'Email', exact: true }).fill(fixture.email);
+    // Invented local input only. Never submit, create an account or request mail.
+    if (kind !== 'reset') await form.getByLabel(/^Password/).fill('Unsaved-synthetic-form-input-123');
+    if (kind === 'register') await form.getByLabel(/^Confirm Password/).fill('Unsaved-synthetic-form-input-123');
+    if (await form.getByRole('textbox', { name: 'Email', exact: true }).inputValue() !== fixture.email ||
+        !(await form.getByRole('button', { name: authForms[kind].submit, exact: true }).isEnabled())) throw new Error('auth-form-not-interactive');
+    sample.formStyles ??= {};
+    sample.formStyles[kind] = await form.getByRole('textbox', { name: 'Email', exact: true }).evaluate(element => ({
+      height: element.getBoundingClientRect().height, fontFamily: getComputedStyle(element).fontFamily,
+      padding: getComputedStyle(element).padding }));
+  };
   try {
-    await page.goto(origin + (journey === 'admin' ? `${sectionPath}/manage` : ''), { waitUntil: 'domcontentloaded' });
+    await page.goto(origin + entryPaths[journey], { waitUntil: 'domcontentloaded' });
     const coldHandle = await page.waitForFunction(() => window.__startupColdReady, undefined, { timeout: 45000 });
     const coldReady = await coldHandle.jsonValue();
     await coldHandle.dispose();
-    sample.steps.push({ name: journey === 'admin' ? 'cold-admin-hub' : 'cold-home', durationMs: coldReady.confirmedAt, firstCorrectMs: coldReady.firstCorrectAt,
+    sample.steps.push({ name: coldNames[journey], durationMs: coldReady.confirmedAt, firstCorrectMs: coldReady.firstCorrectAt,
       ...(await page.evaluate(() => ({
       navigation: performance.getEntriesByType('navigation').map(entry => entry.toJSON()),
       resources: performance.getEntriesByType('resource').map(entry => ({ path: new URL(entry.name).pathname,
         duration: entry.duration, transferSize: entry.transferSize, encodedBodySize: entry.encodedBodySize, decodedBodySize: entry.decodedBodySize })),
       observations: window.__startupObservations }))), documentCpuMetrics: await metrics() });
+    if (journey === 'public') {
+      await step('first-sign-in', () => page.locator('main').getByRole('button', { name: 'Sign in', exact: true }).click(), authFormReady, authForms.signIn);
+      await exerciseAuthForm('signIn');
+      await step('first-register', () => page.getByRole('link', { name: 'Create an account', exact: true }).click(), authFormReady, authForms.register);
+      await exerciseAuthForm('register');
+      await page.locator('main').getByRole('button', { name: 'Sign in', exact: true }).click();
+      await stable(page, authFormReady, authForms.signIn);
+      await step('first-password-reset', () => page.getByRole('link', { name: 'Forgot password?', exact: true }).click(), authFormReady, authForms.reset);
+      await exerciseAuthForm('reset');
+    } else if (journey === 'register' || journey === 'reset') {
+      await exerciseAuthForm(journey);
+    } else if (journey === 'guest') {
+      const dietary = page.getByRole('textbox', { name: 'Dietary requirements', exact: true });
+      await dietary.fill('Unsaved synthetic dietary draft');
+      if (await dietary.inputValue() !== 'Unsaved synthetic dietary draft' ||
+          !(await page.getByRole('button', { name: 'Save dietary requirements', exact: true }).isEnabled()) ||
+          !(await page.getByRole('button', { name: 'Pay £25.00', exact: true }).isEnabled())) throw new Error('guest-ticket-not-interactive');
+      sample.formStyle = await dietary.evaluate(element => ({ height: element.getBoundingClientRect().height,
+        fontFamily: getComputedStyle(element).fontFamily, padding: getComputedStyle(element).padding }));
+    }
     if (journey === 'member') {
       await step('first-section', () => page.locator(`a[href="${sectionPath}"]`).last().click(),
         ({ title }) => location.pathname === title.path && [...document.querySelectorAll('a')].some(el => el.textContent.includes(title.name)) &&
@@ -184,24 +238,26 @@ async function run(variant, profile, pair, position, journey) {
         ({ path }) => location.pathname === path && !!document.querySelector('a[href$="/manage/events"]') &&
           !!document.querySelector('a[href$="/manage/files"]') && !document.querySelector('[role="progressbar"]'), { path: `${sectionPath}/manage` });
     }
-    await step('first-admin-events', () => page.locator(`a[href="${sectionPath}/manage/events"]`).first().click(),
-      ({ path }) => location.pathname === path && document.body.innerText.includes('Synthetic startup symposium') &&
-        !![...document.querySelectorAll('button,a')].find(el => el.textContent === 'Add event') && !document.querySelector('[role="progressbar"]'), { path: `${sectionPath}/manage/events` });
-    await step('first-event-form', () => page.getByRole('link', { name: 'Add event', exact: true }).click(),
-      ({ path }) => location.pathname === path && new URLSearchParams(location.search).get('edit') === 'new-event' &&
-        !!document.querySelector('[role="dialog"] input') &&
-        !![...document.querySelectorAll('[role="dialog"] label')].find(el => el.textContent.includes('Title')) &&
-        document.querySelector('[role="dialog"] input').getBoundingClientRect().height > 10 &&
-        getComputedStyle(document.querySelector('[role="dialog"] input')).fontFamily.includes('Roboto'), { path: `${sectionPath}/manage/events` });
-    const dialog = page.getByRole('dialog');
-    const title = dialog.getByRole('textbox', { name: /^Title/ });
-    await title.fill('Unsaved synthetic performance draft');
-    if (await title.inputValue() !== 'Unsaved synthetic performance draft') throw new Error('draft-input-not-retained');
-    sample.formStyle = await title.evaluate(element => ({ height: element.getBoundingClientRect().height,
-      fontFamily: getComputedStyle(element).fontFamily, padding: getComputedStyle(element).padding,
-      dialogVisible: !!element.closest('[role="dialog"]')?.getBoundingClientRect().width }));
-    if (!(sample.formStyle.height > 10 && sample.formStyle.dialogVisible)) throw new Error('form-style-not-ready');
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    if (journey === 'member' || journey === 'admin') {
+      await step('first-admin-events', () => page.locator(`a[href="${sectionPath}/manage/events"]`).first().click(),
+        ({ path }) => location.pathname === path && document.body.innerText.includes('Synthetic startup symposium') &&
+          !![...document.querySelectorAll('button,a')].find(el => el.textContent === 'Add event') && !document.querySelector('[role="progressbar"]'), { path: `${sectionPath}/manage/events` });
+      await step('first-event-form', () => page.getByRole('link', { name: 'Add event', exact: true }).click(),
+        ({ path }) => location.pathname === path && new URLSearchParams(location.search).get('edit') === 'new-event' &&
+          !!document.querySelector('[role="dialog"] input') &&
+          !![...document.querySelectorAll('[role="dialog"] label')].find(el => el.textContent.includes('Title')) &&
+          document.querySelector('[role="dialog"] input').getBoundingClientRect().height > 10 &&
+          getComputedStyle(document.querySelector('[role="dialog"] input')).fontFamily.includes('Roboto'), { path: `${sectionPath}/manage/events` });
+      const dialog = page.getByRole('dialog');
+      const title = dialog.getByRole('textbox', { name: /^Title/ });
+      await title.fill('Unsaved synthetic performance draft');
+      if (await title.inputValue() !== 'Unsaved synthetic performance draft') throw new Error('draft-input-not-retained');
+      sample.formStyle = await title.evaluate(element => ({ height: element.getBoundingClientRect().height,
+        fontFamily: getComputedStyle(element).fontFamily, padding: getComputedStyle(element).padding,
+        dialogVisible: !!element.closest('[role="dialog"]')?.getBoundingClientRect().width }));
+      if (!(sample.formStyle.height > 10 && sample.formStyle.dialogVisible)) throw new Error('form-style-not-ready');
+      await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    }
     if (ledger.blocked.length || errors.length) throw new Error('unexpected-network-or-browser-error');
     sample.status = 'passed';
   } catch (error) {
@@ -225,17 +281,11 @@ try {
   }
   for (const variant of ['baseline', 'candidate']) if (JSON.stringify(await inventory(path.join(assets, variant))) !== JSON.stringify(binding.variants[variant].files)) throw new Error('assets-changed-during-measurement');
   if (binding.harnessSha256 !== sha256(await readFile(fileURLToPath(import.meta.url))) ||
-      binding.fixtureSha256 !== sha256(await readFile(path.join(root, 'e2e/performance/startup/fixture.mjs')))) throw new Error('measurement-source-changed');
+      binding.fixtureSha256 !== sha256(await readFile(path.join(root, 'e2e/performance/startup/fixture.mjs'))) ||
+      binding.statisticsSha256 !== sha256(await readFile(path.join(root, 'scripts/performance/startup-statistics.mjs')))) throw new Error('measurement-source-changed');
   report.completedAt = new Date().toISOString();
   report.complete = report.samples.length === selectedProfiles.length * journeys.length * pairs * 2 && report.samples.every(sample => sample.status === 'passed');
-  const median = values => { const sorted = [...values].sort((a, b) => a - b); return sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2; };
-  report.summary = [];
-  for (const profile of selectedProfiles) for (const journey of journeys) for (const name of report.samples.find(sample => sample.journey === journey).steps.map(step => step.name)) {
-    const values = variant => report.samples.filter(sample => sample.profile === profile && sample.journey === journey && sample.variant === variant && sample.status === 'passed').map(sample => sample.steps.find(step => step.name === name).durationMs);
-    const baseline = values('baseline'); const candidate = values('candidate');
-    const differences = baseline.map((value, index) => candidate[index] - value);
-    report.summary.push({ profile, journey, step: name, baselineMedianMs: median(baseline), candidateMedianMs: median(candidate),
-      pairedDifferenceMedianMs: median(differences), pairedDifferencesMs: differences });
-  }
+  report.summary = summarizeStartupSamples(report.samples, selectedProfiles, journeys);
   await writeFile(output, JSON.stringify(report, null, 2) + '\n');
+  if (!report.complete) process.exitCode = 1;
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

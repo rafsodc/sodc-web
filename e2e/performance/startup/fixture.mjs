@@ -1,4 +1,4 @@
-/* global localStorage, document, window, location, PerformanceObserver, URL, performance, requestAnimationFrame */
+/* global localStorage, document, window, location, PerformanceObserver, URL, performance, requestAnimationFrame, getComputedStyle */
 import { Buffer } from 'node:buffer';
 
 // Invented data only. This adapter exercises the production SDK transport and
@@ -14,7 +14,16 @@ export const fixture = Object.freeze({
   eventTitle: 'Synthetic startup symposium',
   apiKey: 'bundle-measurement-public-placeholder',
   projectId: 'bundle-measurement',
+  guestToken: 'synthetic-startup-guest-capability',
 });
+const deploymentProfiles = Object.freeze({
+  measurement: Object.freeze({ apiKey: fixture.apiKey, projectId: fixture.projectId }),
+  recovery: Object.freeze({ apiKey: 'demo-deployment-recovery', projectId: 'demo-sodc-deployment-recovery' }),
+});
+function deploymentProfile(name) {
+  if (!Object.hasOwn(deploymentProfiles, name)) throw new Error('unlisted-synthetic-deployment');
+  return deploymentProfiles[name];
+}
 const time = '2026-01-01T12:00:00.000Z';
 export const user = { id: fixture.uid, firstName: 'Synthetic', lastName: 'Member',
   email: fixture.email, serviceNumber: 'SYNTHETIC', mobileNumber: null, postNominals: null,
@@ -35,13 +44,18 @@ export const event = { id: fixture.eventId, section: { id: fixture.sectionId },
   maxGuestsWithoutModeratorApproval: 2, updatedAt: time,
   ticketTypes: [{ id: fixture.ticketId, title: 'Synthetic member ticket', description: 'No purchase is made',
     audience: 'MEMBER', price: 0, includesDinner: false, includesSymposium: true, sortOrder: 0, userGroup: group }] };
+export const guestTicket = { firstName: 'Synthetic', lastName: 'Guest', eventTitle: fixture.eventTitle,
+  ticketTitle: 'Synthetic guest ticket', priceMinor: 2500, includesSymposium: true, includesDinner: true,
+  dietaryRequirements: 'Invented dietary note', dietaryEditable: true, paymentDueAt: '2030-05-31T12:00:00.000Z',
+  paymentStatus: 'UNPAID', cancelled: false, version: 1 };
 
-export function authSeed(now = Date.now()) {
+export function authSeed(now = Date.now(), deployment = 'measurement') {
+  const identity = deploymentProfile(deployment);
   const seconds = Math.floor(now / 1000);
   const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
   // A locally constructed, unsigned token. It is never accepted by a backend.
   const token = `${encode({ alg: 'none', typ: 'JWT' })}.${encode({
-    aud: fixture.projectId, iss: `https://securetoken.google.com/${fixture.projectId}`,
+    aud: identity.projectId, iss: `https://securetoken.google.com/${identity.projectId}`,
     sub: fixture.uid, user_id: fixture.uid, email: fixture.email, email_verified: true,
     auth_time: seconds, iat: seconds, exp: seconds + 86400, enabled: true, admin: true,
     securityVersion: 1, firebase: { sign_in_provider: 'password', identities: { email: [fixture.email] } },
@@ -51,7 +65,7 @@ export function authSeed(now = Date.now()) {
       displayName: 'Synthetic Member', email: fixture.email, phoneNumber: null, photoURL: null }],
     stsTokenManager: { refreshToken: 'synthetic-refresh-not-a-credential', accessToken: token,
       expirationTime: now + 86400000 }, createdAt: String(now), lastLoginAt: String(now),
-    apiKey: fixture.apiKey, appName: '[DEFAULT]' };
+    apiKey: identity.apiKey, appName: '[DEFAULT]' };
 }
 
 const queries = {
@@ -68,10 +82,14 @@ const queries = {
 };
 
 /** No request.continue fallback: unknown traffic is refused, never forwarded. */
-export async function installSyntheticTransport(context, localOrigin, ledger, { journey = 'member' } = {}) {
-  const seed = authSeed();
+export async function installSyntheticTransport(context, localOrigin, ledger, { journey = 'member', deployment = 'measurement' } = {}) {
+  // Fixed inert builds only. Reject an arbitrary profile before any context work.
+  const identity = deploymentProfile(deployment);
+  const signedIn = ['member', 'admin'].includes(journey);
+  const seed = signedIn ? authSeed(Date.now(), deployment) : null;
   await context.addInitScript(({ seed, storageKey, fixture, journey }) => {
-    localStorage.setItem(storageKey, JSON.stringify(seed));
+    if (seed) localStorage.setItem(storageKey, JSON.stringify(seed));
+    else localStorage.removeItem(storageKey);
     document.cookie = 'sodc-cookie-preferences=rejected; path=/; SameSite=Lax';
     // The observer is installed before the production entry module executes.
     window.__startupObservations = { longTasks: [], paints: [], shifts: [] };
@@ -87,7 +105,29 @@ export async function installSyntheticTransport(context, localOrigin, ledger, { 
         !![...document.querySelectorAll('.page-header h4')].find(el => el.textContent === `Administer — ${fixture.sectionName}`) &&
         document.querySelector(`a[href="/sections/${fixture.sectionId}/manage/events"]`) &&
         document.querySelector(`a[href="/sections/${fixture.sectionId}/manage/files"]`) && !document.querySelector('[role="progressbar"]');
-      if (!homeCorrect && !adminCorrect) coldFirstCorrect = undefined;
+      const styled = element => !!element && !element.disabled && element.getBoundingClientRect().height > 10 &&
+        getComputedStyle(element).fontFamily.includes('Roboto') &&
+        (parseFloat(getComputedStyle(element).paddingLeft) > 0 ||
+          (element.tagName === 'TEXTAREA' && parseFloat(getComputedStyle(element.closest('.MuiInputBase-root')).paddingLeft) > 0));
+      const signedOut = !document.querySelector('#account-menu-button');
+      const publicCorrect = journey === 'public' && location.pathname === '/' && signedOut &&
+        document.querySelector('h1')?.textContent.includes('Royal Air Force') &&
+        [...document.querySelectorAll('main button')].some(el => el.textContent === 'Join SODC') &&
+        [...document.querySelectorAll('main button')].some(el => el.textContent === 'Sign in');
+      const guestCorrect = journey === 'guest' && location.pathname === '/guest-ticket' && signedOut &&
+        document.querySelector('h1')?.textContent === 'Guest ticket' && document.body.innerText.includes(fixture.eventTitle) &&
+        document.body.innerText.includes('Your place is reserved.') && document.body.innerText.includes('Payment: unpaid.') &&
+        styled(document.querySelector('textarea:not([aria-hidden="true"])')) &&
+        [...document.querySelectorAll('main button')].some(el => el.textContent === 'Pay £25.00');
+      const registerCorrect = journey === 'register' && location.pathname === '/register' && signedOut &&
+        [...document.querySelectorAll('form button')].some(el => el.textContent === 'Create account') &&
+        document.querySelectorAll('form input[type="password"]').length === 2 &&
+        [...document.querySelectorAll('form input')].every(styled);
+      const resetCorrect = journey === 'reset' && location.pathname === '/account/reset-password' && signedOut &&
+        document.body.innerText.includes('Reset your password') && styled(document.querySelector('form input[type="email"]')) &&
+        [...document.querySelectorAll('form button')].some(el => el.textContent === 'Send reset link');
+      const correct = homeCorrect || adminCorrect || publicCorrect || guestCorrect || registerCorrect || resetCorrect;
+      if (!correct || document.querySelector('[role="progressbar"]')) coldFirstCorrect = undefined;
       else if (coldFirstCorrect !== undefined) {
         window.__startupColdReady = { firstCorrectAt: coldFirstCorrect, confirmedAt: performance.now() }; return;
       } else coldFirstCorrect = performance.now();
@@ -102,7 +142,7 @@ export async function installSyntheticTransport(context, localOrigin, ledger, { 
         });
       }).observe({ type, buffered: true }); } catch { /* Browser-supported entries only. */ }
     }
-  }, { seed, fixture, journey, storageKey: `firebase:authUser:${fixture.apiKey}:[DEFAULT]` });
+  }, { seed, fixture: { ...fixture, ...identity }, journey, storageKey: `firebase:authUser:${identity.apiKey}:[DEFAULT]` });
   const fulfill = (route, data, type = 'application/json') => route.fulfill({ status: 200,
     contentType: type, headers: { 'access-control-allow-origin': '*', 'cache-control': 'no-store' },
     body: type === 'application/json' ? JSON.stringify(data) : data });
@@ -124,18 +164,21 @@ export async function installSyntheticTransport(context, localOrigin, ledger, { 
         await fulfill(route, { token: 'synthetic-app-check-no-credential', ttl: '3600s' }); return;
       }
       if (url.hostname === 'identitytoolkit.googleapis.com' && url.pathname === '/v1/accounts:lookup' && request.method() === 'POST') {
+        if (!seed) throw new Error('signed-out-auth-read');
         ledger.synthetic.push({ ...record, operation: 'synthetic-auth-lookup' });
         await fulfill(route, { users: [{ localId: fixture.uid, email: fixture.email, emailVerified: true,
           displayName: 'Synthetic Member', passwordUpdatedAt: 0, providerUserInfo: [{ providerId: 'password', rawId: fixture.email, email: fixture.email }],
           createdAt: seed.createdAt, lastLoginAt: seed.lastLoginAt }] }); return;
       }
       if (url.hostname === 'securetoken.googleapis.com' && url.pathname === '/v1/token' && request.method() === 'POST') {
+        if (!seed) throw new Error('signed-out-auth-read');
         ledger.synthetic.push({ ...record, operation: 'synthetic-auth-refresh' });
         await fulfill(route, { access_token: seed.stsTokenManager.accessToken, id_token: seed.stsTokenManager.accessToken,
           expires_in: '86400', token_type: 'Bearer', refresh_token: seed.stsTokenManager.refreshToken,
-          user_id: fixture.uid, project_id: fixture.projectId }); return;
+          user_id: fixture.uid, project_id: identity.projectId }); return;
       }
-      if (url.hostname === 'firebasedataconnect.googleapis.com' && url.pathname === '/v1/projects/bundle-measurement/locations/europe-west2/services/sodc-web-service/connectors/api:executeQuery' && request.method() === 'POST') {
+      if (url.hostname === 'firebasedataconnect.googleapis.com' && url.pathname === `/v1/projects/${identity.projectId}/locations/europe-west2/services/sodc-web-service/connectors/api:executeQuery` && request.method() === 'POST') {
+        if (!signedIn) throw new Error('signed-out-private-read');
         const body = request.postDataJSON();
         const name = body.operationName;
         record.operation = name;
@@ -146,10 +189,15 @@ export async function installSyntheticTransport(context, localOrigin, ledger, { 
         ledger.synthetic.push(record);
         await fulfill(route, { data: queries[name]() }); return;
       }
-      if (url.hostname === 'europe-west2-bundle-measurement.cloudfunctions.net' && request.method() === 'POST') {
+      if (url.hostname === `europe-west2-${identity.projectId}.cloudfunctions.net` && request.method() === 'POST') {
         const name = url.pathname.slice(1);
         const data = request.postDataJSON().data;
         record.operation = name;
+        if (name === 'getOrganiserGuestTicket' && journey === 'guest' && data.token === fixture.guestToken && Object.keys(data).length === 1) {
+          ledger.synthetic.push(record);
+          await fulfill(route, { data: guestTicket }); return;
+        }
+        if (!signedIn) throw new Error('signed-out-unlisted-callable');
         if (data.sectionId !== fixture.sectionId && !['getEventForUser'].includes(name)) throw new Error('unexpected-fixture-id');
         let result;
         if (name === 'getSectionEventsForUser') result = { events: [event] };

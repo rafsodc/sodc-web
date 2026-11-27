@@ -27,6 +27,9 @@ jobs:
       - name: Run frontend lint
         run: node .github/scripts/fail-on-warning-output.mjs -- npm run lint
 
+      - name: Test chunk safety and performance-harness controls
+        run: node .github/scripts/fail-on-warning-output.mjs -- node --test e2e/performance/startup/*.test.mjs
+
       - name: Run root build
         run: node .github/scripts/fail-on-warning-output.mjs -- npm run build
 
