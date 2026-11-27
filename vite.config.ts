@@ -8,6 +8,22 @@ const DEPLOY_ENV_BY_MODE: Record<string, string> = {
   production: 'prod',
 }
 
+// Keep later-used controls together: the shell and Home need the core UI, while
+// the first section/admin task can fetch one shared chunk rather than many files.
+const TASK_COMPONENTS = new Set([
+  'Autocomplete', 'useAutocomplete', 'Input', 'InputBase', 'FilledInput',
+  'OutlinedInput', 'TextField', 'TextareaAutosize', 'InputLabel',
+  'FormHelperText', 'FormLabel', 'Select', 'NativeSelect', 'Checkbox', 'Radio',
+  'RadioGroup', 'FormGroup', 'ToggleButton', 'ToggleButtonGroup',
+  'TablePagination', 'TablePaginationActions',
+  'Tabs', 'Tab', 'TabScrollButton', 'Tooltip', 'Popper', 'Chip', 'Pagination',
+  'PaginationItem', 'usePagination', 'Table', 'TableBody', 'TableHead',
+  'TableCell', 'TableRow', 'TableContainer', 'TableSortLabel', 'Collapse',
+  'Accordion', 'AccordionSummary', 'AccordionDetails', 'Stepper', 'Step',
+  'StepLabel', 'StepConnector', 'StepIcon', 'ListItem', 'ListItemSecondaryAction',
+  'ListSubheader', 'Link', 'Breadcrumbs', 'DialogContentText', 'LinearProgress',
+])
+
 function currentGitSha(): string {
   if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA
 
@@ -57,11 +73,23 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
             return 'react-vendor'
           }
+          const materialPath = id.split('/node_modules/@mui/material/')[1]?.replace(/^esm\//, '')
+          const component = materialPath?.split('/')[0]
           if (
-            id.includes('node_modules/@mui/material') ||
-            id.includes('node_modules/@mui/icons-material') ||
-            id.includes('node_modules/@emotion/react') ||
-            id.includes('node_modules/@emotion/styled')
+            (component && TASK_COMPONENTS.has(component)) ||
+            // FormControlLabel in the shell uses the context helpers, not the
+            // actual form component. Leave those helpers with the shared core.
+            /^FormControl\/(?:FormControl|formControlClasses|index)\.js$/.test(materialPath ?? '')
+          ) {
+            return 'mui-task'
+          }
+          if (
+            id.includes('node_modules/@mui/') ||
+            id.includes('node_modules/@emotion/') ||
+            // The shell's Fade/Grow and the deferred Collapse share these.
+            // Explicit core ownership prevents a core -> task -> core cycle.
+            id.includes('node_modules/react-transition-group/') ||
+            id.includes('node_modules/@babel/runtime/')
           ) {
             return 'mui-vendor'
           }

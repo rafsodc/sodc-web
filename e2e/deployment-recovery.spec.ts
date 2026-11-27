@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildDeployments, type BuiltDeployment } from "./support/deploymentBuilds";
 import { startDeploymentServer, type DeploymentServer } from "./support/deploymentServer";
@@ -74,6 +74,68 @@ async function blockStorage(context: BrowserContext) {
     }
   });
 }
+
+async function actualTaskAsset() {
+  const files = (await readdir(path.join(actualApp.directories.A, "assets")))
+    .filter(name => /^mui-task-.+\.js$/.test(name));
+  expect(files).toHaveLength(1);
+  return `/assets/${files[0]}`;
+}
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`actual app defers shared controls until first use in ${colorScheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    const server = await serverFor(actualApp);
+    const task = await actualTaskAsset();
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto(server.url);
+    await expect(page.getByRole("heading", { name: "Royal Air Force | SODC", exact: true })).toBeVisible();
+    await dismissCookies(page);
+    expect(server.requests.filter(request => request.pathname === task)).toHaveLength(0);
+
+    await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
+    const email = page.getByRole("textbox", { name: "Email", exact: true });
+    await expect(email).toBeVisible();
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
+    await email.fill("local-reader@example.test");
+    await expect(email).toBeFocused();
+    expect(server.requests.filter(request => request.pathname === task).map(request => request.status)).toEqual([200]);
+    const outline = page.locator(".MuiOutlinedInput-notchedOutline").first();
+    await expect(outline).toHaveCSS("border-style", "solid");
+    expect((await email.boundingBox())!.width).toBeGreaterThan(100);
+    const initialBackground = await page.locator("body").evaluate(element => getComputedStyle(element).backgroundColor);
+    await page.getByRole("button", { name: /^Appearance:/ }).click();
+    await page.getByRole("menuitem", { name: colorScheme === "light" ? /Dark/ : /Light/ }).click();
+    await expect.poll(() => page.locator("body").evaluate(element => getComputedStyle(element).backgroundColor))
+      .not.toBe(initialBackground);
+    await expect(email).toHaveValue("local-reader@example.test");
+    expect(server.requests.filter(request => request.pathname === task)).toHaveLength(1);
+    expect(errors).toEqual([]);
+    expect(server.acceptedBusinessWrites).toBe(0);
+  });
+}
+
+test("a missing actual shared-control chunk requires explicit reload", async ({ page }) => {
+  const server = await serverFor(actualApp);
+  const task = await actualTaskAsset();
+  let loads = 0;
+  page.on("load", () => { loads++; });
+  await page.goto(server.url);
+  await expect(page.getByRole("heading", { name: "Royal Air Force | SODC", exact: true })).toBeVisible();
+  await dismissCookies(page);
+  server.failAsset(task);
+  await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
+  await assertManualRecovery(page);
+  expect(loads).toBe(1);
+  expect(server.requests.filter(request => request.pathname === task).map(request => request.status)).toEqual([404]);
+  server.failAsset(null);
+  await page.getByRole("button", { name: "Reload page", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Email", exact: true })).toBeVisible();
+  expect(loads).toBe(2);
+  expect(server.requests.filter(request => request.pathname === task).map(request => request.status)).toEqual([404, 200]);
+  expect(server.acceptedBusinessWrites).toBe(0);
+});
 
 for (const responseMode of ["404", "html200"] as const) {
   test(`actual app A→B: obsolete lazy asset ${responseMode}, explicit reload and history`, async ({ page }) => {
