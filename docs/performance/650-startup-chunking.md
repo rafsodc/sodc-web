@@ -1,8 +1,9 @@
 # Startup UI chunking (#650)
 
 This frontend slice moves later-used controls out of the eager UI bundle. It
-keeps the shell, Home, auth/onboarding/guest forms, theme engine and transition
-helpers together, and uses one shared `mui-task` chunk for heavier controls used
+keeps the shell, Home, sign-in/registration/reset/guest input controls, the
+onboarding shell, theme engine and transition helpers together, and uses one
+shared `mui-task` chunk for heavier controls used
 by section, booking and administration tasks. Auth, App Check, data reads,
 session/cache fences and mutation recovery are unchanged.
 
@@ -33,12 +34,13 @@ task chunk; the task imports core and React. React, Firebase and generated Data
 Connect assets remain byte-identical. Theme/system, Emotion, FormControl and the
 common transition helpers stay together.
 
-A production build guard now checks the final emitted JS graph after Vite's CSS
-and preload hooks. It rejects static cycles and an entry path to `mui-task`, with
-the offending dependency chain. An actual ButtonBase-in-task control failed the
-build with this diagnostic. Tests cover disconnected/self cycles, indirect
-entry paths and removed CSS-only/external nodes. Changes to eager shell imports
-must preserve this invariant.
+A production build guard checks the final emitted JS graph after Vite's CSS and
+preload hooks. It rejects static cycles and a static `mui-task` path from the app
+entry or any protected Sign in, Register, Reset or guest-ticket route. Each route
+is matched independently by its source module; actual app builds require one
+owner per protected module. Inert fixture builds remain supported. Diagnostics
+include the offending dependency chain. Changes to eager shell imports and
+protected routes must preserve these invariants.
 
 This uses the pinned Rollup manual-chunk behavior and Vite's dynamic-import
 preloading. One additional file is not necessarily another serial round trip:
@@ -54,11 +56,11 @@ Use Node 24, `npm ci` and installed Playwright Chromium:
 ```sh
 node scripts/performance/on-demand-bundles.mjs \
   --baseline 21df99412a190e079164d318c86b8597b14ddc2b \
-  --output .firebase/performance/650-startup-review-final.json
+  --output .firebase/performance/751-nits-build.json
 node --test e2e/performance/startup/*.test.mjs
 node scripts/performance/startup-browser.mjs \
-  --assets .firebase/performance/650-startup-review-final-assets \
-  --output .firebase/performance/650-startup-browser-review-final.json \
+  --assets .firebase/performance/751-nits-build-assets \
+  --output .firebase/performance/751-nits-browser.json \
   --pairs 10 --profile both --journey all
 ```
 
@@ -119,14 +121,25 @@ threshold.
 
 ## Results — 27 November 2026
 
-The [compact results](650-startup-chunking-results.json) retain all 21 build
-scenarios, every paired timing and range, observed encoded bodies and source
-hashes. Node 24.22.0, Vite 7.3.6 and Chromium 156.0.8078.4 were used. The measured
+The [compact results](650-startup-chunking-results.json) retain the 21 original
+build scenarios, every paired timing and range, observed encoded bodies and
+source hashes. The additional untimed ProfileCompletion scenario is recorded
+under `validationFollowup`. Node 24.22.0, Vite 7.3.6 and Chromium 156.0.8078.4 were used. The measured
 candidate was uncommitted and is identified by its recorded runtime/build-input
 fingerprint `1533153f96ecbd4d326c76a00d3a928e2dd85469441e2d3b5fb8df9ca2b0d6b2`;
 the parent commit alone does not identify it. The snapshot includes both build
 guard files. The executed runner, fixture and statistics helper are bound
 separately in the browser report.
+
+The timing cohort describes the application assets at `a061183`. The later
+route-guard/documentation follow-up changes build validation only. Its fresh
+graph records ProfileCompletion and input fingerprint
+`c898139cfa0cbefc43732bdcc53eaaa95bfbe0ee96fc952ed7d348845873f249`.
+All application assets match the timed cohort byte-for-byte; only the deployment
+manifest's build timestamp and git SHA differ. The earlier fingerprint remains
+the identity of the timing inputs. The matrix was not rerun for this follow-up,
+and the additional static scenario provides no new latency sample. The commands
+above use separate output paths for a fresh reproduction.
 
 These are cumulative source-derived JS gzip estimates, including startup. CSS
 is unchanged. The critical signed-out routes keep their original file counts.
@@ -183,6 +196,23 @@ startup saving to its first Events interaction; no overall administration
 speedup is established. Later tasks reuse the loaded control chunk. Keep this
 first-use trade-off in Dev acceptance alongside the signed-out improvement.
 
+### Profile completion remains a separate first use
+
+The new-member ProfileCompletion screen still imports task controls through
+Checkbox and RankSelect's ListSubheader. Its actual route also includes
+OnboardingShell. The cold routed JS closure is 317,675 → 319,022 gzip bytes
+(14 → 15 files), a 1,347-byte cumulative increase. Beyond the startup closure,
+it needs 8,707 → 47,420 bytes (9 → 10 files): about 38.7 KB moves to first use.
+These are source-derived sizes, not latency measurements. Prior registration
+and reset timings do not cover the post-verification profile screen.
+
+Dev acceptance must time ProfileCompletion after registration/email verification
+with a suitably staged test account, under the same normal/slow profiles. Record
+whether the shared task chunk was already loaded, first usable form readiness,
+and the actual request/byte cost; keep completion fields and drafts intact.
+Until that check is performed, this path is explicitly unmeasured. This PR does
+not change its controls or move them into core.
+
 The original 16.7% boundary and its measurements remain historical in Git and
 the sealed original archive. Exploratory/setup failures and the one-pair
 decision pilots remain separate from this final cohort. A fresh complete
@@ -192,11 +222,12 @@ notice. No new cycle is accepted or suppressed.
 
 ## Validation and release acceptance
 
-The final frontend coverage gate passes **163 files / 1,853 tests**, with 86.24%
+The timed application revision's coverage gate passed **163 files / 1,853 tests**, with 86.24%
 statements, 82.68% branches, 82.90% functions and 87.93% lines. Root lint and the
-TypeScript/production build pass; all **13 production-browser regression tests**
-and all **33 transport, graph and statistics controls** pass. No deadlines or
-thresholds changed.
+TypeScript/production build pass on the route-guard follow-up; all **13
+production-browser regression tests** and **55 transport, graph and statistics
+controls** pass. The original timing-cohort control count was 33. No deadlines
+or thresholds changed.
 
 Production-browser regressions cover cold public Home and sign-in without a
 task request, real light/dark theme changes with a retained input, and actual
@@ -212,6 +243,7 @@ account/data and pre-navigation profiles. Include cold Home, immediate first
 section, direct administration entry, booking/event drafts, theme changes,
 logout/account switch while code is pending and missing-chunk manual recovery.
 Time signed-out Home → sign-in and direct guest, registration and reset entry too.
+Include the post-registration/verification ProfileCompletion timing described above.
 Do not infer a live speed percentage from this local fixture. Section-code
 intent preload remains a separate future PR; this change adds no speculative
 imports or hidden data reads. #650 remains open.

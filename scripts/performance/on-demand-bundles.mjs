@@ -41,6 +41,7 @@ const scenarios = [
   ['register', [source('features/auth/components/RegisterPage.tsx')]],
   ['password-reset', [source('features/auth/components/PasswordResetRequestPage.tsx')]],
   ['guest-ticket', [source('features/guests/GuestTicketPage.tsx')]],
+  ['profile-completion', [source('features/auth/components/ProfileCompletion.tsx'), source('features/auth/components/OnboardingShell.tsx')]],
   ['sections-list', [source('features/sections/components/SectionsList.tsx')]],
   ['profile', [source('features/profile/components/Profile.tsx')]],
   ['member-home', [home]],

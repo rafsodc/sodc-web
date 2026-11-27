@@ -936,5 +936,142 @@
         }
       }
     }
-  ]
+  ],
+  "validationFollowup": {
+    "schema": "sodc-build-validation-followup/v1",
+    "timingCohortHead": "a0611835ccd4d056d44e947c98eda4ef8d758afc",
+    "timingCohortSourceSha256": "1533153f96ecbd4d326c76a00d3a928e2dd85469441e2d3b5fb8df9ca2b0d6b2",
+    "validationSourceSha256": "c898139cfa0cbefc43732bdcc53eaaa95bfbe0ee96fc952ed7d348845873f249",
+    "validationGraphReport": ".firebase/performance/751-nits-build.json",
+    "validationGraphReportSha256": "531e2c4e8058196789efe7340f7d8b406ae30ad0fa8996e0a66ea4e4ec8262dc",
+    "applicationAssetsByteIdentical": true,
+    "changedAssets": [
+      "deployment-manifest.json"
+    ],
+    "manifestChangedFields": [
+      "gitSha",
+      "builtAt"
+    ],
+    "profileCompletionTimed": false,
+    "profileCompletionScenario": {
+      "baseline": {
+        "requestedChunks": [
+          "assets/ProfileCompletion-BlcCA4r5.js",
+          "assets/OnboardingShell-DZxGRv-n.js"
+        ],
+        "total": {
+          "js": {
+            "assets": 14,
+            "rawBytes": 1079788,
+            "gzipBytes": 317675
+          },
+          "css": {
+            "assets": 1,
+            "rawBytes": 326,
+            "gzipBytes": 225
+          },
+          "other": {
+            "assets": 0,
+            "rawBytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "beyondStartup": {
+          "js": {
+            "assets": 9,
+            "rawBytes": 20223,
+            "gzipBytes": 8707
+          },
+          "css": {
+            "assets": 0,
+            "rawBytes": 0,
+            "gzipBytes": 0
+          },
+          "other": {
+            "assets": 0,
+            "rawBytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "files": [
+          "assets/OnboardingShell-DZxGRv-n.js",
+          "assets/ProfileCompletion-BlcCA4r5.js",
+          "assets/RankSelect-B0FOQqTn.js",
+          "assets/dataconnect-vendor-CSrqlH16.js",
+          "assets/firebase-vendor-BG2dl0Lp.js",
+          "assets/index-BNxqTy5W.css",
+          "assets/index-gpP4Lyyr.js",
+          "assets/mobileNumber-9athCS4Y.js",
+          "assets/mui-vendor-C1f2ookI.js",
+          "assets/react-vendor-CEWflPoe.js",
+          "assets/securityMutation-C2SNGTZy.js",
+          "assets/sessionDataConnect-BKFvIrvr.js",
+          "assets/useLatestRequestGuard-D3N1i4dd.js",
+          "assets/userAdmin-BD2zIF6x.js",
+          "assets/userHelpers-9Wh7-_5E.js"
+        ]
+      },
+      "candidate": {
+        "requestedChunks": [
+          "assets/ProfileCompletion-wK_uez5P.js",
+          "assets/OnboardingShell-C1RqVkd6.js"
+        ],
+        "total": {
+          "js": {
+            "assets": 15,
+            "rawBytes": 1080877,
+            "gzipBytes": 319022
+          },
+          "css": {
+            "assets": 1,
+            "rawBytes": 326,
+            "gzipBytes": 225
+          },
+          "other": {
+            "assets": 0,
+            "rawBytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "beyondStartup": {
+          "js": {
+            "assets": 10,
+            "rawBytes": 152534,
+            "gzipBytes": 47420
+          },
+          "css": {
+            "assets": 0,
+            "rawBytes": 0,
+            "gzipBytes": 0
+          },
+          "other": {
+            "assets": 0,
+            "rawBytes": 0,
+            "gzipBytes": 0
+          }
+        },
+        "files": [
+          "assets/OnboardingShell-C1RqVkd6.js",
+          "assets/ProfileCompletion-wK_uez5P.js",
+          "assets/RankSelect-BaIBsHlj.js",
+          "assets/dataconnect-vendor-CSrqlH16.js",
+          "assets/firebase-vendor-BG2dl0Lp.js",
+          "assets/index-BNxqTy5W.css",
+          "assets/index-C9g-4PKk.js",
+          "assets/mobileNumber-9athCS4Y.js",
+          "assets/mui-task-3nnGfcYd.js",
+          "assets/mui-vendor-BKtyndGc.js",
+          "assets/react-vendor-CEWflPoe.js",
+          "assets/securityMutation-DL5r7IjN.js",
+          "assets/sessionDataConnect-BsXwVWjd.js",
+          "assets/useLatestRequestGuard-D3N1i4dd.js",
+          "assets/userAdmin-BIPdMJaa.js",
+          "assets/userHelpers-9Wh7-_5E.js"
+        ]
+      }
+    },
+    "nodeControls": 55,
+    "timingMatrixRerun": false,
+    "timingScope": "The original240/680 cohort is unchanged. Build validation/docs changed; emitted application assets remain identical. Profile completion is a separate required Dev timing."
+  }
 }
