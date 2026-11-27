@@ -1,9 +1,10 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildDeployments, type BuiltDeployment } from "./support/deploymentBuilds";
 import { startDeploymentServer, type DeploymentServer } from "./support/deploymentServer";
+import { fixture, installSyntheticTransport, type SyntheticTransportLedger } from "./performance/startup/fixture.mjs";
 
 let actualApp: BuiltDeployment;
 let localFixture: BuiltDeployment;
@@ -74,6 +75,130 @@ async function blockStorage(context: BrowserContext) {
     }
   });
 }
+
+async function actualTaskAsset() {
+  const files = (await readdir(path.join(actualApp.directories.A, "assets")))
+    .filter(name => /^mui-task-.+\.js$/.test(name));
+  expect(files).toHaveLength(1);
+  return `/assets/${files[0]}`;
+}
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`actual app keeps sign-in controls in the shared core in ${colorScheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    const server = await serverFor(actualApp);
+    const task = await actualTaskAsset();
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto(server.url);
+    await expect(page.getByRole("heading", { name: "Royal Air Force | SODC", exact: true })).toBeVisible();
+    await dismissCookies(page);
+    expect(server.requests.filter(request => request.pathname === task)).toHaveLength(0);
+
+    await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
+    const email = page.getByRole("textbox", { name: "Email", exact: true });
+    await expect(email).toBeVisible();
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
+    await email.fill("local-reader@example.test");
+    await expect(email).toBeFocused();
+    expect(server.requests.filter(request => request.pathname === task)).toHaveLength(0);
+    const outline = page.locator(".MuiOutlinedInput-notchedOutline").first();
+    await expect(outline).toHaveCSS("border-style", "solid");
+    expect((await email.boundingBox())!.width).toBeGreaterThan(100);
+    const initialBackground = await page.locator("body").evaluate(element => getComputedStyle(element).backgroundColor);
+    await page.getByRole("button", { name: /^Appearance:/ }).click();
+    await page.getByRole("menuitem", { name: colorScheme === "light" ? /Dark/ : /Light/ }).click();
+    await expect.poll(() => page.locator("body").evaluate(element => getComputedStyle(element).backgroundColor))
+      .not.toBe(initialBackground);
+    await expect(email).toHaveValue("local-reader@example.test");
+    expect(server.requests.filter(request => request.pathname === task)).toHaveLength(0);
+    expect(errors).toEqual([]);
+    expect(server.acceptedBusinessWrites).toBe(0);
+  });
+}
+
+async function openSyntheticMemberHome(context: BrowserContext, page: Page, server: DeploymentServer) {
+  const ledger: SyntheticTransportLedger = { synthetic: [], blocked: [] };
+  // The production A/B builds use only this fixed inert configuration. The
+  // adapter never forwards reads to Firebase and refuses every mutation.
+  await installSyntheticTransport(context, server.url, ledger, { journey: "member", deployment: "recovery" });
+  await page.goto(server.url);
+  await expect(page.getByRole("heading", { name: /^Welcome, Synthetic/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your sections", exact: true })).toBeVisible();
+  await expect(page.locator(`a[href="/sections/${fixture.sectionId}"]`).last()).toBeVisible();
+  return ledger;
+}
+
+test("actual member first use loads styled deferred event controls once", async ({ context, page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  const server = await serverFor(actualApp);
+  const task = await actualTaskAsset();
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  const ledger = await openSyntheticMemberHome(context, page, server);
+  expect(server.requests.filter(request => request.pathname === task)).toHaveLength(0);
+
+  await page.locator(`a[href="/sections/${fixture.sectionId}"]`).last().click();
+  await expect(page).toHaveURL(`${server.url}/sections/${fixture.sectionId}`);
+  await expect(page.locator(".page-header").getByText(fixture.sectionName, { exact: true })).toBeVisible();
+  const eventLink = page.locator(`a[href="/sections/${fixture.sectionId}/events/${fixture.eventId}"]`).first();
+  await expect(eventLink).toBeVisible();
+  expect(server.requests.filter(request => request.pathname === task).map(request => request.status)).toEqual([200]);
+  await eventLink.click();
+  const tabs = page.getByRole("tablist", { name: "Event information", exact: true });
+  const about = tabs.getByRole("tab", { name: "About", exact: true });
+  const book = tabs.getByRole("tab", { name: "Book", exact: true });
+  await expect(about).toHaveAttribute("aria-selected", "true");
+  await expect(about).toHaveCSS("text-transform", "uppercase");
+  expect((await about.boundingBox())!.height).toBeGreaterThan(30);
+  await expect(tabs).toHaveCSS("display", "flex");
+
+  const initialBackground = await page.locator("body").evaluate(element => getComputedStyle(element).backgroundColor);
+  await page.getByRole("button", { name: /^Appearance:/ }).click();
+  await page.getByRole("menuitem", { name: /Dark/ }).click();
+  await expect.poll(() => page.locator("body").evaluate(element => getComputedStyle(element).backgroundColor))
+    .not.toBe(initialBackground);
+  await expect(about).toHaveCSS("text-transform", "uppercase");
+  await about.focus();
+  await about.press("ArrowRight");
+  await expect(book).toBeFocused();
+  await book.press("Enter");
+  await expect(book).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("radio").first()).toBeVisible();
+  await expect(page.getByText("Synthetic member ticket", { exact: true })).toBeVisible();
+  expect(server.requests.filter(request => request.pathname === task).map(request => request.status)).toEqual([200]);
+  expect(ledger.blocked).toEqual([]);
+  expect(errors).toEqual([]);
+  expect(server.acceptedBusinessWrites).toBe(0);
+});
+
+test("a missing actual deferred event-control chunk requires explicit reload", async ({ context, page }) => {
+  const server = await serverFor(actualApp);
+  const task = await actualTaskAsset();
+  let loads = 0;
+  page.on("load", () => { loads++; });
+  const ledger = await openSyntheticMemberHome(context, page, server);
+  expect(server.requests.filter(request => request.pathname === task)).toHaveLength(0);
+  server.failAsset(task);
+  await page.locator(`a[href="/sections/${fixture.sectionId}"]`).last().click();
+  await assertManualRecovery(page);
+  expect(new URL(page.url()).pathname).toBe(`/sections/${fixture.sectionId}`);
+  expect(loads).toBe(1);
+  // The dependency preload and the section's import can each request the
+  // failed asset. Keep both browser patterns bounded without requiring either.
+  const failures = server.requests.filter(request => request.pathname === task).map(request => request.status);
+  expect(failures.length).toBeGreaterThanOrEqual(1);
+  expect(failures.length).toBeLessThanOrEqual(2);
+  expect(failures).toEqual(Array(failures.length).fill(404));
+  server.failAsset(null);
+  await page.getByRole("button", { name: "Reload page", exact: true }).click();
+  await expect(page).toHaveURL(`${server.url}/sections/${fixture.sectionId}`);
+  await expect(page.locator(`a[href="/sections/${fixture.sectionId}/events/${fixture.eventId}"]`).first()).toBeVisible();
+  expect(loads).toBe(2);
+  expect(server.requests.filter(request => request.pathname === task).map(request => request.status)).toEqual([...failures, 200]);
+  expect(ledger.blocked).toEqual([]);
+  expect(server.acceptedBusinessWrites).toBe(0);
+});
 
 for (const responseMode of ["404", "html200"] as const) {
   test(`actual app A→B: obsolete lazy asset ${responseMode}, explicit reload and history`, async ({ page }) => {

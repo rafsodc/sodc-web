@@ -2,6 +2,10 @@
 
 This slice measures startup and task code independently from the data-read work in #696. The comparison uses the actual application production build and Rollup's module graph. It does not measure live page speed.
 
+The later [startup UI chunking comparison](650-startup-chunking.md) evaluates a
+smaller eager UI bundle and its first-use trade-off with complete production
+builds in a local browser. The historical measurements below remain unchanged.
+
 ## Implementation
 
 Member event descriptions, booking and attendee panels now load when their tab is requested. The event hero and tabs remain available while code loads. Once visited, the booking panel stays mounted across tab and history navigation to retain its draft. Each panel has its own loading/error boundary, so another panel failing does not discard that booking state.

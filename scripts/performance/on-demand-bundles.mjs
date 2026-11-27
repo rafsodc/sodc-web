@@ -37,6 +37,13 @@ const home = source('features/welcome/components/MemberWelcomePage.tsx');
 const scenarios = [
   ['startup', []],
   ['public-home', [source('features/welcome/components/PublicHomePage.tsx')]],
+  ['sign-in', [source('features/auth/components/AuthGate.tsx')]],
+  ['register', [source('features/auth/components/RegisterPage.tsx')]],
+  ['password-reset', [source('features/auth/components/PasswordResetRequestPage.tsx')]],
+  ['guest-ticket', [source('features/guests/GuestTicketPage.tsx')]],
+  ['profile-completion', [source('features/auth/components/ProfileCompletion.tsx'), source('features/auth/components/OnboardingShell.tsx')]],
+  ['sections-list', [source('features/sections/components/SectionsList.tsx')]],
+  ['profile', [source('features/profile/components/Profile.tsx')]],
   ['member-home', [home]],
   ['members-directory', [section]],
   ['events-list', [section]],
@@ -55,6 +62,12 @@ const scenarios = [
 
 function sourceSnapshot(directory) {
   const files = ['index.html', 'package.json', 'package-lock.json', 'vite.config.ts', ...readdirSync(directory).filter((file) => /^tsconfig.*\.json$/.test(file))];
+  // The chunk guard is imported by the candidate build configuration. Older
+  // baselines do not have it; fingerprint every present build-script input too.
+  for (const file of ['scripts/build/chunk-graph.mjs', 'scripts/build/chunk-graph.d.mts']) {
+    try { readFileSync(path.join(directory, file)); files.push(file); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
   function walk(relative) {
     for (const entry of readdirSync(path.join(directory, relative), { withFileTypes: true })) {
       const next = `${relative}/${entry.name}`;
